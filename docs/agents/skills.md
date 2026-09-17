@@ -1,13 +1,14 @@
-# Agent skills
+# Agent Skills
 
 Skills are reusable instruction packs that a coding agent loads when a task
 matches their description. This repository installs them from three collections
-on [skills.sh](https://www.skills.sh) with the `skills` CLI. `skills-lock.json`
-records the source and content hash of every installed skill; the files live in
-`.claude/skills/` (read by Claude Code) and `.agents/skills/` (read by other
-agents).
+on [skills.sh](https://www.skills.sh) with the `skills` CLI.
 
-## Install and update
+`skills-lock.json` records the source and content hash of every installed skill;
+the files live in `.claude/skills/` (read by Claude Code) and `.agents/skills/`
+(read by other agents).
+
+## Install And Update
 
 ```shell
 bunx skills add obra/superpowers
@@ -74,9 +75,9 @@ template,
 [Vercel's web interface guidelines](https://vercel.com/design/guidelines) and
 [Geist](https://vercel.com/geist) take precedence where the two disagree.
 
-## Which skill first
+## Which Skill First
 
-| Task                                  | Start with                                  |
+| Task                                  | Start With                                  |
 | ------------------------------------- | ------------------------------------------- |
 | New feature or behavior change        | `brainstorming`, then `writing-plans`       |
 | Bug, failing test, slow path          | `systematic-debugging` or `diagnosing-bugs` |

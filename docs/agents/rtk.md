@@ -4,7 +4,7 @@
 
 ## Golden Rule
 
-**Always prefix commands with `rtk`**. If RTK has a dedicated filter, it uses
+**Always Prefix Commands With `rtk`**. If RTK has a dedicated filter, it uses
 it. If not, it passes through unchanged. This means RTK is always safe to use.
 
 **Important**: Even in command chains with `&&`, use `rtk`:
@@ -17,9 +17,9 @@ git add . && git commit -m "msg" && git push
 rtk git add . && rtk git commit -m "msg" && rtk git push
 ```
 
-## RTK Commands by Workflow
+## RTK Commands By Workflow
 
-### Build & Compile (80-90% savings)
+### Build & Compile (80-90% Savings)
 
 ```bash
 rtk cargo build         # Cargo build output
@@ -31,7 +31,7 @@ rtk prettier --check    # Files needing format only (70%)
 rtk next build          # Next.js build with route metrics (87%)
 ```
 
-### Test (60-99% savings)
+### Test (60-99% Savings)
 
 ```bash
 rtk cargo test          # Cargo test failures only (90%)
@@ -45,7 +45,7 @@ rtk rspec               # RSpec test failures only (60%)
 rtk test <cmd>          # Generic test wrapper - failures only
 ```
 
-### Git (59-80% savings)
+### Git (59-80% Savings)
 
 ```bash
 rtk git status          # Compact status
@@ -65,7 +65,7 @@ rtk git worktree        # Compact worktree
 Note: Git passthrough works for ALL subcommands, even those not explicitly
 listed.
 
-### GitHub (26-87% savings)
+### GitHub (26-87% Savings)
 
 ```bash
 rtk gh pr view <num>    # Compact PR view (87%)
@@ -75,7 +75,7 @@ rtk gh issue list       # Compact issue list (80%)
 rtk gh api              # Compact API responses (26%)
 ```
 
-### JavaScript/TypeScript Tooling (70-90% savings)
+### JavaScript/TypeScript Tooling (70-90% Savings)
 
 ```bash
 rtk pnpm list           # Compact dependency tree (70%)
@@ -87,7 +87,7 @@ rtk prisma              # Prisma without ASCII art (88%)
 rtk uv run <cmd>        # Compact uv project command output
 ```
 
-### Files & Search (60-75% savings)
+### Files & Search (60-75% Savings)
 
 ```bash
 rtk ls <path>           # Tree format, compact (65%)
@@ -96,7 +96,7 @@ rtk grep <pattern>      # Search grouped by file (75%). Format flags (-c, -l, -L
 rtk find <pattern>      # Find grouped by directory (70%)
 ```
 
-### Analysis & Debug (70-90% savings)
+### Analysis & Debug (70-90% Savings)
 
 ```bash
 rtk err <cmd>           # Filter errors only from any command
@@ -108,7 +108,7 @@ rtk summary <cmd>       # Smart summary of command output
 rtk diff                # Ultra-compact diffs
 ```
 
-### Infrastructure (85% savings)
+### Infrastructure (85% Savings)
 
 ```bash
 rtk docker ps           # Compact container list
@@ -118,7 +118,7 @@ rtk kubectl get         # Compact resource list
 rtk kubectl logs        # Deduplicated pod logs
 ```
 
-### Network (65-70% savings)
+### Network (65-70% Savings)
 
 ```bash
 rtk curl <url>          # Compact HTTP responses (70%)
