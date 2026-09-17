@@ -29,7 +29,7 @@ added._ · [Problem Statement](source/problem-statement.md) ·
 
 | Submission Field       | Detail                                                                                         |
 | ---------------------- | ---------------------------------------------------------------------------------------------- |
-| **Team**               | **NexTechnologies**: `@AlaskanTuna`, plus one teammate _(handle and roles to be added)_        |
+| **Team**               | **NexTechnologies**: `@AlaskanTuna`, `@Andersonnn7788` _(roles to be added)_                   |
 | **Problem Statement**  | Property Booking Conversion Intelligence, Chin Hin Group (Construction & Property Development) |
 | **Challenge**          | YEI 3.0: Youth Innovation Sandbox by Kabel, Premium track                                      |
 | **UI Prototype**       | _To be added._                                                                                 |
@@ -438,7 +438,9 @@ Built by **NexTechnologies**.
       <sub>_To be added._</sub>
     </td>
     <td align="center" width="50%">
-      <b>_To be added._</b><br />
+      <a href="https://github.com/Andersonnn7788"><img src="https://github.com/Andersonnn7788.png" width="88" alt="Ling Jing Jie" /></a><br />
+      <b>Ling Jing Jie</b><br />
+      <a href="https://github.com/Andersonnn7788">@Andersonnn7788</a><br />
       <sub>_To be added._</sub>
     </td>
   </tr>
