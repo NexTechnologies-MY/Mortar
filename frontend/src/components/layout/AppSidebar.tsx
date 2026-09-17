@@ -7,7 +7,7 @@ import { useState, useCallback, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
 import { ChevronLeft, ClipboardList, BellRing, TrendingUp, FileUp, X } from 'lucide-react'
-import { Logo } from '@/components/ui/Logo'
+import { MortarMark } from '@/components/brand/MortarMark'
 import { usePersona } from '@/lib/persona'
 
 interface NavItem {
@@ -155,7 +155,7 @@ export function AppSidebar({ mobileOpen = false, onMobileClose }: AppSidebarProp
         {/* Logo */}
         <div className="sidebar-logo-divider flex h-14 shrink-0 items-center gap-3 px-[18px]">
           <Link to="/" className="flex shrink-0 items-center gap-2 transition-opacity hover:opacity-80">
-            <Logo className="h-7 w-7" />
+            <MortarMark className="text-foreground" />
           </Link>
           <span className="whitespace-nowrap font-heading text-sm font-semibold tracking-tight opacity-0 transition-opacity duration-150 group-hover/sidebar:opacity-100">
             Mortar
@@ -219,7 +219,7 @@ export function AppSidebar({ mobileOpen = false, onMobileClose }: AppSidebarProp
               onClick={onMobileClose}
               className="flex shrink-0 items-center gap-2 transition-opacity hover:opacity-80"
             >
-              <Logo className="h-7 w-7" />
+              <MortarMark className="text-foreground" />
               <span className="whitespace-nowrap font-heading text-sm font-semibold tracking-tight">Mortar</span>
             </Link>
             <button

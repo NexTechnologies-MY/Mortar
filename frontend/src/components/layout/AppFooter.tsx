@@ -4,7 +4,7 @@
  */
 
 import { Link } from 'react-router-dom'
-import { Logo } from '@/components/ui/Logo'
+import { MortarMark } from '@/components/brand/MortarMark'
 
 const NAV_LINKS: { label: string; to: string }[] = [
   { label: 'Bookings', to: '/bookings' },
@@ -27,7 +27,7 @@ export function AppFooter() {
         </div>
         <div className="flex items-center gap-2">
           <Link to="/" className="flex items-center gap-2 transition-opacity hover:opacity-80">
-            <Logo className="h-6 w-6" />
+            <MortarMark size={24} className="text-foreground" />
             <span className="font-heading text-xs font-semibold tracking-tight">Mortar</span>
           </Link>
           <span className="text-xs text-muted-foreground">&middot; {new Date().getFullYear()}</span>
