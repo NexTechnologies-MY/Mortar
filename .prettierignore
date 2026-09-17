@@ -1,8 +1,7 @@
 .agents/
 .claude/
-.next/
-.data/
-test-results/
-playwright-report/
-next-env.d.ts
+dist/
+coverage/
 tsconfig.tsbuildinfo
+*.tsbuildinfo
+bun.lock

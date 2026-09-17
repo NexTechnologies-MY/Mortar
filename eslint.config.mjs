@@ -1,26 +1,64 @@
-import { defineConfig, globalIgnores } from 'eslint/config'
-import nextVitals from 'eslint-config-next/core-web-vitals'
-import nextTs from 'eslint-config-next/typescript'
-import prettier from 'eslint-config-prettier/flat'
+import js from '@eslint/js'
+import prettier from 'eslint-config-prettier'
+import reactHooks from 'eslint-plugin-react-hooks'
+import tseslint from 'typescript-eslint'
+import globals from 'globals'
 
-export default defineConfig([
-  ...nextVitals,
-  ...nextTs,
-  // Formatting is Prettier's job (config lives in the repo root).
-  prettier,
-  globalIgnores([
-    '.next/**',
-    'out/**',
-    'build/**',
-    'next-env.d.ts',
-    'drizzle/**',
-    'coverage/**',
-    'playwright-report/**',
-    'test-results/**',
-    '.claude/**',
-    '.agents/**',
-    '.husky/**',
-    '.superpowers/**',
-    '.rtk/**'
-  ])
-])
+const typescriptFiles = ['frontend/**/*.{ts,tsx}', 'packages/**/*.{ts,tsx}']
+
+const isOff = (setting) => setting === 'off' || setting === 0 || (Array.isArray(setting) && isOff(setting[0]))
+
+const warnings = (rules) =>
+  Object.fromEntries(
+    Object.entries(rules)
+      .filter(([, setting]) => !isOff(setting))
+      .map(([name, setting]) => [name, Array.isArray(setting) ? ['warn', ...setting.slice(1)] : 'warn'])
+  )
+
+export default [
+  {
+    ignores: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/build/**',
+      '**/generated/**',
+      '**/*.d.ts',
+      'graphify-out/**',
+      'docs/**',
+      'tests/**',
+      '.*/**'
+    ]
+  },
+  {
+    files: ['**/*.{js,mjs,cjs}'],
+    ...js.configs.recommended,
+    languageOptions: {
+      globals: globals.node
+    },
+    rules: {
+      ...warnings(js.configs.recommended.rules),
+      'no-debugger': 'error'
+    }
+  },
+  ...tseslint.configs.recommended.map((config) => ({
+    ...config,
+    files: typescriptFiles
+  })),
+  {
+    files: typescriptFiles,
+    rules: {
+      ...warnings(Object.assign({}, ...tseslint.configs.recommended.map((config) => config.rules || {}))),
+      'no-debugger': 'error',
+      '@typescript-eslint/no-explicit-any': 'error'
+    }
+  },
+  {
+    files: ['frontend/**/*.{ts,tsx}'],
+    ...reactHooks.configs.flat.recommended,
+    rules: {
+      ...warnings(reactHooks.configs.flat.recommended.rules),
+      'react-hooks/rules-of-hooks': 'error'
+    }
+  },
+  prettier
+]
