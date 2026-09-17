@@ -1,0 +1,27 @@
+# Optional: a real Postgres (18, same major as PGlite) for local development or for testing against the
+# same engine you deploy to. PGlite (the default) needs none of this.
+#
+#   docker compose up -d
+#   echo 'DATABASE_URL=postgres://postgres:postgres@localhost:5432/app' >> .env
+#   bun run db:migrate
+
+services:
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: app
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d app']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:
