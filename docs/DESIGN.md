@@ -37,15 +37,15 @@ Contents:
 Seven core decisions were settled during design system research. All seven are
 binding, and nothing below reopens them.
 
-| Question        | Decision                                                                                                                                            |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Look            | Flat ledger: paper ground, white cards, 1px hairlines, 6px radius. No glass, backdrop blur, gradients, glow blobs or card shadows in the app.       |
-| Status colour   | Orange is for action and selection only. Six status tones carry every state, each always with a word.                                               |
-| Type            | Geist for UI, Geist Mono for unit codes and IDs. Nine text styles. No third family.                                                                 |
-| Density         | Controls 36px, table rows 44px, body 14px. Built for a working day in lists.                                                                        |
-| Native controls | None. Select, date picker, menu, tooltip, file drop, checkbox and scrollbar are Mortar components (Radix/shadcn restyled). No alert/confirm/prompt. |
-| Modes           | Light and dark from one token set (Color collection has Light and Dark modes).                                                                      |
-| Icons           | Lucide (lucide-react), 16px, stroke 2, coloured like adjacent text. 20px in empty states.                                                           |
+| Question        | Decision                                                                                                                                                                                                                         |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Look            | Flat ledger: paper ground, white cards, 1px hairlines, 6px radius. No glass, backdrop blur (the sidebar scrim is the sole exception), gradients (the landing veil is the sole exception), glow blobs or card shadows in the app. |
+| Status colour   | Orange is for action and selection only. Six status tones carry every state, each always with a word.                                                                                                                            |
+| Type            | Geist for UI, Geist Mono for unit codes and IDs. Nine text styles. No third family.                                                                                                                                              |
+| Density         | Controls 36px, table rows 44px, body 14px. Built for a working day in lists.                                                                                                                                                     |
+| Native controls | None. Select, date picker, menu, tooltip, file drop, checkbox and scrollbar are Mortar components (Radix/shadcn restyled). No alert/confirm/prompt.                                                                              |
+| Modes           | Light and dark from one token set (Color collection has Light and Dark modes).                                                                                                                                                   |
+| Icons           | Lucide (lucide-react), 16px, stroke 2, coloured like adjacent text. 20px in empty states.                                                                                                                                        |
 
 Mortar is an internal operations tool for developer staff tracking property unit
 bookings from initial deposit through loan submission, loan approval, and final
@@ -75,7 +75,7 @@ Geist Mono for unit codes, booking reference numbers, and tabular data.
 Rules that are not obvious from the table:
 
 - **Landing display line exception:** The public landing hero display line
-  ("Booked is not sold. Signed is.") is the single exception to the scale: set
+  ("Booked Is Not Sold. Signed Is.") is the single exception to the scale: set
   in Geist SemiBold, `clamp(2.5rem, 6vw, 4.5rem)`, line-height `1.05`, tracking
   `-0.03em`.
 - **Perch specimen conversion:** Perch's italic serif specimen lines become 14px
@@ -85,6 +85,14 @@ Rules that are not obvious from the table:
   (`font-variant-numeric: tabular-nums`).
 - **No third typeface:** Never load or declare a third typeface family.
 - **Loading:** Fonts load with `font-display: swap` to prevent blocked renders.
+
+### Text Case
+
+Headings, subheadings, eyebrows, lead lines under titles, empty-state text, card
+titles, button labels, form labels, menu items and footer text are Title Case,
+capitalising every word including short ones (A, And, To, The); acronyms (SPA,
+RM, FAQ) stay in capitals; data values, placeholders, aria-labels and
+full-sentence toasts or tooltips keep their own case.
 
 ## Colour
 
@@ -121,32 +129,33 @@ Primitives belong to the collection "Primitives", mapped in CSS as
 The semantic collection "Color" defines functional roles across Light and Dark
 modes:
 
-| Token                         | CSS                       | Light                  | Dark                   |
-| ----------------------------- | ------------------------- | ---------------------- | ---------------------- |
-| `color/bg/page`               | `--background`            | `#F5F0E8` (paper/200)  | `#0C0A09` (ink/950)    |
-| `color/bg/card`               | `--card`                  | `#FFFFFF` (paper/0)    | `#1C1917` (ink/900)    |
-| `color/bg/popover`            | `--popover`               | `#FFFFFF` (paper/0)    | `#292524` (ink/800)    |
-| `color/bg/sidebar`            | `--sidebar`               | `#F9F6F0` (paper/100)  | `#1C1917` (ink/900)    |
-| `color/bg/muted`              | `--muted`                 | `#F9F6F0` (paper/100)  | `#292524` (ink/800)    |
-| `color/bg/hover`              | `--accent`                | `#EDE6DA` (paper/300)  | `#292524` (ink/800)    |
-| `color/bg/selected`           | `--selected`              | `#FFF7ED` (orange/50)  | `#2E1A12` (orange/975) |
-| `color/bg/inverse`            | `--inverse`               | `#1C1917` (ink/900)    | `#F5F0E8` (paper/200)  |
-| `color/bg/primary`            | `--primary`               | `#C2410C` (orange/700) | `#F97316` (orange/500) |
-| `color/bg/primary-hover`      | `--primary-hover`         | `#9A3412` (orange/800) | `#FB923C` (orange/400) |
-| `color/bg/destructive`        | `--destructive`           | `#BE123C` (rose/700)   | `#E11D48` (rose/600)   |
-| `color/bg/disabled`           | `--disabled`              | `#EDE6DA` (paper/300)  | `#292524` (ink/800)    |
-| `color/text/primary`          | `--foreground`            | `#1C1917` (ink/900)    | `#F5F0E8` (paper/200)  |
-| `color/text/muted`            | `--muted-foreground`      | `#6E665F` (ink/500)    | `#A8A29E` (ink/400)    |
-| `color/text/on-primary`       | `--primary-foreground`    | `#FFFFFF` (paper/0)    | `#1C1917` (ink/900)    |
-| `color/text/on-inverse`       | `--inverse-foreground`    | `#F5F0E8` (paper/200)  | `#1C1917` (ink/900)    |
-| `color/text/disabled`         | `--disabled-foreground`   | `#6E665F` (ink/500)    | `#A8A29E` (ink/400)    |
-| `color/text/link`             | `--link`                  | `#C2410C` (orange/700) | `#FB923C` (orange/400) |
-| `color/border/default`        | `--border`                | `#E2D9CB` (paper/400)  | `#292524` (ink/800)    |
-| `color/border/strong`         | `--input`                 | `#CEC3B1` (paper/500)  | `#44403C` (ink/700)    |
-| `color/border/focus`          | `--ring`                  | `#C2410C` (orange/700) | `#F97316` (orange/500) |
-| `color/scrollbar/thumb`       | `--scrollbar-thumb`       | `#E2D9CB` (paper/400)  | `#292524` (ink/800)    |
-| `color/scrollbar/thumb-hover` | `--scrollbar-thumb-hover` | `#CEC3B1` (paper/500)  | `#44403C` (ink/700)    |
-| `color/bg/footer`             | `--footer`                | `#EDE6DA` (paper/300)  | `#1C1917` (ink/900)    |
+| Token                         | CSS                       | Light                      | Dark                   |
+| ----------------------------- | ------------------------- | -------------------------- | ---------------------- |
+| `color/bg/page`               | `--background`            | `#F5F0E8` (paper/200)      | `#0C0A09` (ink/950)    |
+| `color/bg/card`               | `--card`                  | `#FFFFFF` (paper/0)        | `#1C1917` (ink/900)    |
+| `color/bg/popover`            | `--popover`               | `#FFFFFF` (paper/0)        | `#292524` (ink/800)    |
+| `color/bg/sidebar`            | `--sidebar`               | `#F9F6F0` (paper/100)      | `#1C1917` (ink/900)    |
+| `color/bg/muted`              | `--muted`                 | `#F9F6F0` (paper/100)      | `#292524` (ink/800)    |
+| `color/bg/hover`              | `--accent`                | `#EDE6DA` (paper/300)      | `#292524` (ink/800)    |
+| `color/bg/selected`           | `--selected`              | `#FFF7ED` (orange/50)      | `#2E1A12` (orange/975) |
+| `color/bg/inverse`            | `--inverse`               | `#1C1917` (ink/900)        | `#F5F0E8` (paper/200)  |
+| `color/bg/primary`            | `--primary`               | `#C2410C` (orange/700)     | `#F97316` (orange/500) |
+| `color/bg/primary-hover`      | `--primary-hover`         | `#9A3412` (orange/800)     | `#FB923C` (orange/400) |
+| `color/bg/destructive`        | `--destructive`           | `#BE123C` (rose/700)       | `#E11D48` (rose/600)   |
+| `color/bg/disabled`           | `--disabled`              | `#EDE6DA` (paper/300)      | `#292524` (ink/800)    |
+| `color/text/primary`          | `--foreground`            | `#1C1917` (ink/900)        | `#F5F0E8` (paper/200)  |
+| `color/text/muted`            | `--muted-foreground`      | `#6E665F` (ink/500)        | `#A8A29E` (ink/400)    |
+| `color/text/on-primary`       | `--primary-foreground`    | `#FFFFFF` (paper/0)        | `#1C1917` (ink/900)    |
+| `color/text/on-inverse`       | `--inverse-foreground`    | `#F5F0E8` (paper/200)      | `#1C1917` (ink/900)    |
+| `color/text/disabled`         | `--disabled-foreground`   | `#6E665F` (ink/500)        | `#A8A29E` (ink/400)    |
+| `color/text/link`             | `--link`                  | `#C2410C` (orange/700)     | `#FB923C` (orange/400) |
+| `color/border/default`        | `--border`                | `#E2D9CB` (paper/400)      | `#292524` (ink/800)    |
+| `color/border/strong`         | `--input`                 | `#CEC3B1` (paper/500)      | `#44403C` (ink/700)    |
+| `color/border/focus`          | `--ring`                  | `#C2410C` (orange/700)     | `#F97316` (orange/500) |
+| `color/scrollbar/thumb`       | `--scrollbar-thumb`       | `#E2D9CB` (paper/400)      | `#292524` (ink/800)    |
+| `color/scrollbar/thumb-hover` | `--scrollbar-thumb-hover` | `#CEC3B1` (paper/500)      | `#44403C` (ink/700)    |
+| `color/bg/footer`             | `--footer`                | `#EDE6DA` (paper/300)      | `#1C1917` (ink/900)    |
+| `color/bg/scrim`              | `--scrim`                 | ink-950 at 14% (color-mix) | black at 45%           |
 
 ### Status Tones
 
@@ -223,6 +232,9 @@ Corner rounding is strictly restrained. There are no pill-shaped buttons:
 - **Focus ring:** 2px solid ring in `--ring` with a 2px offset in `--background`
   (`outline: 2px solid var(--ring); outline-offset: 2px`). Active on keyboard
   navigation (`:focus-visible`) only; suppressed on pointer click.
+- **Scrim blur (`--scrim-blur`):** 3px (`backdrop-filter: blur(3px)`). Applied
+  to the scrim overlay when the sidebar expands on hover and to the mobile
+  drawer backdrop. This is the one place in the app a backdrop blur is allowed.
 
 ## Icons
 
@@ -604,14 +616,27 @@ staff roles:
   hover over content. The active persona's primary home view sits at the top of
   the navigation items. Built with a solid `--sidebar` (`#F9F6F0` light /
   `#1C1917` dark) ground and a 1px `--border` hairline; no blur or translucency
-  even when content scrolls beneath.
-- **Top bar:** Fixed 56px height, containing breadcrumbs, the persona switch
-  dropdown, notification status, and the theme toggle. Solid `--sidebar` ground
-  with a 1px bottom border in `--border`.
+  even when content scrolls beneath. When the sidebar expands over the content
+  on hover, a scrim dims and blurs every layer beneath it (top bar, page,
+  footer): background `--scrim` (light: ink-950 at 14% through `color-mix`;
+  dark: black at 45%), backdrop blur `--scrim-blur` (3px), fading in and out on
+  `--motion-base`. The mobile drawer's backdrop uses the same scrim and closes
+  the drawer when tapped. This is the one place in the app a backdrop blur is
+  allowed.
+- **Top bar:** Fixed 56px height, containing breadcrumbs, with a right-hand
+  cluster running, left to right, notification bell, theme switch, then the
+  persona switch at the far right. Solid `--sidebar` ground with a 1px bottom
+  border in `--border`.
 - **Content canvas:** Centered layout capped at a maximum width of 1280px with
   32px horizontal gutters (24px below 1280px). Pages open with a page header
   (Display/Page title + one descriptive line), followed by up to four stat
   tiles, followed by the active working list or table.
+
+### Navigation
+
+Every route change, back and forward included, lands at the top of the page (a
+`ScrollToTop` component, `history.scrollRestoration` set to `manual`, an instant
+jump rather than smooth).
 
 ## Public Pages
 
@@ -627,6 +652,8 @@ re-skinned entirely with Mortar tokens:
   are permitted.
 - **Routes:**
   - `/`: Public landing page.
+  - `/faq`: Public skeleton page inside the site shell, with the reveal footer,
+    whose content is tracked in GitHub issue #1.
   - `/sign-in`: Bare sign-in page (no footer, no sidebar, no top bar).
   - `/app`: Redirects to the active persona's home desk.
   - App routes (`/chase`, `/bookings`, `/forecast`): Mount the sidebar and top
@@ -637,7 +664,7 @@ re-skinned entirely with Mortar tokens:
   page floor and by keyboard focus.
 - **Authentication theatre:** There is no real backend authentication. Sign-in
   presents disabled email and password inputs, a permanently dead "Sign In"
-  button, a "Signing in as" persona selector (Sales Admin, Loan Admin, Finance),
+  button, a "Signing In As" persona selector (Sales Admin, Loan Admin, Finance),
   and a live "Sign In As Guest" button. Clicking the live button stores the
   persona in `localStorage` key `mortar.persona` and navigates to that role's
   home. A "Sign out" item in the app's persona menu navigates back to `/sign-in`
@@ -662,20 +689,20 @@ provides readable contrast for typography:
 
 Landing content copy binds to the following specification:
 
-| Slot                 | Copy                                                                                                                                          |
-| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| Eyebrow              | Booking To SPA, For Sales, Loan And Finance                                                                                                   |
-| Display line         | Booked is not sold. Signed is. (Geist SemiBold, clamp(2.5rem, 6vw, 4.5rem), line-height 1.05, -0.03em)                                        |
-| Call to action       | Open Mortar (the page's one Primary button, links to `/sign-in`)                                                                              |
-| Facts: Chase List    | Every stuck booking, the blocker in plain words, and who to chase today                                                                       |
-| Facts: Bookings      | Each unit from booking to SPA, with the days it has sat in every stage                                                                        |
-| Facts: Forecast      | The SPAs you can bank on, not the bookings you hope will convert                                                                              |
-| Strip                | Five bars for Booked, Documents, Loan submitted, Loan approved, SPA signed, stepping from `--input` through ink to `--primary`                |
-| Footer line          | A booking is a promise. The signed SPA is the sale.                                                                                           |
-| Footer link: Landing | Landing (`/`)                                                                                                                                 |
-| Footer link: Desk    | Your Desk (`/app`)                                                                                                                            |
-| Footer link: Figma   | Figma, The Design System (https://www.figma.com/design/CTy3FDK15W2QLQmB3h5f1I/Mortar-Design-System?node-id=0-1&t=BmfrHmxUj0uuvRDc-1, new tab) |
-| Footer link: GitHub  | NexTechnologies (https://github.com/NexTechnologies-MY/mortar, new tab)                                                                       |
+| Slot                   | Copy                                                                                                                           |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Eyebrow                | Booking To SPA, For Sales, Loan And Finance                                                                                    |
+| Display line           | Booked Is Not Sold. Signed Is. (Geist SemiBold, clamp(2.5rem, 6vw, 4.5rem), line-height 1.05, -0.03em)                         |
+| Call to action         | Open Mortar (the page's one Primary button, links to `/sign-in`)                                                               |
+| Facts: Chase List      | Every Stuck Booking, The Blocker In Plain Words, And Who To Chase Today                                                        |
+| Facts: Bookings        | Each Unit From Booking To SPA, With The Days It Has Sat In Every Stage                                                         |
+| Facts: Forecast        | The SPAs You Can Bank On, Not The Bookings You Hope Will Convert                                                               |
+| Strip                  | Five bars for Booked, Documents, Loan submitted, Loan approved, SPA signed, stepping from `--input` through ink to `--primary` |
+| Footer line            | A Booking Is A Promise. The Signed SPA Is The Sale.                                                                            |
+| Footer link: FAQ       | FAQ (`/faq`)                                                                                                                   |
+| Footer link: Dashboard | Dashboard (`/app`)                                                                                                             |
+| Footer link: Design    | Design (https://www.figma.com/design/CTy3FDK15W2QLQmB3h5f1I/Mortar-Design-System?node-id=0-1&t=BmfrHmxUj0uuvRDc-1, new tab)    |
+| Footer link: GitHub    | GitHub (https://github.com/NexTechnologies-MY/mortar, new tab)                                                                 |
 
 The day strip displays five 10px tall bars (`border-radius: 9999px`, gap 8px),
 stepping across pipeline progression: Booked (`--input`), Documents (ink/300),
@@ -743,13 +770,13 @@ The footer is mounted sitewide inside the site shell under every route except
   - Brand lockup: Link to `/` with `aria-label="Mortar home"`, 28px Mortar
     joinery mark, and "Mortar" wordmark in Geist Light 300 (20px, tracking
     +0.01em).
-  - Tagline: "A booking is a promise. The signed SPA is the sale." (14px Geist
+  - Tagline: "A Booking Is A Promise. The Signed SPA Is The Sale." (14px Geist
     Regular in `--muted-foreground`, maximum width 40ch).
   - Links row: Four links in 12px bold uppercase (`tracking-[0.06em]`) with a
     2px bottom border in
-    `color-mix(in oklab, var(--foreground) 18%, transparent)`: "Landing" (`/`),
-    "Your Desk" (`/app`), "Figma, The Design System" (Figma, new tab), and
-    "NexTechnologies" (GitHub, new tab).
+    `color-mix(in oklab, var(--foreground) 18%, transparent)`: "FAQ" (`/faq`),
+    "Dashboard" (`/app`), "Design" (Figma, new tab), and "GitHub" (GitHub, new
+    tab).
 - **Print:** Under `@media print`, the footer is hidden
   (`display: none !important`), and the page container margins are zeroed.
 
@@ -768,11 +795,11 @@ or reveal footer.
     `you@example.com`, background `--disabled`, cursor `not-allowed`).
   - Password field: Disabled password input (placeholder `Your password`,
     background `--disabled`, cursor `not-allowed`).
-  - "Keep me signed in" checkbox: Checkbox component with 4px corner radius.
+  - "Keep Me Signed In" checkbox: Checkbox component with 4px corner radius.
     Ticks visually on click, but persists no state.
   - Dead button: "Sign In" (permanently disabled, 1px `--input` border,
     background transparent, text `--disabled-foreground`, cursor `not-allowed`).
-  - Persona picker: "Signing in as" selection group offering Sales Admin, Loan
+  - Persona picker: "Signing In As" selection group offering Sales Admin, Loan
     Admin, and Finance.
   - Live button: "Sign In As Guest" (full width, 36px high, corner radius 6px,
     background `--primary`, text `--primary-foreground`). On click, writes the
@@ -788,7 +815,7 @@ or reveal footer.
 
 ## Acceptance
 
-A screen or component ships when all eleven criteria hold across both light and
+A screen or component ships when all twelve criteria hold across both light and
 dark modes:
 
 1.  **No raw hex values:** No hex color value exists outside `globals.css`;
@@ -816,6 +843,12 @@ dark modes:
     link receives keyboard focus.
 11. **Bare sign-in:** The sign-in route renders bare within the viewport,
     displaying no footer, no sidebar, and no top bar chrome.
+12. **Title Case:** Headings, subheadings, eyebrows, lead lines under titles,
+    empty-state text, card titles, button labels, form labels, menu items and
+    footer text are Title Case, capitalising every word including short ones (A,
+    And, To, The); acronyms (SPA, RM, FAQ) stay in capitals; data values,
+    placeholders, aria-labels and full-sentence toasts or tooltips keep their
+    own case.
 
 ## Do And Do Not
 
@@ -839,8 +872,8 @@ dark modes:
 ### Do Not
 
 - **Do not** introduce glass fills, backdrop blurs, gradients, glow blobs, or
-  card drop shadows in the application (the landing veil is the sole gradient
-  exception).
+  card drop shadows in the application (the sidebar scrim is the sole backdrop
+  blur exception; the landing veil is the sole gradient exception).
 - **Do not** use orange for any status indicator, or red for anything other than
   severe risk and irreversible destructive actions.
 - **Do not** apply colored background washes or zebra striping to table rows.
