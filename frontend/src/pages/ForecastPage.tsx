@@ -14,14 +14,14 @@ export function ForecastPage() {
       <PageHeaderCard>
         <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground">Forecast</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Projected SPA signings and collections based on the current booking pipeline.
+          Projected SPA Signings And Collections Based On The Current Booking Pipeline.
         </p>
       </PageHeaderCard>
       <div className="mt-4">
         <EmptyState
           icon={TrendingUp}
-          title="No forecast yet"
-          description="A forecast will appear here once bookings are being tracked."
+          title="No Forecast Yet"
+          description="A Forecast Will Appear Here Once Bookings Are Being Tracked."
         />
       </div>
     </PageContainer>

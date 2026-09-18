@@ -25,17 +25,17 @@ describe('SiteShell', () => {
     renderAt('/')
     const footer = screen.getByRole('contentinfo')
 
-    expect(within(footer).getByRole('link', { name: 'Landing' }).getAttribute('href')).toBe('/')
-    expect(within(footer).getByRole('link', { name: 'Your Desk' }).getAttribute('href')).toBe('/app')
+    expect(within(footer).getByRole('link', { name: 'FAQ' }).getAttribute('href')).toBe('/faq')
+    expect(within(footer).getByRole('link', { name: 'Dashboard' }).getAttribute('href')).toBe('/app')
 
-    const figma = within(footer).getByRole('link', { name: 'Figma, The Design System' })
+    const figma = within(footer).getByRole('link', { name: 'Design' })
     expect(figma.getAttribute('href')).toBe(
       'https://www.figma.com/design/CTy3FDK15W2QLQmB3h5f1I/Mortar-Design-System?node-id=0-1&t=BmfrHmxUj0uuvRDc-1'
     )
     expect(figma.getAttribute('target')).toBe('_blank')
     expect(figma.getAttribute('rel')).toBe('noopener noreferrer')
 
-    const github = within(footer).getByRole('link', { name: 'NexTechnologies' })
+    const github = within(footer).getByRole('link', { name: 'GitHub' })
     expect(github.getAttribute('href')).toBe('https://github.com/NexTechnologies-MY/mortar')
     expect(github.getAttribute('target')).toBe('_blank')
   })

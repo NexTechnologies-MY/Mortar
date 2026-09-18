@@ -20,16 +20,16 @@ export function NotFoundPage() {
         </div>
 
         <h1 className="font-heading text-7xl font-bold tracking-tight text-foreground sm:text-8xl">404</h1>
-        <p className="mt-4 text-xl font-medium text-foreground">Page not found</p>
+        <p className="mt-4 text-xl font-medium text-foreground">Page Not Found</p>
         <p className="mt-2 max-w-md text-muted-foreground">
-          The page you are looking for does not exist or has been moved. Let us get you back on track.
+          The Page You Are Looking For Does Not Exist Or Has Been Moved. Let Us Get You Back On Track.
         </p>
 
         <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
           <Link to="/">
             <Button size="lg" className="gap-2">
               <ArrowLeft className="h-4 w-4" />
-              Back to Home
+              Back To Home
             </Button>
           </Link>
         </div>

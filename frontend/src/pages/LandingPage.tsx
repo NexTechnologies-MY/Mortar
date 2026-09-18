@@ -47,22 +47,22 @@ export function LandingPage() {
       <div className="land-body">
         <div className="land-plate">
           <p className="land-eyebrow">Booking To SPA, For Sales, Loan And Finance</p>
-          <h1 className="land-title">Booked is not sold. Signed is.</h1>
+          <h1 className="land-title">Booked Is Not Sold. Signed Is.</h1>
         </div>
       </div>
 
       <dl className="land-facts land-band">
         <div>
           <dt>Chase List</dt>
-          <dd>Every stuck booking, the blocker in plain words, and who to chase today</dd>
+          <dd>Every Stuck Booking, The Blocker In Plain Words, And Who To Chase Today</dd>
         </div>
         <div>
           <dt>Bookings</dt>
-          <dd>Each unit from booking to SPA, with the days it has sat in every stage</dd>
+          <dd>Each Unit From Booking To SPA, With The Days It Has Sat In Every Stage</dd>
         </div>
         <div>
           <dt>Forecast</dt>
-          <dd>The SPAs you can bank on, not the bookings you hope will convert</dd>
+          <dd>The SPAs You Can Bank On, Not The Bookings You Hope Will Convert</dd>
         </div>
       </dl>
 

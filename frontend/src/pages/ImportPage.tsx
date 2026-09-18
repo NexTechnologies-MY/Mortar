@@ -13,10 +13,10 @@ export function ImportPage() {
     <PageContainer>
       <PageHeaderCard>
         <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground">Import</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Load existing bookings into Mortar from a spreadsheet.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Load Existing Bookings Into Mortar From A Spreadsheet.</p>
       </PageHeaderCard>
       <div className="mt-4">
-        <EmptyState icon={FileUp} title="Nothing imported yet" description="Upload a bookings file to get started." />
+        <EmptyState icon={FileUp} title="Nothing Imported Yet" description="Upload A Bookings File To Get Started." />
       </div>
     </PageContainer>
   )

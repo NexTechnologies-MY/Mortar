@@ -47,7 +47,7 @@ export function PersonaSwitch() {
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => navigate('/sign-in')} className="text-muted-foreground">
           <LogOut />
-          <span>Sign out</span>
+          <span>Sign Out</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

@@ -15,14 +15,14 @@ export function BookingDetailPage() {
   return (
     <PageContainer>
       <PageHeaderCard>
-        <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground">Booking detail</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Booking {id} — document status and signing progress.</p>
+        <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground">Booking Detail</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Booking {id} — Document Status And Signing Progress.</p>
       </PageHeaderCard>
       <div className="mt-4">
         <EmptyState
           icon={FileText}
-          title="Nothing to show yet"
-          description="Booking details will appear here once booking data is available."
+          title="Nothing To Show Yet"
+          description="Booking Details Will Appear Here Once Booking Data Is Available."
         />
       </div>
     </PageContainer>

@@ -54,7 +54,7 @@ export function SignInPage() {
             <div className="flex items-center gap-3">
               <Checkbox id={keepSignedInId} />
               <Label htmlFor={keepSignedInId} className="font-normal">
-                Keep me signed in
+                Keep Me Signed In
               </Label>
             </div>
             <Button type="button" disabled className="w-full">
@@ -62,7 +62,7 @@ export function SignInPage() {
             </Button>
             <div className="flex flex-col gap-2">
               <Label id={personaLabelId} className="text-muted-foreground">
-                Signing in as
+                Signing In As
               </Label>
               <RadioGroup
                 aria-labelledby={personaLabelId}

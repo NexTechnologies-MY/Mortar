@@ -10,6 +10,7 @@ import { usePersona } from './lib/persona'
 import { BookingsPage } from './pages/BookingsPage'
 import { BookingDetailPage } from './pages/BookingDetailPage'
 import { ChasePage } from './pages/ChasePage'
+import { FaqPage } from './pages/FaqPage'
 import { ForecastPage } from './pages/ForecastPage'
 import { ImportPage } from './pages/ImportPage'
 import { LandingPage } from './pages/LandingPage'
@@ -31,6 +32,7 @@ export function App() {
     <Routes>
       <Route element={<SiteShell />}>
         <Route path="/" element={<LandingPage />} />
+        <Route path="/faq" element={<FaqPage />} />
         <Route path="/app" element={<HomeRedirect />} />
         <Route element={<AppShell />}>
           <Route path="/bookings" element={<BookingsPage />} />
