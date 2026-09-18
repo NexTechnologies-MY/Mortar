@@ -1,0 +1,36 @@
+/* Reveal footer tokens — ported from Perch's chrome.css.
+   The footer is fixed to the viewport floor at z-index 0; the page column is
+   an opaque layer above it that reserves the footer's height as bottom margin,
+   so the footer is only uncovered at the document's end. */
+:root {
+  --footer-h: 196px;
+  --footer: var(--color-paper-300);
+}
+
+@media (min-width: 720px) {
+  :root {
+    --footer-h: 184px;
+  }
+}
+
+.dark {
+  --footer: var(--color-ink-900);
+}
+
+/* Perch's .foot-link: a hairline underline at 18% foreground, swapping to full
+   foreground on hover and focus. In CSS because Tailwind has no utility for a
+   partial-alpha border colour. */
+.foot-link {
+  padding-top: 2px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid color-mix(in oklab, var(--foreground) 18%, transparent);
+  transition:
+    color var(--motion-fast),
+    border-color var(--motion-fast);
+}
+
+.foot-link:hover,
+.foot-link:focus-visible {
+  color: var(--foreground);
+  border-bottom-color: var(--foreground);
+}

@@ -3,9 +3,16 @@
  * Lets staff flip the workspace between the Sales Admin, Loan Admin, and Finance roles.
  */
 
-import { UserCog } from 'lucide-react'
+import { LogOut, UserCog } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/DropdownMenu'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from '@/components/ui/DropdownMenu'
 import { PERSONAS, usePersona } from '@/lib/persona'
 
 /**
@@ -14,6 +21,7 @@ import { PERSONAS, usePersona } from '@/lib/persona'
  */
 export function PersonaSwitch() {
   const { persona, meta, setPersona } = usePersona()
+  const navigate = useNavigate()
 
   return (
     <DropdownMenu>
@@ -36,6 +44,11 @@ export function PersonaSwitch() {
             </span>
           </DropdownMenuItem>
         ))}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={() => navigate('/sign-in')} className="text-muted-foreground">
+          <LogOut />
+          <span>Sign out</span>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   )

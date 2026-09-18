@@ -1,0 +1,27 @@
+/* Both clips fill the same box; only their opacity differs, so the crossing costs no layout. */
+.hero-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+video.hero-frame {
+  opacity: 0;
+  transition: opacity var(--motion-film) var(--ease-out);
+}
+
+video.hero-frame[data-front='true'] {
+  opacity: 1;
+}
+
+/* The dissolve is the loop's seam and nothing else on the page moves with it, so under reduced motion the poster is
+   what runs and there is no video at all. This is the belt to that braces: if a video ever renders here under the
+   preference, it does not fade. */
+@media (prefers-reduced-motion: reduce) {
+  video.hero-frame {
+    transition: none;
+  }
+}

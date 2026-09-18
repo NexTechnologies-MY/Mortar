@@ -1,0 +1,221 @@
+/* Landing surface — ported from Perch's Landing.css with Mortar tokens in
+   place of Perch's (docs/research/perch/landing.md). The buttons' look comes
+   from the shadcn Button; only the page's own layout and type live here. */
+
+.land {
+  display: flex;
+  min-height: 100dvh;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 24px;
+  background: var(--background);
+  /* A stacking context, not a containing block: the z-index -1 film stays
+     positioned against the page column as in Perch, paints above this opaque
+     ground and below the copy. */
+  isolation: isolate;
+}
+
+@media (min-width: 900px) {
+  .land {
+    padding: 32px 48px;
+  }
+}
+
+.land-film {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+}
+
+/* The clip is a daylight shot. In the dark theme the veil only fades its left and bottom edges, so the frame is
+   dimmed a step as well; otherwise the lit towers glare against the ink ground and the top row loses contrast. */
+.dark .land-film .hero-frame {
+  filter: brightness(0.7);
+}
+
+/* The one place Mortar allows gradients: the veil scrim that fades the hero
+   film into the paper ground so the text column stays legible. */
+.land-veil {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(
+      to bottom,
+      color-mix(in oklab, var(--background) 92%, transparent) 0%,
+      color-mix(in oklab, var(--background) 82%, transparent) 30%,
+      color-mix(in oklab, var(--background) 58%, transparent) 56%,
+      transparent 76%
+    ),
+    linear-gradient(to top, color-mix(in oklab, var(--background) 92%, transparent) 0%, transparent 34%);
+}
+
+@media (min-width: 720px) {
+  .land-veil {
+    background:
+      linear-gradient(
+        to right,
+        color-mix(in oklab, var(--background) 90%, transparent) 0%,
+        color-mix(in oklab, var(--background) 70%, transparent) 28%,
+        transparent 54%
+      ),
+      linear-gradient(
+        to top,
+        color-mix(in oklab, var(--background) 92%, transparent) 0%,
+        color-mix(in oklab, var(--background) 78%, transparent) 24%,
+        transparent 42%
+      );
+  }
+}
+
+.land-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Eyebrow text style — the wordmark, the plate eyebrow and the fact labels. */
+.land-mark,
+.land-eyebrow,
+.land-facts dt {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.land-mark {
+  color: var(--foreground);
+}
+
+.land-eyebrow,
+.land-facts dt {
+  color: var(--muted-foreground);
+}
+
+.land-theme {
+  margin-left: auto;
+}
+
+.land-theme svg {
+  width: 20px;
+  height: 20px;
+}
+
+.land-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  gap: 16px;
+}
+
+.land-plate {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-self: flex-start;
+  max-width: 100%;
+}
+
+.land-title {
+  max-width: 20ch;
+  font-size: clamp(2.5rem, 6vw, 4.5rem);
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+
+@media (min-width: 720px) {
+  .land-body {
+    gap: 24px;
+  }
+
+  .land-plate {
+    gap: 24px;
+    max-width: 32rem;
+  }
+}
+
+@media (min-width: 900px) {
+  .land-title {
+    max-width: 26ch;
+  }
+}
+
+.land-band {
+  align-self: stretch;
+  max-width: 100%;
+}
+
+.land-facts {
+  display: none;
+  margin: 0;
+}
+
+.land-facts dt {
+  margin-bottom: 8px;
+}
+
+.land-facts dd {
+  margin: 0;
+  max-width: 34ch;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--muted-foreground);
+}
+
+@media (min-width: 720px) {
+  .land-facts {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 32px;
+    margin-top: auto;
+  }
+
+  .land-facts > div:nth-child(1) {
+    justify-self: start;
+  }
+
+  .land-facts > div:nth-child(2) {
+    justify-self: center;
+  }
+
+  .land-facts > div:nth-child(3) {
+    justify-self: end;
+  }
+}
+
+.land-strip {
+  display: flex;
+  gap: 8px;
+  height: 10px;
+}
+
+.land-strip span {
+  flex: 1;
+  border-radius: 9999px;
+}
+
+.land-strip span[data-stage='1'] {
+  background: var(--input);
+}
+
+.land-strip span[data-stage='2'] {
+  background: color-mix(in oklab, var(--foreground) 35%, var(--background));
+}
+
+.land-strip span[data-stage='3'] {
+  background: color-mix(in oklab, var(--foreground) 60%, var(--background));
+}
+
+.land-strip span[data-stage='4'] {
+  background: var(--foreground);
+}
+
+.land-strip span[data-stage='5'] {
+  background: var(--primary);
+}

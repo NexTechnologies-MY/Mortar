@@ -1,18 +1,22 @@
 /**
  * Declares the top-level React Router shell for Mortar.
- * `/` redirects to the active persona's home route; every app page renders inside AppShell.
+ * `/` is the landing and `/app` redirects to the active persona's home route.
+ * Every route except `/sign-in` sits inside SiteShell, the reveal footer's page column.
  */
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppShell } from './components/layout/AppShell'
+import { SiteShell } from './components/layout/SiteShell'
 import { usePersona } from './lib/persona'
 import { BookingsPage } from './pages/BookingsPage'
 import { BookingDetailPage } from './pages/BookingDetailPage'
 import { ChasePage } from './pages/ChasePage'
 import { ForecastPage } from './pages/ForecastPage'
 import { ImportPage } from './pages/ImportPage'
+import { LandingPage } from './pages/LandingPage'
 import { NotFoundPage } from './pages/NotFoundPage'
+import { SignInPage } from './pages/SignInPage'
 
-/** Sends `/` to the current persona's home route. */
+/** Sends `/app` to the current persona's home route. */
 function HomeRedirect() {
   const { home } = usePersona()
   return <Navigate to={home} replace />
@@ -25,15 +29,19 @@ function HomeRedirect() {
 export function App() {
   return (
     <Routes>
-      <Route path="/" element={<HomeRedirect />} />
-      <Route element={<AppShell />}>
-        <Route path="/bookings" element={<BookingsPage />} />
-        <Route path="/bookings/:id" element={<BookingDetailPage />} />
-        <Route path="/chase" element={<ChasePage />} />
-        <Route path="/forecast" element={<ForecastPage />} />
-        <Route path="/import" element={<ImportPage />} />
+      <Route element={<SiteShell />}>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/app" element={<HomeRedirect />} />
+        <Route element={<AppShell />}>
+          <Route path="/bookings" element={<BookingsPage />} />
+          <Route path="/bookings/:id" element={<BookingDetailPage />} />
+          <Route path="/chase" element={<ChasePage />} />
+          <Route path="/forecast" element={<ForecastPage />} />
+          <Route path="/import" element={<ImportPage />} />
+        </Route>
+        <Route path="*" element={<NotFoundPage />} />
       </Route>
-      <Route path="*" element={<NotFoundPage />} />
+      <Route path="/sign-in" element={<SignInPage />} />
     </Routes>
   )
 }

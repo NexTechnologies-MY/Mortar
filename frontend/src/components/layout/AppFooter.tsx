@@ -1,38 +1,47 @@
 /**
- * Footer chrome for the app shell.
- * Provides route navigation and Mortar branding after routed page content.
+ * Site footer content — Perch's `.foot-inner`, ported for Mortar.
+ * SiteShell emits the fixed <footer> element; this renders the brand lockup,
+ * tagline, and the four links inside it. No year line, no top border.
  */
 
 import { Link } from 'react-router-dom'
 import { MortarMark } from '@/components/brand/MortarMark'
 
-const NAV_LINKS: { label: string; to: string }[] = [
-  { label: 'Bookings', to: '/bookings' },
-  { label: 'Chase list', to: '/chase' },
-  { label: 'Forecast', to: '/forecast' },
-  { label: 'Import', to: '/import' }
+const FOOTER_LINKS: { label: string; to: string; external?: boolean }[] = [
+  { label: 'Landing', to: '/' },
+  { label: 'Your Desk', to: '/app' },
+  {
+    label: 'Figma, The Design System',
+    to: 'https://www.figma.com/design/CTy3FDK15W2QLQmB3h5f1I/Mortar-Design-System?node-id=0-1&t=BmfrHmxUj0uuvRDc-1',
+    external: true
+  },
+  { label: 'NexTechnologies', to: 'https://github.com/NexTechnologies-MY/mortar', external: true }
 ]
 
-/** Renders footer navigation and Mortar branding for the application shell. */
+const LINK_CLASS = 'foot-link text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground no-underline'
+
+/** Renders the footer's inner grid: brand, tagline, links. Right-aligned from 720px up. */
 export function AppFooter() {
   return (
-    <footer className="border-t border-border bg-muted/30 px-4 py-6 sm:px-6 sm:py-8">
-      <div className="flex flex-col items-start gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground sm:gap-x-5">
-          {NAV_LINKS.map((l) => (
-            <Link key={l.to} to={l.to} className="transition-colors hover:text-foreground">
+    <div className="mx-auto grid h-full max-w-[1040px] content-center gap-3 px-6 min-[720px]:justify-items-end min-[720px]:px-12 min-[720px]:text-right">
+      <Link to="/" aria-label="Mortar home" className="inline-flex items-center gap-2 text-foreground no-underline">
+        <MortarMark size={28} />
+        <span className="text-base font-semibold">Mortar</span>
+      </Link>
+      <p className="max-w-[40ch] text-sm text-muted-foreground">A booking is a promise. The signed SPA is the sale.</p>
+      <div className="flex flex-wrap gap-x-6 gap-y-2 min-[720px]:justify-end">
+        {FOOTER_LINKS.map((l) =>
+          l.external ? (
+            <a key={l.label} href={l.to} target="_blank" rel="noopener noreferrer" className={LINK_CLASS}>
+              {l.label}
+            </a>
+          ) : (
+            <Link key={l.label} to={l.to} className={LINK_CLASS}>
               {l.label}
             </Link>
-          ))}
-        </div>
-        <div className="flex items-center gap-2">
-          <Link to="/" className="flex items-center gap-2 transition-opacity hover:opacity-80">
-            <MortarMark size={24} className="text-foreground" />
-            <span className="font-heading text-xs font-semibold tracking-tight">Mortar</span>
-          </Link>
-          <span className="text-xs text-muted-foreground">&middot; {new Date().getFullYear()}</span>
-        </div>
+          )
+        )}
       </div>
-    </footer>
+    </div>
   )
 }
