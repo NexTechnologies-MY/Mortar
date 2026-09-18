@@ -19,9 +19,9 @@ in `localStorage` under `mortar.persona`:
 | Loan Admin  | `/bookings` |
 | Finance     | `/forecast` |
 
-Routes: `/bookings` (list), `/bookings/:id` (detail), `/chase` (follow-ups),
-`/forecast` (projected signings), `/import` (spreadsheet intake). `/` redirects
-to the active persona's home.
+Routes: `/` (landing), `/sign-in` (no real auth), `/app` (redirects to the
+active persona's home), `/bookings` (list), `/bookings/:id` (detail), `/chase`
+(follow-ups), `/forecast` (projected signings), `/import` (spreadsheet intake).
 
 ## Stack
 
@@ -44,6 +44,7 @@ flat config at the root, Prettier, husky + lint-staged.
 | Read When                                        | Document                                                        |
 | ------------------------------------------------ | --------------------------------------------------------------- |
 | Working in the app: file map, recipes, gotchas   | [Project notes](docs/agents/notes.md)                           |
+| Building or styling any UI                       | [Design](docs/DESIGN.md)                                        |
 | Running a shell command                          | [RTK](docs/agents/rtk.md)                                       |
 | Deciding how much to build or how to change code | [Andrej Karpathy Skills](docs/agents/andrej-karpathy-skills.md) |
 | Choosing or installing an agent skill            | [Skills](docs/agents/skills.md)                                 |

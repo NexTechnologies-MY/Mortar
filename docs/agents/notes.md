@@ -23,18 +23,18 @@ neither shows: conventions, the file map, and the gotchas.
 
 ## File Map
 
-| Area           | Files                                                                                                                                                                                                                                |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| App shell      | `frontend/src/App.tsx` (routes), `frontend/src/main.tsx` (providers), `frontend/src/components/layout/` (sidebar, nav, footer, `AppShell`, `PageContainer`, `PageHeaderCard`, `AppErrorBoundary`, `ThemeToggle`, `PersonaSwitch`)    |
-| Persona        | `frontend/src/lib/persona.tsx` (context, `PERSONAS`, `mortar.persona` localStorage key), `packages/core/src/index.ts` (`Persona` type)                                                                                               |
-| Pages          | `frontend/src/pages/` — one file per route (`BookingsPage`, `BookingDetailPage`, `ChasePage`, `ForecastPage`, `ImportPage`, `NotFoundPage`)                                                                                          |
-| UI primitives  | `frontend/src/components/ui/` (shadcn: button, card, dialog, drawer, DropdownMenu, input, label, separator, skeleton, slider, tooltip + EmptyState, ImagePopup, InfoTooltip, LoadingOverlay, Logo, NotificationPopover, toastConfig) |
-| Charts         | `frontend/src/components/charts/ChartTooltipContent.tsx` (recharts tooltip shell), `frontend/src/lib/formatters.ts` (MYR/number Intl formatters)                                                                                     |
-| Hooks / stores | `frontend/src/hooks/useTheme.tsx`, `frontend/src/lib/notificationStore.ts`, `frontend/src/lib/utils.ts` (`cn`)                                                                                                                       |
-| Theme          | `frontend/src/globals.css` (Tailwind 4 `@theme` tokens, light/dark, glass utilities), `frontend/index.html` (fonts, FOUC theme script)                                                                                               |
-| Tests          | `frontend/src/lib/__tests__/persona.test.tsx`, `packages/core/src/index.test.ts`                                                                                                                                                     |
-| Tooling        | root `package.json`, `tsconfig.json`, `eslint.config.mjs`, `.prettierrc.json`, `.husky/pre-commit`, `frontend/vite.config.ts` (dev server + Vitest), `frontend/tsconfig.json`                                                        |
-| CI             | `.github/workflows/ci.yml`                                                                                                                                                                                                           |
+| Area           | Files                                                                                                                                                                                                                                                                                       |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| App shell      | `frontend/src/App.tsx` (routes), `frontend/src/main.tsx` (providers), `frontend/src/components/layout/` (sidebar, nav, footer, `SiteShell` (public page column and fixed reveal footer), `AppShell`, `PageContainer`, `PageHeaderCard`, `AppErrorBoundary`, `ThemeToggle`, `PersonaSwitch`) |
+| Persona        | `frontend/src/lib/persona.tsx` (context, `PERSONAS`, `mortar.persona` localStorage key), `packages/core/src/index.ts` (`Persona` type)                                                                                                                                                      |
+| Pages          | `frontend/src/pages/` — one file per route (`LandingPage` with `components/HeroFilm`, `SignInPage`, `BookingsPage`, `BookingDetailPage`, `ChasePage`, `ForecastPage`, `ImportPage`, `NotFoundPage`)                                                                                         |
+| UI primitives  | `frontend/src/components/ui/` (shadcn: button, calendar, card, checkbox, dialog, drawer, DropdownMenu, input, label, popover, radio-group, select, separator, skeleton, table, tabs, tooltip + status-pill, EmptyState, InfoTooltip, LoadingOverlay, NotificationPopover, toastConfig)      |
+| Charts         | `frontend/src/components/charts/ChartTooltipContent.tsx` (recharts tooltip shell), `frontend/src/lib/formatters.ts` (MYR/number Intl formatters)                                                                                                                                            |
+| Hooks / stores | `frontend/src/hooks/useTheme.tsx`, `frontend/src/lib/notificationStore.ts`, `frontend/src/lib/utils.ts` (`cn`)                                                                                                                                                                              |
+| Theme          | `frontend/src/globals.css` (Tailwind 4 `@theme` tokens from `docs/DESIGN.md`, light/dark, global scrollbar), `frontend/public/media/` (hero clip), `frontend/index.html` (fonts, FOUC theme script)                                                                                         |
+| Tests          | `frontend/src/lib/__tests__/`, `frontend/src/pages/__tests__/`, `frontend/src/components/layout/__tests__/`, `packages/core/src/index.test.ts`                                                                                                                                              |
+| Tooling        | root `package.json`, `tsconfig.json`, `eslint.config.mjs`, `.prettierrc.json`, `.husky/pre-commit`, `frontend/vite.config.ts` (dev server + Vitest), `frontend/tsconfig.json`                                                                                                               |
+| CI             | `.github/workflows/ci.yml`                                                                                                                                                                                                                                                                  |
 
 ## Recipe: Add A Route
 
@@ -53,8 +53,9 @@ neither shows: conventions, the file map, and the gotchas.
 
 ## Gotchas
 
-- **`/` Is Persona-Relative.** The `HomeRedirect` in `App.tsx` sends it to the
-  active persona's home, so never link to `/` expecting a fixed page.
+- **`/` Is The Landing; `/app` Is Persona-Relative.** `/app` sends the active
+  persona to their home. `/` and `/sign-in` sit outside `AppShell`; `SiteShell`
+  owns the fixed reveal footer, which `/sign-in` deliberately omits.
 - **The Sidebar Puts The Persona's Home First.** `AppSidebar` hoists the active
   persona's home route above `NAV_ITEMS`' canonical order; keep new routes in
   canonical order in `NAV_ITEMS`.
@@ -68,4 +69,5 @@ neither shows: conventions, the file map, and the gotchas.
 
 ## Docs
 
+- `docs/DESIGN.md`: the visual spec — follow it for any UI work.
 - `docs/markdown-style.md`: house Markdown style — follow it when editing docs.
