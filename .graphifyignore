@@ -1,0 +1,91 @@
+# Graphify ignore — heavy/binary files with no extractable knowledge.
+# Syntax follows .gitignore rules. (.gitignore itself is already respected,
+# so node_modules/, dist/, .env etc. need no repeating here — listed anyway
+# where harmless for clarity.)
+
+# Raster + vector images (brand marks, heroes, favicons — presentational)
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.avif
+*.bmp
+*.tif
+*.tiff
+*.ico
+*.svg
+
+# Video + audio
+*.mp4
+*.webm
+*.mov
+*.avi
+*.mkv
+*.m4v
+*.mp3
+*.wav
+*.ogg
+*.flac
+*.m4a
+*.aac
+
+# Binary documents (PDFs, Office formats)
+*.pdf
+*.doc
+*.docx
+*.ppt
+*.pptx
+*.xls
+*.xlsx
+*.odt
+*.ods
+*.odp
+
+# Fonts
+*.woff
+*.woff2
+*.ttf
+*.otf
+*.eot
+
+# Archives, packages, binaries
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.gz
+*.bz2
+*.xz
+*.7z
+*.rar
+*.exe
+*.dll
+*.so
+*.dylib
+*.bin
+*.dat
+*.wasm
+
+# Data stores / dumps
+*.parquet
+*.db
+*.sqlite
+*.sqlite3
+*.dump
+
+# Generated lockfiles — noise, not knowledge
+bun.lock
+bun.lockb
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+skills-lock.json
+
+# Vendored agent tooling — installed skill copies, not project knowledge
+# (same category as node_modules for graph purposes)
+.agents/
+.claude/
+
+# Graphify's own output (don't index the graph into itself)
+graphify-out/
