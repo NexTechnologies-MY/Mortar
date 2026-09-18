@@ -1,0 +1,76 @@
+name: Deploy Prototype
+
+# Every merge to the default branch deploys, whoever pushed it. There is no path filter on purpose: a filter means a
+# change lands and nothing happens, silently, which is worse than an occasional no-op build.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-prototype
+  cancel-in-progress: false
+
+# deployments: write lets the job record itself under the repo's Deployments panel.
+permissions:
+  contents: read
+  id-token: write
+  deployments: write
+
+env:
+  PROJECT_ID: mortar-509018
+  REGION: asia-southeast1
+  SERVICE: mortar
+  REPO: web
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # Declaring an environment is what makes GitHub list the run under Deployments, with the URL beside it.
+    environment:
+      name: production
+      url: ${{ steps.url.outputs.url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # Keyless: the provider only trusts NexTechnologies-MY/mortar on refs/heads/main.
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/176418720252/locations/global/workloadIdentityPools/github/providers/nextechnologies
+          service_account: deployer@mortar-509018.iam.gserviceaccount.com
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Build and push
+        run: |
+          IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/${SERVICE}:${GITHUB_SHA}"
+          docker build -t "$IMAGE" .
+          docker push "$IMAGE"
+          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
+
+      # Scale to zero with a two-instance ceiling keeps a static prototype inside Cloud Run's free tier.
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy "$SERVICE" \
+            --image "$IMAGE" \
+            --region "$REGION" \
+            --project "$PROJECT_ID" \
+            --service-account "web-runtime@${PROJECT_ID}.iam.gserviceaccount.com" \
+            --allow-unauthenticated \
+            --port 8080 \
+            --cpu 1 \
+            --memory 256Mi \
+            --min-instances 0 \
+            --max-instances 2 \
+            --quiet
+
+      - name: Report URL
+        id: url
+        run: |
+          URL=$(gcloud run services describe "$SERVICE" --region "$REGION" --project "$PROJECT_ID" --format='value(status.url)')
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "Deployed to $URL" >> "$GITHUB_STEP_SUMMARY"
