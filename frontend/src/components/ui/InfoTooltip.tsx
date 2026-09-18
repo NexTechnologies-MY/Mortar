@@ -29,7 +29,7 @@ export function InfoTooltip({
   contentClassName?: string
 }) {
   return (
-    <TooltipProvider delayDuration={200}>
+    <TooltipProvider delayDuration={300}>
       <Tooltip open={open}>
         <TooltipTrigger asChild>
           <button

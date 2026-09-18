@@ -17,8 +17,8 @@ export function EmptyState({ icon: Icon, title, description }: EmptyStateProps) 
   return (
     <Card>
       <CardContent className="flex flex-col items-center gap-2 py-16 text-center">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10">
-          <Icon className="h-6 w-6 text-primary" />
+        <div className="flex h-10 w-10 items-center justify-center rounded-md bg-muted">
+          <Icon className="h-5 w-5 text-muted-foreground" />
         </div>
         <p className="font-heading text-base font-semibold text-foreground">{title}</p>
         <p className="max-w-sm text-sm text-muted-foreground">{description}</p>

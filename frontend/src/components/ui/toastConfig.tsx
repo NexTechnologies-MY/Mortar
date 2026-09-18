@@ -17,13 +17,13 @@ import { notificationStore } from '@/lib/notificationStore'
 
 /** Shared visual style applied to every toast variant. */
 const BASE_STYLE: React.CSSProperties = {
-  background: 'var(--card)',
-  color: 'var(--card-foreground)',
+  background: 'var(--popover)',
+  color: 'var(--popover-foreground)',
   border: '1px solid var(--border)',
-  borderRadius: '0.75rem',
+  borderRadius: '6px',
   padding: '12px 16px',
   fontSize: '0.875rem',
-  boxShadow: '0 4px 24px rgba(0, 0, 0, 0.12)',
+  boxShadow: 'var(--shadow-overlay)',
   maxWidth: '420px'
 }
 
@@ -44,8 +44,8 @@ export const notify = {
     notificationStore.push('Success', message)
     return toast.success(message, {
       ...baseOptions,
-      icon: <CheckCircle className="h-5 w-5 text-green-500" />,
-      style: { ...BASE_STYLE, borderColor: 'rgba(34, 197, 94, 0.3)' }
+      icon: <CheckCircle className="h-5 w-5 text-status-positive-fg" />,
+      style: { ...BASE_STYLE, borderColor: 'var(--status-positive-bg)' }
     })
   },
 
@@ -53,22 +53,22 @@ export const notify = {
     toast.error(message, {
       ...baseOptions,
       duration: 4000,
-      icon: <XCircle className="h-5 w-5 text-red-500" />,
-      style: { ...BASE_STYLE, borderColor: 'rgba(239, 68, 68, 0.3)' }
+      icon: <XCircle className="h-5 w-5 text-status-danger-fg" />,
+      style: { ...BASE_STYLE, borderColor: 'var(--status-danger-bg)' }
     }),
 
   warning: (message: string) =>
     toast(message, {
       ...baseOptions,
-      icon: <AlertTriangle className="h-5 w-5 text-amber-500" />,
-      style: { ...BASE_STYLE, borderColor: 'rgba(245, 158, 11, 0.3)' }
+      icon: <AlertTriangle className="h-5 w-5 text-status-warning-fg" />,
+      style: { ...BASE_STYLE, borderColor: 'var(--status-warning-bg)' }
     }),
 
   info: (message: string) =>
     toast(message, {
       ...baseOptions,
-      icon: <Info className="h-5 w-5 text-primary" />,
-      style: { ...BASE_STYLE, borderColor: 'rgba(249, 115, 22, 0.2)' }
+      icon: <Info className="h-5 w-5 text-status-info-fg" />,
+      style: { ...BASE_STYLE, borderColor: 'var(--status-info-bg)' }
     }),
 
   loading: (message: string) =>

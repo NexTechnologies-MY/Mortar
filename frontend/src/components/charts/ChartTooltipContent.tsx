@@ -34,7 +34,7 @@ export function ChartTooltipContent({
   if (!active || !payload?.length) return null
 
   return (
-    <div className="min-w-[180px] space-y-1 rounded-md border border-border bg-background/95 px-3 py-2 shadow-lg backdrop-blur-sm">
+    <div className="min-w-[180px] space-y-1 rounded-md border border-border bg-popover px-3 py-2 shadow-[var(--shadow-overlay)]">
       {label !== undefined ? <p className="text-xs font-medium text-muted-foreground">{String(label)}</p> : null}
       <div className="space-y-1">
         {payload.map((entry: TooltipEntry, index: number) => {

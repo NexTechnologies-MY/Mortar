@@ -11,16 +11,11 @@ import { FileQuestion, ArrowLeft } from 'lucide-react'
 export function NotFoundPage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center px-4 text-center">
-      {/* Decorative background */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute left-1/2 top-1/3 h-[400px] w-[400px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/10 blur-[100px]" />
-      </div>
-
       {/* Error content */}
       <div className="relative animate-fade-in-up">
         <div className="mb-8 flex justify-center">
-          <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-primary/10">
-            <FileQuestion className="h-10 w-10 text-primary" />
+          <div className="flex h-20 w-20 items-center justify-center rounded-md border border-border bg-card">
+            <FileQuestion className="h-10 w-10 text-muted-foreground" />
           </div>
         </div>
 

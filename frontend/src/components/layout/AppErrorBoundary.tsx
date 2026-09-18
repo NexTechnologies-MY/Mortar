@@ -73,7 +73,7 @@ export class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorB
 
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
-        <Card className="w-full max-w-lg border-border bg-card/95 shadow-lg">
+        <Card className="w-full max-w-lg border-border bg-card">
           <CardHeader className="space-y-3">
             <CardTitle>Something went wrong</CardTitle>
             <CardDescription>

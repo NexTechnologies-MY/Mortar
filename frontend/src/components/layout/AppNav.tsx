@@ -48,7 +48,7 @@ export function AppNav({ minimal, onMenuClick }: { minimal?: boolean; onMenuClic
   const lastCrumb = crumbs[crumbs.length - 1]
 
   return (
-    <nav className="glass-nav fixed inset-x-0 top-0 z-50">
+    <nav className="fixed inset-x-0 top-0 z-50 border-b border-border bg-sidebar">
       <div className="flex h-14 items-center justify-between gap-2 px-4 sm:px-6 lg:ml-16">
         {/* Left — Hamburger (mobile) + Breadcrumbs */}
         <div className="flex min-w-0 items-center gap-2">

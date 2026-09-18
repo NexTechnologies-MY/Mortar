@@ -20,10 +20,7 @@ const DialogOverlay = React.forwardRef<
     ref={ref}
     className={cn(
       // z-[70] sits above AppSidebar (z-[60]) and AppNav (z-50) so modals dim everything.
-      // backdrop-blur-md applies the glass blur to the actual page behind the overlay.
-      // bg-foreground/30 keeps overlay translucent so the blurred page is visible (light theme),
-      // dark theme uses a darker tint via bg-foreground/30 (foreground is light grey on dark bg).
-      'fixed inset-0 z-[70] bg-foreground/20 backdrop-blur-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+      'fixed inset-0 z-[70] bg-ink-950/40 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
       className
     )}
     {...props}
@@ -40,16 +37,15 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        // z-[71] above the overlay. Solid card background plus subtle backdrop blur for the
-        // glass feel. glass-card alone is too transparent against an overlay — use bg-card/95
-        // so light-theme content stays readable while keeping a faint blur for depth.
-        'fixed left-[50%] top-[50%] z-[71] grid w-[calc(100vw-2rem)] max-w-lg max-h-[calc(100vh-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto rounded-xl border border-border bg-card/95 p-6 shadow-2xl backdrop-blur-md duration-300 [animation-timing-function:cubic-bezier(0.4,0,0.2,1)] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-bottom-8 data-[state=open]:slide-in-from-bottom-8',
+        // z-[71] above the overlay. Solid popover surface with the overlay shadow —
+        // flat spec, no blur or gradient.
+        'fixed left-[50%] top-[50%] z-[71] grid w-[calc(100vw-2rem)] max-w-lg max-h-[calc(100vh-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto rounded-md border border-border bg-popover p-6 shadow-[var(--shadow-overlay)] duration-[var(--motion-slow)] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:slide-out-to-bottom-8 data-[state=open]:slide-in-from-bottom-8',
         className
       )}
       {...props}
     >
       {children}
-      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+      <DialogPrimitive.Close className="absolute right-4 top-4 flex size-7 items-center justify-center rounded-sm text-muted-foreground transition-colors duration-[var(--motion-fast)] hover:bg-accent hover:text-foreground disabled:pointer-events-none">
         <X className="h-4 w-4" />
         <span className="sr-only">Close</span>
       </DialogPrimitive.Close>

@@ -68,7 +68,7 @@ export function NotificationPopover() {
       <Button onClick={() => setIsOpen(!isOpen)} variant="ghost" size="icon" className="relative h-9 w-9">
         <Bell className="h-4 w-4" />
         {unreadCount > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+          <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-status-info-bg text-[10px] font-medium text-status-info-fg">
             {unreadCount}
           </span>
         )}
@@ -81,7 +81,7 @@ export function NotificationPopover() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="absolute right-0 z-50 mt-2 w-[min(20rem,calc(100vw-2rem))] max-h-[400px] overflow-x-hidden overflow-y-auto rounded-xl border border-border bg-card shadow-xl"
+            className="absolute right-0 z-50 mt-2 w-[min(20rem,calc(100vw-2rem))] max-h-[400px] overflow-x-hidden overflow-y-auto rounded-md border border-border bg-popover shadow-[var(--shadow-overlay)]"
           >
             <div className="flex items-center justify-between border-b border-border p-4">
               <h3 className="text-sm font-semibold">Notifications</h3>
@@ -105,13 +105,13 @@ export function NotificationPopover() {
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.2, delay: index * 0.05 }}
-                    className="group relative p-4 transition-colors hover:bg-accent/50"
+                    className="group relative p-4 transition-colors hover:bg-accent"
                     onClick={() => notificationStore.markAsRead(notification.id)}
                   >
                     <div className="flex items-start gap-2 pr-6">
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
-                          {!notification.read && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />}
+                          {!notification.read && <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-status-info" />}
                           <h4 className="text-sm font-medium text-foreground">{notification.title}</h4>
                         </div>
                         <p className="mt-1 text-xs text-muted-foreground">{notification.description}</p>

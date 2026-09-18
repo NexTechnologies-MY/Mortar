@@ -40,12 +40,12 @@ function SectionHeading({
   return (
     <div className={`relative mb-1 flex h-5 items-center ${first ? '' : 'mt-4'}`}>
       <div
-        className={`absolute inset-x-0 h-px bg-sidebar-border transition-opacity duration-150 ${
+        className={`absolute inset-x-0 h-px bg-border transition-opacity duration-150 ${
           alwaysExpanded ? 'opacity-0' : 'group-hover/sidebar:opacity-0'
         }`}
       />
       <p
-        className={`whitespace-nowrap px-2 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/40 transition-opacity duration-150 ${
+        className={`whitespace-nowrap px-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground transition-opacity duration-150 ${
           alwaysExpanded ? 'opacity-100' : 'opacity-0 group-hover/sidebar:opacity-100'
         }`}
       >
@@ -75,18 +75,16 @@ function NavLink({
     <Link
       to={to}
       onClick={onClick}
-      className={`group relative flex h-12 items-center gap-2.5 rounded-lg px-2 text-sm transition-colors ${
+      className={`group relative flex h-12 items-center gap-2.5 rounded-md px-2 text-sm transition-colors duration-[var(--motion-fast)] ${
         active
-          ? 'bg-sidebar-accent font-medium text-sidebar-accent-foreground before:absolute before:left-0 before:top-2 before:bottom-2 before:w-[2px] before:rounded-full before:bg-primary'
-          : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+          ? 'bg-selected font-medium text-foreground before:absolute before:left-0 before:top-2 before:bottom-2 before:w-[2px] before:rounded-full before:bg-primary'
+          : 'text-muted-foreground hover:bg-accent hover:text-foreground'
       }`}
     >
       <span className="flex w-8 shrink-0 items-center justify-center">
         <Icon
           className={`h-4 w-4 shrink-0 ${
-            active
-              ? 'text-sidebar-accent-foreground'
-              : 'text-sidebar-foreground/50 group-hover:text-sidebar-accent-foreground'
+            active ? 'text-foreground' : 'text-muted-foreground group-hover:text-foreground'
           }`}
         />
       </span>
@@ -146,10 +144,7 @@ export function AppSidebar({ mobileOpen = false, onMobileClose }: AppSidebarProp
         data-sidebar
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        style={{
-          width: collapsed ? SIDEBAR_COLLAPSED : SIDEBAR_EXPANDED,
-          boxShadow: collapsed ? 'none' : '0 8px 40px rgba(0, 0, 0, 0.16)'
-        }}
+        style={{ width: collapsed ? SIDEBAR_COLLAPSED : SIDEBAR_EXPANDED }}
         className="group/sidebar fixed inset-y-0 left-0 z-[60] hidden flex-col overflow-hidden border-r border-border bg-sidebar lg:flex"
       >
         {/* Logo */}
@@ -187,13 +182,6 @@ export function AppSidebar({ mobileOpen = false, onMobileClose }: AppSidebarProp
         </div>
       </aside>
 
-      {/* Desktop backdrop blur when expanded (lg+ only) */}
-      <div
-        className={`sidebar-expanded-backdrop fixed inset-0 z-[55] hidden lg:block ${collapsed ? 'pointer-events-none opacity-0' : 'opacity-100'}`}
-        onClick={() => setCollapsed(true)}
-        aria-hidden="true"
-      />
-
       {/* Mobile drawer (slide-in from left, always expanded labels) */}
       <div
         className={`fixed inset-0 z-[70] lg:hidden ${mobileOpen ? '' : 'pointer-events-none'}`}
@@ -202,13 +190,13 @@ export function AppSidebar({ mobileOpen = false, onMobileClose }: AppSidebarProp
         {/* Backdrop */}
         <div
           onClick={onMobileClose}
-          className={`absolute inset-0 bg-black/50 transition-opacity duration-200 ${
+          className={`absolute inset-0 bg-ink-950/40 transition-opacity duration-200 ${
             mobileOpen ? 'opacity-100' : 'opacity-0'
           }`}
         />
         {/* Drawer panel */}
         <aside
-          className={`relative flex h-full w-64 max-w-[80vw] flex-col overflow-hidden border-r border-border bg-sidebar shadow-2xl transition-transform duration-200 ease-out ${
+          className={`relative flex h-full w-64 max-w-[80vw] flex-col overflow-hidden border-r border-border bg-sidebar shadow-[var(--shadow-overlay)] transition-transform duration-200 ease-out ${
             mobileOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
         >
@@ -226,7 +214,7 @@ export function AppSidebar({ mobileOpen = false, onMobileClose }: AppSidebarProp
               type="button"
               aria-label="Close menu"
               onClick={onMobileClose}
-              className="flex h-8 w-8 items-center justify-center rounded-md text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             >
               <X className="h-4 w-4" />
             </button>
