@@ -14,7 +14,7 @@ type Crumb = { label: string; to?: string; icon?: React.ReactNode }
 
 const ROUTE_LABELS: Record<string, string> = {
   '/bookings': 'Bookings',
-  '/chase': 'Chase list',
+  '/chase': 'Chase List',
   '/forecast': 'Forecast',
   '/import': 'Import'
 }
@@ -95,11 +95,11 @@ export function AppNav({ minimal, onMenuClick }: { minimal?: boolean; onMenuClic
           )}
         </div>
 
-        {/* Right — Persona + Notifications + Theme */}
+        {/* Right — Notifications + Theme + Persona */}
         <div className="flex shrink-0 items-center gap-1 sm:gap-2">
-          <PersonaSwitch />
           <NotificationPopover />
           <ThemeToggle />
+          <PersonaSwitch />
         </div>
       </div>
     </nav>

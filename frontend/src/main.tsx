@@ -8,6 +8,7 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { AppErrorBoundary } from './components/layout/AppErrorBoundary'
+import { ScrollToTop } from './components/layout/ScrollToTop'
 import { ThemeProvider } from './hooks/useTheme'
 import { PersonaProvider } from './lib/persona'
 import { App } from './App'
@@ -36,6 +37,7 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AppErrorBoundary>
       <BrowserRouter>
+        <ScrollToTop />
         <ThemeProvider>
           <PersonaProvider>
             <App />

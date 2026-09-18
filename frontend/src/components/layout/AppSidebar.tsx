@@ -22,7 +22,7 @@ const SIDEBAR_COLLAPSED = 64
 /** Canonical route order; the active persona's home is hoisted to the top at render time. */
 const NAV_ITEMS: NavItem[] = [
   { to: '/bookings', label: 'Bookings', icon: ClipboardList },
-  { to: '/chase', label: 'Chase list', icon: BellRing },
+  { to: '/chase', label: 'Chase List', icon: BellRing },
   { to: '/forecast', label: 'Forecast', icon: TrendingUp },
   { to: '/import', label: 'Import', icon: FileUp }
 ]
@@ -182,18 +182,16 @@ export function AppSidebar({ mobileOpen = false, onMobileClose }: AppSidebarProp
         </div>
       </aside>
 
+      {/* Scrim — dims everything under the expanded desktop sidebar */}
+      <div className="sidebar-scrim" data-open={!collapsed} />
+
       {/* Mobile drawer (slide-in from left, always expanded labels) */}
       <div
         className={`fixed inset-0 z-[70] lg:hidden ${mobileOpen ? '' : 'pointer-events-none'}`}
         aria-hidden={!mobileOpen}
       >
-        {/* Backdrop */}
-        <div
-          onClick={onMobileClose}
-          className={`absolute inset-0 bg-ink-950/40 transition-opacity duration-200 ${
-            mobileOpen ? 'opacity-100' : 'opacity-0'
-          }`}
-        />
+        {/* Backdrop — same scrim look as the desktop sidebar's, but clickable */}
+        <div onClick={onMobileClose} className="sidebar-scrim drawer-scrim" data-open={mobileOpen} />
         {/* Drawer panel */}
         <aside
           className={`relative flex h-full w-64 max-w-[80vw] flex-col overflow-hidden border-r border-border bg-sidebar shadow-[var(--shadow-overlay)] transition-transform duration-200 ease-out ${

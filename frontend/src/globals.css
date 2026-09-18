@@ -273,6 +273,10 @@
   --motion-base: 200ms;
   --motion-slow: 250ms;
   --motion-film: 800ms;
+
+  /* Scrim — the one sanctioned backdrop blur: sidebar expand + mobile drawer */
+  --scrim: color-mix(in oklab, var(--color-ink-950) 14%, transparent);
+  --scrim-blur: 3px;
 }
 
 /* DARK MODE */
@@ -331,6 +335,9 @@
   --status-signed: #f5f0e8;
   --status-signed-fg: #1c1917;
   --status-signed-bg: #f5f0e8;
+
+  /* Scrim */
+  --scrim: color-mix(in oklab, black 45%, transparent);
 }
 
 /* BASE STYLES */
@@ -372,6 +379,18 @@ select:focus-visible,
 [tabindex]:not([tabindex='-1']):focus-visible {
   outline: 2px solid var(--ring);
   outline-offset: 2px;
+}
+
+/* Tailwind 4 gives a bare `border` utility currentColor, so every card and hairline would draw in ink. Default it to
+   the hairline token, as shadcn expects. */
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--border);
+  }
 }
 
 /* CUSTOM SCROLLBAR — transparent track; 6px thumb in --scrollbar-thumb growing to 8px in
@@ -429,4 +448,37 @@ select:focus-visible,
 /* SIDEBAR TRANSITION — defined in CSS so it's never re-set by React renders */
 [data-sidebar] {
   transition: width var(--motion-base) var(--ease-out);
+}
+
+/* SIDEBAR SCRIM — dims and blurs every layer under the expanded desktop sidebar
+   (top bar z-50, content, footer). Sits one step under the sidebar (z-[60]).
+   Never interactive: it only marks the layer the eye should ignore. */
+.sidebar-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  background: var(--scrim);
+  /* Lightning CSS emits the prefixed line first; keep that order here too */
+  -webkit-backdrop-filter: blur(var(--scrim-blur));
+  backdrop-filter: blur(var(--scrim-blur));
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--motion-base) var(--ease-out);
+}
+
+.sidebar-scrim[data-open='true'] {
+  opacity: 1;
+}
+
+/* The mobile drawer's backdrop reuses the scrim look inside the drawer's z-[70]
+   stacking context, but stays clickable so tapping it closes the drawer. */
+.drawer-scrim {
+  z-index: 0;
+  pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-scrim {
+    transition: none;
+  }
 }
