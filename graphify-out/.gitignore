@@ -1,0 +1,8 @@
+# Machine-local graphify state — regenerated per host, never committed.
+.graphify_python
+.graphify_root
+cache/
+last_query_stamp
+stat-index.json
+.graphify_chunk_*.json
+.needs_update
