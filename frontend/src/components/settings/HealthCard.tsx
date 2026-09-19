@@ -1,15 +1,19 @@
 /**
  * Status card — the server's own health report: the API itself, the database
- * connection, and whether Jev answers live. Reads `GET /api/health`; `nonce`
- * re-checks after a reset.
+ * connection, and whether a TypeSafe key is configured for Jev. The page owns
+ * the `GET /api/health` fetch and re-checks after a reset.
  */
 
-import { useEffect, useState } from 'react'
-import { fetchHealth, type Health } from '@/lib/api'
+import type { Health } from '@/lib/api'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { StatusPill } from '@/components/ui/status-pill'
 
-function row(label: string, ok: boolean | null, note: string) {
+function row(
+  label: string,
+  ok: boolean | null,
+  note: string,
+  pills: { up: string; down: string } = { up: 'Connected', down: 'Unavailable' }
+) {
   return (
     <div className="flex items-center justify-between gap-4 border-b border-border py-2 last:border-b-0">
       <div>
@@ -17,33 +21,13 @@ function row(label: string, ok: boolean | null, note: string) {
         <p className="text-[13px] text-muted-foreground">{note}</p>
       </div>
       <StatusPill tone={ok === null ? 'neutral' : ok ? 'positive' : 'danger'}>
-        {ok === null ? 'Checking' : ok ? 'Connected' : 'Unavailable'}
+        {ok === null ? 'Checking' : ok ? pills.up : pills.down}
       </StatusPill>
     </div>
   )
 }
 
-export function HealthCard({ nonce = 0 }: { nonce?: number }) {
-  const [health, setHealth] = useState<Health | null>(null)
-  const [failed, setFailed] = useState(false)
-
-  useEffect(() => {
-    let alive = true
-    fetchHealth()
-      .then((h) => {
-        if (alive) {
-          setHealth(h)
-          setFailed(false)
-        }
-      })
-      .catch(() => {
-        if (alive) setFailed(true)
-      })
-    return () => {
-      alive = false
-    }
-  }, [nonce])
-
+export function HealthCard({ health, failed }: { health: Health | null; failed: boolean }) {
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -55,7 +39,10 @@ export function HealthCard({ nonce = 0 }: { nonce?: number }) {
       <CardContent>
         {row('API', failed ? false : health ? health.ok : null, 'The Bun Server And Its Routes')}
         {row('Database', failed ? false : health ? health.db : null, 'The Neon Postgres Branch Behind The Snapshot')}
-        {row('Jev', failed ? false : health ? health.jev : null, 'Live Jev Answers Via The TypeSafe Key')}
+        {row('Jev', failed ? false : health ? health.jev : null, 'Whether A TypeSafe API Key Is Configured', {
+          up: 'Configured',
+          down: 'Missing'
+        })}
       </CardContent>
     </Card>
   )

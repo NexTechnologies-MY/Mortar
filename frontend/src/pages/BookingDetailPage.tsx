@@ -45,6 +45,9 @@ export function BookingDetailPage() {
 
   useEffect(() => {
     if (!id || !snapshot || !snapshot.bookings.some((b) => b.id === id)) return
+    // No buyer messages means there is nothing for Jev to read; the route
+    // guards the same way, so the panel shows the empty-history note instead.
+    if (!snapshot.messages.some((m) => m.bookingId === id && m.senderRole === 'buyer')) return
     let live = true
     fetchSignals(id)
       .then((signals) => {
@@ -137,7 +140,10 @@ export function BookingDetailPage() {
                 playbooks={data.playbooks}
                 refreshKey={refreshKey}
               />
-              <SignalsPanel signals={data.signals} />
+              <SignalsPanel
+                signals={data.signals}
+                hasBuyerMessages={data.messages.some((m) => m.senderRole === 'buyer')}
+              />
               <TasksPanel tasks={data.tasks} onChanged={onChanged} />
             </div>
           </div>

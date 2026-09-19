@@ -40,6 +40,8 @@ export interface Health {
   ok: boolean
   db: boolean
   jev: boolean
+  /** Stored `jev_answers` rows; `null` when the database is unreachable. */
+  jevAnswers: number | null
 }
 
 export const fetchHealth = () => request<Health>('/api/health')

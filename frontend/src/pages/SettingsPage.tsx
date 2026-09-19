@@ -3,9 +3,10 @@
  * reference date, last reset, record counts), the Reset Demo Data flow, and
  * the server's health report.
  */
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { SearchX } from 'lucide-react'
 import { useSnapshot } from '@/lib/data'
+import { fetchHealth, type Health } from '@/lib/api'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { PageHeaderCard } from '@/components/layout/PageHeaderCard'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -15,11 +16,37 @@ import { HealthCard } from '@/components/settings/HealthCard'
 
 export function SettingsPage() {
   const { snapshot, loading, error, refresh } = useSnapshot()
-  const [nonce, setNonce] = useState(0)
+  const [health, setHealth] = useState<Health | null>(null)
+  const [healthFailed, setHealthFailed] = useState(false)
+
+  const checkHealth = useCallback(async () => {
+    try {
+      setHealth(await fetchHealth())
+      setHealthFailed(false)
+    } catch {
+      setHealthFailed(true)
+    }
+  }, [])
+
+  useEffect(() => {
+    let live = true
+    fetchHealth()
+      .then((h) => {
+        if (!live) return
+        setHealth(h)
+        setHealthFailed(false)
+      })
+      .catch(() => {
+        if (live) setHealthFailed(true)
+      })
+    return () => {
+      live = false
+    }
+  }, [])
 
   const onReset = async () => {
     await refresh()
-    setNonce((n) => n + 1)
+    await checkHealth()
   }
 
   return (
@@ -42,8 +69,8 @@ export function SettingsPage() {
         </div>
       ) : snapshot ? (
         <div className="mt-4 grid items-start gap-4 lg:grid-cols-2">
-          <DemoDataCard snapshot={snapshot} onReset={onReset} />
-          <HealthCard nonce={nonce} />
+          <DemoDataCard snapshot={snapshot} jevAnswers={health?.jevAnswers ?? null} onReset={onReset} />
+          <HealthCard health={health} failed={healthFailed} />
         </div>
       ) : null}
     </PageContainer>

@@ -11,7 +11,14 @@ import { formatPercent } from '@/components/case/format'
 import { Card, CardContent } from '@/components/ui/card'
 import { StatusPill } from '@/components/ui/status-pill'
 
-export function SignalsPanel({ signals }: { signals: BuyerSignals | null }) {
+export function SignalsPanel({
+  signals,
+  hasBuyerMessages
+}: {
+  signals: BuyerSignals | null
+  /** `false` when the buyer has never messaged — Jev is never asked, so there is no read to show. */
+  hasBuyerMessages: boolean
+}) {
   const needsReview =
     signals !== null &&
     (signals.responsiveness.confidence < JEV_REVIEW_THRESHOLD || signals.hesitation.confidence < JEV_REVIEW_THRESHOLD)
@@ -32,7 +39,9 @@ export function SignalsPanel({ signals }: { signals: BuyerSignals | null }) {
             </p>
           </>
         ) : (
-          <p className="text-sm text-muted-foreground">No Signal Read Yet.</p>
+          <p className="text-sm text-muted-foreground">
+            {hasBuyerMessages ? 'No Signal Read Yet.' : 'No Buyer Messages Have Arrived Yet.'}
+          </p>
         )}
       </CardContent>
     </Card>

@@ -187,6 +187,10 @@ class FakeDb implements Database {
   async latestJevAnswers(): Promise<JevAnswerRow[]> {
     return []
   }
+  jevAnswers = 0
+  async jevAnswerCount() {
+    return this.jevAnswers
+  }
   async jevGet() {
     return null
   }
@@ -248,19 +252,22 @@ describe('createApp', () => {
     expect(await call(makeApp(), '/')).toBeNull()
   })
 
-  test('GET /api/health reports db and jev flags', async () => {
-    const res = await call(makeApp(), '/api/health')
+  test('GET /api/health reports db and jev flags plus the stored answer count', async () => {
+    const db = new FakeDb()
+    db.jevAnswers = 87
+    const res = await call(makeApp(db), '/api/health')
     expect(res?.status).toBe(200)
-    expect(await res?.json()).toEqual({ ok: true, db: true, jev: false })
+    expect(await res?.json()).toEqual({ ok: true, db: true, jev: false, jevAnswers: 87 })
   })
 
   test('GET /api/health survives a dead database', async () => {
     const db = new FakeDb()
+    db.jevAnswers = 87
     db.ping = async () => {
       throw new Error('down')
     }
     const res = await call(makeApp(db), '/api/health')
-    expect(await res?.json()).toEqual({ ok: true, db: false, jev: false })
+    expect(await res?.json()).toEqual({ ok: true, db: false, jev: false, jevAnswers: null })
   })
 
   test('GET /api/snapshot returns the snapshot', async () => {
@@ -471,12 +478,41 @@ describe('createApp', () => {
     })
   })
 
-  test('GET /api/bookings/:id/signals returns the Jev answer', async () => {
-    const res = await call(makeApp(), '/api/bookings/BK-9001/signals')
-    expect(res?.status).toBe(200)
-    const signals = (await res?.json()) as realCore.BuyerSignals
-    expect(signals.bookingId).toBe('BK-9001')
-    expect(signals.responsiveness.score).toBe(2)
+  describe('GET /api/bookings/:id/signals', () => {
+    test('returns the Jev answer when the buyer has messaged', async () => {
+      const res = await call(makeApp(), '/api/bookings/BK-9001/signals')
+      expect(res?.status).toBe(200)
+      const signals = (await res?.json()) as realCore.BuyerSignals
+      expect(signals.bookingId).toBe('BK-9001')
+      expect(signals.responsiveness.score).toBe(2)
+    })
+
+    test.each([
+      ['no messages at all', []],
+      [
+        'only non-buyer messages',
+        [{ ...FIXTURE_MESSAGE, id: 'MSG-9001-8', senderRole: 'banker' as const, senderName: 'Apex Banker' }]
+      ]
+    ])('404s without asking Jev when the buyer never messaged (%s)', async (_label, messages) => {
+      const db = new FakeDb()
+      db.messages = messages
+      let asked = false
+      const jev = fakeJev({
+        signals: async ({ bookingId }) => {
+          asked = true
+          return {
+            bookingId,
+            responsiveness: { score: 0, confidence: 0.9 },
+            hesitation: { score: 0, confidence: 0.9 },
+            meta: { source: 'live', stale: false, latencyMs: 10 }
+          }
+        }
+      })
+      const res = await call(makeApp(db, jev), '/api/bookings/BK-9001/signals')
+      expect(res?.status).toBe(404)
+      expect(await errorOf(res)).toContain('no buyer messages')
+      expect(asked).toBe(false)
+    })
   })
 
   describe('POST /api/tasks', () => {
