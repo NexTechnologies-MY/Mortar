@@ -160,7 +160,11 @@ describe('extract', () => {
   it('falls back to the exact cached answer on a live error', async () => {
     const { client } = failingClient()
     const cache = new MemoryCache()
-    const inputHash = jevInputHash('extract', extractJob({ message: message(), summary: summary() }).state, 1)
+    const inputHash = jevInputHash(
+      'extract',
+      extractJob({ message: message(), summary: summary() }).state,
+      QUESTION_VERSION.extract
+    )
     cache.entries.push({
       kind: 'extract',
       subjectId: 'MSG-1',

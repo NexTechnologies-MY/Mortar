@@ -1,1 +1,3306 @@
-[]
+[
+  {
+    "kind": "extract",
+    "subjectId": "MSG-9001-1",
+    "inputHash": "8a4928f1beb1bcbd62a8f4cb29942d5bbe71f6c9b26aaffdaf07dda754d67037",
+    "answer": {
+      "messageId": "MSG-9001-1",
+      "event": {
+        "value": "no_update",
+        "probabilities": {
+          "no_update": 0.92,
+          "spa_appointment": 0,
+          "buyer_hesitant": 0,
+          "valuation_shortfall": 0,
+          "loan_approved": 0,
+          "documents_requested": 0,
+          "spa_signed": 0,
+          "buyer_withdrawing": 0,
+          "loan_rejected": 0,
+          "documents_received": 0.08
+        },
+        "confidence": 0.9
+      },
+      "document": {
+        "value": "none",
+        "probabilities": {
+          "tax_form": 0,
+          "bank_statement": 0.01,
+          "epf_statement": 0,
+          "payslip": 0,
+          "employment_letter": 0,
+          "none": 0.99,
+          "ic_copy": 0
+        },
+        "confidence": 0.99
+      },
+      "owner": {
+        "value": "sales_admin",
+        "probabilities": {
+          "legal": 0,
+          "loan_admin": 0.05,
+          "sales": 0.13,
+          "none": 0.18,
+          "sales_admin": 0.64
+        },
+        "confidence": 0.54
+      },
+      "withdrawalRisk": 0.03,
+      "needsAction": 0.51,
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 849
+      }
+    },
+    "latencyMs": 849
+  },
+  {
+    "kind": "extract",
+    "subjectId": "MSG-9001-2",
+    "inputHash": "f9aae900ff04fa2b96b176d62169d79ceace171176dd9780d8cfb3887085a4b7",
+    "answer": {
+      "messageId": "MSG-9001-2",
+      "event": {
+        "value": "no_update",
+        "probabilities": {
+          "no_update": 0.55,
+          "valuation_shortfall": 0,
+          "spa_signed": 0,
+          "buyer_withdrawing": 0,
+          "documents_received": 0.45,
+          "spa_appointment": 0,
+          "loan_rejected": 0,
+          "documents_requested": 0,
+          "buyer_hesitant": 0,
+          "loan_approved": 0
+        },
+        "confidence": 0.49
+      },
+      "document": {
+        "value": "none",
+        "probabilities": {
+          "payslip": 0,
+          "none": 1,
+          "bank_statement": 0,
+          "ic_copy": 0,
+          "tax_form": 0,
+          "employment_letter": 0,
+          "epf_statement": 0
+        },
+        "confidence": 1
+      },
+      "owner": {
+        "value": "loan_admin",
+        "probabilities": {
+          "none": 0.15,
+          "sales_admin": 0.01,
+          "loan_admin": 0.56,
+          "sales": 0.28,
+          "legal": 0
+        },
+        "confidence": 0.45
+      },
+      "withdrawalRisk": 0.09,
+      "needsAction": 0.7,
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 341
+      }
+    },
+    "latencyMs": 341
+  },
+  {
+    "kind": "extract",
+    "subjectId": "MSG-9001-3",
+    "inputHash": "c39b018671149933e719781ab5d011e55a0ebd379fa8c7c31b0d3197451cd3b0",
+    "answer": {
+      "messageId": "MSG-9001-3",
+      "event": {
+        "value": "no_update",
+        "probabilities": {
+          "spa_signed": 0,
+          "loan_rejected": 0,
+          "documents_requested": 0,
+          "spa_appointment": 0.02,
+          "buyer_hesitant": 0,
+          "valuation_shortfall": 0,
+          "no_update": 0.95,
+          "documents_received": 0,
+          "buyer_withdrawing": 0,
+          "loan_approved": 0.03
+        },
+        "confidence": 0.93
+      },
+      "document": {
+        "value": "none",
+        "probabilities": {
+          "employment_letter": 0,
+          "ic_copy": 0,
+          "epf_statement": 0,
+          "bank_statement": 0,
+          "payslip": 0,
+          "none": 1,
+          "tax_form": 0
+        },
+        "confidence": 1
+      },
+      "owner": {
+        "value": "loan_admin",
+        "probabilities": {
+          "none": 0.19,
+          "sales_admin": 0,
+          "sales": 0.04,
+          "loan_admin": 0.77,
+          "legal": 0
+        },
+        "confidence": 0.71
+      },
+      "withdrawalRisk": 0.03,
+      "needsAction": 0.67,
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 317
+      }
+    },
+    "latencyMs": 317
+  },
+  {
+    "kind": "extract",
+    "subjectId": "MSG-9001-4",
+    "inputHash": "5c648b3cff30d88f6580c45a2841787847238b22e87875c3e7cfeb7a1a32b978",
+    "answer": {
+      "messageId": "MSG-9001-4",
+      "event": {
+        "value": "documents_requested",
+        "probabilities": {
+          "valuation_shortfall": 0,
+          "documents_received": 0,
+          "loan_approved": 0,
+          "spa_appointment": 0,
+          "documents_requested": 1,
+          "buyer_withdrawing": 0,
+          "buyer_hesitant": 0,
+          "spa_signed": 0,
+          "loan_rejected": 0,
+          "no_update": 0
+        },
+        "confidence": 1
+      },
+      "document": {
+        "value": "payslip",
+        "probabilities": {
+          "tax_form": 0,
+          "employment_letter": 0,
+          "epf_statement": 0,
+          "none": 0,
+          "payslip": 1,
+          "bank_statement": 0,
+          "ic_copy": 0
+        },
+        "confidence": 1
+      },
+      "owner": {
+        "value": "sales",
+        "probabilities": {
+          "sales_admin": 0.02,
+          "none": 0.01,
+          "legal": 0,
+          "sales": 0.86,
+          "loan_admin": 0.11
+        },
+        "confidence": 0.83
+      },
+      "withdrawalRisk": 0.08,
+      "needsAction": 0.93,
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 326
+      }
+    },
+    "latencyMs": 326
+  },
+  {
+    "kind": "extract",
+    "subjectId": "MSG-9002-1",
+    "inputHash": "4dc2a6327a30fa7166db730ea59fe35a663e111a0a4b664cd1fa28d8b8ec1d75",
+    "answer": {
+      "messageId": "MSG-9002-1",
+      "event": {
+        "value": "documents_received",
+        "probabilities": {
+          "loan_rejected": 0,
+          "spa_signed": 0.01,
+          "buyer_withdrawing": 0,
+          "documents_requested": 0,
+          "valuation_shortfall": 0,
+          "documents_received": 0.98,
+          "buyer_hesitant": 0,
+          "loan_approved": 0,
+          "no_update": 0.01,
+          "spa_appointment": 0
+        },
+        "confidence": 0.98
+      },
+      "document": {
+        "value": "payslip",
+        "probabilities": {
+          "bank_statement": 0.06,
+          "employment_letter": 0,
+          "payslip": 0.79,
+          "tax_form": 0,
+          "none": 0.15,
+          "ic_copy": 0,
+          "epf_statement": 0
+        },
+        "confidence": 0.75
+      },
+      "owner": {
+        "value": "loan_admin",
+        "probabilities": {
+          "sales_admin": 0.06,
+          "sales": 0.03,
+          "none": 0.1,
+          "legal": 0,
+          "loan_admin": 0.81
+        },
+        "confidence": 0.76
+      },
+      "withdrawalRisk": 0.06,
+      "needsAction": 0.65,
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 343
+      }
+    },
+    "latencyMs": 343
+  },
+  {
+    "kind": "extract",
+    "subjectId": "MSG-9002-2",
+    "inputHash": "91f68caa32209bccab692d0ecd48f28d33a7c16cc6dfd9d3500ba3809120bd38",
+    "answer": {
+      "messageId": "MSG-9002-2",
+      "event": {
+        "value": "loan_rejected",
+        "probabilities": {
+          "valuation_shortfall": 0,
+          "loan_rejected": 1,
+          "no_update": 0,
+          "buyer_hesitant": 0,
+          "documents_requested": 0,
+          "spa_signed": 0,
+          "spa_appointment": 0,
+          "buyer_withdrawing": 0,
+          "documents_received": 0,
+          "loan_approved": 0
+        },
+        "confidence": 1
+      },
+      "document": {
+        "value": "none",
+        "probabilities": {
+          "employment_letter": 0,
+          "ic_copy": 0,
+          "bank_statement": 0,
+          "none": 1,
+          "payslip": 0,
+          "epf_statement": 0,
+          "tax_form": 0
+        },
+        "confidence": 1
+      },
+      "owner": {
+        "value": "sales",
+        "probabilities": {
+          "sales": 0.71,
+          "none": 0.06,
+          "sales_admin": 0.01,
+          "legal": 0,
+          "loan_admin": 0.22
+        },
+        "confidence": 0.64
+      },
+      "withdrawalRisk": 0.13,
+      "needsAction": 0.74,
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 298
+      }
+    },
+    "latencyMs": 298
+  },
+  {
+    "kind": "extract",
+    "subjectId": "MSG-9002-3",
+    "inputHash": "4fcdf224b87bda542894ea2199c5c23ed8f9e1e34fab620b6ae6fe2ab3a95cf5",
+    "answer": {
+      "messageId": "MSG-9002-3",
+      "event": {
+        "value": "loan_rejected",
+        "probabilities": {
+          "loan_approved": 0,
+          "documents_received": 0.06,
+          "buyer_hesitant": 0,
+          "valuation_shortfall": 0,
+          "loan_rejected": 0.9,
+          "documents_requested": 0,
+          "no_update": 0.04,
+          "buyer_withdrawing": 0,
+          "spa_appointment": 0,
+          "spa_signed": 0
+        },
+        "confidence": 0.89
+      },
+      "document": {
+        "value": "none",
+        "probabilities": {
+          "bank_statement": 0.01,
+          "ic_copy": 0,
+          "tax_form": 0,
+          "none": 0.97,
+          "employment_letter": 0,
+          "epf_statement": 0,
+          "payslip": 0.02
+        },
+        "confidence": 0.96
+      },
+      "owner": {
+        "value": "loan_admin",
+        "probabilities": {
+          "sales": 0.36,
+          "none": 0.15,
+          "loan_admin": 0.47,
+          "sales_admin": 0.02,
+          "legal": 0
+        },
+        "confidence": 0.33
+      },
+      "withdrawalRisk": 0.08,
+      "needsAction": 0.52,
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 343
+      }
+    },
+    "latencyMs": 343
+  },
+  {
+    "kind": "extract",
+    "subjectId": "MSG-9002-4",
+    "inputHash": "40a2b6bf24484f7fc1bf391d8fe4c05473a0b22b9a7be27ff2a504960d6a1e03",
+    "answer": {
+      "messageId": "MSG-9002-4",
+      "event": {
+        "value": "documents_received",
+        "probabilities": {
+          "documents_received": 0.97,
+          "valuation_shortfall": 0,
+          "documents_requested": 0,
+          "spa_signed": 0,
+          "loan_approved": 0,
+          "spa_appointment": 0,
+          "buyer_withdrawing": 0,
+          "loan_rejected": 0,
+          "no_update": 0.03,
+          "buyer_hesitant": 0
+        },
+        "confidence": 0.96
+      },
+      "document": {
+        "value": "none",
+        "probabilities": {
+          "bank_statement": 0.01,
+          "tax_form": 0,
+          "epf_statement": 0,
+          "none": 0.99,
+          "employment_letter": 0,
+          "payslip": 0,
+          "ic_copy": 0
+        },
+        "confidence": 0.98
+      },
+      "owner": {
+        "value": "loan_admin",
+        "probabilities": {
+          "loan_admin": 0.45,
+          "sales": 0.09,
+          "none": 0.43,
+          "legal": 0,
+          "sales_admin": 0.03
+        },
+        "confidence": 0.31
+      },
+      "withdrawalRisk": 0.07,
+      "needsAction": 0.41,
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 301
+      }
+    },
+    "latencyMs": 301
+  },
+  {
+    "kind": "extract",
+    "subjectId": "MSG-9003-1",
+    "inputHash": "f35be96ab5607c968a8bf3751d471ca100d9c8d040d7ab239effe9d68b12227d",
+    "answer": {
+      "messageId": "MSG-9003-1",
+      "event": {
+        "value": "documents_received",
+        "probabilities": {
+          "no_update": 0.15,
+          "valuation_shortfall": 0,
+          "documents_requested": 0,
+          "documents_received": 0.84,
+          "buyer_withdrawing": 0,
+          "spa_appointment": 0,
+          "loan_approved": 0,
+          "loan_rejected": 0,
+          "spa_signed": 0.01,
+          "buyer_hesitant": 0
+        },
+        "confidence": 0.82
+      },
+      "document": {
+        "value": "none",
+        "probabilities": {
+          "tax_form": 0,
+          "payslip": 0,
+          "ic_copy": 0,
+          "employment_letter": 0,
+          "epf_statement": 0,
+          "bank_statement": 0.01,
+          "none": 0.99
+        },
+        "confidence": 0.98
+      },
+      "owner": {
+        "value": "loan_admin",
+        "probabilities": {
+          "sales": 0.12,
+          "legal": 0,
+          "none": 0.27,
+          "sales_admin": 0.24,
+          "loan_admin": 0.37
+        },
+        "confidence": 0.21
+      },
+      "withdrawalRisk": 0.04,
+      "needsAction": 0.58,
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 397
+      }
+    },
+    "latencyMs": 397
+  },
+  {
+    "kind": "extract",
+    "subjectId": "MSG-9003-2",
+    "inputHash": "9a22cdd92bc5e5734add1ad661bfbe5a7ce5ad32646630950c1edfc3bed7e627",
+    "answer": {
+      "messageId": "MSG-9003-2",
+      "event": {
+        "value": "no_update",
+        "probabilities": {
+          "loan_rejected": 0,
+          "no_update": 1,
+          "loan_approved": 0,
+          "valuation_shortfall": 0,
+          "spa_signed": 0,
+          "documents_received": 0,
+          "buyer_withdrawing": 0,
+          "spa_appointment": 0,
+          "documents_requested": 0,
+          "buyer_hesitant": 0
+        },
+        "confidence": 1
+      },
+      "document": {
+        "value": "none",
+        "probabilities": {
+          "tax_form": 0,
+          "epf_statement": 0,
+          "employment_letter": 0,
+          "bank_statement": 0,
+          "payslip": 0,
+          "ic_copy": 0,
+          "none": 1
+        },
+        "confidence": 1
+      },
+      "owner": {
+        "value": "loan_admin",
+        "probabilities": {
+          "sales": 0.16,
+          "legal": 0,
+          "loan_admin": 0.46,
+          "sales_admin": 0.01,
+          "none": 0.37
+        },
+        "confidence": 0.32
+      },
+      "withdrawalRisk": 0.06,
+      "needsAction": 0.54,
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 285
+      }
+    },
+    "latencyMs": 285
+  },
+  {
+    "kind": "extract",
+    "subjectId": "MSG-9003-3",
+    "inputHash": "d3a94f3df3f87c170e83cd663c5f0866d121a9d64b0caf294704726554d88c87",
+    "answer": {
+      "messageId": "MSG-9003-3",
+      "event": {
+        "value": "no_update",
+        "probabilities": {
+          "loan_approved": 0.04,
+          "loan_rejected": 0,
+          "no_update": 0.75,
+          "buyer_hesitant": 0,
+          "documents_received": 0.19,
+          "spa_signed": 0.01,
+          "documents_requested": 0.01,
+          "valuation_shortfall": 0,
+          "spa_appointment": 0,
+          "buyer_withdrawing": 0
+        },
+        "confidence": 0.71
+      },
+      "document": {
+        "value": "none",
+        "probabilities": {
+          "none": 1,
+          "payslip": 0,
+          "epf_statement": 0,
+          "bank_statement": 0,
+          "employment_letter": 0,
+          "ic_copy": 0,
+          "tax_form": 0
+        },
+        "confidence": 1
+      },
+      "owner": {
+        "value": "loan_admin",
+        "probabilities": {
+          "none": 0.38,
+          "sales_admin": 0.03,
+          "legal": 0,
+          "sales": 0.04,
+          "loan_admin": 0.55
+        },
+        "confidence": 0.43
+      },
+      "withdrawalRisk": 0.05,
+      "needsAction": 0.52,
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 407
+      }
+    },
+    "latencyMs": 407
+  },
+  {
+    "kind": "extract",
+    "subjectId": "MSG-9003-4",
+    "inputHash": "b461845cc5ee80875796f18646ceb04e2a736f551af0bff0faca3ddf2100e762",
+    "answer": {
+      "messageId": "MSG-9003-4",
+      "event": {
+        "value": "valuation_shortfall",
+        "probabilities": {
+          "buyer_hesitant": 0,
+          "buyer_withdrawing": 0,
+          "spa_signed": 0,
+          "loan_approved": 0,
+          "documents_requested": 0,
+          "documents_received": 0,
+          "valuation_shortfall": 1,
+          "no_update": 0,
+          "loan_rejected": 0,
+          "spa_appointment": 0
+        },
+        "confidence": 1
+      },
+      "document": {
+        "value": "none",
+        "probabilities": {
+          "ic_copy": 0,
+          "payslip": 0,
+          "tax_form": 0,
+          "bank_statement": 0,
+          "epf_statement": 0,
+          "none": 1,
+          "employment_letter": 0
+        },
+        "confidence": 1
+      },
+      "owner": {
+        "value": "sales",
+        "probabilities": {
+          "sales": 0.8,
+          "sales_admin": 0,
+          "none": 0.01,
+          "legal": 0,
+          "loan_admin": 0.19
+        },
+        "confidence": 0.75
+      },
+      "withdrawalRisk": 0.13,
+      "needsAction": 0.82,
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 402
+      }
+    },
+    "latencyMs": 402
+  },
+  {
+    "kind": "extract",
+    "subjectId": "MSG-9004-1",
+    "inputHash": "9b47634262c32b044a8ab9dc850a0178792fb6fdd4df4ec9ce0c85a85da78fce",
+    "answer": {
+      "messageId": "MSG-9004-1",
+      "event": {
+        "value": "documents_received",
+        "probabilities": {
+          "buyer_withdrawing": 0,
+          "no_update": 0.08,
+          "buyer_hesitant": 0,
+          "valuation_shortfall": 0,
+          "loan_rejected": 0,
+          "documents_requested": 0,
+          "documents_received": 0.92,
+          "spa_appointment": 0,
+          "loan_approved": 0,
+          "spa_signed": 0
+        },
+        "confidence": 0.91
+      },
+      "document": {
+        "value": "none",
+        "probabilities": {
+          "none": 0.73,
+          "employment_letter": 0,
+          "payslip": 0,
+          "ic_copy": 0,
+          "epf_statement": 0,
+          "tax_form": 0,
+          "bank_statement": 0.27
+        },
+        "confidence": 0.68
+      },
+      "owner": {
+        "value": "sales_admin",
+        "probabilities": {
+          "sales_admin": 0.63,
+          "legal": 0.01,
+          "sales": 0.16,
+          "loan_admin": 0.04,
+          "none": 0.16
+        },
+        "confidence": 0.54
+      },
+      "withdrawalRisk": 0.04,
+      "needsAction": 0.58,
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 320
+      }
+    },
+    "latencyMs": 320
+  },
+  {
+    "kind": "extract",
+    "subjectId": "MSG-9004-2",
+    "inputHash": "a545806c2a5937c73c1139ca917fcfc07d2a9fbe5db4fa28522d03376e593efb",
+    "answer": {
+      "messageId": "MSG-9004-2",
+      "event": {
+        "value": "no_update",
+        "probabilities": {
+          "spa_appointment": 0,
+          "no_update": 0.9,
+          "documents_received": 0.04,
+          "buyer_hesitant": 0,
+          "buyer_withdrawing": 0,
+          "documents_requested": 0,
+          "valuation_shortfall": 0,
+          "loan_rejected": 0,
+          "spa_signed": 0.01,
+          "loan_approved": 0.05
+        },
+        "confidence": 0.88
+      },
+      "document": {
+        "value": "none",
+        "probabilities": {
+          "none": 1,
+          "epf_statement": 0,
+          "ic_copy": 0,
+          "employment_letter": 0,
+          "payslip": 0,
+          "tax_form": 0,
+          "bank_statement": 0
+        },
+        "confidence": 1
+      },
+      "owner": {
+        "value": "loan_admin",
+        "probabilities": {
+          "none": 0.39,
+          "loan_admin": 0.56,
+          "legal": 0,
+          "sales_admin": 0,
+          "sales": 0.05
+        },
+        "confidence": 0.45
+      },
+      "withdrawalRisk": 0.03,
+      "needsAction": 0.66,
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 388
+      }
+    },
+    "latencyMs": 388
+  },
+  {
+    "kind": "extract",
+    "subjectId": "MSG-9004-3",
+    "inputHash": "f259d69ac02bce7e017c060b9a6c2a62b3188e5d1a03010ed3fb3ccc8982936e",
+    "answer": {
+      "messageId": "MSG-9004-3",
+      "event": {
+        "value": "buyer_hesitant",
+        "probabilities": {
+          "buyer_withdrawing": 0,
+          "buyer_hesitant": 1,
+          "valuation_shortfall": 0,
+          "spa_signed": 0,
+          "loan_rejected": 0,
+          "documents_received": 0,
+          "documents_requested": 0,
+          "loan_approved": 0,
+          "no_update": 0,
+          "spa_appointment": 0
+        },
+        "confidence": 1
+      },
+      "document": {
+        "value": "none",
+        "probabilities": {
+          "epf_statement": 0,
+          "bank_statement": 0,
+          "employment_letter": 0,
+          "payslip": 0,
+          "tax_form": 0,
+          "none": 1,
+          "ic_copy": 0
+        },
+        "confidence": 1
+      },
+      "owner": {
+        "value": "sales",
+        "probabilities": {
+          "sales_admin": 0,
+          "loan_admin": 0.01,
+          "sales": 0.99,
+          "none": 0,
+          "legal": 0
+        },
+        "confidence": 0.99
+      },
+      "withdrawalRisk": 0.79,
+      "needsAction": 0.88,
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 323
+      }
+    },
+    "latencyMs": 323
+  },
+  {
+    "kind": "extract",
+    "subjectId": "MSG-9005-1",
+    "inputHash": "a9b3073731719b3b0befdb26f46e26c7930fef0860fbdda5aad9833aa0eb5d9b",
+    "answer": {
+      "messageId": "MSG-9005-1",
+      "event": {
+        "value": "documents_received",
+        "probabilities": {
+          "loan_rejected": 0,
+          "buyer_hesitant": 0,
+          "buyer_withdrawing": 0,
+          "documents_requested": 0,
+          "no_update": 0.05,
+          "documents_received": 0.95,
+          "valuation_shortfall": 0,
+          "loan_approved": 0,
+          "spa_signed": 0,
+          "spa_appointment": 0
+        },
+        "confidence": 0.94
+      },
+      "document": {
+        "value": "none",
+        "probabilities": {
+          "bank_statement": 0.01,
+          "employment_letter": 0,
+          "payslip": 0,
+          "tax_form": 0,
+          "none": 0.99,
+          "ic_copy": 0,
+          "epf_statement": 0
+        },
+        "confidence": 0.99
+      },
+      "owner": {
+        "value": "loan_admin",
+        "probabilities": {
+          "sales_admin": 0.13,
+          "sales": 0.07,
+          "none": 0.3,
+          "legal": 0,
+          "loan_admin": 0.5
+        },
+        "confidence": 0.37
+      },
+      "withdrawalRisk": 0.04,
+      "needsAction": 0.49,
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 353
+      }
+    },
+    "latencyMs": 353
+  },
+  {
+    "kind": "extract",
+    "subjectId": "MSG-9005-2",
+    "inputHash": "ee5eb237126ded2d05466897cf166d66125484b167345a92d98d1bdcc2b0e6fc",
+    "answer": {
+      "messageId": "MSG-9005-2",
+      "event": {
+        "value": "documents_received",
+        "probabilities": {
+          "valuation_shortfall": 0,
+          "buyer_withdrawing": 0,
+          "buyer_hesitant": 0,
+          "loan_approved": 0,
+          "loan_rejected": 0,
+          "no_update": 0.12,
+          "spa_appointment": 0,
+          "spa_signed": 0,
+          "documents_received": 0.88,
+          "documents_requested": 0
+        },
+        "confidence": 0.86
+      },
+      "document": {
+        "value": "none",
+        "probabilities": {
+          "none": 1,
+          "employment_letter": 0,
+          "payslip": 0,
+          "epf_statement": 0,
+          "ic_copy": 0,
+          "bank_statement": 0,
+          "tax_form": 0
+        },
+        "confidence": 1
+      },
+      "owner": {
+        "value": "none",
+        "probabilities": {
+          "sales_admin": 0.01,
+          "loan_admin": 0.37,
+          "sales": 0.01,
+          "none": 0.61,
+          "legal": 0
+        },
+        "confidence": 0.52
+      },
+      "withdrawalRisk": 0.07,
+      "needsAction": 0.42,
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 365
+      }
+    },
+    "latencyMs": 365
+  },
+  {
+    "kind": "extract",
+    "subjectId": "MSG-9005-3",
+    "inputHash": "e87bcc784eaa08e9cd447b2e96f64f6f98d0d47f745fab5e4ad27cf13a1fa805",
+    "answer": {
+      "messageId": "MSG-9005-3",
+      "event": {
+        "value": "buyer_withdrawing",
+        "probabilities": {
+          "documents_received": 0,
+          "no_update": 0,
+          "loan_approved": 0,
+          "loan_rejected": 0,
+          "documents_requested": 0,
+          "buyer_withdrawing": 1,
+          "spa_signed": 0,
+          "spa_appointment": 0,
+          "buyer_hesitant": 0,
+          "valuation_shortfall": 0
+        },
+        "confidence": 1
+      },
+      "document": {
+        "value": "employment_letter",
+        "probabilities": {
+          "none": 0.22,
+          "ic_copy": 0,
+          "employment_letter": 0.78,
+          "payslip": 0,
+          "epf_statement": 0,
+          "tax_form": 0,
+          "bank_statement": 0
+        },
+        "confidence": 0.74
+      },
+      "owner": {
+        "value": "sales_admin",
+        "probabilities": {
+          "sales": 0.43,
+          "legal": 0.02,
+          "none": 0,
+          "loan_admin": 0.01,
+          "sales_admin": 0.54
+        },
+        "confidence": 0.42
+      },
+      "withdrawalRisk": 0.98,
+      "needsAction": 0.95,
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 302
+      }
+    },
+    "latencyMs": 302
+  },
+  {
+    "kind": "extract",
+    "subjectId": "MSG-9006-1",
+    "inputHash": "4f8398bd81dda70d1a4d19bbf9be8bf52df149d5c41f83392be97cc7afdbf9ad",
+    "answer": {
+      "messageId": "MSG-9006-1",
+      "event": {
+        "value": "no_update",
+        "probabilities": {
+          "loan_approved": 0.12,
+          "loan_rejected": 0,
+          "no_update": 0.65,
+          "valuation_shortfall": 0,
+          "spa_signed": 0,
+          "spa_appointment": 0,
+          "documents_requested": 0,
+          "documents_received": 0.23,
+          "buyer_hesitant": 0,
+          "buyer_withdrawing": 0
+        },
+        "confidence": 0.6
+      },
+      "document": {
+        "value": "none",
+        "probabilities": {
+          "ic_copy": 0,
+          "tax_form": 0,
+          "bank_statement": 0.01,
+          "epf_statement": 0,
+          "none": 0.99,
+          "employment_letter": 0,
+          "payslip": 0
+        },
+        "confidence": 0.99
+      },
+      "owner": {
+        "value": "loan_admin",
+        "probabilities": {
+          "sales_admin": 0.16,
+          "loan_admin": 0.35,
+          "sales": 0.16,
+          "none": 0.31,
+          "legal": 0.02
+        },
+        "confidence": 0.19
+      },
+      "withdrawalRisk": 0.04,
+      "needsAction": 0.46,
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 321
+      }
+    },
+    "latencyMs": 321
+  },
+  {
+    "kind": "extract",
+    "subjectId": "MSG-9006-2",
+    "inputHash": "ae6bd5f185bdd3077975d73e58c6ecb53c76b345c101a13d0bc88710cb1881bf",
+    "answer": {
+      "messageId": "MSG-9006-2",
+      "event": {
+        "value": "loan_approved",
+        "probabilities": {
+          "documents_received": 0,
+          "spa_signed": 0,
+          "loan_approved": 1,
+          "loan_rejected": 0,
+          "documents_requested": 0,
+          "buyer_withdrawing": 0,
+          "no_update": 0,
+          "spa_appointment": 0,
+          "buyer_hesitant": 0,
+          "valuation_shortfall": 0
+        },
+        "confidence": 1
+      },
+      "document": {
+        "value": "none",
+        "probabilities": {
+          "ic_copy": 0,
+          "epf_statement": 0,
+          "payslip": 0,
+          "employment_letter": 0,
+          "none": 1,
+          "tax_form": 0,
+          "bank_statement": 0
+        },
+        "confidence": 1
+      },
+      "owner": {
+        "value": "loan_admin",
+        "probabilities": {
+          "none": 0.12,
+          "legal": 0.05,
+          "sales": 0.09,
+          "sales_admin": 0.17,
+          "loan_admin": 0.57
+        },
+        "confidence": 0.47
+      },
+      "withdrawalRisk": 0.04,
+      "needsAction": 0.45,
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 389
+      }
+    },
+    "latencyMs": 389
+  },
+  {
+    "kind": "extract",
+    "subjectId": "MSG-9006-3",
+    "inputHash": "f193625c4e4a308134937bf7fa70275f0c4aaa2aafa900621a9fd05b48ce8913",
+    "answer": {
+      "messageId": "MSG-9006-3",
+      "event": {
+        "value": "spa_appointment",
+        "probabilities": {
+          "valuation_shortfall": 0,
+          "buyer_withdrawing": 0,
+          "spa_appointment": 0.95,
+          "no_update": 0,
+          "buyer_hesitant": 0,
+          "spa_signed": 0,
+          "documents_received": 0,
+          "documents_requested": 0,
+          "loan_rejected": 0,
+          "loan_approved": 0.05
+        },
+        "confidence": 0.94
+      },
+      "document": {
+        "value": "none",
+        "probabilities": {
+          "ic_copy": 0,
+          "epf_statement": 0,
+          "tax_form": 0,
+          "none": 0.99,
+          "employment_letter": 0.01,
+          "bank_statement": 0,
+          "payslip": 0
+        },
+        "confidence": 0.99
+      },
+      "owner": {
+        "value": "legal",
+        "probabilities": {
+          "legal": 0.51,
+          "none": 0.1,
+          "loan_admin": 0.01,
+          "sales": 0.19,
+          "sales_admin": 0.19
+        },
+        "confidence": 0.39
+      },
+      "withdrawalRisk": 0.04,
+      "needsAction": 0.4,
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 337
+      }
+    },
+    "latencyMs": 337
+  },
+  {
+    "kind": "extract",
+    "subjectId": "MSG-9007-1",
+    "inputHash": "52e2ae91a562d841da8ba45dd169d5a056b079d7902c19acc1d72f30f66d08e7",
+    "answer": {
+      "messageId": "MSG-9007-1",
+      "event": {
+        "value": "documents_received",
+        "probabilities": {
+          "spa_signed": 0,
+          "buyer_hesitant": 0,
+          "buyer_withdrawing": 0,
+          "no_update": 0.07,
+          "valuation_shortfall": 0,
+          "loan_rejected": 0,
+          "documents_received": 0.93,
+          "loan_approved": 0,
+          "documents_requested": 0,
+          "spa_appointment": 0
+        },
+        "confidence": 0.91
+      },
+      "document": {
+        "value": "none",
+        "probabilities": {
+          "bank_statement": 0.03,
+          "ic_copy": 0,
+          "tax_form": 0,
+          "epf_statement": 0,
+          "payslip": 0,
+          "employment_letter": 0,
+          "none": 0.97
+        },
+        "confidence": 0.96
+      },
+      "owner": {
+        "value": "loan_admin",
+        "probabilities": {
+          "sales_admin": 0.03,
+          "legal": 0,
+          "loan_admin": 0.79,
+          "sales": 0.01,
+          "none": 0.17
+        },
+        "confidence": 0.73
+      },
+      "withdrawalRisk": 0.04,
+      "needsAction": 0.57,
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 332
+      }
+    },
+    "latencyMs": 332
+  },
+  {
+    "kind": "extract",
+    "subjectId": "MSG-9007-2",
+    "inputHash": "c10c03bc3f8e9d4513d1700180ecefa1a6344a718f80ba28ba96658976446186",
+    "answer": {
+      "messageId": "MSG-9007-2",
+      "event": {
+        "value": "no_update",
+        "probabilities": {
+          "documents_requested": 0,
+          "buyer_withdrawing": 0,
+          "spa_appointment": 0,
+          "documents_received": 0.04,
+          "spa_signed": 0.03,
+          "no_update": 0.9,
+          "valuation_shortfall": 0,
+          "loan_approved": 0.03,
+          "loan_rejected": 0,
+          "buyer_hesitant": 0
+        },
+        "confidence": 0.88
+      },
+      "document": {
+        "value": "none",
+        "probabilities": {
+          "payslip": 0,
+          "employment_letter": 0,
+          "bank_statement": 0,
+          "none": 1,
+          "epf_statement": 0,
+          "tax_form": 0,
+          "ic_copy": 0
+        },
+        "confidence": 1
+      },
+      "owner": {
+        "value": "none",
+        "probabilities": {
+          "none": 0.67,
+          "sales_admin": 0.01,
+          "loan_admin": 0.26,
+          "legal": 0,
+          "sales": 0.06
+        },
+        "confidence": 0.59
+      },
+      "withdrawalRisk": 0.04,
+      "needsAction": 0.44,
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 411
+      }
+    },
+    "latencyMs": 411
+  },
+  {
+    "kind": "extract",
+    "subjectId": "MSG-9007-3",
+    "inputHash": "9d2892e9029e961225913aafbd7137be645f79836c0d9265e3c43e956a385303",
+    "answer": {
+      "messageId": "MSG-9007-3",
+      "event": {
+        "value": "no_update",
+        "probabilities": {
+          "buyer_withdrawing": 0,
+          "spa_signed": 0,
+          "valuation_shortfall": 0,
+          "loan_rejected": 0,
+          "loan_approved": 0,
+          "documents_requested": 0,
+          "no_update": 1,
+          "documents_received": 0,
+          "spa_appointment": 0,
+          "buyer_hesitant": 0
+        },
+        "confidence": 1
+      },
+      "document": {
+        "value": "none",
+        "probabilities": {
+          "ic_copy": 0,
+          "epf_statement": 0,
+          "employment_letter": 0,
+          "tax_form": 0,
+          "payslip": 0,
+          "bank_statement": 0,
+          "none": 1
+        },
+        "confidence": 1
+      },
+      "owner": {
+        "value": "loan_admin",
+        "probabilities": {
+          "sales_admin": 0,
+          "none": 0.01,
+          "loan_admin": 0.96,
+          "legal": 0,
+          "sales": 0.03
+        },
+        "confidence": 0.95
+      },
+      "withdrawalRisk": 0.07,
+      "needsAction": 0.95,
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 369
+      }
+    },
+    "latencyMs": 369
+  },
+  {
+    "kind": "extract",
+    "subjectId": "MSG-9008-1",
+    "inputHash": "450b236026573d04e8d459fe683e85ddc6c55f6dd412084a9e27e65a1f23232e",
+    "answer": {
+      "messageId": "MSG-9008-1",
+      "event": {
+        "value": "no_update",
+        "probabilities": {
+          "loan_approved": 0.02,
+          "spa_appointment": 0.02,
+          "loan_rejected": 0.01,
+          "spa_signed": 0.16,
+          "valuation_shortfall": 0.01,
+          "buyer_hesitant": 0.03,
+          "buyer_withdrawing": 0,
+          "no_update": 0.68,
+          "documents_received": 0.07,
+          "documents_requested": 0
+        },
+        "confidence": 0.64
+      },
+      "document": {
+        "value": "none",
+        "probabilities": {
+          "ic_copy": 0,
+          "payslip": 0,
+          "bank_statement": 0,
+          "none": 1,
+          "tax_form": 0,
+          "epf_statement": 0,
+          "employment_letter": 0
+        },
+        "confidence": 0.99
+      },
+      "owner": {
+        "value": "loan_admin",
+        "probabilities": {
+          "loan_admin": 0.84,
+          "legal": 0,
+          "none": 0.01,
+          "sales_admin": 0,
+          "sales": 0.15
+        },
+        "confidence": 0.8
+      },
+      "withdrawalRisk": 0.07,
+      "needsAction": 0.83,
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 414
+      }
+    },
+    "latencyMs": 414
+  },
+  {
+    "kind": "extract",
+    "subjectId": "MSG-9008-2",
+    "inputHash": "3603d2744c2650b7bb84335cd8bda7daa3cc0411cecc834261dffb23188ff2d5",
+    "answer": {
+      "messageId": "MSG-9008-2",
+      "event": {
+        "value": "no_update",
+        "probabilities": {
+          "valuation_shortfall": 0,
+          "spa_signed": 0.02,
+          "loan_approved": 0.15,
+          "documents_requested": 0.01,
+          "spa_appointment": 0,
+          "buyer_withdrawing": 0,
+          "buyer_hesitant": 0,
+          "documents_received": 0.11,
+          "loan_rejected": 0,
+          "no_update": 0.71
+        },
+        "confidence": 0.67
+      },
+      "document": {
+        "value": "none",
+        "probabilities": {
+          "tax_form": 0,
+          "ic_copy": 0,
+          "epf_statement": 0,
+          "none": 1,
+          "payslip": 0,
+          "bank_statement": 0,
+          "employment_letter": 0
+        },
+        "confidence": 1
+      },
+      "owner": {
+        "value": "loan_admin",
+        "probabilities": {
+          "sales_admin": 0.01,
+          "sales": 0.12,
+          "legal": 0,
+          "none": 0.24,
+          "loan_admin": 0.63
+        },
+        "confidence": 0.53
+      },
+      "withdrawalRisk": 0.05,
+      "needsAction": 0.68,
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 403
+      }
+    },
+    "latencyMs": 403
+  },
+  {
+    "kind": "extract",
+    "subjectId": "MSG-9008-3",
+    "inputHash": "e0b34f2d02beae8657e1bd42e4134b085c544be125f49ea5e5560b3e23581d0a",
+    "answer": {
+      "messageId": "MSG-9008-3",
+      "event": {
+        "value": "buyer_hesitant",
+        "probabilities": {
+          "documents_requested": 0,
+          "loan_rejected": 0,
+          "documents_received": 0,
+          "spa_appointment": 0,
+          "buyer_hesitant": 0.62,
+          "spa_signed": 0,
+          "loan_approved": 0,
+          "valuation_shortfall": 0,
+          "no_update": 0.38,
+          "buyer_withdrawing": 0
+        },
+        "confidence": 0.57
+      },
+      "document": {
+        "value": "none",
+        "probabilities": {
+          "bank_statement": 0,
+          "ic_copy": 0,
+          "none": 1,
+          "epf_statement": 0,
+          "employment_letter": 0,
+          "tax_form": 0,
+          "payslip": 0
+        },
+        "confidence": 1
+      },
+      "owner": {
+        "value": "sales",
+        "probabilities": {
+          "sales_admin": 0,
+          "none": 0.01,
+          "loan_admin": 0.43,
+          "sales": 0.56,
+          "legal": 0
+        },
+        "confidence": 0.44
+      },
+      "withdrawalRisk": 0.12,
+      "needsAction": 0.84,
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 362
+      }
+    },
+    "latencyMs": 362
+  },
+  {
+    "kind": "signals",
+    "subjectId": "BK-9001",
+    "inputHash": "a40547270ba42e12ddd6b5f764ed3aa3b4eb65f835f4c279608c6a709dcceeae",
+    "answer": {
+      "bookingId": "BK-9001",
+      "responsiveness": {
+        "score": 1.42,
+        "confidence": 0.13
+      },
+      "hesitation": {
+        "score": 0.05,
+        "confidence": 0.92
+      },
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 279
+      }
+    },
+    "latencyMs": 279
+  },
+  {
+    "kind": "next_action",
+    "subjectId": "BK-9001",
+    "inputHash": "a12b6f01a4977d4a08c2da38ea4ebcbb501ba18375d5686646a06f487769a531",
+    "answer": {
+      "bookingId": "BK-9001",
+      "action": {
+        "value": "request_document",
+        "probabilities": {
+          "request_document": 0.93,
+          "schedule_spa": 0,
+          "wait": 0,
+          "escalate_legal": 0,
+          "review_release": 0,
+          "chase_banker": 0.06,
+          "submit_another_bank": 0,
+          "call_buyer": 0.01
+        },
+        "confidence": 0.92
+      },
+      "owner": {
+        "value": "sales",
+        "probabilities": {
+          "legal": 0,
+          "sales": 0.69,
+          "sales_admin": 0.04,
+          "loan_admin": 0.27
+        },
+        "confidence": 0.6
+      },
+      "urgency": {
+        "score": 1.79,
+        "confidence": 0.69
+      },
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 297
+      }
+    },
+    "latencyMs": 297
+  },
+  {
+    "kind": "playbooks",
+    "subjectId": "BK-9001",
+    "inputHash": "6a1e4ce6d61ed9190c9deba7da97c55fd8a6b5b748f421c5ef73b9cdf3c6f1e9",
+    "answer": {
+      "bookingId": "BK-9001",
+      "query": "Application Undecided For 10 Working Days",
+      "results": [
+        {
+          "playbookId": "PB-021",
+          "keywordScore": 1,
+          "fit": {
+            "score": 1.67,
+            "confidence": 0.51
+          }
+        },
+        {
+          "playbookId": "PB-005",
+          "keywordScore": 0.28144467792398403,
+          "fit": {
+            "score": 0,
+            "confidence": 1
+          }
+        },
+        {
+          "playbookId": "PB-015",
+          "keywordScore": 0.27967368600340486,
+          "fit": {
+            "score": 0.01,
+            "confidence": 0.99
+          }
+        },
+        {
+          "playbookId": "PB-006",
+          "keywordScore": 0.24400726990677896,
+          "fit": {
+            "score": 0.03,
+            "confidence": 0.96
+          }
+        },
+        {
+          "playbookId": "PB-026",
+          "keywordScore": 0.19625838862596934,
+          "fit": {
+            "score": 0.01,
+            "confidence": 0.99
+          }
+        },
+        {
+          "playbookId": "PB-010",
+          "keywordScore": 0.16902157547140417,
+          "fit": {
+            "score": 0.02,
+            "confidence": 0.97
+          }
+        },
+        {
+          "playbookId": "PB-013",
+          "keywordScore": 0.1452671640176014,
+          "fit": {
+            "score": 0.01,
+            "confidence": 0.98
+          }
+        },
+        {
+          "playbookId": "PB-022",
+          "keywordScore": 0.12755994042433702,
+          "fit": {
+            "score": 0.87,
+            "confidence": 0.63
+          }
+        },
+        {
+          "playbookId": "PB-014",
+          "keywordScore": 0.0646660658180798,
+          "fit": {
+            "score": 0.66,
+            "confidence": 0.32
+          }
+        },
+        {
+          "playbookId": "PB-012",
+          "keywordScore": 0.05211401179595691,
+          "fit": {
+            "score": 0,
+            "confidence": 0.99
+          }
+        }
+      ],
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 398
+      }
+    },
+    "latencyMs": 398
+  },
+  {
+    "kind": "signals",
+    "subjectId": "BK-9002",
+    "inputHash": "e3b993582ab109ab42262f0a9533f570746607865f0d51a798498ba753dbb64f",
+    "answer": {
+      "bookingId": "BK-9002",
+      "responsiveness": {
+        "score": 1.99,
+        "confidence": 0.98
+      },
+      "hesitation": {
+        "score": 0,
+        "confidence": 1
+      },
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 317
+      }
+    },
+    "latencyMs": 317
+  },
+  {
+    "kind": "next_action",
+    "subjectId": "BK-9002",
+    "inputHash": "0297262112fb7a8dbedac45fe4b9bffba20d5f89d90a2ced1cbc5f2608d850e3",
+    "answer": {
+      "bookingId": "BK-9002",
+      "action": {
+        "value": "chase_banker",
+        "probabilities": {
+          "chase_banker": 0.89,
+          "request_document": 0,
+          "call_buyer": 0,
+          "schedule_spa": 0,
+          "review_release": 0.01,
+          "submit_another_bank": 0,
+          "wait": 0.1,
+          "escalate_legal": 0
+        },
+        "confidence": 0.86
+      },
+      "owner": {
+        "value": "sales",
+        "probabilities": {
+          "legal": 0,
+          "loan_admin": 0.43,
+          "sales_admin": 0.02,
+          "sales": 0.55
+        },
+        "confidence": 0.4
+      },
+      "urgency": {
+        "score": 1.53,
+        "confidence": 0.3
+      },
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 340
+      }
+    },
+    "latencyMs": 340
+  },
+  {
+    "kind": "playbooks",
+    "subjectId": "BK-9002",
+    "inputHash": "093594a4e52c4bdff8e885b70afbf56c85ba5eb8324aac5268ad71bc669a461a",
+    "answer": {
+      "bookingId": "BK-9002",
+      "query": "No Evidence For 8 Days",
+      "results": [
+        {
+          "playbookId": "PB-021",
+          "keywordScore": 1,
+          "fit": {
+            "score": 0.93,
+            "confidence": 0.66
+          }
+        },
+        {
+          "playbookId": "PB-015",
+          "keywordScore": 0.33948677915824477,
+          "fit": {
+            "score": 0.07,
+            "confidence": 0.9
+          }
+        },
+        {
+          "playbookId": "PB-010",
+          "keywordScore": 0.32874418126468485,
+          "fit": {
+            "score": 0.09,
+            "confidence": 0.86
+          }
+        },
+        {
+          "playbookId": "PB-005",
+          "keywordScore": 0.260073074159865,
+          "fit": {
+            "score": 0.21,
+            "confidence": 0.68
+          }
+        },
+        {
+          "playbookId": "PB-024",
+          "keywordScore": 0.23147303028269325,
+          "fit": {
+            "score": 0,
+            "confidence": 1
+          }
+        },
+        {
+          "playbookId": "PB-006",
+          "keywordScore": 0.18370818047017864,
+          "fit": {
+            "score": 0.19,
+            "confidence": 0.72
+          }
+        },
+        {
+          "playbookId": "PB-014",
+          "keywordScore": 0.12577443325612292,
+          "fit": {
+            "score": 0.01,
+            "confidence": 0.98
+          }
+        },
+        {
+          "playbookId": "PB-012",
+          "keywordScore": 0.10136089485912102,
+          "fit": {
+            "score": 0.03,
+            "confidence": 0.96
+          }
+        },
+        {
+          "playbookId": "PB-018",
+          "keywordScore": 0.0967856762105194,
+          "fit": {
+            "score": 0.31,
+            "confidence": 0.53
+          }
+        },
+        {
+          "playbookId": "PB-023",
+          "keywordScore": 0.09477690140847236,
+          "fit": {
+            "score": 0.01,
+            "confidence": 0.98
+          }
+        }
+      ],
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 356
+      }
+    },
+    "latencyMs": 356
+  },
+  {
+    "kind": "signals",
+    "subjectId": "BK-9003",
+    "inputHash": "dd70fa37aed138c709ea56642bd17c7ed1620daa3ff03004b3714890ce18ee10",
+    "answer": {
+      "bookingId": "BK-9003",
+      "responsiveness": {
+        "score": 1.97,
+        "confidence": 0.95
+      },
+      "hesitation": {
+        "score": 0,
+        "confidence": 1
+      },
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 322
+      }
+    },
+    "latencyMs": 322
+  },
+  {
+    "kind": "next_action",
+    "subjectId": "BK-9003",
+    "inputHash": "4c68454d54f9a97abd425d3d15c66a245ea2075da009006262eeba507b6970dc",
+    "answer": {
+      "bookingId": "BK-9003",
+      "action": {
+        "value": "call_buyer",
+        "probabilities": {
+          "request_document": 0.04,
+          "chase_banker": 0.07,
+          "escalate_legal": 0,
+          "call_buyer": 0.8099999999999999,
+          "schedule_spa": 0.03,
+          "wait": 0.01,
+          "review_release": 0.03,
+          "submit_another_bank": 0.01
+        },
+        "confidence": 0.79
+      },
+      "owner": {
+        "value": "sales",
+        "probabilities": {
+          "sales": 0.79,
+          "sales_admin": 0,
+          "loan_admin": 0.21,
+          "legal": 0
+        },
+        "confidence": 0.71
+      },
+      "urgency": {
+        "score": 1.55,
+        "confidence": 0.33
+      },
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 329
+      }
+    },
+    "latencyMs": 329
+  },
+  {
+    "kind": "playbooks",
+    "subjectId": "BK-9003",
+    "inputHash": "b6ef1471c30fa9abbdc2c1ae9614c570ae099fe769bfa7471a4cc4348353d1e9",
+    "answer": {
+      "bookingId": "BK-9003",
+      "query": "No Evidence For 8 Days",
+      "results": [
+        {
+          "playbookId": "PB-021",
+          "keywordScore": 1,
+          "fit": {
+            "score": 1.12,
+            "confidence": 0.67
+          }
+        },
+        {
+          "playbookId": "PB-015",
+          "keywordScore": 0.33948677915824477,
+          "fit": {
+            "score": 0.01,
+            "confidence": 0.99
+          }
+        },
+        {
+          "playbookId": "PB-010",
+          "keywordScore": 0.32874418126468485,
+          "fit": {
+            "score": 0.1,
+            "confidence": 0.85
+          }
+        },
+        {
+          "playbookId": "PB-005",
+          "keywordScore": 0.260073074159865,
+          "fit": {
+            "score": 0.01,
+            "confidence": 0.99
+          }
+        },
+        {
+          "playbookId": "PB-024",
+          "keywordScore": 0.23147303028269325,
+          "fit": {
+            "score": 0,
+            "confidence": 1
+          }
+        },
+        {
+          "playbookId": "PB-006",
+          "keywordScore": 0.18370818047017864,
+          "fit": {
+            "score": 0.02,
+            "confidence": 0.98
+          }
+        },
+        {
+          "playbookId": "PB-014",
+          "keywordScore": 0.12577443325612292,
+          "fit": {
+            "score": 0.01,
+            "confidence": 0.99
+          }
+        },
+        {
+          "playbookId": "PB-012",
+          "keywordScore": 0.10136089485912102,
+          "fit": {
+            "score": 0.01,
+            "confidence": 0.98
+          }
+        },
+        {
+          "playbookId": "PB-018",
+          "keywordScore": 0.0967856762105194,
+          "fit": {
+            "score": 0.02,
+            "confidence": 0.97
+          }
+        },
+        {
+          "playbookId": "PB-023",
+          "keywordScore": 0.09477690140847236,
+          "fit": {
+            "score": 0.02,
+            "confidence": 0.97
+          }
+        }
+      ],
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 403
+      }
+    },
+    "latencyMs": 403
+  },
+  {
+    "kind": "signals",
+    "subjectId": "BK-9004",
+    "inputHash": "d1c0c785f0eb6f05b8fd9bcc9912cf4f8d23c3cc2c0bce4a4b294916a420862b",
+    "answer": {
+      "bookingId": "BK-9004",
+      "responsiveness": {
+        "score": 0.72,
+        "confidence": 0.38
+      },
+      "hesitation": {
+        "score": 1.93,
+        "confidence": 0.9
+      },
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 336
+      }
+    },
+    "latencyMs": 336
+  },
+  {
+    "kind": "next_action",
+    "subjectId": "BK-9004",
+    "inputHash": "b799af44bc591d0b4a185b3bbb6f4b981d576608245756e81abf0091c64690a5",
+    "answer": {
+      "bookingId": "BK-9004",
+      "action": {
+        "value": "call_buyer",
+        "probabilities": {
+          "request_document": 0,
+          "schedule_spa": 0,
+          "chase_banker": 0.03,
+          "call_buyer": 0.97,
+          "review_release": 0,
+          "submit_another_bank": 0,
+          "escalate_legal": 0,
+          "wait": 0
+        },
+        "confidence": 0.96
+      },
+      "owner": {
+        "value": "sales",
+        "probabilities": {
+          "sales_admin": 0,
+          "sales": 0.99,
+          "legal": 0,
+          "loan_admin": 0.01
+        },
+        "confidence": 0.99
+      },
+      "urgency": {
+        "score": 1.98,
+        "confidence": 0.96
+      },
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 314
+      }
+    },
+    "latencyMs": 314
+  },
+  {
+    "kind": "playbooks",
+    "subjectId": "BK-9004",
+    "inputHash": "967c51a562448594cb33e58e871accab988efab04b6398a04bd16f7d799bb560",
+    "answer": {
+      "bookingId": "BK-9004",
+      "query": "Application Undecided For 9 Working Days",
+      "results": [
+        {
+          "playbookId": "PB-021",
+          "keywordScore": 1,
+          "fit": {
+            "score": 1.83,
+            "confidence": 0.74
+          }
+        },
+        {
+          "playbookId": "PB-015",
+          "keywordScore": 0.18788521630552937,
+          "fit": {
+            "score": 0.01,
+            "confidence": 0.99
+          }
+        },
+        {
+          "playbookId": "PB-005",
+          "keywordScore": 0.18720623662328326,
+          "fit": {
+            "score": 0,
+            "confidence": 1
+          }
+        },
+        {
+          "playbookId": "PB-006",
+          "keywordScore": 0.16230430450814043,
+          "fit": {
+            "score": 0.03,
+            "confidence": 0.96
+          }
+        },
+        {
+          "playbookId": "PB-010",
+          "keywordScore": 0.11242668820579385,
+          "fit": {
+            "score": 0.09,
+            "confidence": 0.86
+          }
+        },
+        {
+          "playbookId": "PB-013",
+          "keywordScore": 0.09662616213342476,
+          "fit": {
+            "score": 0.04,
+            "confidence": 0.95
+          }
+        },
+        {
+          "playbookId": "PB-022",
+          "keywordScore": 0.08484799416665523,
+          "fit": {
+            "score": 0.8,
+            "confidence": 0.6
+          }
+        },
+        {
+          "playbookId": "PB-014",
+          "keywordScore": 0.04301339399392005,
+          "fit": {
+            "score": 0.15,
+            "confidence": 0.77
+          }
+        },
+        {
+          "playbookId": "PB-012",
+          "keywordScore": 0.0346642476796009,
+          "fit": {
+            "score": 0.01,
+            "confidence": 0.99
+          }
+        },
+        {
+          "playbookId": "PB-023",
+          "keywordScore": 0.03241259846111911,
+          "fit": {
+            "score": 0.01,
+            "confidence": 0.99
+          }
+        }
+      ],
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 355
+      }
+    },
+    "latencyMs": 355
+  },
+  {
+    "kind": "signals",
+    "subjectId": "BK-9005",
+    "inputHash": "fb688f2ce064a9f997b73dcebe05edfe6c11edb46a8b7674d36505829fa83b55",
+    "answer": {
+      "bookingId": "BK-9005",
+      "responsiveness": {
+        "score": 0.9,
+        "confidence": 0
+      },
+      "hesitation": {
+        "score": 1.99,
+        "confidence": 0.99
+      },
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 331
+      }
+    },
+    "latencyMs": 331
+  },
+  {
+    "kind": "next_action",
+    "subjectId": "BK-9005",
+    "inputHash": "43cbb5b64e8b8eab7dce7c2ce3d010b0e020b9027ee7288643b998361d4687ad",
+    "answer": {
+      "bookingId": "BK-9005",
+      "action": {
+        "value": "review_release",
+        "probabilities": {
+          "review_release": 0.69,
+          "submit_another_bank": 0,
+          "schedule_spa": 0.01,
+          "chase_banker": 0.01,
+          "wait": 0.01,
+          "request_document": 0.01,
+          "call_buyer": 0.26,
+          "escalate_legal": 0.01
+        },
+        "confidence": 0.65
+      },
+      "owner": {
+        "value": "sales",
+        "probabilities": {
+          "sales": 0.81,
+          "loan_admin": 0,
+          "legal": 0,
+          "sales_admin": 0.19
+        },
+        "confidence": 0.73
+      },
+      "urgency": {
+        "score": 1.95,
+        "confidence": 0.93
+      },
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 330
+      }
+    },
+    "latencyMs": 330
+  },
+  {
+    "kind": "playbooks",
+    "subjectId": "BK-9005",
+    "inputHash": "fbb8d81f0e8b7b73ed90b966a4ffe715faee7fcedca4daf15ad173e2c93862fb",
+    "answer": {
+      "bookingId": "BK-9005",
+      "query": "No Evidence For 8 Days",
+      "results": [
+        {
+          "playbookId": "PB-021",
+          "keywordScore": 1,
+          "fit": {
+            "score": 1.11,
+            "confidence": 0.64
+          }
+        },
+        {
+          "playbookId": "PB-015",
+          "keywordScore": 0.33948677915824477,
+          "fit": {
+            "score": 0.01,
+            "confidence": 0.98
+          }
+        },
+        {
+          "playbookId": "PB-010",
+          "keywordScore": 0.32874418126468485,
+          "fit": {
+            "score": 0.09,
+            "confidence": 0.87
+          }
+        },
+        {
+          "playbookId": "PB-005",
+          "keywordScore": 0.260073074159865,
+          "fit": {
+            "score": 0.01,
+            "confidence": 0.99
+          }
+        },
+        {
+          "playbookId": "PB-024",
+          "keywordScore": 0.23147303028269325,
+          "fit": {
+            "score": 0,
+            "confidence": 1
+          }
+        },
+        {
+          "playbookId": "PB-006",
+          "keywordScore": 0.18370818047017864,
+          "fit": {
+            "score": 0.01,
+            "confidence": 0.98
+          }
+        },
+        {
+          "playbookId": "PB-014",
+          "keywordScore": 0.12577443325612292,
+          "fit": {
+            "score": 0.01,
+            "confidence": 0.99
+          }
+        },
+        {
+          "playbookId": "PB-012",
+          "keywordScore": 0.10136089485912102,
+          "fit": {
+            "score": 0.01,
+            "confidence": 0.98
+          }
+        },
+        {
+          "playbookId": "PB-018",
+          "keywordScore": 0.0967856762105194,
+          "fit": {
+            "score": 0.02,
+            "confidence": 0.97
+          }
+        },
+        {
+          "playbookId": "PB-023",
+          "keywordScore": 0.09477690140847236,
+          "fit": {
+            "score": 0.02,
+            "confidence": 0.97
+          }
+        }
+      ],
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 348
+      }
+    },
+    "latencyMs": 348
+  },
+  {
+    "kind": "signals",
+    "subjectId": "BK-9006",
+    "inputHash": "813a74a0a8e530e9ff811ad12a75960e6fc825636edc74c6da8ae2c7d7d355ec",
+    "answer": {
+      "bookingId": "BK-9006",
+      "responsiveness": {
+        "score": 1.95,
+        "confidence": 0.92
+      },
+      "hesitation": {
+        "score": 0,
+        "confidence": 1
+      },
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 371
+      }
+    },
+    "latencyMs": 371
+  },
+  {
+    "kind": "next_action",
+    "subjectId": "BK-9006",
+    "inputHash": "bd1c72b5cf7f2a37803b05f2a45e3fd268cdf7353140b7e5bc5ffa6a8c017f71",
+    "answer": {
+      "bookingId": "BK-9006",
+      "action": {
+        "value": "schedule_spa",
+        "probabilities": {
+          "schedule_spa": 0.54,
+          "escalate_legal": 0.02,
+          "call_buyer": 0.01,
+          "request_document": 0.01,
+          "wait": 0.4,
+          "chase_banker": 0,
+          "review_release": 0.01,
+          "submit_another_bank": 0
+        },
+        "confidence": 0.47
+      },
+      "owner": {
+        "value": "legal",
+        "probabilities": {
+          "legal": 0.7,
+          "sales": 0.2,
+          "sales_admin": 0.09,
+          "loan_admin": 0.01
+        },
+        "confidence": 0.59
+      },
+      "urgency": {
+        "score": 0.89,
+        "confidence": 0
+      },
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 346
+      }
+    },
+    "latencyMs": 346
+  },
+  {
+    "kind": "playbooks",
+    "subjectId": "BK-9006",
+    "inputHash": "f02145cad30191dcbbb3fdaf6c2d7e91e3319467aef7c9037112e74c64cc82c5",
+    "answer": {
+      "bookingId": "BK-9006",
+      "query": "No Evidence For 8 Days",
+      "results": [
+        {
+          "playbookId": "PB-021",
+          "keywordScore": 1,
+          "fit": {
+            "score": 0.51,
+            "confidence": 0.24
+          }
+        },
+        {
+          "playbookId": "PB-015",
+          "keywordScore": 0.33948677915824477,
+          "fit": {
+            "score": 0.02,
+            "confidence": 0.97
+          }
+        },
+        {
+          "playbookId": "PB-010",
+          "keywordScore": 0.32874418126468485,
+          "fit": {
+            "score": 0.89,
+            "confidence": 0.3
+          }
+        },
+        {
+          "playbookId": "PB-005",
+          "keywordScore": 0.260073074159865,
+          "fit": {
+            "score": 0.01,
+            "confidence": 0.99
+          }
+        },
+        {
+          "playbookId": "PB-024",
+          "keywordScore": 0.23147303028269325,
+          "fit": {
+            "score": 0.01,
+            "confidence": 0.98
+          }
+        },
+        {
+          "playbookId": "PB-006",
+          "keywordScore": 0.18370818047017864,
+          "fit": {
+            "score": 0.01,
+            "confidence": 0.98
+          }
+        },
+        {
+          "playbookId": "PB-014",
+          "keywordScore": 0.12577443325612292,
+          "fit": {
+            "score": 0.01,
+            "confidence": 0.98
+          }
+        },
+        {
+          "playbookId": "PB-012",
+          "keywordScore": 0.10136089485912102,
+          "fit": {
+            "score": 0.02,
+            "confidence": 0.97
+          }
+        },
+        {
+          "playbookId": "PB-018",
+          "keywordScore": 0.0967856762105194,
+          "fit": {
+            "score": 0.02,
+            "confidence": 0.97
+          }
+        },
+        {
+          "playbookId": "PB-023",
+          "keywordScore": 0.09477690140847236,
+          "fit": {
+            "score": 0.69,
+            "confidence": 0.27
+          }
+        }
+      ],
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 380
+      }
+    },
+    "latencyMs": 380
+  },
+  {
+    "kind": "signals",
+    "subjectId": "BK-9007",
+    "inputHash": "29cb447cb097822500da0b74806ac9fff7a0c2d8ec525461da687688f0e395e6",
+    "answer": {
+      "bookingId": "BK-9007",
+      "responsiveness": {
+        "score": 1.95,
+        "confidence": 0.93
+      },
+      "hesitation": {
+        "score": 0,
+        "confidence": 1
+      },
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 308
+      }
+    },
+    "latencyMs": 308
+  },
+  {
+    "kind": "next_action",
+    "subjectId": "BK-9007",
+    "inputHash": "117e462a811e4176857d7420e6b857eb16d1a344875a22e711c8c0109efea01e",
+    "answer": {
+      "bookingId": "BK-9007",
+      "action": {
+        "value": "chase_banker",
+        "probabilities": {
+          "review_release": 0,
+          "submit_another_bank": 0,
+          "schedule_spa": 0,
+          "escalate_legal": 0,
+          "chase_banker": 1,
+          "call_buyer": 0,
+          "request_document": 0,
+          "wait": 0
+        },
+        "confidence": 1
+      },
+      "owner": {
+        "value": "loan_admin",
+        "probabilities": {
+          "sales_admin": 0,
+          "sales": 0.23,
+          "legal": 0,
+          "loan_admin": 0.77
+        },
+        "confidence": 0.69
+      },
+      "urgency": {
+        "score": 1.81,
+        "confidence": 0.71
+      },
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 350
+      }
+    },
+    "latencyMs": 350
+  },
+  {
+    "kind": "playbooks",
+    "subjectId": "BK-9007",
+    "inputHash": "cb7e83f322d158db459e111d224489c5cdc417844b631818cf2699ed38b2588d",
+    "answer": {
+      "bookingId": "BK-9007",
+      "query": "No Evidence For 12 Days Application Undecided For 10 Working Days",
+      "results": [
+        {
+          "playbookId": "PB-021",
+          "keywordScore": 1,
+          "fit": {
+            "score": 1.28,
+            "confidence": 0.51
+          }
+        },
+        {
+          "playbookId": "PB-015",
+          "keywordScore": 0.2874475015756959,
+          "fit": {
+            "score": 0.03,
+            "confidence": 0.95
+          }
+        },
+        {
+          "playbookId": "PB-005",
+          "keywordScore": 0.2287795630431,
+          "fit": {
+            "score": 0.01,
+            "confidence": 0.99
+          }
+        },
+        {
+          "playbookId": "PB-006",
+          "keywordScore": 0.20547287334406192,
+          "fit": {
+            "score": 0.04,
+            "confidence": 0.94
+          }
+        },
+        {
+          "playbookId": "PB-010",
+          "keywordScore": 0.16044534779014472,
+          "fit": {
+            "score": 0.37,
+            "confidence": 0.44
+          }
+        },
+        {
+          "playbookId": "PB-026",
+          "keywordScore": 0.13873445711991,
+          "fit": {
+            "score": 0.01,
+            "confidence": 0.99
+          }
+        },
+        {
+          "playbookId": "PB-013",
+          "keywordScore": 0.1123065851150687,
+          "fit": {
+            "score": 0.07,
+            "confidence": 0.9
+          }
+        },
+        {
+          "playbookId": "PB-022",
+          "keywordScore": 0.0802509694840961,
+          "fit": {
+            "score": 0.95,
+            "confidence": 0.54
+          }
+        },
+        {
+          "playbookId": "PB-024",
+          "keywordScore": 0.06878076500897685,
+          "fit": {
+            "score": 0.27,
+            "confidence": 0.6
+          }
+        },
+        {
+          "playbookId": "PB-014",
+          "keywordScore": 0.061384881731608006,
+          "fit": {
+            "score": 0.01,
+            "confidence": 0.98
+          }
+        }
+      ],
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 467
+      }
+    },
+    "latencyMs": 467
+  },
+  {
+    "kind": "signals",
+    "subjectId": "BK-9008",
+    "inputHash": "0c372db730722c942fa8853ea9ce2c3237a7c6954911bf9f52615fa7f1dfcfc9",
+    "answer": {
+      "bookingId": "BK-9008",
+      "responsiveness": {
+        "score": 1.15,
+        "confidence": 0.48
+      },
+      "hesitation": {
+        "score": 1.04,
+        "confidence": 0.92
+      },
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 506
+      }
+    },
+    "latencyMs": 506
+  },
+  {
+    "kind": "next_action",
+    "subjectId": "BK-9008",
+    "inputHash": "22cfe510e21b6fc9a85d06974c09a4c0b668d24407dbfee6c5bb6e6156f92447",
+    "answer": {
+      "bookingId": "BK-9008",
+      "action": {
+        "value": "call_buyer",
+        "probabilities": {
+          "call_buyer": 0.49,
+          "wait": 0,
+          "review_release": 0.01,
+          "chase_banker": 0.36,
+          "request_document": 0,
+          "submit_another_bank": 0.13,
+          "escalate_legal": 0,
+          "schedule_spa": 0.01
+        },
+        "confidence": 0.41
+      },
+      "owner": {
+        "value": "loan_admin",
+        "probabilities": {
+          "sales_admin": 0,
+          "sales": 0.42,
+          "loan_admin": 0.58,
+          "legal": 0
+        },
+        "confidence": 0.43
+      },
+      "urgency": {
+        "score": 1.29,
+        "confidence": 0.2
+      },
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 348
+      }
+    },
+    "latencyMs": 348
+  },
+  {
+    "kind": "playbooks",
+    "subjectId": "BK-9008",
+    "inputHash": "06d848e80d08dd33a3bf7907d6cbe3d68f92abe1839a4dfbd568395a7fcd8eab",
+    "answer": {
+      "bookingId": "BK-9008",
+      "query": "loan applied follow-up",
+      "results": [
+        {
+          "playbookId": "PB-007",
+          "keywordScore": 1,
+          "fit": {
+            "score": 0.01,
+            "confidence": 0.98
+          }
+        },
+        {
+          "playbookId": "PB-018",
+          "keywordScore": 0.464673947295829,
+          "fit": {
+            "score": 1.6,
+            "confidence": 0.4
+          }
+        },
+        {
+          "playbookId": "PB-013",
+          "keywordScore": 0.40538474390363055,
+          "fit": {
+            "score": 0.03,
+            "confidence": 0.96
+          }
+        },
+        {
+          "playbookId": "PB-021",
+          "keywordScore": 0.3910077163964669,
+          "fit": {
+            "score": 0.9,
+            "confidence": 0.53
+          }
+        },
+        {
+          "playbookId": "PB-017",
+          "keywordScore": 0.3738456309943133,
+          "fit": {
+            "score": 0.22,
+            "confidence": 0.67
+          }
+        },
+        {
+          "playbookId": "PB-016",
+          "keywordScore": 0.12699377275732393,
+          "fit": {
+            "score": 1.34,
+            "confidence": 0.19
+          }
+        },
+        {
+          "playbookId": "PB-015",
+          "keywordScore": 0.1156179076783287,
+          "fit": {
+            "score": 0.04,
+            "confidence": 0.93
+          }
+        },
+        {
+          "playbookId": "PB-014",
+          "keywordScore": 0.06467941359168604,
+          "fit": {
+            "score": 0.01,
+            "confidence": 0.99
+          }
+        },
+        {
+          "playbookId": "PB-010",
+          "keywordScore": 0.06047658031297684,
+          "fit": {
+            "score": 0.03,
+            "confidence": 0.96
+          }
+        },
+        {
+          "playbookId": "PB-004",
+          "keywordScore": 0.0583184899538426,
+          "fit": {
+            "score": 0.94,
+            "confidence": 0.43
+          }
+        }
+      ],
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 407
+      }
+    },
+    "latencyMs": 407
+  },
+  {
+    "kind": "next_action",
+    "subjectId": "BK-0001",
+    "inputHash": "51a50347c6b855b9f7cf8b2009cdac48e98ade1e8238994d5c55c188ce507e34",
+    "answer": {
+      "bookingId": "BK-0001",
+      "action": {
+        "value": "chase_banker",
+        "probabilities": {
+          "chase_banker": 0.85,
+          "review_release": 0.01,
+          "escalate_legal": 0,
+          "submit_another_bank": 0.11,
+          "wait": 0,
+          "request_document": 0.02,
+          "schedule_spa": 0,
+          "call_buyer": 0.01
+        },
+        "confidence": 0.82
+      },
+      "owner": {
+        "value": "loan_admin",
+        "probabilities": {
+          "sales_admin": 0.02,
+          "sales": 0.19,
+          "loan_admin": 0.79,
+          "legal": 0
+        },
+        "confidence": 0.72
+      },
+      "urgency": {
+        "score": 1.99,
+        "confidence": 0.98
+      },
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 338
+      }
+    },
+    "latencyMs": 338
+  },
+  {
+    "kind": "next_action",
+    "subjectId": "BK-0003",
+    "inputHash": "7cd28f7c978e3010816bb8ccfbe3ea2edcd8c2e01d7a523bcdef7f3e5d4748e9",
+    "answer": {
+      "bookingId": "BK-0003",
+      "action": {
+        "value": "request_document",
+        "probabilities": {
+          "call_buyer": 0,
+          "wait": 0,
+          "schedule_spa": 0,
+          "submit_another_bank": 0.03,
+          "review_release": 0,
+          "escalate_legal": 0,
+          "chase_banker": 0.03,
+          "request_document": 0.9400000000000001
+        },
+        "confidence": 0.92
+      },
+      "owner": {
+        "value": "loan_admin",
+        "probabilities": {
+          "legal": 0,
+          "sales": 0.47,
+          "sales_admin": 0.04,
+          "loan_admin": 0.49
+        },
+        "confidence": 0.32
+      },
+      "urgency": {
+        "score": 1.95,
+        "confidence": 0.92
+      },
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 303
+      }
+    },
+    "latencyMs": 303
+  },
+  {
+    "kind": "next_action",
+    "subjectId": "BK-0005",
+    "inputHash": "a9b970d9b74e077d847288869d0ed767f7b6be0294c27159eb27b4e4cade3279",
+    "answer": {
+      "bookingId": "BK-0005",
+      "action": {
+        "value": "chase_banker",
+        "probabilities": {
+          "request_document": 0.09,
+          "call_buyer": 0.01,
+          "submit_another_bank": 0.01,
+          "schedule_spa": 0.06,
+          "review_release": 0.02,
+          "escalate_legal": 0,
+          "chase_banker": 0.75,
+          "wait": 0.06
+        },
+        "confidence": 0.73
+      },
+      "owner": {
+        "value": "loan_admin",
+        "probabilities": {
+          "sales_admin": 0.05,
+          "legal": 0,
+          "sales": 0.32,
+          "loan_admin": 0.63
+        },
+        "confidence": 0.51
+      },
+      "urgency": {
+        "score": 1.63,
+        "confidence": 0.45
+      },
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 285
+      }
+    },
+    "latencyMs": 285
+  },
+  {
+    "kind": "next_action",
+    "subjectId": "BK-0014",
+    "inputHash": "ff62f3d6b62a76f4a6a6f29cf4ef71f5aee9b17c60cd844dc8b33b97f4f5d4d4",
+    "answer": {
+      "bookingId": "BK-0014",
+      "action": {
+        "value": "request_document",
+        "probabilities": {
+          "request_document": 0.88,
+          "submit_another_bank": 0.08,
+          "schedule_spa": 0,
+          "escalate_legal": 0,
+          "chase_banker": 0.03,
+          "call_buyer": 0.01,
+          "review_release": 0,
+          "wait": 0
+        },
+        "confidence": 0.85
+      },
+      "owner": {
+        "value": "sales",
+        "probabilities": {
+          "sales_admin": 0.04,
+          "sales": 0.6,
+          "legal": 0,
+          "loan_admin": 0.36
+        },
+        "confidence": 0.46
+      },
+      "urgency": {
+        "score": 1.99,
+        "confidence": 0.98
+      },
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 330
+      }
+    },
+    "latencyMs": 330
+  },
+  {
+    "kind": "next_action",
+    "subjectId": "BK-0023",
+    "inputHash": "255056bded45027b194782f8c9cf58edbfa5ea5ac5158cf1dfae30dd81e9249a",
+    "answer": {
+      "bookingId": "BK-0023",
+      "action": {
+        "value": "chase_banker",
+        "probabilities": {
+          "wait": 0.04,
+          "request_document": 0.12,
+          "schedule_spa": 0.04,
+          "review_release": 0.02,
+          "call_buyer": 0.01,
+          "chase_banker": 0.76,
+          "submit_another_bank": 0.01,
+          "escalate_legal": 0
+        },
+        "confidence": 0.72
+      },
+      "owner": {
+        "value": "loan_admin",
+        "probabilities": {
+          "sales_admin": 0.06,
+          "sales": 0.43,
+          "legal": 0,
+          "loan_admin": 0.51
+        },
+        "confidence": 0.34
+      },
+      "urgency": {
+        "score": 1.76,
+        "confidence": 0.65
+      },
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 328
+      }
+    },
+    "latencyMs": 328
+  },
+  {
+    "kind": "next_action",
+    "subjectId": "BK-0043",
+    "inputHash": "a245f538a57f70eb8bb68fb6cc81c3100e3029d6debe526486588248e673a42c",
+    "answer": {
+      "bookingId": "BK-0043",
+      "action": {
+        "value": "request_document",
+        "probabilities": {
+          "call_buyer": 0,
+          "submit_another_bank": 0.03,
+          "wait": 0,
+          "escalate_legal": 0,
+          "review_release": 0,
+          "chase_banker": 0.03,
+          "request_document": 0.94,
+          "schedule_spa": 0
+        },
+        "confidence": 0.93
+      },
+      "owner": {
+        "value": "sales",
+        "probabilities": {
+          "legal": 0,
+          "sales_admin": 0.03,
+          "loan_admin": 0.48,
+          "sales": 0.49
+        },
+        "confidence": 0.32
+      },
+      "urgency": {
+        "score": 1.99,
+        "confidence": 0.99
+      },
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 335
+      }
+    },
+    "latencyMs": 335
+  },
+  {
+    "kind": "next_action",
+    "subjectId": "BK-0045",
+    "inputHash": "f2285afbcb0c61a15db2a305a079352ce51477336b6f3da9bf8700b0cff252c9",
+    "answer": {
+      "bookingId": "BK-0045",
+      "action": {
+        "value": "chase_banker",
+        "probabilities": {
+          "review_release": 0.01,
+          "escalate_legal": 0,
+          "wait": 0.01,
+          "request_document": 0.25,
+          "submit_another_bank": 0.11,
+          "chase_banker": 0.53,
+          "schedule_spa": 0.01,
+          "call_buyer": 0.08
+        },
+        "confidence": 0.45
+      },
+      "owner": {
+        "value": "loan_admin",
+        "probabilities": {
+          "sales": 0.35,
+          "sales_admin": 0.02,
+          "loan_admin": 0.63,
+          "legal": 0
+        },
+        "confidence": 0.5
+      },
+      "urgency": {
+        "score": 1.99,
+        "confidence": 0.98
+      },
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 314
+      }
+    },
+    "latencyMs": 314
+  },
+  {
+    "kind": "next_action",
+    "subjectId": "BK-0049",
+    "inputHash": "98224db635e9035f3fd2ff5b195dc49ea7d55b7c2bbbc13de44f094fa7fd26cd",
+    "answer": {
+      "bookingId": "BK-0049",
+      "action": {
+        "value": "chase_banker",
+        "probabilities": {
+          "request_document": 0.03,
+          "chase_banker": 0.86,
+          "submit_another_bank": 0.060000000000000005,
+          "review_release": 0.02,
+          "schedule_spa": 0,
+          "call_buyer": 0.03,
+          "wait": 0,
+          "escalate_legal": 0
+        },
+        "confidence": 0.83
+      },
+      "owner": {
+        "value": "loan_admin",
+        "probabilities": {
+          "loan_admin": 0.78,
+          "sales_admin": 0.01,
+          "legal": 0,
+          "sales": 0.21
+        },
+        "confidence": 0.7
+      },
+      "urgency": {
+        "score": 1.99,
+        "confidence": 0.99
+      },
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 294
+      }
+    },
+    "latencyMs": 294
+  },
+  {
+    "kind": "next_action",
+    "subjectId": "BK-0067",
+    "inputHash": "99cf679206afed14d6cbade6d6cd35c697828737429cf7afc485b96bae0e2da1",
+    "answer": {
+      "bookingId": "BK-0067",
+      "action": {
+        "value": "request_document",
+        "probabilities": {
+          "review_release": 0,
+          "call_buyer": 0,
+          "request_document": 0.97,
+          "schedule_spa": 0,
+          "chase_banker": 0.03,
+          "submit_another_bank": 0,
+          "wait": 0,
+          "escalate_legal": 0
+        },
+        "confidence": 0.96
+      },
+      "owner": {
+        "value": "sales",
+        "probabilities": {
+          "sales_admin": 0.07,
+          "sales": 0.71,
+          "legal": 0,
+          "loan_admin": 0.22
+        },
+        "confidence": 0.61
+      },
+      "urgency": {
+        "score": 1.54,
+        "confidence": 0.3
+      },
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 336
+      }
+    },
+    "latencyMs": 336
+  },
+  {
+    "kind": "next_action",
+    "subjectId": "BK-0070",
+    "inputHash": "04f3334ce45051c3761fa47fd330c772d2ae432b240ade7ae3d93e3708d2ed84",
+    "answer": {
+      "bookingId": "BK-0070",
+      "action": {
+        "value": "request_document",
+        "probabilities": {
+          "call_buyer": 0,
+          "schedule_spa": 0,
+          "request_document": 0.97,
+          "submit_another_bank": 0,
+          "review_release": 0,
+          "chase_banker": 0.03,
+          "escalate_legal": 0,
+          "wait": 0
+        },
+        "confidence": 0.95
+      },
+      "owner": {
+        "value": "sales",
+        "probabilities": {
+          "sales_admin": 0.08,
+          "legal": 0,
+          "sales": 0.63,
+          "loan_admin": 0.29
+        },
+        "confidence": 0.51
+      },
+      "urgency": {
+        "score": 1.85,
+        "confidence": 0.77
+      },
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 402
+      }
+    },
+    "latencyMs": 402
+  },
+  {
+    "kind": "next_action",
+    "subjectId": "BK-0083",
+    "inputHash": "ee97cbc9c702ca9f6c5d030f12a77153f0f90fb1f39f2ed02c509b7a8b1faa72",
+    "answer": {
+      "bookingId": "BK-0083",
+      "action": {
+        "value": "chase_banker",
+        "probabilities": {
+          "review_release": 0.01,
+          "call_buyer": 0,
+          "chase_banker": 0.98,
+          "escalate_legal": 0,
+          "wait": 0,
+          "schedule_spa": 0.01,
+          "request_document": 0,
+          "submit_another_bank": 0
+        },
+        "confidence": 0.97
+      },
+      "owner": {
+        "value": "loan_admin",
+        "probabilities": {
+          "loan_admin": 0.86,
+          "sales": 0.12,
+          "legal": 0,
+          "sales_admin": 0.02
+        },
+        "confidence": 0.81
+      },
+      "urgency": {
+        "score": 1.8,
+        "confidence": 0.7
+      },
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 420
+      }
+    },
+    "latencyMs": 420
+  },
+  {
+    "kind": "next_action",
+    "subjectId": "BK-0094",
+    "inputHash": "2db7a94225cbbc9b6492f0cc74ed3470f3e41a985346188ff0b8a56bac27ab74",
+    "answer": {
+      "bookingId": "BK-0094",
+      "action": {
+        "value": "request_document",
+        "probabilities": {
+          "call_buyer": 0,
+          "review_release": 0,
+          "schedule_spa": 0,
+          "wait": 0,
+          "escalate_legal": 0,
+          "submit_another_bank": 0,
+          "chase_banker": 0.04,
+          "request_document": 0.96
+        },
+        "confidence": 0.95
+      },
+      "owner": {
+        "value": "sales",
+        "probabilities": {
+          "legal": 0,
+          "sales": 0.51,
+          "sales_admin": 0.05,
+          "loan_admin": 0.44
+        },
+        "confidence": 0.34
+      },
+      "urgency": {
+        "score": 1.87,
+        "confidence": 0.8
+      },
+      "meta": {
+        "source": "live",
+        "stale": false,
+        "latencyMs": 346
+      }
+    },
+    "latencyMs": 346
+  }
+]
