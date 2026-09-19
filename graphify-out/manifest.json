@@ -385,9 +385,9 @@
     "semantic_hash": "a5e46a84a9f9629572cda0542215e326"
   },
   "AGENTS.md": {
-    "mtime": 1789754828.8779993,
-    "ast_hash": "3a24d9b3860640c20c270becb9d497b1",
-    "semantic_hash": "3a24d9b3860640c20c270becb9d497b1"
+    "mtime": 1789837229.2114103,
+    "ast_hash": "9d7bf54bde9b8dedd6d5368d136437ff",
+    "semantic_hash": ""
   },
   "docs/DESIGN.md": {
     "mtime": 1789759414.7693548,
@@ -395,9 +395,9 @@
     "semantic_hash": "5fc7cf6eccb755c99a02c98b23f7ffc0"
   },
   "docs/README.md": {
-    "mtime": 1789759415.1216908,
-    "ast_hash": "a1dacf2881bb7790398239dc39c010c0",
-    "semantic_hash": "a1dacf2881bb7790398239dc39c010c0"
+    "mtime": 1789770108.2954729,
+    "ast_hash": "b495ac6e98325f0ae85e8a39aa120c3b",
+    "semantic_hash": ""
   },
   "docs/research/design/README.md": {
     "mtime": 1789751612.6729417,
@@ -428,5 +428,100 @@
     "mtime": 1789758914.6764798,
     "ast_hash": "b039444f82fce5b22bdccf9e8fe26cfb",
     "semantic_hash": "b039444f82fce5b22bdccf9e8fe26cfb"
+  },
+  "CLAUDE.md": {
+    "mtime": 1789649125.0797389,
+    "ast_hash": "5c27369b226fcf2be8a6cfe52224e767",
+    "semantic_hash": ""
+  },
+  "GEMINI.md": {
+    "mtime": 1789649125.0797389,
+    "ast_hash": "5c27369b226fcf2be8a6cfe52224e767",
+    "semantic_hash": ""
+  },
+  "docs/agents/andrej-karpathy-skills.md": {
+    "mtime": 1789655029.0303192,
+    "ast_hash": "3dc1f75ab34333b53ce9b16521001fa9",
+    "semantic_hash": ""
+  },
+  "docs/agents/notes.md": {
+    "mtime": 1789837229.2120154,
+    "ast_hash": "acd7c48dea42f48d2b7a1186d8d381f8",
+    "semantic_hash": ""
+  },
+  "docs/agents/rtk.md": {
+    "mtime": 1789837229.2123957,
+    "ast_hash": "f927e1223114768c195ab6ad61f62b01",
+    "semantic_hash": ""
+  },
+  "docs/agents/skills.md": {
+    "mtime": 1789837229.2127998,
+    "ast_hash": "261412998c71978dc579e228332bf592",
+    "semantic_hash": ""
+  },
+  "docs/markdown-style.md": {
+    "mtime": 1789655288.4459126,
+    "ast_hash": "a87df1d2780a49df889a891d9e5838ee",
+    "semantic_hash": ""
+  },
+  "docs/research/company-brain/README.md": {
+    "mtime": 1789837229.2144165,
+    "ast_hash": "8a88dac2a62f834afb29af8be72a48a8",
+    "semantic_hash": ""
+  },
+  "docs/research/company-brain/simulation.md": {
+    "mtime": 1789837229.2147515,
+    "ast_hash": "2b994d3191b953a0ee91cb17c9611e65",
+    "semantic_hash": ""
+  },
+  "docs/research/design/canvas-ui.md": {
+    "mtime": 1789751612.124939,
+    "ast_hash": "4e5c717c7b10a87ec883d9d55ed2a4ac",
+    "semantic_hash": ""
+  },
+  "docs/research/design/hugeicons.md": {
+    "mtime": 1789751612.2804177,
+    "ast_hash": "7715892a0af391c6d201f8b7c5407fcd",
+    "semantic_hash": ""
+  },
+  "docs/research/design/iconsax.md": {
+    "mtime": 1789751612.3455734,
+    "ast_hash": "651ea549c255f9a7d9ad4d192df2b2b2",
+    "semantic_hash": ""
+  },
+  "docs/research/design/isocons.md": {
+    "mtime": 1789751612.3660874,
+    "ast_hash": "849ec8c0247f735f32cb151f8dc64c0e",
+    "semantic_hash": ""
+  },
+  "docs/research/design/itshover.md": {
+    "mtime": 1789751612.419181,
+    "ast_hash": "abf9255143315fa32149cb55653332d8",
+    "semantic_hash": ""
+  },
+  "docs/research/design/jakub-antalik.md": {
+    "mtime": 1789751612.5024834,
+    "ast_hash": "1b0286c74b6920bfe5e29e79ee7e8a11",
+    "semantic_hash": ""
+  },
+  "docs/research/design/jakubkrehel-skills.md": {
+    "mtime": 1789751612.5857856,
+    "ast_hash": "15cd7c1dcb7a65e094b0c0dae90962b6",
+    "semantic_hash": ""
+  },
+  "docs/research/design/motionsites.md": {
+    "mtime": 1789751612.6367834,
+    "ast_hash": "a1fe2e09418e2046c235ed2a355e52ad",
+    "semantic_hash": ""
+  },
+  "docs/research/design/video-pipeline.md": {
+    "mtime": 1789751612.7116039,
+    "ast_hash": "33a0e76878322130c7976cd0c3f6dcc2",
+    "semantic_hash": ""
+  },
+  "docs/source/interview.md": {
+    "mtime": 1789655063.9958892,
+    "ast_hash": "1c18d71da49b1db20da582be73e977bc",
+    "semantic_hash": ""
   }
 }

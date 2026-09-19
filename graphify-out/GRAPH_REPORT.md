@@ -1,16 +1,22 @@
-# Graph Report - . (2026-09-19)
+# Graph Report - mortar (2026-09-20)
 
 ## Corpus Check
 
-- 103 files · ~57,132 words
+- 102 files · ~61,374 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
 
-- 462 nodes · 677 edges · 37 communities (29 shown, 8 thin omitted)
+- 688 nodes · 893 edges · 48 communities (40 shown, 8 thin omitted)
 - Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 3 edges
   (avg confidence: 0.6)
-- Token cost: 99,469 input · 2,671 output
+- Token cost: 0 input · 0 output
+
+## Graph Freshness
+
+- Built from commit: `f5e80c88`
+- Run `git rev-parse HEAD` and compare to check if the graph is stale.
+- Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
 
@@ -49,19 +55,28 @@
 - Perch Footer Research
 - Perch Landing Research
 - Core Package
+- A Company Brain For Booking-To-SPA Conversion
+- Hugeicons
+- Jakub Krehel's interface skills
+- Questions And Answers
+- AppSidebar.tsx
+- RTK Commands By Workflow
+- Mortar Notes For Agents
+- Agent Skills
+- Andrej Karpathy Skills
 
 ## God Nodes (most connected - your core abstractions)
 
 1. `cn()` - 66 edges
-2. `usePersona()` - 13 edges
-3. `compilerOptions` - 12 edges
-4. `Button` - 10 edges
-5. `scripts` - 10 edges
-6. `AppErrorBoundary` - 7 edges
-7. `PageContainer()` - 7 edges
-8. `PageHeaderCard()` - 7 edges
-9. `EmptyState()` - 7 edges
-10. `tailwind` - 6 edges
+2. `Markdown Style Guide` - 16 edges
+3. `A Company Brain For Booking-To-SPA Conversion` - 14 edges
+4. `usePersona()` - 13 edges
+5. `compilerOptions` - 12 edges
+6. `Front-End Simulation` - 12 edges
+7. `Jakub Krehel's interface skills` - 12 edges
+8. `RTK Commands By Workflow` - 11 edges
+9. `Button` - 10 edges
+10. `scripts` - 10 edges
 
 ## Surprising Connections (you probably didn't know these)
 
@@ -87,7 +102,7 @@
 - **Design System Documentation** — docs_design, research_design_readme
   [INFERRED 0.90]
 
-## Communities (37 total, 8 thin omitted)
+## Communities (48 total, 8 thin omitted)
 
 ### Community 0 - "Frontend Dependencies"
 
@@ -96,14 +111,14 @@ framer-motion, dependencies, class-variance-authority, clsx, date-fns (+37 more)
 
 ### Community 1 - "Page Layout Components"
 
-Cohesion: 0.12 Nodes (19): MortarMark(), MortarMarkProps, AppFooter(),
-FOOTER_LINKS, PageContainer(), PageContainerProps, VARIANTS, PageHeaderCard()
-(+11 more)
+Cohesion: 0.19 Nodes (14): PageContainer(), PageContainerProps, VARIANTS,
+PageHeaderCard(), PageHeaderCardProps, EmptyState(), EmptyStateProps,
+BookingDetailPage() (+6 more)
 
 ### Community 2 - "App Shell & Navigation"
 
-Cohesion: 0.09 Nodes (25): HomeRedirect(), AppLayout(), AppLayoutProps,
-AppNav(), Crumb, ROUTE_LABELS, useBreadcrumbs(), AppShell() (+17 more)
+Cohesion: 0.07 Nodes (36): HomeRedirect(), AppLayout(), AppLayoutProps,
+AppNav(), Crumb, ROUTE_LABELS, useBreadcrumbs(), AppShell() (+28 more)
 
 ### Community 3 - "Frontend Dev Tooling"
 
@@ -113,30 +128,31 @@ typescript (+23 more)
 
 ### Community 4 - "Persona & Form Controls"
 
-Cohesion: 0.13 Nodes (15): Checkbox(), Input, Label, labelVariants,
-RadioGroup(), RadioGroupItem(), isPersona(), PersonaContext (+7 more)
+Cohesion: 0.05 Nodes (41): Browser support, Canvas UI, Components, Cursor and
+click effects, How an effect is built, How it works, Installing, Peel (+33 more)
 
 ### Community 5 - "Theme & Landing UI"
 
-Cohesion: 0.13 Nodes (17): CLIPS, HeroFilm(), ThemeToggle(), Button,
-ButtonProps, buttonVariants, Calendar(), CalendarDayButton() (+9 more)
+Cohesion: 0.10 Nodes (19): App(), CLIPS, HeroFilm(), ScrollToTop(),
+ThemeToggle(), Button, ButtonProps, buttonVariants (+11 more)
 
 ### Community 6 - "Error Boundary & Routing"
 
-Cohesion: 0.12 Nodes (12): App(), AppErrorBoundary, AppErrorBoundaryProps,
-AppErrorBoundaryState, isChunkLoadError(), ScrollToTop(), Card, CardContent (+4
-more)
+Cohesion: 0.16 Nodes (10): AppErrorBoundary, AppErrorBoundaryProps,
+AppErrorBoundaryState, isChunkLoadError(), Card, CardContent, CardDescription,
+CardFooter (+2 more)
 
 ### Community 7 - "Root Package Scripts"
 
-Cohesion: 0.09 Nodes (21): description, license, lint-staged,
-*.{ts,tsx,mjs,mts}, name, packageManager, private, scripts (+13 more)
+Cohesion: 0.05 Nodes (40): eslint, eslint-config-prettier, @eslint/js,
+eslint-plugin-react-hooks, globals, husky, lint-staged, description (+32 more)
 
 ### Community 8 - "Lint & Format Tooling"
 
-Cohesion: 0.11 Nodes (19): eslint, eslint-config-prettier, @eslint/js,
-eslint-plugin-react-hooks, globals, husky, lint-staged, devDependencies (+11
-more)
+Cohesion: 0.05 Nodes (40): Add Spacing To Headings, ATX-Style Headings, Avoid
+Relative Paths Unless Within The Same Directory, Better Is Better Than Best,
+Break Up Dense Text, Capitalization, Capitalization Of Titles And Headers,
+Character Line Limit (+32 more)
 
 ### Community 9 - "Frontend TS Config"
 
@@ -165,8 +181,8 @@ typescript, vitest, name, private (+5 more)
 
 ### Community 14 - "Table & Skeleton UI"
 
-Cohesion: 0.30 Nodes (10): Skeleton(), Table(), TableBody(), TableCaption(),
-TableCell(), TableFooter(), TableHead(), TableHeader() (+2 more)
+Cohesion: 0.25 Nodes (11): Checkbox(), Skeleton(), Table(), TableBody(),
+TableCaption(), TableCell(), TableFooter(), TableHead() (+3 more)
 
 ### Community 15 - "Stats & Tooltip UI"
 
@@ -227,10 +243,63 @@ Cohesion: 0.67 Nodes (3): isOff(), typescriptFiles, warnings()
 
 Cohesion: 0.67 Nodes (3): Badge(), BadgeProps, badgeVariants
 
+### Community 37 - "A Company Brain For Booking-To-SPA Conversion"
+
+Cohesion: 0.05 Nodes (36): 10. A Short Learning Path, 11. Questions To Resolve
+With The Company, 1. What A Central Company Brain Should Mean Here, 2.
+Open-Source Projects Worth Learning From, 3. Overall Platform Concept, 4. How
+The Parts Connect, 5. Turning Staff Experience Into Reusable Knowledge, 6. Does
+A Knowledge Graph Help? (+28 more)
+
+### Community 38 - "Hugeicons"
+
+Cohesion: 0.08 Nodes (23): An icon's page, Browsing and search, For agents,
+Getting icons without an account, Hugeicons, See also, The free style, Why it
+fits (+15 more)
+
+### Community 39 - "Jakub Krehel's interface skills"
+
+Cohesion: 0.10 Nodes (19): Examples, How an icon is built, Its Hover, See also,
+The library, Using it without React, What it covers, Colour (+11 more)
+
+### Community 40 - "Questions And Answers"
+
+Cohesion: 0.12 Nodes (15): Findings, Follow-Ups, Ground Rules, Implications For
+Mortar, Key Numbers, Leakage Causes, Ranked, Practitioner Interview, Q1.
+Conversion And Timing (+7 more)
+
+### Community 41 - "AppSidebar.tsx"
+
+Cohesion: 0.16 Nodes (8): MortarMark(), MortarMarkProps, AppFooter(),
+FOOTER_LINKS, AppSidebarProps, NAV_ITEMS, NavItem, SiteShell()
+
+### Community 42 - "RTK Commands By Workflow"
+
+Cohesion: 0.13 Nodes (14): Analysis & Debug (70-90% Savings), Build & Compile
+(80-90% Savings), Files & Search (60-75% Savings), Git (59-80% Savings), GitHub
+(26-87% Savings), Golden Rule, Infrastructure (85% Savings),
+JavaScript/TypeScript Tooling (70-90% Savings) (+6 more)
+
+### Community 43 - "Mortar Notes For Agents"
+
+Cohesion: 0.25 Nodes (7): Conventions, Docs, File Map, Gotchas, Mortar Notes For
+Agents, Recipe: Add A Route, Recipe: Add Shared Domain Types Or Logic
+
+### Community 44 - "Agent Skills"
+
+Cohesion: 0.25 Nodes (7): Agent Skills, Install And Update,
+leonxlnx/taste-skill, mattpocock/skills, obra/superpowers, On Windows, Which
+Skill First
+
+### Community 45 - "Andrej Karpathy Skills"
+
+Cohesion: 0.33 Nodes (5): 1. Think Before Coding, 2. Simplicity First, 3.
+Surgical Changes, 4. Goal-Driven Execution, Andrej Karpathy Skills
+
 ## Knowledge Gaps
 
-- **190 isolated node(s):** `$schema`, `printWidth`, `singleQuote`, `semi`,
-  `trailingComma` (+185 more) These have ≤1 connection - possible missing edges
+- **362 isolated node(s):** `$schema`, `printWidth`, `singleQuote`, `semi`,
+  `trailingComma` (+357 more) These have ≤1 connection - possible missing edges
   or undocumented components.
 - **8 thin communities (<3 nodes) omitted from report** — run `graphify query`
   to explore isolated nodes.
@@ -240,26 +309,25 @@ Cohesion: 0.67 Nodes (3): Badge(), BadgeProps, badgeVariants
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `cn()` connect `Table & Skeleton UI` to `Page Layout Components`,
-  `App Shell & Navigation`, `Persona & Form Controls`, `Theme & Landing UI`,
-  `Error Boundary & Routing`, `Stats & Tooltip UI`, `Select Component`,
+  `App Shell & Navigation`, `Theme & Landing UI`, `Error Boundary & Routing`,
+  `AppSidebar.tsx`, `Stats & Tooltip UI`, `Select Component`,
   `Drawer Component`, `Popover Component`, `Dialog Component`, `Tabs Component`,
   `Status Pill Component`, `Badge Component`?** _High betweenness centrality
-  (0.251) - this node is a cross-community bridge._
+  (0.113) - this node is a cross-community bridge._
 - **Why does `dependencies` connect `Frontend Dependencies` to
-  `Frontend Dev Tooling`?** _High betweenness centrality (0.185) - this node is
+  `Frontend Dev Tooling`?** _High betweenness centrality (0.083) - this node is
   a cross-community bridge._
 - **Why does `CalendarDayButton()` connect `Theme & Landing UI` to
   `Frontend Dependencies`, `Table & Skeleton UI`?** _High betweenness centrality
-  (0.168) - this node is a cross-community bridge._
+  (0.076) - this node is a cross-community bridge._
 - **What connects `$schema`, `printWidth`, `singleQuote` to the rest of the
-  system?** _190 weakly-connected nodes found - possible documentation gaps or
+  system?** _362 weakly-connected nodes found - possible documentation gaps or
   missing edges._
 - **Should `Frontend Dependencies` be split into smaller, more focused
   modules?** _Cohesion score 0.044444444444444446 - nodes in this community are
   weakly interconnected._
-- **Should `Page Layout Components` be split into smaller, more focused
-  modules?** _Cohesion score 0.12380952380952381 - nodes in this community are
-  weakly interconnected._
 - **Should `App Shell & Navigation` be split into smaller, more focused
-  modules?** _Cohesion score 0.08712121212121213 - nodes in this community are
+  modules?** _Cohesion score 0.06561085972850679 - nodes in this community are
   weakly interconnected._
+- **Should `Frontend Dev Tooling` be split into smaller, more focused modules?**
+  _Cohesion score 0.0625 - nodes in this community are weakly interconnected._
