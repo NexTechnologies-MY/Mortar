@@ -85,12 +85,11 @@ export function generateDataset(options: GeneratorOptions): Dataset {
 
   for (let i = 1; i <= count; i += 1) {
     const id = `BK-${String(i).padStart(4, '0')}`
-    // Bookings spread over the 120 days before the reference date, skewed recent:
-    // sales picked up as the project ramped. A quarter land in the 15–30 day
-    // band so a believable share of live bookings can genuinely stall.
+    // Bookings spread over the 120 days before the reference date with a mild
+    // recent ramp: sales picked up as the project ramped. Roughly a third land
+    // in the last 30 days, so live bookings stay a minority of the book.
     const roll = rng.next()
-    const bookedAgo =
-      roll < 0.25 ? 15 + Math.floor((roll / 0.25) * 16) : Math.floor(119 * Math.pow((roll - 0.25) / 0.75, 1.4))
+    const bookedAgo = Math.floor(119.9 * Math.pow(roll, 1.35))
     const bookingDate = addDays(referenceDate, -bookedAgo)
     const priceRm = drawPrice(rng)
     const buyer = drawBuyer(rng, i, priceRm, value)

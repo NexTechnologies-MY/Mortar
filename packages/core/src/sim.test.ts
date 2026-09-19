@@ -13,12 +13,23 @@ import {
   summarizeCases
 } from './sim'
 import { deriveCase, STAGE_RANK } from './sim/cases'
+import { STORIES } from './fixtures/stories'
 import { wilsonInterval } from './sim/forecast'
 import { monthlyInstalment } from './sim/risk'
 import { addDays, dateOf, diffDays } from './sim/dates'
 
 const OPTIONS = { seed: DEFAULT_SEED, referenceDate: REFERENCE_DATE, bookings: 140 }
 const emptyData: Dataset = { bookings: [], applications: [], events: [] }
+
+/** The generated dataset plus the story bookings, merged the way the server's reset does. */
+const withStories = (seed: number): Dataset => {
+  const g = generate({ seed, referenceDate: REFERENCE_DATE, bookings: 140 })
+  return {
+    bookings: [...g.bookings, ...STORIES.map((s) => s.booking)],
+    applications: [...g.applications, ...STORIES.flatMap((s) => s.applications)],
+    events: [...g.events, ...STORIES.flatMap((s) => s.events)]
+  }
+}
 
 const data: Dataset = generate(OPTIONS)
 const summaries = summarizeCases({ ...data, tasks: [] }, REFERENCE_DATE)
@@ -288,6 +299,42 @@ describe('backtest', () => {
       expect(row.predicted).toBeGreaterThanOrEqual(0)
       expect(row.observed).toBeGreaterThanOrEqual(0)
     }
+  })
+
+  it('is calibrated: predicted tracks observed and the Brier score beats the naive 0.5', () => {
+    const canon = backtest(withStories(DEFAULT_SEED), cutoff)
+    expect(canon.brier).toBeLessThan(0.25)
+    expect(canon.predicted).toBeGreaterThanOrEqual(canon.observed * 0.8)
+    expect(canon.predicted).toBeLessThanOrEqual(canon.observed * 1.2)
+    // The bound must hold across seeds, not just the one the demo shows.
+    let predicted = 0
+    let observed = 0
+    let below = 0
+    for (let seed = 1; seed <= 20; seed += 1) {
+      const out = backtest(withStories(seed), cutoff)
+      predicted += out.predicted
+      observed += out.observed
+      if (out.brier < 0.25) below += 1
+      expect(out.brier).toBeLessThan(0.3)
+    }
+    expect(below).toBeGreaterThanOrEqual(18)
+    expect(Math.abs(predicted - observed)).toBeLessThanOrEqual(observed * 0.15)
+  })
+})
+
+describe('stories merged into the dataset', () => {
+  const merged = withStories(DEFAULT_SEED)
+
+  it('flags exactly one story booking as unknown: BK-9007', () => {
+    const out = summarizeCases({ ...merged, tasks: [] }, REFERENCE_DATE)
+    const unknown = out.filter((s) => s.unknown).map((s) => s.bookingId)
+    expect(unknown.filter((id) => id.startsWith('BK-9'))).toEqual(['BK-9007'])
+  })
+
+  it('keeps live bookings a minority of the book', () => {
+    const f = forecast(merged, REFERENCE_DATE)
+    expect(f.liveBookings).toBeGreaterThan(0)
+    expect(f.liveBookings).toBeLessThanOrEqual(Math.ceil(merged.bookings.length / 2))
   })
 })
 
