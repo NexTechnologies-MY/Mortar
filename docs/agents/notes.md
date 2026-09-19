@@ -69,6 +69,12 @@ neither shows: conventions, the file map, and the gotchas.
 
 ## Docs
 
+- `docs/PRODUCT.md`: product context, problem, personas, business case, and
+  12-week pilot.
+- `docs/PRD.md`: functional requirements, user stories, acceptance criteria, and
+  screen specifications.
+- `docs/TRD.md`: system architecture, data model, APIs, simulation engine, Jev
+  integration, and deployment.
 - `docs/DESIGN.md`: the visual spec — follow it for any UI work.
 - `docs/markdown-style.md`: house Markdown style — follow it when editing docs.
 - `docs/research/company-brain/simulation.md`: scope, seed values and rules for
