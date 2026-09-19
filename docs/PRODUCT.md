@@ -48,16 +48,13 @@ In Peninsular Malaysia, the legal risk of extended booking stalls was cemented
 by the Federal Court in _PJD Regency Sdn Bhd v Tribunal Tuntutan Pembeli Rumah_
 (2021). The court ruled that statutory liquidated ascertained damages (LAD) for
 late delivery run from the date the booking fee is collected, not the date the
-SPA is signed. Holding a stalled booking for 64 days or more directly cuts into
-construction timeframes and multiplies financial exposure.
+SPA is signed. In that case, booking to SPA took about 64 days, so every stalled
+week counts against the delivery clock.
 
-```text
-200 Launch Bookings (RM 600,000 average unit price)
-└── Gross Reported Sales: RM 120,000,000
-    ├── 80% Convert To Signed SPA: RM 96,000,000 Realized Revenue
-    └── 20% Booking Leakage: RM 24,000,000 In Phantom Sales
-        └── 40 Units Locked For 6–12 Weeks Without Cash Realization
-```
+No public figure exists for Malaysian booking-to-SPA conversion. In our
+practitioner survey, three of five respondents said only 0 to 2 of every 10
+bookings reach a signed SPA, one said 7 to 8, and one was unsure: the leakage is
+real, and its size is exactly what nobody can currently see.
 
 This dynamic creates an acute organizational tension between departments. Sales
 fears that stricter buyer pre-qualification will dampen booking velocity and
@@ -65,10 +62,10 @@ kill launch momentum. Finance knows that unweighted bookings are not cash,
 warning that counting them at face value distorts treasury planning.
 
 Mortar resolves this tension without throttling front-end sales. Instead of
-imposing rigid pre-qualification gates that block bookings, Mortar screens every
-case within 48 hours. It equips staff to chase salvageable bookings
-systematically while surfacing unsalvageable cases early so inventory can be
-re-released promptly.
+imposing rigid pre-qualification gates that block bookings, Mortar surfaces
+every stalled case in a daily queue. It equips staff to chase salvageable
+bookings systematically while surfacing unsalvageable cases early so inventory
+can be re-released promptly.
 
 ## Who Uses Mortar
 
@@ -355,46 +352,39 @@ within a single operating quarter.
 
 The governing North Star for Mortar is:
 
-$$\text{Success Metric} = \frac{\text{Bookings With Verified Signed SPA Within 30 Days}}{\text{Total Eligible Bookings In Cohort}} \times 100$$
+**30-day verified SPA rate** = bookings that sign a verified SPA within 30 days
+of booking, divided by all eligible bookings in the cohort.
 
 This metric delivers three distinct operational advantages:
 
 1.  **Definitive Commercial Value:** A signed SPA accompanied by the mandatory
-    10% deposit payment represents an executed legal contract of sale. It
-    directly releases construction stage billing and secures cash flow.
+    10% deposit payment represents an executed legal contract of sale. It is the
+    conversion the brief asks us to measure, though cash still depends on
+    payment milestones.
 2.  **Quarterly Evaluation Window:** A 30-day tracking window allows a developer
     to enroll an intake cohort between day 15 and day 44 of a quarter, conclude
     all observation by day 74, and reconcile legal audits by day 84.
 3.  **Halts Inventory Holding Drag:** Anecdotal buyer guides cite 14 to 21 days
-    for smooth conversions, while survey data proves stalled cases drag past
-    eight weeks. Enforcing a 30-day horizon forces early unblocking or prompt
-    unit release.
+    for smooth conversions, while two of five surveyed practitioners put booking
+    to SPA at more than eight weeks. Enforcing a 30-day horizon forces early
+    unblocking or prompt unit release.
 
-### Illustrative Cohort Economics
+### Illustrative Impact, Not A Finding
 
-To illustrate the financial impact of systematic follow-up, consider an active
-development cohort evaluated in the
-[Company-Brain Concept](research/company-brain/README.md) analysis:
+The [Company-Brain Concept](research/company-brain/README.md) works one example.
+Suppose an audit finds 40 eligible, stalled bookings, and targeted document
+follow-up lifts their 30-day conversion from 20% to 40%:
 
 ```text
-Cohort Intake: 100 Total Unit Bookings
-├── 60 Bookings Progress Normally On Standard Tracks
-└── 40 Stalled Bookings Flagged In Mortar Chase Queue
-    ├── Baseline Unassisted Conversion (20%):  8 Signed SPAs
-    └── Mortar Assisted Conversion (40%):     16 Signed SPAs
-        └── Net Gain: 8 Additional Executed Agreements
+Expected additional SPAs = 40 x (40% - 20%) = 8 bookings
 ```
 
-At an average unit price of RM 600,000, recovering eight additional bookings
-represents:
-
-$$\text{Recovered Sales Value} = 8 \text{ Units} \times \text{RM } 600,000 = \text{RM } 4,800,000$$
-
-For the entire 100-unit cohort, this targeted intervention lifts overall
-booking-to-SPA conversion from 68% to 76%—an 8-percentage-point gain in realized
-sales. Even under a highly conservative assumption where conversion improves by
-only 5 percentage points, the intervention recovers 2 additional SPAs, securing
-RM 1,200,000 in accelerated revenue.
+With only a 5-point uplift, the same intervention gives 2 additional SPAs. If
+the 40 cases sit within a 100-booking cohort, 8 additional SPAs would raise the
+cohort's rate by 8 percentage points. These are planning assumptions to replace
+with pilot data. Mortar does not convert them into cash: signing an SPA is not
+receiving the price, and cash forecasting needs actual payment amounts and
+dates.
 
 ## What Mortar Is Not
 
