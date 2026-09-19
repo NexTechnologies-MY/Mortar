@@ -1,12 +1,12 @@
 # Mortar Product Overview
 
 Mortar is an internal operations platform for Malaysian property developers that
-converts property unit bookings into verified Sale & Purchase Agreements (SPAs).
+helps property unit bookings reach a verified Sale & Purchase Agreement (SPA).
 It unifies fragmented data across Sales, Loan Administration, Legal, and Finance
 into an evidence-backed case workflow with a daily chase queue, reviewed staff
-playbooks, and statistical cash forecasting. All numbers in this document derive
-from industry research, an anonymous practitioner survey (n = 5), and public
-regulatory data, evaluated on synthetic bookings.
+playbooks, and a stage-weighted conversion forecast. All numbers in this
+document derive from industry research, an anonymous practitioner survey (n =
+5), and public regulatory data, evaluated on synthetic bookings.
 
 Contents:
 
@@ -97,7 +97,7 @@ banks. Loan Admin Tan Mei Ling spends her day on the Bookings desk (`/bookings`)
 and individual case files (`/bookings/:id`).
 
 - **Application Oversight:** Tracks parallel bank submissions, recognizing that
-  one buyer may apply to three banks simultaneously.
+  one booking can carry up to three bank applications at once.
 - **Evidence Review:** Validates incoming banker messages and document receipts
   against structured criteria.
 - **Status Verification:** Confirms, disputes, or dismisses AI-extracted event
@@ -115,18 +115,18 @@ Forecast desk (`/forecast`).
   signings over a rolling 30-day horizon.
 - **Statistical Ranges:** Evaluates expected signings bounded by 10th to 90th
   percentile Monte Carlo simulation intervals.
-- **Survival Benchmarks:** Audits stage-specific transition rates equipped with
-  Wilson 95% confidence intervals.
+- **Stage Conversion Benchmarks:** Audits stage-specific conversion rates
+  equipped with Wilson 95% confidence intervals and sample sizes.
 - **Model Governance:** Inspects backtest calibration tables and Brier scores,
   stress-testing assumptions using seed adjustments.
 
 ### Persona Comparison
 
-| Persona     | Representative Staff | Home Route  | Core Responsibility                       | Primary Value Delivered                                        |
-| ----------- | -------------------- | ----------- | ----------------------------------------- | -------------------------------------------------------------- |
-| Sales Admin | Nurul Aina           | `/chase`    | Works daily chase list of stuck bookings  | Unblocks documentation and accelerates buyer responses         |
-| Loan Admin  | Tan Mei Ling         | `/bookings` | Oversees multi-bank mortgage applications | Eliminates application dwell time and verifies evidence        |
-| Finance     | Arvind Raj           | `/forecast` | Audits conversion probabilities and cash  | Produces dependable cash projections based on real stage rates |
+| Persona     | Representative Staff | Home Route  | Core Responsibility                       | Primary Value Delivered                                     |
+| ----------- | -------------------- | ----------- | ----------------------------------------- | ----------------------------------------------------------- |
+| Sales Admin | Nurul Aina           | `/chase`    | Works daily chase list of stuck bookings  | Surfaces each stall reason with a suggested next action     |
+| Loan Admin  | Tan Mei Ling         | `/bookings` | Oversees multi-bank mortgage applications | Flags applications undecided past the bank guideline window |
+| Finance     | Arvind Raj           | `/forecast` | Audits conversion probabilities and cash  | Produces stage-weighted projections with stated uncertainty |
 
 ## What Mortar Does
 
@@ -137,13 +137,13 @@ execution.
 ### Centralized Case Workspace
 
 Every unit booking receives a dedicated case dossier (`/bookings/:id`). The
-workspace maintains an immutable, timestamped event log capturing when events
+workspace maintains a timestamped, auditable event log capturing when events
 occurred, when Mortar learned of them, who reported them, and who verified them.
 
 Loan and legal workflows proceed on separate, overlapping tracks. A delay in
 bank approval does not halt preliminary legal file preparation, and a rejection
-from one bank does not mark a multi-application booking as failed. Bookings
-lacking fresh evidence for ten or more days are marked explicitly as unknown,
+from one bank does not mark a multi-application booking as failed. A live
+booking with no confirmed event for ten or more days shows as unknown,
 preventing stale cases from masquerading as healthy pipeline.
 
 ### High-Density Ledger Design
@@ -191,7 +191,7 @@ spanning initial deposit through to confirmed execution.
 ```text
 [1. Deposit] ──► [2. Banker Chat] ──► [3. Jev Extract] ──► [4. Verification]
  Unit booked       Manglish message     Typed proposal        Staff confirms
- RM 612,800        requests slip        payslip pending       status updates
+ RM 550,000        requests slip        payslip pending       status updates
      │                                                              │
      ▼                                                              ▼
 [8. Execution] ◄── [7. Live Clear] ◄── [6. Playbook] ◄─── [5. Chase Queue]
@@ -199,41 +199,42 @@ spanning initial deposit through to confirmed execution.
  10% paid           sent & cleared       vetted rules          task created
 ```
 
-1.  **Deposit And Ingestion:** A buyer reserves Unit B-12-03 (RM 612,800) with a
-    deposit. The booking enters Mortar via the spreadsheet intake (`/import`).
-    Mortar calculates initial financing metrics: a 90% loan margin, monthly
-    instalment of RM 2,750, and a debt service ratio of 36% against verified
+1.  **Deposit And Ingestion:** A buyer reserves Unit A-12-03 in the fictional
+    Aster Heights project (RM 550,000) with a booking fee. Mortar calculates
+    initial financing metrics: a 90% financing margin, a monthly instalment of
+    about RM 2,250, and a debt service ratio of about 30% against the buyer's
     gross income.
-2.  **Information Intake:** The assigned panel banker sends a message via
-    WhatsApp: "Income doc tak complete la, need latest 3 months payslip for
-    credit assessment."
+2.  **Information Intake:** The panel banker (Apex Bank) sends a Manglish
+    message: "Still need latest 3 months slip gaji ah, current one only got
+    June. Can get from buyer asap?"
 3.  **Fast Extraction:** The embedded Jev service processes the message text. It
     identifies the event as `documents_requested`, flags the document as
     `payslip`, designates `loan_admin` as the recipient owner, and attaches
     confidence scores.
-4.  **Human Verification:** Loan Admin Tan Mei Ling reviews the proposal in the
+4.  **Human Verification:** Sales Admin Nurul Aina reviews the proposal in the
     case evidence log. She clicks Confirm. Mortar records a confirmed event,
-    updates the loan track to "Documents pending", and starts an evidence clock.
-5.  **Chase Queue Activation:** Five days elapse with no submission. Mortar's
-    deterministic stall rule triggers: "Document Outstanding 5+ Days". The case
-    surfaces at the top of the Chase List (`/chase`). Jev suggests a next
-    action: "Request payslip from buyer, owner Sales, due today." Sales Admin
-    Nurul Aina clicks Create Task.
+    updates the loan track to "Documents pending", and shows who reported and
+    who verified it.
+5.  **Chase Queue Activation:** The bank application passes nine working days
+    without a decision, so Mortar's stall rule flags the case. It surfaces at
+    the top of the Chase List (`/chase`). Jev suggests a next action: request
+    the payslip from the buyer, owner Sales, due today. Sales Admin Nurul Aina
+    clicks Create Task.
 6.  **Playbook Guidance:** Nurul queries the playbooks panel for "slip gaji".
     Mortar returns the vetted "Missing Income Documents" playbook, which advises
-    requesting the latest three months of bank statements concurrently to
-    prevent secondary credit queries.
+    asking the buyer for the exact missing month's payslip through the company
+    HR portal and alerting the banker on receipt.
 7.  **Live Resolution:** The buyer responds in Malay: "Salam, saya dah emailkan
     slip gaji 3 bulan terkini kepada banker semalam." Nurul pastes the text into
     the case message box. Jev analyzes the Malay text live in under three
     seconds, returning `documents_received` for `payslip`. Nurul confirms the
     extraction. The outstanding requirement clears, and the stall flag is
     removed.
-8.  **Execution And Forecast:** The bank issues a Letter of Offer within four
-    days. The panel solicitor schedules the signing appointment. The buyer signs
-    the SPA and disburses the 10% deposit. Mortar records the confirmed
-    `spa_signed` event. The completed conversion instantly feeds into the
-    empirical stage-transition dataset on `/forecast`.
+8.  **Execution And Forecast:** The bank issues its Letter of Offer, the panel
+    solicitor sets the SPA appointment, and the buyer signs the SPA, paying the
+    10% sum due on signing less the booking fee. Each milestone lands in the log
+    as a confirmed event, and the resolved case feeds the stage conversion rates
+    on `/forecast`.
 
 ## Where AI Helps And Where People Decide
 
@@ -268,11 +269,11 @@ Chinese, Manglish)    typed questions)        Urgency Score, Confidence)
             ┌────────────────┴────────────────┐
             ▼                                 ▼
    Confidence >= 0.60                Confidence < 0.60
-   Direct Staff Confirm              Flagged "Needs Review"
+   Staff Confirms Proposal           Flagged "Needs Review"
 ```
 
-To guarantee system resilience during demo presentations and production network
-outages, Jev interactions follow a multi-tier fallback hierarchy:
+To keep the product working through demo presentations and network outages, Jev
+interactions follow a multi-tier fallback hierarchy:
 
 1.  **Live Execution:** Live calls execute with a 3,000 millisecond timeout. On
     success, the response is cached and returned with `source: 'live'`.
@@ -285,8 +286,8 @@ outages, Jev interactions follow a multi-tier fallback hierarchy:
     structural fallbacks with `source: 'unavailable'`, allowing staff to record
     case milestones manually without interruption.
 
-Page navigation routes never wait on live AI processing. GET endpoints are
-cache-first, preserving sub-second page transitions across the application.
+Page navigation never waits on live AI processing. GET endpoints are
+cache-first, keeping page transitions responsive across the application.
 
 ## Evidence From Research And Industry
 
@@ -297,10 +298,11 @@ unsupported estimates.
 
 ### Industry Practitioner Survey Findings
 
-On 18 September 2026, an anonymous survey of five property development
-practitioners (n = 5) across sales marketing, project management, finance, and
-construction assessed conversion bottlenecks. Full survey responses are
-documented in the [Practitioner Survey](research/practitioner-survey/README.md).
+On 18 September 2026, five industry practitioners (n = 5) across mixed roles —
+sales and project marketing, project management, finance, construction, and one
+unstated — answered an anonymous survey on conversion bottlenecks. Full survey
+responses are documented in the
+[Practitioner Survey](research/practitioner-survey/README.md).
 
 ```text
 Ranked Causes Of Booking Leakage (n = 5):
@@ -315,11 +317,11 @@ The survey established four critical operational realities:
 - **The Primary Bottleneck:** 5 of 5 respondents cited loan rejection or
   insufficient financing as the single largest cause of leakage. 4 of 5
   identified bank credit assessment as the specific stage where cases stall.
-- **Conversion Reality:** 3 of 5 practitioners reported that historically, only
-  0 to 2 out of every 10 bookings successfully convert to a signed SPA.
-- **Dwell Durations:** Practitioners confirmed that unresolved bookings
-  routinely sit between 3 to 4 weeks (2 of 5) or more than 8 weeks (2 of 5)
-  before units are re-released.
+- **Conversion Reality:** 3 of 5 practitioners estimated that only 0 to 2 out of
+  every 10 bookings reach a signed SPA; one put it at 7 to 8 and one was unsure.
+- **Dwell Durations:** The typical time from booking to SPA ran 3 to 4 weeks (2
+  of 5) or more than 8 weeks (2 of 5). A failed booking's unit took 3 to 4 weeks
+  to release for 2 of 5 respondents; one reported more than 12 weeks.
 - **Support For Automation:** Checking documents for missing items (3 of 5) and
   suggesting next actions (2 of 5) were identified as safe areas for AI. Only 1
   of 5 supported using AI for conversion risk, validating Mortar's reliance on
@@ -328,19 +330,26 @@ The survey established four critical operational realities:
 ### Official And Industry Benchmarks
 
 Mortar calibrates its case engine and assumptions against public data compiled
-in the [Front-End Simulation](research/company-brain/simulation.md) study:
+in the [Front-End Simulation](research/company-brain/simulation.md) study, which
+tags each value Official, Industry, Anecdotal or Assumption:
 
-| Parameter                     | Calibrated Value                               | Source Classification    | Authoritative Source                          |
-| ----------------------------- | ---------------------------------------------- | ------------------------ | --------------------------------------------- |
-| Bank decision turnaround      | 2–9 working days (rejections in 1–2 days)      | Industry Benchmark       | Association of Banks in Malaysia (ABM, 2017)  |
-| Documented booking-to-SPA     | Approximately 64 days                          | Official Legal Record    | _PJD Regency_ Federal Court Case Facts (2021) |
-| Mortgage approval by value    | 42.1% (2024), 41.1% (2025), 38.9% (2026)       | Official Regulatory Data | Bank Negara Malaysia Tables 1.10 and 1.12     |
-| Mortgage approval by count    | Approximately 74% of applications              | Official Regulatory Data | Bank Negara Malaysia and ABM (2016–2017)      |
-| Loan rejection (RM 500k–700k) | 31% to 45% (average 38%)                       | Industry Association     | REHDA Property Industry Survey (2H2025)       |
-| Developer sales take-up       | 21% in 2H2025 (down from 38% in 1H2025)        | Industry Association     | REHDA Property Industry Survey (2H2025)       |
-| Margin of financing cap       | 70% cap on third property onward; 90% prior    | Official Regulatory Rule | Bank Negara Malaysia Guidelines (Nov 2010)    |
-| Maximum loan tenure           | 35 years or age 70 (`min(35, 70 - age)`)       | Official Regulatory Rule | Bank Negara Malaysia Circular (Jul 2013)      |
-| Debt service ratio cap        | Monthly instalments capped at 40% gross income | Industry Guideline       | Association of Banks in Malaysia (2017)       |
+| Parameter                     | Calibrated Value                                 | Tag                | Source                                  |
+| ----------------------------- | ------------------------------------------------ | ------------------ | --------------------------------------- |
+| Bank decision turnaround      | 2–9 working days; rejections in 1–2 days         | Industry           | Association of Banks in Malaysia (2017) |
+| Documented booking-to-SPA     | About 64 days                                    | Official           | _PJD Regency_ case facts (2021)         |
+| Mortgage approval by value    | 42.1% (2024), 41.1% (2025), 38.9% (Jan–Jul 2026) | Official           | Bank Negara Malaysia tables 1.10, 1.12  |
+| Mortgage approval by count    | About 74% of applications                        | Official           | Bank Negara Malaysia and ABM (2016–17)  |
+| Loan rejection (RM 500k–700k) | 31% to 45%, average 38%                          | Industry           | REHDA survey, 2H2025                    |
+| Developer sales take-up       | 21% (2H2025), 38% (1H2025)                       | Industry           | REHDA survey, 2H2025                    |
+| Margin of financing cap       | 70% from the third home; about 90% before it     | Official, Industry | Bank Negara Malaysia (Nov 2010); press  |
+| Maximum loan tenure           | 35 years                                         | Official           | Bank Negara Malaysia (Jul 2013)         |
+| Debt service ratio            | Instalments at most 40% of gross income          | Industry           | Association of Banks in Malaysia (2017) |
+
+Two simulation parameters are assumptions rather than cited figures: the
+generator's per-application approval rate defaults to 0.62, set between the
+REHDA band (55% to 69% approved) and the older by-number figure (74%), and loan
+tenure is further bounded so the loan ends by age 70 (`min(35, 70 - age)`
+years).
 
 ## The Success Measure
 
@@ -357,10 +366,10 @@ of booking, divided by all eligible bookings in the cohort.
 
 This metric delivers three distinct operational advantages:
 
-1.  **Definitive Commercial Value:** A signed SPA accompanied by the mandatory
-    10% deposit payment represents an executed legal contract of sale. It is the
-    conversion the brief asks us to measure, though cash still depends on
-    payment milestones.
+1.  **Definitive Commercial Value:** A signed SPA, with the 10% payment due on
+    signing, represents an executed legal contract of sale. It is the conversion
+    the brief asks us to measure, though cash still depends on payment
+    milestones.
 2.  **Quarterly Evaluation Window:** A 30-day tracking window allows a developer
     to enroll an intake cohort between day 15 and day 44 of a quarter, conclude
     all observation by day 74, and reconcile legal audits by day 84.
@@ -400,19 +409,19 @@ partners, Mortar defines clear functional boundaries:
 - **Not A Generative Chatbot:** Mortar does not engage in free-form generative
   conversations with external buyers. AI interactions are restricted to
   structured classification and extraction.
-- **Not A Customer-Facing Portal:** Mortar is an internal operational tool
-  designed exclusively for developer personnel, panel bankers, and panel
-  solicitors.
-- **Not A Privacy Risk:** In strict compliance with the Malaysian Personal Data
-  Protection Act (PDPA), the prototype operates exclusively on synthetic
-  datasets. Names, phone numbers, and identity cards are generated pseudonyms
-  that touch no real consumer records.
+- **Not A Customer-Facing Portal:** Mortar is an internal operational tool for
+  developer personnel. Panel bankers and panel solicitors keep their existing
+  channels; their participation does not require a new portal.
+- **Not A Privacy Risk:** The prototype operates exclusively on synthetic data.
+  Names, phone numbers, and identity cards are invented values that describe no
+  identifiable person, so the prototype holds no personal data under the
+  Personal Data Protection Act.
 
 ## Roadmap And The 12-Week Pilot
 
 Mortar is structured for phased organizational deployment. The current working
-prototype proves the underlying case mechanics, setting the stage for a
-controlled 12-week on-site pilot.
+prototype exercises the underlying case mechanics on synthetic data, setting the
+stage for a controlled 12-week on-site pilot.
 
 ### Current Prototype Versus Production Roadmap
 
@@ -423,45 +432,46 @@ controlled 12-week on-site pilot.
 | Staff interfaces   | React 19 single-page application with persona routing            | Single sign-on (SSO) integration with role-based access control         |
 | Intelligence layer | TypeSafe Jev client with local cache fallbacks                   | Hybrid cloud deployment with dedicated VPC endpoints                    |
 | Document intake    | Structured spreadsheet parser (`/import`)                        | Bidirectional API integration with developer ERP systems (such as IFCA) |
-| Communications     | Manual message logging and simulated threads                     | Automated WhatsApp Business Cloud API webhook synchronization           |
-| Document scanning  | Pre-extracted fixture data and manual verification               | Automated OCR ingestion pipeline (Docling / RAGFlow) for PDF pay slips  |
+| Communications     | Staff paste messages; simulated and live threads                 | Automated WhatsApp Business Cloud API webhook synchronization           |
+| Document scanning  | None — messages and updates arrive as pasted text                | Automated OCR ingestion pipeline (Docling / RAGFlow) for PDF pay slips  |
 
 ### The 12-Week Implementation Plan
 
-The pilot deployment follows a structured twelve-week timeline designed to
-demonstrate measurable conversion gains within a single operating quarter:
+The pilot deployment follows the twelve-week timeline from the company-brain
+concept, designed to read the intervention's effect within one quarter:
 
 ```text
 Weeks 1–2: Intake & Baseline ──► Weeks 3–4: Assisted Queue
-• Ingest booking spreadsheets    • Deploy /chase with Sales Admin
-• Reconcile historical cases     • Activate live Jev message parsing
-• Author reviewed playbooks      • Resolve identity match errors
+• Ingest booking spreadsheets    • Run daily queue, one admin
+• Reconcile closed-case sample   • Add Jev extraction where it helps
+• Author first playbooks         • Resolve identity match errors
           │                                  │
           ▼                                  ▼
 Weeks 9–12: Audit & Rollout  ◄── Weeks 5–8: Live Intervention
 • Reconcile executed SPAs        • Enroll live booking cohort
-• Measure 30-day conversion      • Run daily chase & playbook matching
-• Calculate recovered capital    • Conduct weekly case review audits
+• Measure 30-day conversion      • Record actions and outcomes
+• Estimate effect, decide next   • Review failed and signed cases
 ```
 
 - **Weeks 1–2 (Intake And Baseline):** Connect existing booking spreadsheet
-  exports. Reconcile historical closed cases over the prior six months to
-  establish the baseline 30-day conversion rate. Deploy the case ledger and
-  action queue for one active project and one Sales Administration Executive.
-  Capture the first 25 reviewed staff playbooks.
-- **Weeks 3–4 (Assisted Queue Operation):** Run the daily chase queue with Sales
-  Admin and Loan Admin staff. Introduce Jev message extraction for incoming
-  banker and buyer communications. Reconcile imported records and refine
-  matching logic without altering existing external workflows.
-- **Weeks 5–8 (Live Intervention Cohort):** Enroll all new bookings from an
-  active project launch. Apply Jev-recommended next actions and playbook
-  guidance. Conduct weekly cross-department case reviews examining both
-  successfully recovered cases and confirmed cancellations.
+  exports. Reconcile a sample of closed cases, identify the largest evidenced
+  operational gap, and deploy the case ledger and action queue for one active
+  project and one Sales Administration Executive. Capture a few reviewed staff
+  playbooks.
+- **Weeks 3–4 (Assisted Queue Operation):** Run the daily chase queue with one
+  administrator. Introduce Jev message extraction where it removes a
+  demonstrated burden. Reconcile imported records and correct matching errors
+  without altering existing external workflows.
+- **Weeks 5–8 (Live Intervention Cohort):** Enroll bookings made between day 15
+  and day 44, applying Jev-suggested next actions and playbook guidance while a
+  comparable group stays on ordinary follow-up. Review failed and successful
+  cases together and record actions and outcomes.
 - **Weeks 9–12 (Verification And Evaluation):** Close the 30-day observation
   window for all enrolled cohort bookings. Work with Legal to audit verified,
-  executed SPAs. Compare conversion performance against the historical baseline.
-  Quantify additional executed agreements, inventory days saved, and working
-  capital brought forward to justify group-wide rollout.
+  executed SPAs. Compare the assisted group against ordinary follow-up and
+  quantify additional executed agreements and inventory days released — without
+  converting signed SPAs into cash, which needs payment amounts and dates — to
+  decide whether broader rollout is justified.
 
 ## See Also
 
