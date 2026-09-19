@@ -42,11 +42,14 @@ flat config at the root, Prettier, husky + lint-staged.
 
 ## Documents
 
-| Read When                                        | Document                                                        |
-| ------------------------------------------------ | --------------------------------------------------------------- |
-| Working in the app: file map, recipes, gotchas   | [Project notes](docs/agents/notes.md)                           |
-| Building or styling any UI                       | [Design](docs/DESIGN.md)                                        |
-| Running a shell command                          | [RTK](docs/agents/rtk.md)                                       |
-| Deciding how much to build or how to change code | [Andrej Karpathy Skills](docs/agents/andrej-karpathy-skills.md) |
-| Choosing or installing an agent skill            | [Skills](docs/agents/skills.md)                                 |
-| Writing or formatting Markdown                   | [Markdown Style Guide](docs/markdown-style.md)                  |
+| Read When                                                       | Document                                                        |
+| --------------------------------------------------------------- | --------------------------------------------------------------- |
+| Understanding product context, personas and why Mortar is built | [Product Overview](docs/PRODUCT.md)                             |
+| Reviewing functional requirements and acceptance criteria       | [Product Requirements Document](docs/PRD.md)                    |
+| Inspecting technical architecture, data model and APIs          | [Technical Requirements Document](docs/TRD.md)                  |
+| Working in the app: file map, recipes, gotchas                  | [Project notes](docs/agents/notes.md)                           |
+| Building or styling any UI                                      | [Design](docs/DESIGN.md)                                        |
+| Running a shell command                                         | [RTK](docs/agents/rtk.md)                                       |
+| Deciding how much to build or how to change code                | [Andrej Karpathy Skills](docs/agents/andrej-karpathy-skills.md) |
+| Choosing or installing an agent skill                           | [Skills](docs/agents/skills.md)                                 |
+| Writing or formatting Markdown                                  | [Markdown Style Guide](docs/markdown-style.md)                  |
