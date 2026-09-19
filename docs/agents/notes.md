@@ -71,3 +71,5 @@ neither shows: conventions, the file map, and the gotchas.
 
 - `docs/DESIGN.md`: the visual spec — follow it for any UI work.
 - `docs/markdown-style.md`: house Markdown style — follow it when editing docs.
+- `docs/research/company-brain/simulation.md`: scope, seed values and rules for
+  the front-end simulation — read it before generating synthetic bookings.
