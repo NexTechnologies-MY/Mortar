@@ -91,6 +91,8 @@ export interface CaseFacts {
   /** Highest funnel rank reached (exits excluded), -1 with no confirmed events. */
   funnelRank: number
   terminal: 'cancelled' | 'lapsed' | null
+  /** Age in days when the terminal event was confirmed; `null` while running. */
+  terminalAge: number | null
   signedOn: IsoDate | null
   /** Age in days when each funnel rank was first reached; `null` = never. */
   enteredAges: (number | null)[]
@@ -180,6 +182,7 @@ export function deriveCase(
   let rank = -1
   let funnelRank = -1
   let terminal: 'cancelled' | 'lapsed' | null = null
+  let terminalAge: number | null = null
   let signedOn: IsoDate | null = null
   let lastEvidenceOn: IsoDate | null = null
   for (const e of confirmed) {
@@ -193,7 +196,10 @@ export function deriveCase(
       if (r > rank) rank = r
     }
     if (e.kind === 'spa_signed' && signedOn === null) signedOn = day
-    if ((e.kind === 'cancelled' || e.kind === 'lapsed') && terminal === null) terminal = e.kind
+    if ((e.kind === 'cancelled' || e.kind === 'lapsed') && terminal === null) {
+      terminal = e.kind
+      terminalAge = diffDays(booking.bookingDate, day)
+    }
     const recorded = dateOf(e.recordedAt)
     if (lastEvidenceOn === null || recorded > lastEvidenceOn) lastEvidenceOn = recorded
   }
@@ -210,6 +216,7 @@ export function deriveCase(
     stage,
     funnelRank,
     terminal,
+    terminalAge,
     signedOn,
     enteredAges,
     lastEvidenceOn,

@@ -23,13 +23,23 @@ interface RateCell {
 }
 
 interface RateModel {
-  /** Key `${stageRank}:${ageBucket}` — resolved bookings by the age they entered that stage. */
+  /** Key `${stageRank}:${ageBucket}` — resolved bookings that occupied that stage during that age band. */
   groups: Map<string, RateCell>
   stages: RateCell[]
   overall: RateCell
 }
 
 const bucketOf = (age: number) => (age < 10 ? 0 : age < 20 ? 1 : age < 30 ? 2 : -1)
+
+/** Age when a resolved booking left stage `r`: its next funnel entry or its terminal age. */
+function leftAge(f: CaseFacts, r: number): number {
+  let left = f.terminalAge ?? Number.POSITIVE_INFINITY
+  for (let r2 = r + 1; r2 < FUNNEL_STAGES.length; r2 += 1) {
+    const e = f.enteredAges[r2]
+    if (e !== null && e < left) left = e
+  }
+  return left
+}
 
 function buildModel(facts: CaseFacts[]): { model: RateModel; live: CaseFacts[] } {
   const groups = new Map<string, RateCell>()
@@ -50,8 +60,12 @@ function buildModel(facts: CaseFacts[]): { model: RateModel; live: CaseFacts[] }
       if (entry === null) continue
       stages[r].n += 1
       stages[r].signed += hit
-      const b = bucketOf(entry)
-      if (b >= 0) {
+      const left = leftAge(f, r)
+      // At the stage at the band's midpoint age (5, 15, 25): the comparison
+      // set for a live booking is the resolved cases that were in the same
+      // stage at a similar booking age.
+      for (let b = 0; b < 3; b += 1) {
+        if (entry > b * 10 + 5 || left <= b * 10 + 5) continue
         const cell = groups.get(`${r}:${b}`) ?? { signed: 0, n: 0 }
         cell.n += 1
         cell.signed += hit
@@ -63,14 +77,13 @@ function buildModel(facts: CaseFacts[]): { model: RateModel; live: CaseFacts[] }
 }
 
 /**
- * Share of resolved bookings that reached this stage at a similar age and
- * signed within the horizon. Falls back to stage-only under 8 cases, then the
- * overall rate.
+ * Share of resolved bookings that occupied this stage at a similar booking age
+ * and signed within the horizon. Falls back to stage-only under 8 cases, then
+ * the overall rate.
  */
 function probability(f: CaseFacts, model: RateModel): number {
   const r = Math.max(0, f.funnelRank)
-  const entry = f.enteredAges[r] ?? 0
-  const cell = model.groups.get(`${r}:${bucketOf(entry)}`)
+  const cell = model.groups.get(`${r}:${bucketOf(f.ageDays)}`)
   if (cell && cell.n >= SMALL_SAMPLE) return cell.signed / cell.n
   const stage = model.stages[r]
   if (stage.n >= SMALL_SAMPLE) return stage.signed / stage.n
