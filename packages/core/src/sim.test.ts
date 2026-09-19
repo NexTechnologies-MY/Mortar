@@ -224,6 +224,29 @@ describe('financingRisk', () => {
   })
 })
 
+describe('deriveCase stage ages', () => {
+  it('records each funnel rank even when a same-day event sorts before booked', () => {
+    const b = booking()
+    const events = [
+      event({ occurredAt: at('2026-09-01', 20) }),
+      event({ id: 'EV-T002', kind: 'loan_submitted', track: 'loan', occurredAt: at('2026-09-01', 10) })
+    ]
+    const facts = deriveCase(b, [], events, REFERENCE_DATE)
+    expect(facts.funnelRank).toBe(1)
+    expect(facts.enteredAges[0]).toBe(0)
+  })
+
+  it('counts a swapped booked event in the booked stage rate', () => {
+    const b = booking({ bookingDate: '2026-07-01' })
+    const events = [
+      event({ occurredAt: at('2026-07-01', 20) }),
+      event({ id: 'EV-T002', kind: 'loan_submitted', track: 'loan', occurredAt: at('2026-07-01', 10) })
+    ]
+    const f = forecast({ bookings: [b], applications: [], events }, REFERENCE_DATE)
+    expect(f.stageRates[0].resolved).toBe(1)
+  })
+})
+
 describe('forecast', () => {
   it('places the Wilson interval on a known value', () => {
     const { low, high } = wilsonInterval(5, 10)

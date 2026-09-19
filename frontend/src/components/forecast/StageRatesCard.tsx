@@ -84,6 +84,9 @@ export function StageRatesCard({ stageRates }: { stageRates: StageRate[] }) {
             ))}
           </TableBody>
         </Table>
+        <p className="text-[13px] text-muted-foreground">
+          Approval Falls As The Debt Service Ratio Rises — By Construction, So The Risk Flag Carries Signal.
+        </p>
       </CardContent>
     </Card>
   )

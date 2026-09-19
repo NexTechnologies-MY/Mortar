@@ -8,7 +8,7 @@ import { DEFAULT_ASSUMPTIONS } from '@mortar/core'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { StatusPill } from '@/components/ui/status-pill'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { SOURCE_TAG_LABELS, SOURCE_TAG_TONES } from './forecast'
+import { SOURCE_TAG_LABELS, SOURCE_TAG_TONES, formatAssumptionValue } from './forecast'
 
 export function AssumptionsCard() {
   return (
@@ -36,7 +36,7 @@ export function AssumptionsCard() {
                 <TableRow key={a.key}>
                   <TableCell className="whitespace-normal">{a.label}</TableCell>
                   <TableCell className="text-right tabular-nums whitespace-nowrap">
-                    {a.value} {a.unit}
+                    {formatAssumptionValue(a)}
                   </TableCell>
                   <TableCell>
                     <StatusPill tone={SOURCE_TAG_TONES[a.tag]}>{SOURCE_TAG_LABELS[a.tag]}</StatusPill>

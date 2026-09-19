@@ -56,6 +56,14 @@ describe('ForecastPage', () => {
     expect(screen.getByText('A Backtest On Simulated Data Proves The Method, Not The Business.')).toBeTruthy()
     expect(screen.getByText('Assumptions')).toBeTruthy()
     expect(screen.getByText(/Placeholder To Calibrate On Company Data/)).toBeTruthy()
+    expect(screen.getByText(/Approval Falls As The Debt Service Ratio Rises.*By Construction/i)).toBeTruthy()
+  })
+
+  it('renders singular units for assumption values of one', () => {
+    renderPage()
+    expect(screen.queryByText('1 days')).toBeNull()
+    expect(screen.queryByText('1 working days')).toBeNull()
+    expect(screen.getByText('1 working day')).toBeTruthy()
   })
 
   it('Try Another Seed adds a browser-only run beside the canonical forecast', async () => {
