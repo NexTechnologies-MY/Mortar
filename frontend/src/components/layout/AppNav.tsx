@@ -6,6 +6,7 @@
 import { Link, useLocation, useParams } from 'react-router-dom'
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
 import { PersonaSwitch } from '@/components/layout/PersonaSwitch'
+import { SimulationBadge } from '@/components/layout/SimulationBadge'
 import { NotificationPopover } from '@/components/ui/NotificationPopover'
 import { usePersona } from '@/lib/persona'
 import { ChevronRight, Home, Menu } from 'lucide-react'
@@ -16,7 +17,8 @@ const ROUTE_LABELS: Record<string, string> = {
   '/bookings': 'Bookings',
   '/chase': 'Chase List',
   '/forecast': 'Forecast',
-  '/import': 'Import'
+  '/import': 'Import',
+  '/settings': 'Settings'
 }
 
 function useBreadcrumbs(): Crumb[] {
@@ -95,8 +97,9 @@ export function AppNav({ minimal, onMenuClick }: { minimal?: boolean; onMenuClic
           )}
         </div>
 
-        {/* Right — Notifications + Theme + Persona */}
+        {/* Right — Simulation Badge + Notifications + Theme + Persona */}
         <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+          <SimulationBadge />
           <NotificationPopover />
           <ThemeToggle />
           <PersonaSwitch />

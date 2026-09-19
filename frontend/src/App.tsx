@@ -15,6 +15,7 @@ import { ForecastPage } from './pages/ForecastPage'
 import { ImportPage } from './pages/ImportPage'
 import { LandingPage } from './pages/LandingPage'
 import { NotFoundPage } from './pages/NotFoundPage'
+import { SettingsPage } from './pages/SettingsPage'
 import { SignInPage } from './pages/SignInPage'
 
 /** Sends `/app` to the current persona's home route. */
@@ -40,6 +41,7 @@ export function App() {
           <Route path="/chase" element={<ChasePage />} />
           <Route path="/forecast" element={<ForecastPage />} />
           <Route path="/import" element={<ImportPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
         </Route>
         <Route path="*" element={<NotFoundPage />} />
       </Route>
