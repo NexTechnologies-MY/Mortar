@@ -48,7 +48,7 @@ simulation bounds.
 | Financing   | Advisory financing-risk flags prompting early follow-up without gating sales    | Stricter upstream buyer pre-qualification rules that restrict launch momentum |
 | Knowledge   | Searchable staff guidance using MiniSearch and Jev semantic fit scoring         | Generic conversational chatbots or ungrounded generative prose assistants     |
 | Forecasting | Stage-weighted 30-day conversion forecast with uncertainty intervals            | Booking-face-value cash projection or accounting ledger reconciliation        |
-| Resilience  | Precomputed offline cache guaranteeing zero failure during demonstration        | High-availability multi-region cluster deployment or distributed messaging    |
+| Resilience  | Precomputed Jev answers so the demo survives a Jev outage                       | High-availability multi-region cluster deployment or distributed messaging    |
 | Data        | Purely synthetic dataset strictly compliant with Malaysian PDPA regulations     | Direct access to real buyer documents, live CRM databases, or banking APIs    |
 
 **Core Objective:** give operational staff a single source of truth for booking
@@ -607,26 +607,28 @@ following six-step pitch video script without error or manual intervention:
 The primary success measure for Mortar is one number that can be read within one
 quarter:
 
-$$\text{30-Day Verified SPA Conversion Rate} = \frac{\text{Bookings signing verified SPA within 30 days}}{\text{Total eligible bookings enrolled}} \times 100$$
+**30-day verified SPA rate** = bookings that sign a verified SPA within 30 days
+of booking, divided by all eligible bookings enrolled.
 
 - **Horizon:** exactly 30 calendar days from initial booking deposit date. A
   booking signing on day 31 is recorded as a conversion miss.
 - **Verification:** the milestone requires an executed agreement confirmed by
   the legal panel, not an informal verbal report.
-- **Significance:** in a typical launch cohort of 100 bookings, raising 30-day
-  conversion from 20% to 40% delivers 20 additional executed SPAs, releasing
-  inventory and bringing cash milestones forward.
+- **Illustration, Not A Finding:** the concept's worked example assumes 40
+  eligible stalled bookings whose 30-day conversion rises from 20% to 40%, which
+  gives 40 x (40% - 20%) = 8 additional SPAs. Real figures replace these
+  assumptions during the pilot.
 
 ### Secondary Operational Metrics
 
-| Metric                   | Measurement Method                                                                | Target Objective                   |
-| ------------------------ | --------------------------------------------------------------------------------- | ---------------------------------- |
-| Stalled Booking Recovery | Count of stalled bookings transitioned to active stage following task completion  | Recover >= 25% of stalled pipeline |
-| Case Dwell In Unknown    | Average calendar days bookings remain in `unknown: true` status                   | Reduce average dwell to < 5 days   |
-| Forecast Calibration     | Brier score comparing case probabilities against observed 30-day outcomes         | Brier score <= 0.18                |
-| AI Extraction Accuracy   | Proportion of Jev proposals confirmed by staff without modification or dispute    | Confirmation rate >= 90%           |
-| Live Jev Latency         | End-to-end network roundtrip time for live message extraction                     | 95th percentile < 2,500ms          |
-| Fallback Cache Hit Rate  | Percentage of demo requests successfully served from cache during network latency | 100% cache availability            |
+| Metric                   | Measurement Method                                                                | Target Objective                          |
+| ------------------------ | --------------------------------------------------------------------------------- | ----------------------------------------- |
+| Stalled Booking Recovery | Count of stalled bookings transitioned to active stage following task completion  | Set from the pilot baseline               |
+| Case Dwell In Unknown    | Average calendar days bookings remain in `unknown: true` status                   | Set from the pilot baseline               |
+| Forecast Calibration     | Brier score comparing case probabilities against observed 30-day outcomes         | Reported, not targeted, on simulated data |
+| AI Extraction Accuracy   | Proportion of Jev proposals confirmed by staff without modification or dispute    | Set from the pilot baseline               |
+| Live Jev Latency         | End-to-end network roundtrip time for live message extraction                     | Under 3 seconds in the demo               |
+| Fallback Cache Hit Rate  | Percentage of demo requests successfully served from cache during network latency | Every demo step has a cached answer       |
 
 ## Assumptions And Constraints
 
