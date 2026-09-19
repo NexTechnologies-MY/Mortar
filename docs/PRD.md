@@ -49,7 +49,7 @@ simulation bounds.
 | Knowledge   | Searchable staff guidance using MiniSearch and Jev semantic fit scoring         | Generic conversational chatbots or ungrounded generative prose assistants     |
 | Forecasting | Stage-weighted 30-day conversion forecast with uncertainty intervals            | Booking-face-value cash projection or accounting ledger reconciliation        |
 | Resilience  | Precomputed Jev answers so the demo survives a Jev outage                       | High-availability multi-region cluster deployment or distributed messaging    |
-| Data        | Purely synthetic dataset strictly compliant with Malaysian PDPA regulations     | Direct access to real buyer documents, live CRM databases, or banking APIs    |
+| Data        | Fully synthetic data describing no real person, so no personal data is held     | Direct access to real buyer documents, live CRM databases, or banking APIs    |
 
 **Core Objective:** give operational staff a single source of truth for booking
 progress, so cases are resolved within 30 days rather than languishing for
@@ -85,7 +85,7 @@ toward SPA execution.
 **Job To Be Done 1 (Stall Resolution):** When a booking stalls or sits idle, I
 want to see the exact blocker, responsible party, and suggested next action on
 my daily chase list, so that I can unblock the buyer before the booking lapses
-or the developer incurs statutory holding costs.
+or the unit sits off the market.
 
 **Job To Be Done 2 (Message Intake):** When a buyer or sales agent sends an
 update via WhatsApp or email in English, Malay, or Manglish, I want Mortar to
