@@ -25,8 +25,10 @@ export interface BookingRow {
 
 export function BookingsTable({ rows }: { rows: BookingRow[] }) {
   const navigate = useNavigate()
+  // Nine pill-heavy columns need tighter cells than the shared `px-4`, or the
+  // table outgrows the 1280px container and the last column clips.
   return (
-    <Table>
+    <Table className="[&_td]:px-3 [&_th]:px-3">
       <TableHeader>
         <TableRow>
           <TableHead>Booking</TableHead>
@@ -37,7 +39,7 @@ export function BookingsTable({ rows }: { rows: BookingRow[] }) {
           <TableHead>Evidence</TableHead>
           <TableHead>Risk</TableHead>
           <TableHead>Signals</TableHead>
-          <TableHead className="text-right">Open Tasks</TableHead>
+          <TableHead className="text-right">Tasks</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -57,7 +59,7 @@ export function BookingsTable({ rows }: { rows: BookingRow[] }) {
           >
             <TableCell className="font-mono text-[13px] font-medium">{booking.id}</TableCell>
             <TableCell className="font-mono text-[13px] font-medium">{booking.unit}</TableCell>
-            <TableCell className="max-w-56 truncate">{booking.buyer.name}</TableCell>
+            <TableCell className="max-w-44 truncate">{booking.buyer.name}</TableCell>
             <TableCell
               className={cn(
                 'text-right tabular-nums',
@@ -67,7 +69,7 @@ export function BookingsTable({ rows }: { rows: BookingRow[] }) {
               {formatDays(summary.bookingAgeDays)}
             </TableCell>
             <TableCell>
-              <span className="flex items-center gap-2">
+              <span className="flex items-center gap-1.5">
                 <StageTracker stage={summary.stage} confirmedKinds={confirmedKinds} />
                 <StagePill stage={summary.stage} />
               </span>

@@ -12,7 +12,7 @@ import { NotificationPopover } from '@/components/ui/NotificationPopover'
 import { usePersona } from '@/lib/persona'
 import { ChevronRight, Home, Menu } from 'lucide-react'
 
-type Crumb = { label: string; to?: string; icon?: React.ReactNode }
+type Crumb = { label: string; to?: string; icon?: React.ReactNode; short?: string }
 
 const ROUTE_LABELS: Record<string, string> = {
   '/bookings': 'Bookings',
@@ -31,7 +31,7 @@ function useBreadcrumbs(): Crumb[] {
 
   if (id && pathname.startsWith('/bookings/')) {
     crumbs.push({ label: 'Bookings', to: '/bookings' })
-    crumbs.push({ label: `Booking ${id}` })
+    crumbs.push({ label: `Booking ${id}`, short: id })
     return crumbs
   }
 
@@ -52,7 +52,7 @@ export function AppNav({ minimal, onMenuClick }: { minimal?: boolean; onMenuClic
 
   return (
     <nav className="fixed inset-x-0 top-0 z-50 border-b border-border bg-sidebar">
-      <div className="flex h-14 items-center justify-between gap-2 px-4 sm:px-6 lg:ml-16">
+      <div className="flex h-14 items-center justify-between gap-2 px-3 sm:px-6 lg:ml-16">
         {/* Left — Hamburger (mobile) + Breadcrumbs */}
         <div className="flex min-w-0 items-center gap-2">
           {!minimal && onMenuClick && (
@@ -96,10 +96,10 @@ export function AppNav({ minimal, onMenuClick }: { minimal?: boolean; onMenuClic
                   </span>
                 ))}
               </div>
-              {/* Current page only on mobile */}
+              {/* Current page only on mobile; `short` keeps long labels readable */}
               <span className="flex min-w-0 items-center gap-1.5 truncate text-sm font-medium text-foreground sm:hidden">
                 {lastCrumb?.icon}
-                {lastCrumb?.label}
+                {lastCrumb?.short ?? lastCrumb?.label}
               </span>
             </>
           )}

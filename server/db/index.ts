@@ -54,6 +54,8 @@ export interface Database {
   updateTaskStatus(id: string, status: Task['status'], completedAt: IsoDateTime | null): Promise<Task | null>
   /** Latest `jev_answers` rows for `extract`, `next_action` and `signals`, for the snapshot. */
   latestJevAnswers(): Promise<JevAnswerRow[]>
+  /** Total stored `jev_answers` rows — the real count behind the settings figure. */
+  jevAnswerCount(): Promise<number>
   /** Exact-hash cache read, else the latest answer for the subject with `stale: true`. */
   jevGet(
     kind: JevAnswerRow['kind'],
@@ -110,6 +112,11 @@ export function createDatabase(sql: SQL): Database {
     meta,
     caseData,
     latestJevAnswers,
+
+    async jevAnswerCount() {
+      const rows = await sql`select count(*)::int as n from jev_answers`
+      return (rows[0]?.n as number | undefined) ?? 0
+    },
 
     async snapshot() {
       const [metaRow, data, messages, playbooks, answers] = await Promise.all([

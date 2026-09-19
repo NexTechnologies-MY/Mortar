@@ -113,12 +113,14 @@ export function createApp(options: AppOptions): App {
       '/api/health',
       async () => {
         let dbOk = true
+        let jevAnswers: number | null = null
         try {
           await db.ping()
+          jevAnswers = await db.jevAnswerCount()
         } catch {
           dbOk = false
         }
-        return json({ ok: true, db: dbOk, jev: Boolean(options.jevAvailable) })
+        return json({ ok: true, db: dbOk, jev: Boolean(options.jevAvailable), jevAnswers })
       }
     ],
     ['GET', '/api/snapshot', async () => json(await db.snapshot())],
@@ -247,6 +249,11 @@ export function createApp(options: AppOptions): App {
       async ({ params }) => {
         if (!(await db.getBooking(params.id))) return error(404, `booking ${params.id} not found`)
         const messages = await db.messagesForBooking(params.id)
+        // Signals read the buyer's messages only; an empty history is not a
+        // Jev job, so the route 404s instead of scoring silence as unresponsive.
+        if (!messages.some((m) => m.senderRole === 'buyer')) {
+          return error(404, `booking ${params.id} has no buyer messages`)
+        }
         return json(await jev.signals({ bookingId: params.id, messages }))
       }
     ],

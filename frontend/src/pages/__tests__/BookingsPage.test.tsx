@@ -81,4 +81,17 @@ describe('BookingsPage', () => {
 
     expect(screen.getByTestId('location').textContent).toBe('/bookings/BK-9001')
   })
+
+  it('keeps the table scrollable with compact cells so the last column cannot clip', async () => {
+    renderBookings()
+    await screen.findByText('BK-9001')
+
+    // Nine columns overflowed the 1280px container; the fix pairs compact
+    // cell padding with a scrollable container and a clipping card wrapper.
+    const container = document.querySelector('[data-slot="table-container"]')!
+    expect(container.className).toContain('overflow-x-auto')
+    expect(container.parentElement!.className).toContain('overflow-hidden')
+    const table = document.querySelector('[data-slot="table"]')!
+    expect(table.className).toContain('[&_td]:px-3')
+  })
 })

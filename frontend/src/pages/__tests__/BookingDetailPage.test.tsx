@@ -117,6 +117,20 @@ describe('BookingDetailPage', () => {
     expect(within(item).queryByText('Confirmed')).toBeNull()
   })
 
+  it('asks Jev for signals once the buyer has messaged', async () => {
+    renderDetail('BK-9001')
+
+    expect(await screen.findByText('Prompt Replies')).toBeTruthy()
+    await waitFor(() => expect(vi.mocked(fetchSignals)).toHaveBeenCalledWith('BK-9001'))
+  })
+
+  it('never asks Jev for signals when the buyer has not messaged', async () => {
+    renderDetail('BK-0001')
+
+    expect(await screen.findByText('No Buyer Messages Have Arrived Yet.')).toBeTruthy()
+    await waitFor(() => expect(vi.mocked(fetchSignals)).not.toHaveBeenCalled())
+  })
+
   it('does not fetch signals for a booking missing from the snapshot', async () => {
     renderDetail('BK-9999')
 

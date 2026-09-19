@@ -8,6 +8,7 @@
  * `components/ui/NotificationPopover.tsx`.
  */
 
+import { REFERENCE_DATE, simNow } from '@mortar/core'
 import type { Notification } from '@/components/ui/NotificationPopover'
 
 const STORAGE_KEY = 'mortar.notifications'
@@ -17,8 +18,7 @@ function loadNotifications(): Notification[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return []
-    const parsed = JSON.parse(raw) as Array<Omit<Notification, 'timestamp'> & { timestamp: string }>
-    return parsed.map((n) => ({ ...n, timestamp: new Date(n.timestamp) }))
+    return JSON.parse(raw) as Notification[]
   } catch {
     return []
   }
@@ -59,7 +59,7 @@ export const notificationStore = {
         id: `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         title,
         description,
-        timestamp: new Date(),
+        timestamp: simNow(REFERENCE_DATE),
         read: false
       },
       ...notifications

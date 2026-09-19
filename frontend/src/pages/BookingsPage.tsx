@@ -137,7 +137,7 @@ export function BookingsPage() {
           <div className="mt-4">
             <BookingFilters filter={filter} onChange={setFilter} shown={visible.length} total={rows.length} />
           </div>
-          <div className="mt-3 rounded-md border border-border bg-card">
+          <div className="mt-3 overflow-hidden rounded-md border border-border bg-card">
             {visible.length === 0 ? (
               <EmptyState
                 icon={ClipboardList}

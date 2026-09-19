@@ -43,7 +43,7 @@ describe('SettingsPage', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.fetchHealth.mockResolvedValue({ ok: true, db: true, jev: true })
+    mocks.fetchHealth.mockResolvedValue({ ok: true, db: true, jev: true, jevAnswers: 87 })
     mocks.resetDemo.mockResolvedValue({
       seed: 20260918,
       referenceDate: '2026-09-18',
@@ -60,6 +60,30 @@ describe('SettingsPage', () => {
     expect(screen.getByText('Bookings')).toBeTruthy()
     expect(screen.getByText('Jev Answers')).toBeTruthy()
     await waitFor(() => expect(mocks.fetchHealth).toHaveBeenCalled())
+  })
+
+  it('reports the stored jev_answers count from health, not the snapshot views', async () => {
+    renderPage()
+    // The snapshot carries zero extractions/signals/nextActions; the stored
+    // count of 87 must come from /api/health, and the row shows '—' until then.
+    const row = (await screen.findByText('Jev Answers')).closest('div')!
+    await waitFor(() => expect(within(row).getByText('87')).toBeTruthy())
+  })
+
+  it('words the Jev line as a configured key, not a live connection', async () => {
+    renderPage()
+    const note = await screen.findByText('Whether A TypeSafe API Key Is Configured')
+    const row = note.closest('div')!.parentElement!
+    expect(within(row).getByText('Configured')).toBeTruthy()
+    expect(within(row).queryByText('Connected')).toBeNull()
+  })
+
+  it('re-checks health after a reset', async () => {
+    renderPage()
+    fireEvent.click(screen.getByRole('button', { name: 'Reset Demo Data' }))
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Reset Demo Data' }))
+    await waitFor(() => expect(mocks.fetchHealth).toHaveBeenCalledTimes(2))
   })
 
   it('resets the demo behind a confirm dialog, then refreshes', async () => {

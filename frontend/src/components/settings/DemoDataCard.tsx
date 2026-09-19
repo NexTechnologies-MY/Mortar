@@ -29,18 +29,29 @@ function formatDateTime(value: string | null): string {
   return match ? `${formatDate(match[1])}, ${match[2]}` : formatDate(value)
 }
 
-export function DemoDataCard({ snapshot, onReset }: { snapshot: Snapshot; onReset: () => Promise<void> }) {
+export function DemoDataCard({
+  snapshot,
+  jevAnswers,
+  onReset
+}: {
+  snapshot: Snapshot
+  /** Stored `jev_answers` rows from `/api/health`; `null` while unknown. */
+  jevAnswers: number | null
+  onReset: () => Promise<void>
+}) {
   const [open, setOpen] = useState(false)
   const [resetting, setResetting] = useState(false)
 
-  const counts: [string, number][] = [
+  const counts: [string, number | null][] = [
     ['Bookings', snapshot.bookings.length],
     ['Applications', snapshot.applications.length],
     ['Events', snapshot.events.length],
     ['Messages', snapshot.messages.length],
     ['Tasks', snapshot.tasks.length],
     ['Playbooks', snapshot.playbooks.length],
-    ['Jev Answers', snapshot.extractions.length + snapshot.signals.length + snapshot.nextActions.length]
+    // The snapshot only surfaces the latest answer per subject; the stored
+    // `jev_answers` total comes from the health route.
+    ['Jev Answers', jevAnswers]
   ]
 
   const runReset = async () => {
@@ -87,7 +98,7 @@ export function DemoDataCard({ snapshot, onReset }: { snapshot: Snapshot; onRese
             {counts.map(([label, n]) => (
               <div key={label} className="flex items-baseline justify-between gap-4 border-b border-border py-1.5">
                 <dt className="text-[13px] text-muted-foreground">{label}</dt>
-                <dd className="text-[13px] tabular-nums">{n.toLocaleString()}</dd>
+                <dd className="text-[13px] tabular-nums">{n === null ? '—' : n.toLocaleString()}</dd>
               </div>
             ))}
           </dl>

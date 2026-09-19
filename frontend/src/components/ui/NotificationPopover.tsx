@@ -14,6 +14,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Bell, X } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { formatDate } from '@/components/case/format'
 import { Button } from '@/components/ui/button'
 import { notificationStore } from '@/lib/notificationStore'
 
@@ -22,7 +23,8 @@ export type Notification = {
   id: string
   title: string
   description: string
-  timestamp: Date
+  /** Simulated time (`simNow`): the reference date with the wall-clock time. */
+  timestamp: string
   /** `false` until the user opens the popover and clicks this notification. */
   read: boolean
 }
@@ -65,7 +67,15 @@ export function NotificationPopover() {
 
   return (
     <div ref={containerRef} className="relative">
-      <Button onClick={() => setIsOpen(!isOpen)} variant="ghost" size="icon" className="relative h-9 w-9">
+      <Button
+        onClick={() => setIsOpen(!isOpen)}
+        variant="ghost"
+        size="icon"
+        className="relative h-9 w-9"
+        aria-label="Notifications"
+        aria-haspopup="true"
+        aria-expanded={isOpen}
+      >
         <Bell className="h-4 w-4" />
         {unreadCount > 0 && (
           <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-status-info-bg text-[10px] font-medium text-status-info-fg">
@@ -116,12 +126,13 @@ export function NotificationPopover() {
                         </div>
                         <p className="mt-1 text-xs text-muted-foreground">{notification.description}</p>
                         <p className="mt-1 text-[10px] text-muted-foreground/60">
-                          {notification.timestamp.toLocaleDateString()}
+                          {formatDate(notification.timestamp)}
                         </p>
                       </div>
                     </div>
                     <button
                       type="button"
+                      aria-label={`Dismiss ${notification.title}`}
                       className="absolute right-3 top-3 rounded-md p-0.5 text-muted-foreground/50 opacity-100 transition-opacity hover:text-foreground sm:opacity-0 sm:group-hover:opacity-100"
                       onClick={(e) => {
                         e.stopPropagation()
