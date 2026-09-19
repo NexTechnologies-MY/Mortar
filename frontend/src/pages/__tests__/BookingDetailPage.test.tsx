@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { PersonaProvider } from '@/lib/persona'
 import { SnapshotProvider } from '@/lib/data'
 import { BookingDetailPage } from '@/pages/BookingDetailPage'
-import { reviewEvent, updateTask } from '@/lib/api'
+import { fetchSignals, reviewEvent, updateTask } from '@/lib/api'
 
 vi.mock('@/lib/api', async () => {
   const fixture = await import('@/components/bookings/__tests__/snapshotFixture')
@@ -93,5 +93,34 @@ describe('BookingDetailPage', () => {
     expect(await screen.findByText('Sender Role')).toBeTruthy()
     expect(screen.getByText('Sender Name')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Add Message' })).toBeTruthy()
+  })
+
+  it('does not dress an extraction in the status of an event recording a different claim', async () => {
+    renderDetail('BK-9002')
+
+    // MSG-9002-1: Jev read documents_received, but the message only carries the confirmed `booked`.
+    const body = await screen.findByText(/Passing my payslips and bank statement/)
+    const item = body.closest('li')!
+    expect(within(item).getByText('Documents Received')).toBeTruthy()
+    expect(within(item).getByText('Payslip')).toBeTruthy()
+    expect(within(item).queryByText('Confirmed')).toBeNull()
+    expect(within(item).queryByRole('button', { name: 'Confirm' })).toBeNull()
+  })
+
+  it('shows no status pill for a no_update read beside a confirmed event', async () => {
+    renderDetail('BK-9001')
+
+    // MSG-9001-3: the linked buyer_contacted is confirmed, but Jev read no update.
+    const body = await screen.findByText(/Very keen to sign once the loan is approved/)
+    const item = body.closest('li')!
+    expect(within(item).getByText('No Case Update In This Message.')).toBeTruthy()
+    expect(within(item).queryByText('Confirmed')).toBeNull()
+  })
+
+  it('does not fetch signals for a booking missing from the snapshot', async () => {
+    renderDetail('BK-9999')
+
+    expect(await screen.findByText('Booking Not Found')).toBeTruthy()
+    await waitFor(() => expect(vi.mocked(fetchSignals)).not.toHaveBeenCalled())
   })
 })

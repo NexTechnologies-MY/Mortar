@@ -33,6 +33,36 @@ export const EXTRACTION_9001: Extraction = {
   meta: { source: 'cache', stale: false, latencyMs: null }
 }
 
+/**
+ * Jev read `documents_received` on the BK-9002 buyer message, but the only
+ * event the message carries is the story `booked` — the extraction must not
+ * borrow that event's confirmed status.
+ */
+export const EXTRACTION_9002: Extraction = {
+  messageId: 'MSG-9002-1',
+  event: {
+    value: 'documents_received',
+    probabilities: { documents_received: 0.98 },
+    confidence: 0.98
+  },
+  document: { value: 'payslip', probabilities: { payslip: 0.97 }, confidence: 0.9 },
+  owner: { value: 'loan_admin', probabilities: { loan_admin: 0.9 }, confidence: 0.88 },
+  withdrawalRisk: 0.04,
+  needsAction: 0.3,
+  meta: { source: 'cache', stale: false, latencyMs: null }
+}
+
+/** `no_update` on MSG-9001-3: the linked `buyer_contacted` event is not a proposal to confirm. */
+export const EXTRACTION_9001_3: Extraction = {
+  messageId: 'MSG-9001-3',
+  event: { value: 'no_update', probabilities: { no_update: 0.9 }, confidence: 0.9 },
+  document: { value: 'none', probabilities: { none: 0.95 }, confidence: 0.95 },
+  owner: { value: 'none', probabilities: { none: 0.9 }, confidence: 0.9 },
+  withdrawalRisk: 0.03,
+  needsAction: 0.2,
+  meta: { source: 'cache', stale: false, latencyMs: null }
+}
+
 export const PROPOSAL_9001: CaseEvent = {
   id: 'EV-9001-J1',
   bookingId: 'BK-9001',
@@ -90,7 +120,7 @@ export function buildSnapshot(): Snapshot {
     messages: STORIES.flatMap((s) => s.messages),
     playbooks: PLAYBOOKS,
     tasks: [TASK_9001],
-    extractions: [EXTRACTION_9001],
+    extractions: [EXTRACTION_9001, EXTRACTION_9001_3, EXTRACTION_9002],
     signals: [SIGNALS_9001],
     nextActions: [],
     meta: { seed: DEFAULT_SEED, referenceDate: REFERENCE_DATE, resetAt: null }
