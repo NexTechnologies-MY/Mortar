@@ -1,0 +1,571 @@
+/**
+ * Route tests against an in-memory `Database` and a fake `JevService`. The
+ * lane-W1/W3 core functions are still stubs that throw "not built", so this
+ * file mocks `@mortar/core` with fakes for the same signatures; when the real
+ * implementations land the routes exercise them unchanged.
+ */
+import { describe, expect, mock, test } from 'bun:test'
+import * as realCore from '../../../packages/core/src/index'
+
+const SUMMARY: realCore.CaseSummary = {
+  bookingId: 'BK-9001',
+  stage: 'loan_applied',
+  unknown: false,
+  bookingAgeDays: 16,
+  daysSinceEvidence: 6,
+  applications: [{ id: 'APP-9001-1', bank: 'Apex Bank', status: 'documents_pending' }],
+  outstandingDocuments: ['payslip'],
+  risk: {
+    level: 'medium',
+    loanRm: 495000,
+    instalmentRm: 2300,
+    debtServiceRatio: 0.3,
+    marginOfFinancing: 0.9,
+    reasons: ['Income Document Outstanding']
+  },
+  stallReasons: ['Payslip Outstanding 5+ Days'],
+  openTasks: 1
+}
+
+mock.module('@mortar/core', () => ({
+  ...realCore,
+  simNow: () => '2026-09-18T12:00:00+08:00',
+  summarizeCases: () => [SUMMARY],
+  searchPlaybooks: (playbooks: realCore.Playbook[]) =>
+    playbooks.map((playbook, i) => ({ playbook, keywordScore: 10 - i })),
+  proposalFromExtraction: (extraction: realCore.Extraction, message: realCore.Message) =>
+    extraction.event.value === 'no_update'
+      ? null
+      : {
+          bookingId: message.bookingId,
+          applicationId: 'APP-9001-1',
+          track: 'loan',
+          kind: 'documents_received',
+          occurredAt: message.sentAt,
+          reportedBy: 'Jev',
+          verifiedBy: null,
+          status: 'provisional',
+          source: 'jev',
+          messageId: message.id,
+          document: 'payslip',
+          note: '94% Probability'
+        }
+}))
+
+import { createApp, type App } from '../app'
+import type { Database } from '../../db/index'
+import type { JevAnswerRow } from '../../db/mappers'
+import type {
+  Booking,
+  CaseData,
+  CaseEvent,
+  EvidenceStatus,
+  JevService,
+  Message,
+  SimulationMeta,
+  Snapshot,
+  Task
+} from '@mortar/core'
+
+const BOOKING: Booking = {
+  id: 'BK-9001',
+  project: 'Aster Heights',
+  unit: 'A-12-03',
+  priceRm: 550000,
+  bookingDate: '2026-09-02',
+  buyer: {
+    name: 'Raymond Tan Wei Hong',
+    ic: '000000-00-9001',
+    phone: '+60 00-000 9001',
+    age: 31,
+    grossMonthlyIncomeRm: 9500,
+    monthlyCommitmentsRm: 600,
+    propertiesOwned: 0
+  },
+  salesOwner: 'Nurul Aina',
+  loanOwner: 'Tan Mei Ling',
+  legalFirm: 'Khor & Associates'
+}
+
+const FIXTURE_MESSAGE: Message = {
+  id: 'MSG-9001-9',
+  bookingId: 'BK-9001',
+  senderRole: 'buyer',
+  senderName: 'Raymond Tan Wei Hong',
+  language: 'mixed',
+  sentAt: '2026-09-17T21:05:00+08:00',
+  body: 'Salam, payslip hantar esok boleh?',
+  origin: 'fixture'
+}
+
+const PROVISIONAL: CaseEvent = {
+  id: 'EV-9001-9',
+  bookingId: 'BK-9001',
+  applicationId: 'APP-9001-1',
+  track: 'loan',
+  kind: 'documents_requested',
+  occurredAt: '2026-09-12T11:00:00+08:00',
+  recordedAt: '2026-09-12T11:05:00+08:00',
+  reportedBy: 'Jev',
+  verifiedBy: null,
+  status: 'provisional',
+  source: 'jev',
+  messageId: 'MSG-9001-9',
+  document: 'payslip',
+  note: '88% Probability'
+}
+
+class FakeDb implements Database {
+  bookings = [BOOKING]
+  messages = [FIXTURE_MESSAGE]
+  events: CaseEvent[] = []
+  tasks: Task[] = []
+  playbooks: realCore.Playbook[] = []
+  resetAt: string | null = null
+
+  async ping() {}
+  async meta(): Promise<SimulationMeta | null> {
+    return { seed: 20260918, referenceDate: '2026-09-18', resetAt: this.resetAt }
+  }
+  async caseData(): Promise<CaseData> {
+    return { bookings: this.bookings, applications: [], events: this.events, tasks: this.tasks }
+  }
+  async snapshot(): Promise<Snapshot> {
+    return {
+      meta: (await this.meta())!,
+      bookings: this.bookings,
+      applications: [],
+      events: this.events,
+      tasks: this.tasks,
+      messages: this.messages,
+      playbooks: this.playbooks,
+      extractions: [],
+      signals: [],
+      nextActions: []
+    }
+  }
+  async getBooking(id: string) {
+    return this.bookings.find((b) => b.id === id) ?? null
+  }
+  async getMessage(id: string) {
+    return this.messages.find((m) => m.id === id) ?? null
+  }
+  async messagesForBooking(bookingId: string) {
+    return this.messages.filter((m) => m.bookingId === bookingId)
+  }
+  async eventsForMessage(messageId: string) {
+    return this.events.filter((e) => e.messageId === messageId)
+  }
+  async listPlaybooks() {
+    return this.playbooks
+  }
+  async insertMessage(message: Message) {
+    this.messages.push(message)
+  }
+  async insertEvent(event: CaseEvent) {
+    this.events.push(event)
+  }
+  async reviewEvent(id: string, status: EvidenceStatus, reviewer: string) {
+    const event = this.events.find((e) => e.id === id)
+    if (!event) return null
+    return { ...event, status, verifiedBy: reviewer }
+  }
+  async supersedePendingProposals(messageId: string) {
+    this.events = this.events.map((e) =>
+      e.messageId === messageId && (e.status === 'provisional' || e.status === 'disputed')
+        ? { ...e, status: 'superseded' as const }
+        : e
+    )
+  }
+  async insertTask(task: Task) {
+    this.tasks.push(task)
+  }
+  async updateTaskStatus(id: string, status: Task['status'], completedAt: string | null) {
+    const task = this.tasks.find((t) => t.id === id)
+    return task ? { ...task, status, completedAt } : null
+  }
+  async latestJevAnswers(): Promise<JevAnswerRow[]> {
+    return []
+  }
+  async jevGet() {
+    return null
+  }
+  async jevPut() {}
+}
+
+const fakeJev = (overrides: Partial<JevService> = {}): JevService => ({
+  extract: async ({ message }) => ({
+    messageId: message.id,
+    event: { value: 'documents_received', probabilities: { documents_received: 0.94 }, confidence: 0.9 },
+    document: { value: 'payslip', probabilities: { payslip: 0.97 }, confidence: 0.95 },
+    owner: { value: 'loan_admin', probabilities: { loan_admin: 0.8 }, confidence: 0.8 },
+    withdrawalRisk: 0.1,
+    needsAction: 0.9,
+    meta: { source: 'live', stale: false, latencyMs: 420 }
+  }),
+  nextAction: async ({ summary }) => ({
+    bookingId: summary.bookingId,
+    action: { value: 'request_document', probabilities: {}, confidence: 0.9 },
+    owner: { value: 'loan_admin', probabilities: {}, confidence: 0.8 },
+    urgency: { score: 2, confidence: 0.7 },
+    meta: { source: 'live', stale: false, latencyMs: 300 }
+  }),
+  rankPlaybooks: async ({ summary, query, candidates }) => ({
+    bookingId: summary.bookingId,
+    query,
+    results: candidates.map((c) => ({
+      playbookId: c.playbook.id,
+      keywordScore: c.keywordScore,
+      fit: { score: 2, confidence: 0.9 }
+    })),
+    meta: { source: 'cache', stale: false, latencyMs: 500 }
+  }),
+  signals: async ({ bookingId }) => ({
+    bookingId,
+    responsiveness: { score: 2, confidence: 0.8 },
+    hesitation: { score: 0, confidence: 0.7 },
+    meta: { source: 'cache', stale: false, latencyMs: 200 }
+  }),
+  ...overrides
+})
+
+const makeApp = (db = new FakeDb(), jev = fakeJev(), reset?: () => Promise<SimulationMeta>): App =>
+  createApp({
+    db,
+    jev,
+    reset:
+      reset ?? (async () => ({ seed: 20260918, referenceDate: '2026-09-18', resetAt: '2026-09-18T12:00:00+08:00' })),
+    jevAvailable: false
+  })
+
+const call = (app: App, path: string, init?: RequestInit) => app.fetch(new Request(`http://test${path}`, init))
+const post = (body?: unknown) => ({ method: 'POST', body: body === undefined ? undefined : JSON.stringify(body) })
+const errorOf = async (res: Response | null) => ((await res?.json()) as { error?: string } | undefined)?.error
+
+describe('createApp', () => {
+  test('non-api paths return null so static can handle them', async () => {
+    expect(await call(makeApp(), '/bookings')).toBeNull()
+    expect(await call(makeApp(), '/')).toBeNull()
+  })
+
+  test('GET /api/health reports db and jev flags', async () => {
+    const res = await call(makeApp(), '/api/health')
+    expect(res?.status).toBe(200)
+    expect(await res?.json()).toEqual({ ok: true, db: true, jev: false })
+  })
+
+  test('GET /api/health survives a dead database', async () => {
+    const db = new FakeDb()
+    db.ping = async () => {
+      throw new Error('down')
+    }
+    const res = await call(makeApp(db), '/api/health')
+    expect(await res?.json()).toEqual({ ok: true, db: false, jev: false })
+  })
+
+  test('GET /api/snapshot returns the snapshot', async () => {
+    const res = await call(makeApp(), '/api/snapshot')
+    expect(res?.status).toBe(200)
+    const snapshot = (await res?.json()) as Snapshot
+    expect(snapshot.bookings[0].id).toBe('BK-9001')
+  })
+
+  test('unknown /api route is a json 404', async () => {
+    const res = await call(makeApp(), '/api/nope')
+    expect(res?.status).toBe(404)
+    expect(await errorOf(res)).toMatch('no route')
+  })
+
+  describe('POST /api/messages', () => {
+    const valid = { bookingId: 'BK-9001', senderRole: 'buyer', senderName: 'Raymond', body: 'Payslip sent' }
+
+    test('stores the message, extracts, and stages the proposal event', async () => {
+      const db = new FakeDb()
+      const res = await call(makeApp(db), '/api/messages', post(valid))
+      expect(res?.status).toBe(200)
+      const body = (await res?.json()) as {
+        message: Message
+        extraction: { meta: { source: string } }
+        event: CaseEvent
+      }
+      expect(body.message.origin).toBe('live')
+      expect(body.message.language).toBe('en')
+      expect(body.extraction.meta.source).toBe('live')
+      expect(body.event.status).toBe('provisional')
+      expect(body.event.source).toBe('jev')
+      expect(body.event.messageId).toBe(body.message.id)
+      expect(db.messages[db.messages.length - 1]?.id).toBe(body.message.id)
+      expect(db.events).toHaveLength(1)
+    })
+
+    test('malay bodies are tagged ms', async () => {
+      const db = new FakeDb()
+      const res = await call(makeApp(db), '/api/messages', post({ ...valid, body: 'Salam saya dah hantar slip gaji' }))
+      expect(((await res?.json()) as { message: Message }).message.language).toBe('ms')
+    })
+
+    test.each([
+      [{}, 'bookingId'],
+      [{ bookingId: 'BK-9001' }, 'senderRole'],
+      [{ ...valid, senderRole: 'robot' }, 'senderRole'],
+      [{ ...valid, senderName: '' }, 'senderName'],
+      [{ ...valid, body: '' }, 'body']
+    ])('validation rejects %o mentioning %s', async (input, field) => {
+      const res = await call(makeApp(), '/api/messages', post(input))
+      expect(res?.status).toBe(400)
+      expect(await errorOf(res)).toContain(field)
+    })
+
+    test('unknown booking is a 404', async () => {
+      const res = await call(makeApp(), '/api/messages', post({ ...valid, bookingId: 'BK-0000' }))
+      expect(res?.status).toBe(404)
+    })
+  })
+
+  describe('POST /api/messages/:id/extract', () => {
+    test('re-extracts and supersedes the old proposal', async () => {
+      const db = new FakeDb()
+      db.events.push({ ...PROVISIONAL })
+      const res = await call(makeApp(db), '/api/messages/MSG-9001-9/extract', post())
+      expect(res?.status).toBe(200)
+      const body = (await res?.json()) as { event: CaseEvent }
+      expect(db.events.find((e) => e.id === 'EV-9001-9')?.status).toBe('superseded')
+      expect(body.event.status).toBe('provisional')
+      expect(body.event.messageId).toBe('MSG-9001-9')
+    })
+
+    test('leaves a confirmed event alone and returns null', async () => {
+      const db = new FakeDb()
+      db.events.push({ ...PROVISIONAL, status: 'confirmed', verifiedBy: 'Nurul Aina' })
+      const res = await call(makeApp(db), '/api/messages/MSG-9001-9/extract', post())
+      const body = (await res?.json()) as { event: CaseEvent | null }
+      expect(body.event).toBeNull()
+      expect(db.events[0].status).toBe('confirmed')
+    })
+
+    test('unknown message is a 404', async () => {
+      const res = await call(makeApp(), '/api/messages/MSG-0000/extract', post())
+      expect(res?.status).toBe(404)
+    })
+  })
+
+  describe('POST /api/events', () => {
+    const valid = { bookingId: 'BK-9001', track: 'loan', kind: 'buyer_contacted', reportedBy: 'Nurul Aina' }
+
+    test('inserts a confirmed staff event verified by the reporter', async () => {
+      const db = new FakeDb()
+      const res = await call(makeApp(db), '/api/events', post(valid))
+      expect(res?.status).toBe(200)
+      const event = (await res?.json()) as CaseEvent
+      expect(event.status).toBe('confirmed')
+      expect(event.source).toBe('staff')
+      expect(event.verifiedBy).toBe('Nurul Aina')
+      expect(event.occurredAt).toBe('2026-09-18T12:00:00+08:00')
+      expect(db.events).toHaveLength(1)
+    })
+
+    test('rejects a bad kind', async () => {
+      const res = await call(makeApp(), '/api/events', post({ ...valid, kind: 'exploded' }))
+      expect(res?.status).toBe(400)
+      expect(await errorOf(res)).toContain('kind')
+    })
+
+    test('rejects a bad document', async () => {
+      const res = await call(makeApp(), '/api/events', post({ ...valid, document: 'passport' }))
+      expect(res?.status).toBe(400)
+      expect(await errorOf(res)).toContain('document')
+    })
+
+    test('unknown booking is a 404', async () => {
+      const res = await call(makeApp(), '/api/events', post({ ...valid, bookingId: 'BK-0000' }))
+      expect(res?.status).toBe(404)
+    })
+  })
+
+  describe('POST /api/events/:id/review', () => {
+    test.each([
+      ['confirm', 'confirmed'],
+      ['dispute', 'disputed'],
+      ['dismiss', 'superseded']
+    ])('%s maps to %s with the reviewer recorded', async (decision, status) => {
+      const db = new FakeDb()
+      db.events.push({ ...PROVISIONAL })
+      const res = await call(makeApp(db), '/api/events/EV-9001-9/review', post({ decision, reviewer: 'Tan Mei Ling' }))
+      expect(res?.status).toBe(200)
+      const event = (await res?.json()) as CaseEvent
+      expect(event.status).toBe(status as CaseEvent['status'])
+      expect(event.verifiedBy).toBe('Tan Mei Ling')
+    })
+
+    test('rejects a bad decision', async () => {
+      const res = await call(makeApp(), '/api/events/EV-9001-9/review', post({ decision: 'shrug', reviewer: 'x' }))
+      expect(res?.status).toBe(400)
+    })
+
+    test('unknown event is a 404', async () => {
+      const res = await call(makeApp(), '/api/events/EV-0000/review', post({ decision: 'confirm', reviewer: 'x' }))
+      expect(res?.status).toBe(404)
+    })
+  })
+
+  test('POST /api/bookings/:id/next-action passes the last three messages to Jev', async () => {
+    let seen: realCore.Message[] = []
+    const jev = fakeJev({
+      nextAction: async ({ summary, recentMessages }) => {
+        seen = recentMessages
+        return {
+          bookingId: summary.bookingId,
+          action: { value: 'request_document', probabilities: {}, confidence: 0.9 },
+          owner: { value: 'loan_admin', probabilities: {}, confidence: 0.8 },
+          urgency: { score: 2, confidence: 0.7 },
+          meta: { source: 'live', stale: false, latencyMs: 10 }
+        }
+      }
+    })
+    const res = await call(makeApp(new FakeDb(), jev), '/api/bookings/BK-9001/next-action', post())
+    expect(res?.status).toBe(200)
+    expect(seen[seen.length - 1]?.id).toBe('MSG-9001-9')
+    const suggestion = (await res?.json()) as realCore.NextActionSuggestion
+    expect(suggestion.action.value).toBe('request_document')
+  })
+
+  describe('GET /api/bookings/:id/playbooks', () => {
+    const playbook: realCore.Playbook = {
+      id: 'PB-01',
+      title: 'Missing Income Documents',
+      situation: 's',
+      evidence: 'e',
+      action: 'a',
+      rationale: 'r',
+      limits: 'l',
+      outcome: 'o',
+      author: 'a',
+      reviewer: 'r',
+      reviewedOn: '2026-09-01',
+      status: 'approved',
+      tags: ['slip gaji']
+    }
+
+    test('defaults the query to the case blocker', async () => {
+      const db = new FakeDb()
+      db.playbooks.push(playbook)
+      const res = await call(makeApp(db), '/api/bookings/BK-9001/playbooks')
+      const ranking = (await res?.json()) as realCore.PlaybookRanking
+      expect(ranking.query).toBe('Payslip Outstanding 5+ Days')
+      expect(ranking.results[0].playbookId).toBe('PB-01')
+      expect(ranking.meta.source).toBe('cache')
+    })
+
+    test('an explicit q wins', async () => {
+      const db = new FakeDb()
+      const res = await call(makeApp(db), '/api/bookings/BK-9001/playbooks?q=valuation')
+      const ranking = (await res?.json()) as realCore.PlaybookRanking
+      expect(ranking.query).toBe('valuation')
+    })
+
+    test('unknown booking is a 404', async () => {
+      const res = await call(makeApp(), '/api/bookings/BK-0000/playbooks')
+      expect(res?.status).toBe(404)
+    })
+  })
+
+  test('GET /api/bookings/:id/signals returns the Jev answer', async () => {
+    const res = await call(makeApp(), '/api/bookings/BK-9001/signals')
+    expect(res?.status).toBe(200)
+    const signals = (await res?.json()) as realCore.BuyerSignals
+    expect(signals.bookingId).toBe('BK-9001')
+    expect(signals.responsiveness.score).toBe(2)
+  })
+
+  describe('POST /api/tasks', () => {
+    const valid = {
+      bookingId: 'BK-9001',
+      action: 'request_document',
+      title: 'Request Payslip',
+      ownerRole: 'loan_admin',
+      ownerName: 'Tan Mei Ling',
+      dueOn: '2026-09-19',
+      origin: 'jev'
+    }
+
+    test('inserts an open task', async () => {
+      const db = new FakeDb()
+      const res = await call(makeApp(db), '/api/tasks', post(valid))
+      expect(res?.status).toBe(200)
+      const task = (await res?.json()) as Task
+      expect(task.status).toBe('open')
+      expect(task.completedAt).toBeNull()
+      expect(db.tasks).toHaveLength(1)
+    })
+
+    test.each([
+      [{ ...valid, action: 'nap' }, 'action'],
+      [{ ...valid, ownerRole: 'ceo' }, 'ownerRole'],
+      [{ ...valid, dueOn: 'tomorrow' }, 'dueOn'],
+      [{ ...valid, origin: 'robot' }, 'origin']
+    ])('validation rejects %o mentioning %s', async (input, field) => {
+      const res = await call(makeApp(), '/api/tasks', post(input))
+      expect(res?.status).toBe(400)
+      expect(await errorOf(res)).toContain(field)
+    })
+  })
+
+  describe('PATCH /api/tasks/:id', () => {
+    const open: Task = {
+      id: 'TSK-1',
+      bookingId: 'BK-9001',
+      action: 'call_buyer',
+      title: 'Call Buyer',
+      ownerRole: 'sales',
+      ownerName: 'Nurul Aina',
+      dueOn: '2026-09-19',
+      status: 'open',
+      origin: 'staff',
+      createdAt: '2026-09-18T09:00:00+08:00',
+      completedAt: null
+    }
+
+    test('done sets completedAt', async () => {
+      const db = new FakeDb()
+      db.tasks.push(open)
+      const res = await call(makeApp(db), '/api/tasks/TSK-1', {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'done' })
+      })
+      const task = (await res?.json()) as Task
+      expect(task.status).toBe('done')
+      expect(task.completedAt).toBe('2026-09-18T12:00:00+08:00')
+    })
+
+    test('bad status is a 400, unknown task a 404', async () => {
+      const db = new FakeDb()
+      db.tasks.push(open)
+      expect((await call(makeApp(db), '/api/tasks/TSK-1', { method: 'PATCH', body: '{}' }))?.status).toBe(400)
+      expect(
+        (await call(makeApp(db), '/api/tasks/TSK-9', { method: 'PATCH', body: JSON.stringify({ status: 'done' }) }))
+          ?.status
+      ).toBe(404)
+    })
+  })
+
+  describe('POST /api/admin/reset', () => {
+    test('runs the reset and returns SimulationMeta', async () => {
+      const res = await call(makeApp(), '/api/admin/reset', post())
+      expect(res?.status).toBe(200)
+      const meta = (await res?.json()) as SimulationMeta
+      expect(meta.seed).toBe(20260918)
+    })
+
+    test('a second reset inside 30 seconds is a 429', async () => {
+      const db = new FakeDb()
+      const app = makeApp(db, fakeJev(), async () => {
+        db.resetAt = new Date().toISOString()
+        return { seed: 20260918, referenceDate: '2026-09-18', resetAt: db.resetAt }
+      })
+      expect((await call(app, '/api/admin/reset', post()))?.status).toBe(200)
+      const second = await call(app, '/api/admin/reset', post())
+      expect(second?.status).toBe(429)
+      expect(await errorOf(second)).toContain('30 seconds')
+    })
+  })
+})

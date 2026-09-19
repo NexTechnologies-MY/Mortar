@@ -6,11 +6,22 @@ ENV HUSKY=0
 COPY package.json bun.lock ./
 COPY frontend/package.json frontend/
 COPY packages/core/package.json packages/core/
+COPY packages/jev/package.json packages/jev/
+COPY server/package.json server/
 RUN bun install --frozen-lockfile
 COPY . .
 RUN bun run build
 
-FROM nginx:1.27-alpine
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=build /app/frontend/dist/ /usr/share/nginx/html/
+FROM oven/bun:1.3.14-alpine
+WORKDIR /app
+ENV NODE_ENV=production
+# node_modules carries the @mortar/* workspace symlinks; all of packages/ ships so a
+# future packages/jev workspace resolves without a Dockerfile change.
+COPY --from=build /app/package.json /app/bun.lock ./
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/packages ./packages
+COPY --from=build /app/server ./server
+COPY --from=build /app/frontend/dist ./frontend/dist
 EXPOSE 8080
+# Runs with DATABASE_URL, TYPESAFE_API_KEY and PORT only.
+CMD ["bun", "server/src/index.ts"]

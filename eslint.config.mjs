@@ -4,7 +4,7 @@ import reactHooks from 'eslint-plugin-react-hooks'
 import tseslint from 'typescript-eslint'
 import globals from 'globals'
 
-const typescriptFiles = ['frontend/**/*.{ts,tsx}', 'packages/**/*.{ts,tsx}']
+const typescriptFiles = ['frontend/**/*.{ts,tsx}', 'packages/**/*.{ts,tsx}', 'server/**/*.ts']
 
 const isOff = (setting) => setting === 'off' || setting === 0 || (Array.isArray(setting) && isOff(setting[0]))
 
