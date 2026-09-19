@@ -92,8 +92,10 @@ export function BacktestCard({ backtest }: { backtest: Backtest }) {
               <TableRow key={c.bucket}>
                 <TableCell>{c.bucket}</TableCell>
                 <TableCell className="text-right tabular-nums text-muted-foreground">{c.n}</TableCell>
-                <TableCell className="text-right tabular-nums">{formatPercent(c.predicted)}</TableCell>
-                <TableCell className="text-right tabular-nums">{formatPercent(c.observed)}</TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {c.n === 0 ? '—' : formatPercent(c.predicted)}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">{c.n === 0 ? '—' : formatPercent(c.observed)}</TableCell>
               </TableRow>
             ))}
           </TableBody>

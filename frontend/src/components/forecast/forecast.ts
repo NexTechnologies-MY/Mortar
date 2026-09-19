@@ -4,7 +4,7 @@
  * and map assumption source tags to status tones.
  */
 import { STORIES, generate } from '@mortar/core'
-import type { Dataset, IsoDate, Snapshot, SourceTag } from '@mortar/core'
+import type { Assumption, Dataset, IsoDate, Snapshot, SourceTag } from '@mortar/core'
 import type { StatusPillTone } from '@/components/ui/status-pill'
 
 export function datasetFor(snapshot: Snapshot): Dataset {
@@ -29,6 +29,12 @@ export function altDataset(seed: number, referenceDate: IsoDate, bookings = 140)
     applications: [...alt.applications, ...STORIES.flatMap((s) => s.applications)],
     events: [...alt.events, ...STORIES.flatMap((s) => s.events)]
   }
+}
+
+/** `1 day` / `2 days` — drop the plural s on a value of one. */
+export function formatAssumptionValue(a: Assumption): string {
+  const unit = a.value === 1 && a.unit.endsWith('s') ? a.unit.slice(0, -1) : a.unit
+  return `${a.value} ${unit}`
 }
 
 export const SOURCE_TAG_TONES: Record<SourceTag, StatusPillTone> = {

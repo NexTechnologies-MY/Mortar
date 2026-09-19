@@ -188,10 +188,13 @@ export function deriveCase(
   for (const e of confirmed) {
     const day = dateOf(e.occurredAt)
     const r = KIND_RANK[e.kind]
-    if (r !== null && r > funnelRank) {
+    if (r !== null) {
       if (r < EXIT_RANK) {
-        funnelRank = r
-        enteredAges[r] = diffDays(booking.bookingDate, day)
+        // A lower-rank event can sort after a higher one taken on the same day
+        // (booked at 20:00 after loan_submitted at 10:00); the rank was still
+        // reached, so record its entry age independently of the advance.
+        if (enteredAges[r] === null) enteredAges[r] = diffDays(booking.bookingDate, day)
+        if (r > funnelRank) funnelRank = r
       }
       if (r > rank) rank = r
     }
