@@ -303,6 +303,54 @@ describe('rankPlaybooks', () => {
     expect(ranking.results[0].fit?.score).toBe(2)
   })
 
+  it('calls Jev live when the only cached ranking is for a different input', async () => {
+    const { client, calls } = fakeClient(answers)
+    const cache = new MemoryCache()
+    cache.entries.push({
+      kind: 'playbooks',
+      subjectId: 'BK-9001',
+      inputHash: 'older-hash',
+      answer: {
+        bookingId: 'BK-9001',
+        query: 'earlier query',
+        results: [{ playbookId: 'PB-02', keywordScore: 0.5, fit: { score: 1, confidence: 0.5 } }],
+        meta: { source: 'live', stale: false, latencyMs: 300 }
+      },
+      latencyMs: 300
+    })
+    const jev = createJevService({ client, cache })
+
+    const ranking = await jev.rankPlaybooks(input())
+    expect(calls).toHaveLength(1)
+    expect(ranking.meta.source).toBe('live')
+    expect(ranking.meta.stale).toBe(false)
+    expect(ranking.results[0].fit?.score).toBe(2)
+  })
+
+  it('serves the stale cached ranking only after the live call fails', async () => {
+    const { client, calls } = failingClient()
+    const cache = new MemoryCache()
+    cache.entries.push({
+      kind: 'playbooks',
+      subjectId: 'BK-9001',
+      inputHash: 'older-hash',
+      answer: {
+        bookingId: 'BK-9001',
+        query: 'earlier query',
+        results: [{ playbookId: 'PB-02', keywordScore: 0.5, fit: { score: 1, confidence: 0.5 } }],
+        meta: { source: 'live', stale: false, latencyMs: 300 }
+      },
+      latencyMs: 300
+    })
+    const jev = createJevService({ client, cache })
+
+    const ranking = await jev.rankPlaybooks(input())
+    expect(calls).toHaveLength(1)
+    expect(ranking.meta.source).toBe('cache')
+    expect(ranking.meta.stale).toBe(true)
+    expect(ranking.query).toBe('earlier query')
+  })
+
   it('returns null fits when nothing is available', async () => {
     const { client } = failingClient()
     const jev = createJevService({ client, cache: new MemoryCache() })
@@ -334,6 +382,33 @@ describe('signals', () => {
     expect(state.buyer_messages).toHaveLength(2)
     expect(state.buyer_messages[0].hours_since_previous_message).toBe(2)
     expect(state.buyer_messages[1].hours_since_previous_message).toBe(24)
+  })
+
+  it('calls Jev live on a hash miss even when older signals are cached', async () => {
+    const answers = {
+      responsiveness: { type: 'score', score: 1, confidence: 0.8, legend: {}, probabilities: { '1': 0.8 } },
+      hesitation: { type: 'score', score: 0, confidence: 0.8, legend: {}, probabilities: { '0': 0.8 } }
+    }
+    const { client, calls } = fakeClient(answers)
+    const cache = new MemoryCache()
+    cache.entries.push({
+      kind: 'signals',
+      subjectId: 'BK-9001',
+      inputHash: 'older-hash',
+      answer: {
+        bookingId: 'BK-9001',
+        responsiveness: { score: 0, confidence: 0.5 },
+        hesitation: { score: 2, confidence: 0.5 },
+        meta: { source: 'live', stale: false, latencyMs: 200 }
+      },
+      latencyMs: 200
+    })
+    const jev = createJevService({ client, cache })
+
+    const signals = await jev.signals({ bookingId: 'BK-9001', messages: [message()] })
+    expect(calls).toHaveLength(1)
+    expect(signals.meta.source).toBe('live')
+    expect(signals.responsiveness.score).toBe(1)
   })
 })
 

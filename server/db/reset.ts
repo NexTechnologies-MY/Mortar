@@ -75,8 +75,14 @@ export async function resetDatabase(sql: SQL): Promise<SimulationMeta> {
 
   await sql.begin(async (tx) => {
     await tx.unsafe('truncate events, messages, loan_applications, bookings, playbooks, tasks, jev_answers, meta')
-    for (const b of bookings) {
-      await tx`insert into bookings ${tx({
+    // Multi-row inserts: one round trip per chunk instead of one per row.
+    const chunks = <T>(rows: T[]) => {
+      const out: T[][] = []
+      for (let i = 0; i < rows.length; i += 500) out.push(rows.slice(i, i + 500))
+      return out
+    }
+    for (const chunk of chunks(
+      bookings.map((b) => ({
         id: b.id,
         project: b.project,
         unit: b.unit,
@@ -86,13 +92,17 @@ export async function resetDatabase(sql: SQL): Promise<SimulationMeta> {
         sales_owner: b.salesOwner,
         loan_owner: b.loanOwner,
         legal_firm: b.legalFirm
-      })}`
+      }))
+    )) {
+      await tx`insert into bookings ${tx(chunk)}`
     }
-    for (const a of applications) {
-      await tx`insert into loan_applications ${tx({ id: a.id, booking_id: a.bookingId, bank: a.bank, banker: a.banker })}`
+    for (const chunk of chunks(
+      applications.map((a) => ({ id: a.id, booking_id: a.bookingId, bank: a.bank, banker: a.banker }))
+    )) {
+      await tx`insert into loan_applications ${tx(chunk)}`
     }
-    for (const m of messages) {
-      await tx`insert into messages ${tx({
+    for (const chunk of chunks(
+      messages.map((m) => ({
         id: m.id,
         booking_id: m.bookingId,
         sender_role: m.senderRole,
@@ -101,10 +111,12 @@ export async function resetDatabase(sql: SQL): Promise<SimulationMeta> {
         sent_at: m.sentAt,
         body: m.body,
         origin: m.origin
-      })}`
+      }))
+    )) {
+      await tx`insert into messages ${tx(chunk)}`
     }
-    for (const e of [...events, ...proposals]) {
-      await tx`insert into events ${tx({
+    for (const chunk of chunks(
+      [...events, ...proposals].map((e) => ({
         id: e.id,
         booking_id: e.bookingId,
         application_id: e.applicationId,
@@ -119,10 +131,12 @@ export async function resetDatabase(sql: SQL): Promise<SimulationMeta> {
         message_id: e.messageId,
         document: e.document,
         note: e.note
-      })}`
+      }))
+    )) {
+      await tx`insert into events ${tx(chunk)}`
     }
-    for (const p of PLAYBOOKS) {
-      await tx`insert into playbooks ${tx({
+    for (const chunk of chunks(
+      PLAYBOOKS.map((p) => ({
         id: p.id,
         title: p.title,
         situation: p.situation,
@@ -136,17 +150,21 @@ export async function resetDatabase(sql: SQL): Promise<SimulationMeta> {
         reviewed_on: p.reviewedOn,
         status: p.status,
         tags: textArray(p.tags)
-      })}`
+      }))
+    )) {
+      await tx`insert into playbooks ${tx(chunk)}`
     }
-    for (const e of cacheEntries) {
-      await tx`insert into jev_answers ${tx({
+    for (const chunk of chunks(
+      cacheEntries.map((e) => ({
         kind: e.kind,
         subject_id: e.subjectId,
         input_hash: e.inputHash,
         answer: e.answer,
-        source: 'precomputed',
+        source: 'precomputed' as const,
         latency_ms: e.latencyMs
-      })}`
+      }))
+    )) {
+      await tx`insert into jev_answers ${tx(chunk)}`
     }
     await tx`insert into meta (key, value) values
       ('seed', to_jsonb(${DEFAULT_SEED}::int)),

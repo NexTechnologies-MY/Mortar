@@ -68,9 +68,13 @@ export function createJevService(options: JevServiceOptions): JevService {
     neutral: () => A
   }): Promise<A> {
     const inputHash = jevInputHash(job.kind, job.state, QUESTION_VERSION[job.kind])
+    let staleFallback: A | null = null
     if (job.cacheFirst) {
       const hit = await cached<A>(job.kind, job.subjectId, inputHash)
-      if (hit) return hit
+      // Only an exact-hash hit is served; a stale answer is kept as the fallback
+      // while Jev gets a live shot at the new input.
+      if (hit && !hit.meta.stale) return hit
+      staleFallback = hit
     }
     if (client) {
       try {
@@ -88,7 +92,7 @@ export function createJevService(options: JevServiceOptions): JevService {
         // Fall through to the cached and neutral fallbacks.
       }
     }
-    return (await cached<A>(job.kind, job.subjectId, inputHash)) ?? job.neutral()
+    return staleFallback ?? (await cached<A>(job.kind, job.subjectId, inputHash)) ?? job.neutral()
   }
 
   const scoreAnswer = (answer: { score: number; confidence: number }): ScoreAnswer => ({

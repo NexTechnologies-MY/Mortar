@@ -49,6 +49,8 @@ const serveStatic = staticHandler(path.resolve(import.meta.dir, '../../frontend/
 
 Bun.serve({
   port,
+  // The default 10s kills slow requests; a reset can outlive it.
+  idleTimeout: 120,
   async fetch(req) {
     return (await app.fetch(req)) ?? serveStatic(req)
   }
