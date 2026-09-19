@@ -7,6 +7,9 @@
 **Always Prefix Commands With `rtk`**. If RTK has a dedicated filter, it uses
 it. If not, it passes through unchanged. This means RTK is always safe to use.
 
+RTK is optional. If `rtk` is not on `PATH` (check with `command -v rtk`), run
+commands without the prefix.
+
 **Important**: Even in command chains with `&&`, use `rtk`:
 
 ```bash

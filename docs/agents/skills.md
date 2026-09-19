@@ -20,6 +20,20 @@ Each command installs or refreshes that collection and updates
 `skills-lock.json`. Commit the lock file and the skill directories together so
 every clone loads the same instructions.
 
+### On Windows
+
+Each `.claude/skills/<name>` entry is a symlink into `.agents/skills/`. With
+git's default `core.symlinks=false` on Windows, they check out as text files and
+Claude Code loads no project skills. Turn on Developer Mode, then run:
+
+```powershell
+git config core.symlinks true
+Get-ChildItem .claude/skills -File | Remove-Item
+git checkout -- .claude/skills
+```
+
+For a fresh clone, pass `-c core.symlinks=true` to `git clone` instead.
+
 ## obra/superpowers
 
 Process skills by Jesse Vincent (`obra`), at
