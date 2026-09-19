@@ -11,6 +11,7 @@ import { AppErrorBoundary } from './components/layout/AppErrorBoundary'
 import { ScrollToTop } from './components/layout/ScrollToTop'
 import { ThemeProvider } from './hooks/useTheme'
 import { PersonaProvider } from './lib/persona'
+import { SnapshotProvider } from './lib/data'
 import { App } from './App'
 import './globals.css'
 
@@ -40,8 +41,10 @@ createRoot(document.getElementById('root')!).render(
         <ScrollToTop />
         <ThemeProvider>
           <PersonaProvider>
-            <App />
-            <Toaster position="bottom-center" toastOptions={{ duration: 4000 }} />
+            <SnapshotProvider>
+              <App />
+              <Toaster position="bottom-center" toastOptions={{ duration: 4000 }} />
+            </SnapshotProvider>
           </PersonaProvider>
         </ThemeProvider>
       </BrowserRouter>

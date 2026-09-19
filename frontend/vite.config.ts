@@ -14,7 +14,10 @@ export default defineConfig(({ mode }) => {
       }
     },
     server: {
-      port: parseInt(env.FRONTEND_PORT) || 5173
+      port: parseInt(env.FRONTEND_PORT) || 5173,
+      proxy: {
+        '/api': 'http://localhost:8787'
+      }
     },
     test: {
       environment: 'jsdom',

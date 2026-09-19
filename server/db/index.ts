@@ -1,0 +1,254 @@
+/**
+ * The database module. One `Database` interface for every route handler, backed
+ * by Bun's built-in `SQL` client on `DATABASE_URL`; tests substitute an
+ * in-memory fake. Every function here maps rows to contract types via
+ * `mappers.ts` — handlers never see snake_case.
+ */
+import { SQL } from 'bun'
+import type {
+  Booking,
+  CaseData,
+  CaseEvent,
+  EvidenceStatus,
+  IsoDateTime,
+  JevMeta,
+  Message,
+  Playbook,
+  SimulationMeta,
+  Snapshot,
+  Task
+} from '@mortar/core'
+import {
+  rowToApplication,
+  rowToBooking,
+  rowToEvent,
+  rowToJevAnswer,
+  rowToMessage,
+  rowToPlaybook,
+  rowToTask,
+  rowsToMeta,
+  type JevAnswerRow
+} from './mappers'
+
+export interface Database {
+  /** `select 1`; throws when the connection is down. */
+  ping(): Promise<void>
+  /** Simulation parameters, or `null` while the `seed` row is absent (pre-reset). */
+  meta(): Promise<SimulationMeta | null>
+  /** The case-derivation input: bookings, applications, events and tasks. */
+  caseData(): Promise<CaseData>
+  /** Everything `GET /api/snapshot` returns; throws when the database is unseeded. */
+  snapshot(): Promise<Snapshot>
+  getBooking(id: string): Promise<Booking | null>
+  getMessage(id: string): Promise<Message | null>
+  messagesForBooking(bookingId: string): Promise<Message[]>
+  eventsForMessage(messageId: string): Promise<CaseEvent[]>
+  listPlaybooks(): Promise<Playbook[]>
+  insertMessage(message: Message): Promise<void>
+  insertEvent(event: CaseEvent): Promise<void>
+  /** Staff review: sets the status and records `reviewer` as `verifiedBy`. */
+  reviewEvent(id: string, status: EvidenceStatus, reviewer: string): Promise<CaseEvent | null>
+  /** Supersedes still-open proposals (`provisional` or `disputed`) carrying `messageId`. */
+  supersedePendingProposals(messageId: string): Promise<void>
+  insertTask(task: Task): Promise<void>
+  updateTaskStatus(id: string, status: Task['status'], completedAt: IsoDateTime | null): Promise<Task | null>
+  /** Latest `jev_answers` rows for `extract`, `next_action` and `signals`, for the snapshot. */
+  latestJevAnswers(): Promise<JevAnswerRow[]>
+  /** Exact-hash cache read, else the latest answer for the subject with `stale: true`. */
+  jevGet(
+    kind: JevAnswerRow['kind'],
+    subjectId: string,
+    inputHash: string
+  ): Promise<{ answer: unknown; stale: boolean } | null>
+  jevPut(entry: {
+    kind: JevAnswerRow['kind']
+    subjectId: string
+    inputHash: string
+    answer: unknown
+    source: 'live' | 'precomputed'
+    latencyMs: number | null
+  }): Promise<void>
+}
+
+/** Marks a snapshot answer as served from the store rather than a fresh Jev call. */
+function cached<T extends { meta?: JevMeta }>(answer: unknown): T {
+  const parsed = answer as T
+  return { ...parsed, meta: { source: 'cache', stale: false, latencyMs: parsed.meta?.latencyMs ?? null } }
+}
+
+export function createDatabase(sql: SQL): Database {
+  const meta = async () => rowsToMeta(await sql`select key, value from meta`)
+
+  const caseData = async (): Promise<CaseData> => {
+    const [bookings, applications, events, tasks] = await Promise.all([
+      sql`select * from bookings order by id`,
+      sql`select * from loan_applications order by id`,
+      sql`select * from events order by occurred_at, id`,
+      sql`select * from tasks order by created_at, id`
+    ])
+    return {
+      bookings: bookings.map(rowToBooking),
+      applications: applications.map(rowToApplication),
+      events: events.map(rowToEvent),
+      tasks: tasks.map(rowToTask)
+    }
+  }
+
+  const latestJevAnswers = async () => {
+    const rows = await sql`select distinct on (kind, subject_id) kind, subject_id, answer
+      from jev_answers
+      where kind in ('extract', 'next_action', 'signals')
+      order by kind, subject_id, created_at desc`
+    return rows.map(rowToJevAnswer)
+  }
+
+  return {
+    async ping() {
+      await sql`select 1`
+    },
+
+    meta,
+    caseData,
+    latestJevAnswers,
+
+    async snapshot() {
+      const [metaRow, data, messages, playbooks, answers] = await Promise.all([
+        meta(),
+        caseData(),
+        sql`select * from messages order by sent_at, id`,
+        sql`select * from playbooks order by id`,
+        latestJevAnswers()
+      ])
+      if (!metaRow) throw new Error('database is not seeded')
+      const extractions: Snapshot['extractions'] = []
+      const signals: Snapshot['signals'] = []
+      const nextActions: Snapshot['nextActions'] = []
+      for (const row of answers) {
+        if (row.kind === 'extract') extractions.push(cached(row.answer))
+        else if (row.kind === 'signals') signals.push(cached(row.answer))
+        else if (row.kind === 'next_action') nextActions.push(cached(row.answer))
+      }
+      return {
+        ...data,
+        meta: metaRow,
+        messages: messages.map(rowToMessage),
+        playbooks: playbooks.map(rowToPlaybook),
+        extractions,
+        signals,
+        nextActions
+      }
+    },
+
+    async getBooking(id) {
+      const rows = await sql`select * from bookings where id = ${id}`
+      return rows.length ? rowToBooking(rows[0]) : null
+    },
+
+    async getMessage(id) {
+      const rows = await sql`select * from messages where id = ${id}`
+      return rows.length ? rowToMessage(rows[0]) : null
+    },
+
+    async messagesForBooking(bookingId) {
+      const rows = await sql`select * from messages where booking_id = ${bookingId} order by sent_at, id`
+      return rows.map(rowToMessage)
+    },
+
+    async eventsForMessage(messageId) {
+      const rows = await sql`select * from events where message_id = ${messageId} order by recorded_at, id`
+      return rows.map(rowToEvent)
+    },
+
+    async listPlaybooks() {
+      const rows = await sql`select * from playbooks order by id`
+      return rows.map(rowToPlaybook)
+    },
+
+    async insertMessage(message) {
+      await sql`insert into messages ${sql({
+        id: message.id,
+        booking_id: message.bookingId,
+        sender_role: message.senderRole,
+        sender_name: message.senderName,
+        language: message.language,
+        sent_at: message.sentAt,
+        body: message.body,
+        origin: message.origin
+      })}`
+    },
+
+    async insertEvent(event) {
+      await sql`insert into events ${sql({
+        id: event.id,
+        booking_id: event.bookingId,
+        application_id: event.applicationId,
+        track: event.track,
+        kind: event.kind,
+        occurred_at: event.occurredAt,
+        recorded_at: event.recordedAt,
+        reported_by: event.reportedBy,
+        verified_by: event.verifiedBy,
+        status: event.status,
+        source: event.source,
+        message_id: event.messageId,
+        document: event.document,
+        note: event.note
+      })}`
+    },
+
+    async reviewEvent(id, status, reviewer) {
+      const rows = await sql`update events set status = ${status}, verified_by = ${reviewer}
+        where id = ${id} returning *`
+      return rows.length ? rowToEvent(rows[0]) : null
+    },
+
+    async supersedePendingProposals(messageId) {
+      await sql`update events set status = 'superseded'
+        where message_id = ${messageId} and status in ('provisional', 'disputed')`
+    },
+
+    async insertTask(task) {
+      await sql`insert into tasks ${sql({
+        id: task.id,
+        booking_id: task.bookingId,
+        action: task.action,
+        title: task.title,
+        owner_role: task.ownerRole,
+        owner_name: task.ownerName,
+        due_on: task.dueOn,
+        status: task.status,
+        origin: task.origin,
+        created_at: task.createdAt,
+        completed_at: task.completedAt
+      })}`
+    },
+
+    async updateTaskStatus(id, status, completedAt) {
+      const rows = await sql`update tasks set status = ${status}, completed_at = ${completedAt}
+        where id = ${id} returning *`
+      return rows.length ? rowToTask(rows[0]) : null
+    },
+
+    async jevGet(kind, subjectId, inputHash) {
+      const exact = await sql`select answer, subject_id, kind from jev_answers
+        where kind = ${kind} and subject_id = ${subjectId} and input_hash = ${inputHash}
+        order by created_at desc limit 1`
+      if (exact.length) return { answer: rowToJevAnswer(exact[0]).answer, stale: false }
+      const latest = await sql`select answer, subject_id, kind from jev_answers
+        where kind = ${kind} and subject_id = ${subjectId}
+        order by created_at desc limit 1`
+      return latest.length ? { answer: rowToJevAnswer(latest[0]).answer, stale: true } : null
+    },
+
+    async jevPut(entry) {
+      await sql`insert into jev_answers ${sql({
+        kind: entry.kind,
+        subject_id: entry.subjectId,
+        input_hash: entry.inputHash,
+        answer: entry.answer,
+        source: entry.source,
+        latency_ms: entry.latencyMs
+      })}`
+    }
+  }
+}
