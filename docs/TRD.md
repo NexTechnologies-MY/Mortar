@@ -31,15 +31,15 @@ hosted on Neon.
 
 ```text
 Browser (React 19 SPA)               Bun Server (Cloud Run)             Neon PostgreSQL
-┌─────────────────────────┐         ┌─────────────────────────┐         ┌───────────────┐
-│ SnapshotProvider        │         │ Bun.serve API           │         │ bookings      │
-│ GET /api/snapshot ──────┼────────►│ map rows to contract ◄──┼────────►│ loan_apps     │
-│                         │         │                         │         │ events        │
-│ @mortar/core            │         │ POST /api/* writes ─────┼────────►│ messages      │
-│ (derives all views)     │         │                         │         │ tasks         │
-│                         │         │ @mortar/jev ────────────┼──┐      │ playbooks     │
-│                         │         │ (server-side client)    │  │      │ jev_answers   │
-└─────────────────────────┘         └─────────────────────────┘  │      └───────────────┘
+┌─────────────────────────┐         ┌─────────────────────────┐         ┌───────────────────┐
+│ SnapshotProvider        │         │ Bun.serve API           │         │ bookings          │
+│ GET /api/snapshot ──────┼────────►│ map rows to contract ◄──┼────────►│ loan_applications │
+│                         │         │                         │         │ events            │
+│ @mortar/core            │         │ POST /api/* writes ─────┼────────►│ messages          │
+│ (derives all views)     │         │                         │         │ tasks             │
+│                         │         │ @mortar/jev ────────────┼──┐      │ playbooks         │
+│                         │         │ (server-side client)    │  │      │ jev_answers, meta │
+└─────────────────────────┘         └─────────────────────────┘  │      └───────────────────┘
                                                                  ▼
                                                         TypeSafe Jev Service
                                                         (model: jev-latest)
@@ -64,10 +64,10 @@ asynchronous classification workflows:
   probabilistic classifications server-side. The TypeSafe API key is restricted
   to the server process and is never sent to the browser.
 - **Client Snapshot Provider:** The React client loads the entire operational
-  dataset upon authentication via `GET /api/snapshot`. The browser's
-  `SnapshotProvider` retains this data, derives all views client-side using
-  `@mortar/core`, sends mutations over REST, and refreshes the snapshot upon
-  completion.
+  dataset via `GET /api/snapshot`, fetched lazily on the first `useSnapshot()`
+  call so public pages never hit the API. The browser's `SnapshotProvider`
+  retains this data, derives all views client-side using `@mortar/core`, sends
+  mutations over REST, and refreshes the snapshot upon completion.
 - **Fixed Reference Time:** Every view operates against a fixed reference date,
   `REFERENCE_DATE = '2026-09-18'`, representing "Today". Live mutations generate
   timestamps using `simNow(referenceDate, clock)`, preserving the wall-clock
@@ -168,7 +168,7 @@ storage for nested domain entities:
   (`id text primary key`, `booking_id`, `sender_role`, `sender_name`,
   `language`, `sent_at timestamptz`, `body`, `origin`). Sender roles are
   restricted to `'buyer'`, `'banker'`, `'solicitor'`, and `'sales_agent'`.
-- `events`: Immutable event log capturing case history (`id text primary key`,
+- `events`: Auditable event log capturing case history (`id text primary key`,
   `booking_id`, `application_id`, `track`, `kind`, `occurred_at`, `recorded_at`,
   `reported_by`, `verified_by`, `status`, `source`, `message_id`, `document`,
   `note`). Indexed on `(booking_id, occurred_at)`.
@@ -281,11 +281,10 @@ stage-transition Monte Carlo model:
 - **Seeded Pseudo-Randomness:** Uses a deterministic PRNG algorithm (`sfc32` or
   `mulberry32`) seeded with `DEFAULT_SEED = 20260918`. `Math.random` is strictly
   forbidden, ensuring identical output across server and client executions.
-- **Demographic Synthesis:** Hand-written name banks reflect Malaysian
-  demographic distributions (Malay, Chinese, Indian), mapped to synthetic
-  national identity numbers (`000000-00-0001`) and phone numbers
-  (`+60 00-000 0001`). Institutions use fictional panel bank and legal firm
-  identities.
+- **Demographic Synthesis:** Hand-written lists of Malay, Chinese and Indian
+  names, mapped to synthetic national identity numbers (`000000-00-0001`) and
+  phone numbers (`+60 00-000 0001`). Institutions use fictional panel bank and
+  legal firm identities.
 - **Bank Application Chains:** Each booking spawns 1 to 3 bank applications.
   Per-application approval probability defaults to 0.62, bridging the REHDA
   survey band (55% to 69%) and historical official benchmarks (74%). Individual
@@ -369,8 +368,9 @@ calendar days of the initial booking deposit:
   rate.
 - **Binomial Confidence Intervals:** To accurately reflect small-sample
   uncertainty, every stage conversion rate is bounded by a Wilson 95% score
-  interval (Brown, Cai, and DasGupta, 2001). Standard Wald Gaussian intervals
-  are excluded due to systematic bias near parameter boundaries.
+  interval. Brown, Cai, and DasGupta (2001) recommend Wilson or Jeffreys
+  intervals for samples of 40 or fewer, where the textbook Wald interval is
+  unreliable.
 - **Monte Carlo Aggregate Distribution:** Expected signings equal the arithmetic
   sum of individual booking probabilities. High and low uncertainty bands
   represent the 10th and 90th percentiles of 2,000 seeded random outcome draws.
@@ -395,19 +395,23 @@ The engine validates its calibration through temporal backtesting (`backtest`):
 
 ### Parameter Assumptions
 
-All domain parameters reside in `DEFAULT_ASSUMPTIONS` with associated provenance
-tags:
+Every rate and threshold the simulation uses lives in `DEFAULT_ASSUMPTIONS` with
+a label, unit, tag and source, matching the seed table in
+[Front-End Simulation](research/company-brain/simulation.md). Untagged numbers
+are assumptions:
 
-| Parameter Key           | Label                         | Baseline | Unit  | Category Tag | Source Citation          |
-| ----------------------- | ----------------------------- | -------- | ----- | ------------ | ------------------------ |
-| `bank_approval_rate`    | Bank Approval Per Application | 0.62     | rate  | Industry     | REHDA 2H2025 / BNM 2017  |
-| `bank_decision_days`    | Bank Decision Working Days    | 7        | days  | Industry     | ABM Standard (Oct 2017)  |
-| `dsr_cap`               | Debt Service Ratio Ceiling    | 0.40     | rate  | Industry     | ABM Bank Guidelines 2017 |
-| `mortgage_interest`     | Mortgage Interest Rate        | 0.042    | rate  | Assumption   | Market Assessment        |
-| `max_tenure_years`      | Maximum Loan Tenure           | 35       | years | Official     | BNM Guideline (Jul 2013) |
-| `margin_cap_third_home` | Margin Cap (3rd Home Onward)  | 0.70     | rate  | Official     | BNM Policy (Nov 2010)    |
-| `margin_cap_default`    | Margin Cap (1st & 2nd Home)   | 0.90     | rate  | Industry     | Malaysian Banking Norm   |
-| `conversion_horizon`    | Success Measurement Window    | 30       | days  | Assumption   | Developer Target SLA     |
+| Parameter                         | Baseline             | Unit  | Tag        | Source                       |
+| --------------------------------- | -------------------- | ----- | ---------- | ---------------------------- |
+| Bank approval per application     | 0.62                 | rate  | Assumption | Between REHDA 55–69% and 74% |
+| Bank decision, complete documents | 2–9 (rejections 1–2) | days  | Industry   | ABM, Oct 2017                |
+| Submissions missing a document    | ~0.35                | rate  | Assumption | Assumptions panel            |
+| Debt service ratio ceiling        | 0.40                 | rate  | Industry   | ABM, 2017                    |
+| Mortgage interest rate            | 0.042                | rate  | Assumption | Assumptions panel            |
+| Maximum loan tenure               | 35                   | years | Official   | BNM, Jul 2013                |
+| Tenure age bound                  | Matures by age 70    | years | Assumption | Assumptions panel            |
+| Margin cap, third home onward     | 0.70                 | rate  | Official   | BNM, Nov 2010                |
+| Margin cap, first and second home | ~0.90                | rate  | Industry   | Press                        |
+| Conversion horizon                | 30                   | days  | Assumption | Assumptions panel            |
 
 ## Financing-Risk Method
 
@@ -434,7 +438,7 @@ rather than a blocking gate on bookings.
 │                 ┌────────────────────────────────┐                     │
 │                 ▼                                ▼                     │
 │   DSR > 40%                  DSR in [35%, 40%]           DSR < 35%     │
-│   or Deficit > 5%            or Income Doc Missing       and Complete  │
+│                              or Income Doc Missing       and Complete  │
 │         │                                │                     │       │
 │         ▼                                ▼                     ▼       │
 │    [HIGH RISK]                    [MEDIUM RISK]           [LOW RISK]   │
@@ -446,28 +450,42 @@ rather than a blocking gate on bookings.
 1. **Margin Ceiling Determination:** Evaluates previous residential property
    holdings. Under Bank Negara Malaysia rules (November 2010), purchasers owning
    two or more properties are capped at a 70% margin of financing. First- and
-   second-time buyers default to 90%.
+   second-time buyers default to about 90% (industry norm).
 2. **Loan Principal:** Multiplies purchase price by the applicable financing
    margin:
-   $$\text{LoanPrincipal} = \text{priceRm} \times \text{marginOfFinancing}$$
-3. **Amortization Tenure:** Calculates allowable tenure under BNM regulations
-   (July 2013): $$\text{TenureYears} = \min(35, 70 - \text{buyer.age})$$
+
+   ```text
+   LoanPrincipal = priceRm * marginOfFinancing
+   ```
+
+3. **Amortization Tenure:** Caps tenure at the BNM maximum of 35 years (July
+   2013), further bounded so the loan ends by age 70 (an assumption):
+
+   ```text
+   TenureYears = min(35, 70 - buyer.age)
+   ```
+
 4. **Monthly Instalment Calculation:** Applies standard annuity amortization at
-   an assumed 4.2% annual interest rate ($r = 0.042 / 12$ monthly,
-   $n =
-   \text{TenureYears} \times 12$ months):
-   $$\text{MonthlyInstalment} = \text{LoanPrincipal} \times \frac{r(1 + r)^n}{(1 + r)^n - 1}$$
+   an assumed 4.2% annual interest rate, with monthly rate `r = 0.042 / 12` and
+   `n = TenureYears * 12` monthly payments:
+
+   ```text
+   MonthlyInstalment = LoanPrincipal * (r * (1 + r)^n) / ((1 + r)^n - 1)
+   ```
+
 5. **Debt Service Ratio (DSR):** Compares total monthly liabilities against
    gross verified monthly earnings:
-   $$\text{DSR} = \frac{\text{buyer.monthlyCommitmentsRm} + \text{MonthlyInstalment}}{\text{buyer.grossMonthlyIncomeRm}}$$
+
+   ```text
+   DSR = (buyer.monthlyCommitmentsRm + MonthlyInstalment) / buyer.grossMonthlyIncomeRm
+   ```
 
 ### Risk Categorization
 
 - **High Risk:** Assigned if DSR exceeds the 0.40 (40%) threshold established by
   bank guidelines.
 - **Medium Risk:** Assigned if DSR is within 5 percentage points of the ceiling
-  (0.35 to 0.40), or if any core income document (payslip, EPF statement, tax
-  form) is currently outstanding.
+  (0.35 to 0.40), or while any income document is currently outstanding.
 - **Low Risk:** Assigned when DSR is below 0.35 and all income documentation has
   been verified.
 - **Reasons Output:** Populates structured explanation strings (e.g.,
@@ -477,9 +495,9 @@ rather than a blocking gate on bookings.
 ## Jev Integration
 
 The `@mortar/jev` package interfaces with the TypeSafe Jev model (`jev-latest`).
-Jev is a deterministic, probabilistic reasoning engine: it reads structured text
-and emits typed classifications with confidence scores and probability
-distributions. It never generates arbitrary natural language.
+Jev is a probabilistic reasoning engine: it reads text only and emits typed
+answers with confidence scores and probability distributions. It never generates
+text.
 
 ### Fan-Out Job Specifications
 
@@ -492,8 +510,9 @@ questions (Choice, Score, Noul) across a single state payload.
 │                                                                        │
 │   Input State Context                                                  │
 │   ┌────────────────────────────────────────────────────────────────┐   │
-│   │ Sender: Banker (Maybank) | Time: 2026-09-17 14:20:00           │   │
-│   │ Body: "Need 3 months payslip for BK-9001 to process LO"        │   │
+│   │ Sender: Banker (Apex Bank) | Time: 2026-09-16 15:30:00         │   │
+│   │ Body: "Still need latest 3 months slip gaji ah, current one    │   │
+│   │  only got June. Can get from buyer asap?"                      │   │
 │   │ Case Summary: Loan submitted, 0 docs pending                   │   │
 │   └────────────────────────────────────────────────────────────────┘   │
 │                 │                                                      │
@@ -513,12 +532,12 @@ questions (Choice, Score, Noul) across a single state payload.
 
 The four operational jobs are structured as follows:
 
-| Job Name      | State Context Supplied                                          | Target Questions And Primitives                                                                                                                                           |
-| ------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `extract`     | Message body, sender role, sender name, timestamp, case summary | `event` (Choice: `ExtractedEvent`), `document` (Choice: `DocumentKind` \| `none`), `owner` (Choice: `OwnerRole` \| `none`), `withdrawalRisk` (Noul), `needsAction` (Noul) |
-| `next_action` | Case summary, last 3 chronological messages, active tasks       | `action` (Choice: `NextAction`), `owner` (Choice: `OwnerRole`), `urgency` (Score: 0 to 2)                                                                                 |
-| `playbooks`   | Case summary, current blocker, candidate playbooks              | `fit` (Score: 0 = does not apply, 1 = partly applies, 2 = directly applies; evaluated per candidate playbook)                                                             |
-| `signals`     | Chronological buyer messages with inter-message gap analysis    | `responsiveness` (Score: 0 = unresponsive, 1 = slow, 2 = prompt), `hesitation` (Score: 0 = committed, 1 = doubts, 2 = hesitant)                                           |
+| Job Name      | State Context Supplied                                            | Target Questions And Primitives                                                                                                                                           |
+| ------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `extract`     | Message body, sender role, sender name, timestamp, case summary   | `event` (Choice: `ExtractedEvent`), `document` (Choice: `DocumentKind` \| `none`), `owner` (Choice: `OwnerRole` \| `none`), `withdrawalRisk` (Noul), `needsAction` (Noul) |
+| `next_action` | Case summary, last 3 chronological messages, open tasks           | `action` (Choice: `NextAction`), `owner` (Choice: `OwnerRole`), `urgency` (Score: 0 to 2)                                                                                 |
+| `playbooks`   | Case summary, current blocker, candidate playbooks                | `fit` (Score: 0 = does not apply, 1 = partly applies, 2 = directly applies; evaluated per candidate playbook)                                                             |
+| `signals`     | Buyer messages with timestamps and response gaps computed in code | `responsiveness` (Score: 0 = unresponsive, 1 = slow, 2 = prompt), `hesitation` (Score: 0 = committed, 1 = some doubts, 2 = strong doubts)                                 |
 
 ### Question Design Rules
 
@@ -533,8 +552,8 @@ The four operational jobs are structured as follows:
 
 ### Fallback And Caching Ladder
 
-The client relies on a four-tier fallback ladder managed by `JevService` to
-guarantee responsive user interaction:
+The client relies on a four-tier fallback ladder managed by `JevService` to keep
+user interaction responsive:
 
 ```text
 Request Dispatched
@@ -560,9 +579,11 @@ Request Dispatched
 - **Input Hash:** Computed as the SHA-256 digest of stable canonical JSON
   representing `{ kind, state, questionVersion }`.
 - **Precomputed Fixtures:** During build verification, `bun run jev:precompute`
-  executes live model calls for fixture messages across story bookings and up to
-  25 stalled cases, writing `server/fixtures/jev-cache.json`. This keeps demo
-  executions under 120 calls and eliminates live latency during presentations.
+  calls Jev live for an extraction on every fixture message; signals, next
+  action and default-query playbooks for each story booking; and next actions
+  for up to 25 stalled generated bookings, writing
+  `server/fixtures/jev-cache.json`. This keeps demo executions under 120 calls
+  and avoids live latency during presentations.
 
 ## Security, Secrets And Privacy
 
@@ -595,16 +616,18 @@ The system strictly handles synthetic data:
 ### Statutory Compliance: PDPA
 
 The Personal Data Protection (Amendment) Act 2024 took effect in phases
-through 2025. While synthetic records do not represent identifiable natural
-persons under the Act, the platform is architected to support future corporate
-data onboarding:
+through 2025. Synthetic records describe no identifiable person, so the
+prototype holds no personal data under the Act. The platform is still
+architected for future corporate data onboarding:
 
-- **72-Hour Breach Notification:** Technical audit logs capture all data
-  mutations to support statutory incident reporting.
-- **Automated Decision Guidelines:** In accordance with Personal Data Protection
-  Commission (PDPC) guidelines published in May 2026, AI outputs remain purely
-  advisory: human officers must explicitly verify all status transitions and
-  legal filings.
+- **72-Hour Breach Notification:** The event log preserves who reported and who
+  verified every mutation, groundwork for the amendment's statutory incident
+  reporting.
+- **Automated Decision Guidelines:** PDPC guidelines published in May 2026 cover
+  impact assessments, privacy by design, and automated decision-making; they
+  will apply once the forecast scores real buyers. The design already keeps AI
+  outputs advisory: human officers must explicitly verify all status transitions
+  and legal filings.
 - **Data Minimization:** Role-based views restrict loan document visibility.
   Sales administrators view case blocker classifications without accessing
   detailed personal financial documentation.
@@ -662,10 +685,10 @@ The workflow (`.github/workflows/deploy.yml`) runs on merges to `main`:
 
 Every proposed change must satisfy local and remote verification gates:
 
-- `bun run check`: Executes TypeScript workspace typechecking (`tsc -b` and
-  `tsc --noEmit`) and ESLint validation across all modules.
-- `bun run format`: Verifies code and documentation formatting against Prettier
-  rules (enforcing an 80-column limit on Markdown files).
+- `bun run check`: Executes ESLint validation, TypeScript workspace
+  typechecking, and the Vitest suites across all modules.
+- `bun run format`: Formats code and documentation with Prettier (enforcing an
+  80-column limit on Markdown files).
 - `bun run test`: Executes unit and integration test suites using Vitest.
 
 ## Testing Strategy
@@ -724,14 +747,14 @@ Located in `frontend/src/`:
 This section documents operational risks and flags specific architectural areas
 that may evolve as the parallel build completes.
 
-| Risk Area               | Failure Mode                                  | Severity | Mitigation Strategy                                                                                                            | Build Flag / Status                                                                   |
-| ----------------------- | --------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
-| **Jev Availability**    | Upstream API timeout or rate limiting in demo | High     | Precomputed fixtures in `jev-cache.json`; cache-first lookup on GET routes; client falls back to `source: 'cache'` smoothly    | Stable: Precompute script caches fixture calls before pitch recording                 |
-| **Database Latency**    | Neon compute endpoint cold start (~1s idle)   | Medium   | Server ping on container boot; pre-warm database endpoint prior to recording pitch video                                       | Stable: Warm-up procedure documented in operational runbook                           |
-| **SQL Prepared State**  | Bun SQL pool prepared statement failures      | Medium   | Disable client statement preparation (`prepare: false`) if pooled connection proxies mismanage statement identifiers           | Flagged: W2 server implementation to test pooled prepared statement behavior          |
-| **DSR Sensitivity**     | Static 4.2% interest rate assumption          | Low      | Move interest rate into editable `DEFAULT_ASSUMPTIONS` panel, allowing live sensitivity modeling during financial review       | Flagged: W1 sim module exposes interest rate as an editable assumption                |
-| **Cohort Sample Sizes** | Small sample sizes in deep funnel stages      | Medium   | Automatic fallback ladder in `forecast()`: cohort &rarr; stage aggregate &rarr; global baseline; Wilson confidence intervals   | Stable: Minimum threshold fixed at 8 cases per cohort                                 |
-| **Search Scaling**      | MiniSearch memory usage in client             | Low      | In-memory indexing is fast for 30 playbooks; if catalog exceeds 500 records, transition to server-side search (pgvector/Orama) | Roadmap: In-memory MiniSearch retained for prototype; vector search deferred to pilot |
+| Risk Area               | Failure Mode                                  | Severity | Mitigation Strategy                                                                                                          | Build Flag / Status                                                                   |
+| ----------------------- | --------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| **Jev Availability**    | Upstream API timeout or rate limiting in demo | High     | Precomputed fixtures in `jev-cache.json`; cache-first lookup on GET routes; client falls back to `source: 'cache'` smoothly  | Stable: Precompute script caches fixture calls before pitch recording                 |
+| **Database Latency**    | Neon compute endpoint cold start (~1s idle)   | Medium   | Server ping on container boot; pre-warm database endpoint prior to recording pitch video                                     | Stable: Warm-up procedure documented in operational runbook                           |
+| **SQL Prepared State**  | Bun SQL pool prepared statement failures      | Medium   | Disable client statement preparation (`prepare: false`) if pooled connection proxies mismanage statement identifiers         | Flagged: W2 server implementation to test pooled prepared statement behavior          |
+| **DSR Sensitivity**     | Static 4.2% interest rate assumption          | Low      | Move interest rate into editable `DEFAULT_ASSUMPTIONS` panel, allowing live sensitivity modeling during financial review     | Flagged: W1 sim module exposes interest rate as an editable assumption                |
+| **Cohort Sample Sizes** | Small sample sizes in deep funnel stages      | Medium   | Automatic fallback ladder in `forecast()`: cohort &rarr; stage aggregate &rarr; global baseline; Wilson confidence intervals | Stable: Minimum threshold fixed at 8 cases per cohort                                 |
+| **Search Scaling**      | MiniSearch memory usage in client             | Low      | In-memory indexing is fast for the 24 to 30 playbook fixtures; if the catalog grows far beyond that, move search server-side | Roadmap: In-memory MiniSearch retained for prototype; vector search deferred to pilot |
 
 ## See Also
 
@@ -746,7 +769,7 @@ that may evolve as the parallel build completes.
 - [Company-Brain Platform Concept](research/company-brain/README.md): Platform
   architecture evaluation and open-source benchmarks.
 - [Practitioner Survey Findings](research/practitioner-survey/README.md):
-  Empirical survey evidence from industry practitioners ($n = 5$).
+  Empirical survey evidence from industry practitioners (n = 5).
 - [Problem Statement](source/problem-statement.md): Original Chin Hin challenge
   brief and mission requirements.
 - [Project README](README.md): Project overview and setup instructions.
@@ -771,17 +794,17 @@ that may evolve as the parallel build completes.
   pre-SPA booking fees).
 - **Statutory Data Protection:** Laws of Malaysia, Personal Data Protection Act
   2010 (Act 709) and Personal Data Protection (Amendment) Act 2024; Personal
-  Data Protection Commission Guidelines on AI and Automated Decision-Making (May
-  2026).
+  Data Protection Commission guidelines covering impact assessments, privacy by
+  design, and automated decision-making (May 2026).
 
 ### Methodology And Technical Foundations
 
 - **Binomial Confidence Estimation:** Brown, L. D., Cai, T. T., and DasGupta, A.
   (2001). _Interval Estimation for a Binomial Proportion_. Statistical Science,
   16(2), 101–133.
-- **Synthetic Mortgage Benchmarking:** Columbia University / Stanford
-  researchers (2026). _MortarBench: Evaluating Mortgage-Origination AI Agents on
-  Synthetic Financial Dossiers_. arXiv:2606.19416.
+- **Synthetic Mortgage Benchmarking:** Columbia University (2026). _MortarBench:
+  Evaluating Mortgage-Origination AI Agents on Synthetic Financial Dossiers_.
+  arXiv:2606.19416.
 - **TypeSafe AI:** TypeSafe SDK and Jev Specification
   (`https://docs.typesafe.ai/`). Fan-out pattern, Choice, Score, and Noul
   primitive definitions.

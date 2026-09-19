@@ -26,9 +26,9 @@ Contents:
 ## Goals And Non-Goals
 
 Mortar unifies property unit booking operations across sales administration,
-loan administration, and finance. The primary goal is eliminating the visibility
-gap between booking deposit collection and SPA signing, transforming stalled
-cases into an actionable daily follow-up queue.
+loan administration, and finance. The primary goal is closing the visibility gap
+between booking deposit collection and SPA signing, transforming stalled cases
+into an actionable daily follow-up queue.
 
 A second goal is introducing structured artificial intelligence assistance
 without operational risk. Mortar employs TypeSafe Jev for typed message
@@ -52,8 +52,8 @@ simulation bounds.
 | Data        | Fully synthetic data describing no real person, so no personal data is held     | Direct access to real buyer documents, live CRM databases, or banking APIs    |
 
 **Core Objective:** give operational staff a single source of truth for booking
-progress, so cases are resolved within 30 days rather than languishing for
-months off the market.
+progress, so signings land inside the 30-day horizon rather than languishing for
+weeks off the market.
 
 **Human In The Loop:** ensure every AI suggestion remains a proposal until
 confirmed by an authorized staff member, preserving accountability across all
@@ -175,7 +175,7 @@ predictive methodology.
   immediately.
 - **US-12 (Playbook Knowledge Retrieval):** As a staff member, I want to search
   approved procedural playbooks ranked by keyword relevance and Jev semantic
-  fit, so that I can apply proven organizational guidance to the case.
+  fit, so that I can apply reviewed organizational guidance to the case.
 - **US-13 (Buyer Signals Evaluation):** As a Sales Admin, I want to view
   Jev-scored buyer responsiveness and hesitation indicators derived from message
   patterns, so that I can gauge buyer commitment.
@@ -289,11 +289,12 @@ The system must calculate an advisory financing-risk level and debt service
 ratio for each booking using deterministic financial rules.
 
 - **AC-3.1:** Margin of financing must cap at 90% for buyers with 0 or 1 prior
-  properties, and 70% for buyers with 2 or more prior properties (Bank Negara
-  Malaysia, Nov 2010). Loan amount = `priceRm * cap`.
+  properties (industry norm), and 70% for buyers with 2 or more prior properties
+  (Bank Negara Malaysia, Nov 2010). Loan amount = `priceRm * cap`.
 - **AC-3.2:** Monthly instalment must be calculated using the standard annuity
   formula at 4.2% annual interest (assumption) over tenure equal to
-  `min(35, 70 - buyer.age)` years (Bank Negara Malaysia, Jul 2013).
+  `min(35, 70 - buyer.age)` years. The 35-year ceiling follows Bank Negara
+  Malaysia (Jul 2013); the age-70 bound is an assumption.
 - **AC-3.3:** Debt service ratio (DSR) must equal
   `(buyer.monthlyCommitmentsRm + instalmentRm) / buyer.grossMonthlyIncomeRm`.
 - **AC-3.4:** The maximum allowable DSR cap must be 40% of gross income (ABM
@@ -306,7 +307,7 @@ ratio for each booking using deterministic financial rules.
 
 ### FR-4: Evidence Log And Multi-Party Event Verification
 
-The system must record all case events in an immutable, auditable log and
+The system must record all case events in a timestamped, auditable log and
 provide a human verification workflow.
 
 - **AC-4.1:** Every event must record `id`, `bookingId`, `applicationId`,
@@ -447,8 +448,9 @@ endpoint.
   a reset.
 - **AC-11.3:** `POST /api/admin/reset` must execute within a single transaction:
   truncate all tables; insert canonical generated bookings, story fixtures,
-  playbooks, and precomputed Jev cache entries; generate provisional events for
-  fixture messages lacking events; and write `meta`.
+  playbooks, and precomputed Jev cache entries; insert the provisional proposal
+  for each fixture message with a cached extraction and no event carrying its
+  `messageId`; and write `meta`.
 - **AC-11.4:** The reset endpoint must enforce a 30-second cooldown, returning
   HTTP 429 if called within 30 seconds of a prior reset.
 
@@ -476,7 +478,7 @@ AI service is unavailable.
 The system must support intake of operational spreadsheets.
 
 - **AC-13.1:** The `/import` screen must provide a custom drag-and-drop zone
-  accepting XLSX and CSV files up to 10MB.
+  accepting XLSX and CSV booking spreadsheets.
 - **AC-13.2:** The parser must extract unit codes, buyer names, ICs, phone
   numbers, prices, and booking dates, reporting total rows parsed.
 - **AC-13.3:** Parsing must occur entirely in the client without transmitting
@@ -503,22 +505,25 @@ The system must enforce persona routing and adhere to visual design standards.
 ### Performance
 
 - **NFR-1 (Initial Load Time):** The application shell and initial snapshot
-  payload (`GET /api/snapshot`) must render the full case ledger in under
-  1,500ms on a standard 4G or broadband connection.
+  payload (`GET /api/snapshot`) must render the full case ledger promptly on a
+  standard broadband connection. Page loads must never wait on a live Jev call.
 - **NFR-2 (Jev SLA And Timeout):** Live Jev API requests must complete within
   3,000ms. Calls exceeding 3,000ms must abort and fall back to cache
   immediately.
 - **NFR-3 (Client Derivation Latency):** Derivation of 148 case summaries and
-  forecast computation must execute in under 100ms on the client.
+  forecast computation must execute fast enough to keep page transitions
+  responsive on the client.
 
 ### Reliability And Resilience
 
 - **NFR-4 (Zero Demo Failure):** The precomputed offline cache
-  (`server/fixtures/jev-cache.json`) must cover all story fixture bookings
-  (`BK-9001` to `BK-9008`) and up to 25 stalled bookings, ensuring a seamless
-  demonstration even during complete network disconnection.
+  (`server/fixtures/jev-cache.json`) must cover an extraction for every fixture
+  message; signals, next action and default-query playbooks for each story
+  booking (`BK-9001` to `BK-9008`); and next actions for up to 25 stalled
+  generated bookings, ensuring a seamless demonstration even during complete
+  network disconnection.
 - **NFR-5 (Database Reconnection):** The server must handle Neon serverless
-  PostgreSQL cold starts (approximately 1,000ms) gracefully without dropping
+  PostgreSQL cold starts (about a second after idle) gracefully without dropping
   requests.
 
 ### Data Integrity And Determinism
@@ -527,14 +532,15 @@ The system must enforce persona routing and adhere to visual design standards.
   `generate({ seed: DEFAULT_SEED, referenceDate: REFERENCE_DATE, bookings: 140 })`
   must yield the identical booking records, application assignments, and event
   sequences across all execution environments.
-- **NFR-7 (Audit Trail Immutability):** Event records must be append-only.
-  Status modifications must create a verified transition referencing the acting
-  user and timestamp.
+- **NFR-7 (Auditable Event Log):** Every event must keep when it occurred, when
+  it was recorded, who reported it, and who verified it. Status modifications
+  must record the acting reviewer so the log stays auditable.
 
 ### Security, Secrets, And Privacy
 
-- **NFR-8 (PDPA Compliance):** All records must be 100% synthetic to comply with
-  the Malaysian Personal Data Protection Act 2010 and the 2024 Amendments. No
+- **NFR-8 (Synthetic Data And PDPA):** All records must be fully synthetic:
+  invented, rule-generated records describe no identifiable person, so the
+  prototype holds no personal data under the Personal Data Protection Act. No
   real personal data, identity card numbers, or real company names may be
   committed or stored.
 - **NFR-9 (Secret Isolation):** `DATABASE_URL` and `TYPESAFE_API_KEY` must
@@ -563,7 +569,7 @@ following six-step pitch video script without error or manual intervention:
     - Stalled live bookings are listed with stall reasons, financing-risk chips,
       and Jev-suggested next actions.
     - Booking `BK-9001` appears at the top: Jev suggests requesting the buyer's
-      missing payslip, owner Sales Admin, due today.
+      missing payslip, owner Sales, due today.
     - Clicking the action button creates the task with one click.
 2.  **Opens Case `BK-9001`:**
     - The user navigates to `/bookings/BK-9001`.
@@ -647,33 +653,35 @@ benchmarks.
 | Approval by number of applications           | Approximately 74%                                | Official           | Bank Negara Malaysia & ABM (2016–2017)     |
 | Rejection rate (RM 500k–700k band)           | 31%–45%, average 38%                             | Industry           | REHDA Property Industry Survey 2H2025      |
 | Developer launch take-up rate                | 21% (2H2025), 38% (1H2025)                       | Industry           | REHDA Property Industry Survey 2H2025      |
-| Margin of financing cap                      | 70% from 3rd home; 90% for 1st and 2nd           | Official, Industry | Bank Negara Malaysia, Nov 2010             |
-| Maximum loan tenure                          | 35 years or age 70 (whichever lower)             | Official           | Bank Negara Malaysia, Jul 2013             |
+| Margin of financing cap                      | 70% from the third home; about 90% before it     | Official, Industry | Bank Negara Malaysia, Nov 2010; press      |
+| Maximum loan tenure                          | 35 years; simulation also ends it by age 70      | Official           | Bank Negara Malaysia, Jul 2013             |
 | Debt service ratio cap                       | Instalments <= 40% of gross income               | Industry           | Association of Banks in Malaysia, 2017     |
-| Missing document rate at intake              | Approximately 35% of submissions                 | Assumption         | Calibrated operational baseline            |
-| Default per-application approval             | 0.62                                             | Assumption         | Calibrated between REHDA and BNM rates     |
-| Annual mortgage interest rate                | 4.2% per annum                                   | Assumption         | Prevailing Malaysian standard rate         |
+| Tenure age bound                             | Loan matures by buyer age 70                     | Assumption         | Assumptions panel                          |
+| Missing document rate at intake              | Approximately 35% of submissions                 | Assumption         | Assumptions panel                          |
+| Default per-application approval             | 0.62                                             | Assumption         | Between REHDA band (55–69%) and 74%        |
+| Annual mortgage interest rate                | 4.2% per annum                                   | Assumption         | Assumptions panel                          |
 
 ### Statutory And Legal Constraints
 
-- **Booking Fee Prohibition:** Regulation 11(2) of the Housing Development
-  (Control and Licensing) Regulations 1989 (amended 2015) prohibits collecting
-  any payment not provided in the statutory contract of sale. In practice,
-  developers collect 1% to 2% booking deposits under reservation agreements.
+- **Booking Fee Prohibition:** In Peninsular Malaysia, Regulation 11(2) of the
+  Housing Development (Control and Licensing) Regulations 1989 (amended 2015)
+  prohibits collecting any payment the contract of sale does not provide for.
+  Fees are still collected in practice, usually 2 to 3%.
 - **Late-Delivery Damages Clock:** The Federal Court held in _PJD Regency Sdn
   Bhd v Tribunal Tuntutan Pembeli Rumah_ (19 January 2021) that liquidated
   ascertained damages (LAD) for late delivery run from the date the booking fee
   is paid, not the SPA signing date. Unresolved stalled bookings directly
   increase developer legal liability.
-- **Statutory Post-SPA Termination:** Under Schedule H Clause 5(3) (Housing
-  Development Regulations 2002), if a buyer's loan application is rejected after
-  SPA execution, the developer may retain an administration fee of up to 1% of
-  the purchase price and must refund all remaining payments within 21 days.
-- **Data Protection Mandates:** The Personal Data Protection Act 2010 and the
-  Personal Data Protection (Amendment) Act 2024 mandate 72-hour breach
-  notifications, appointment of a Data Protection Officer, and compliance with
-  May 2026 PDPC guidelines regarding automated decision-making. Synthetic data
-  eliminates compliance risk during prototyping.
+- **Statutory Post-SPA Termination:** Under Schedule H Clause 5(3) (2002 text),
+  a buyer who proves income ineligibility after SPA execution owes 1% of the
+  purchase price, and the developer refunds the rest within 21 days.
+- **Data Protection Mandates:** The Personal Data Protection (Amendment) Act
+  2024 took effect in phases through 2025, adding breach notification to the
+  Commissioner within 72 hours, a mandatory data protection officer, data
+  portability, and a cross-border transfer test. PDPC guidelines issued in May
+  2026 cover impact assessments, privacy by design, and automated
+  decision-making; they will apply once the forecast scores real buyers. The
+  prototype holds only synthetic data, so these duties are not triggered.
 
 ### Operational Constraints
 
@@ -681,9 +689,9 @@ benchmarks.
   on 20 September 2026.
 - **Budgetary Boundary:** Zero budget for external software consultants, new CRM
   platform licensing, or vendor procurement.
-- **Organizational Authority:** The project operates without management
-  authority over external panel bankers, panel solicitors, or independent sales
-  agents.
+- **Organizational Authority:** The project operates without authority over the
+  sales director, the panel bankers, or the panel solicitors; the bankers and
+  solicitors do not work for the developer.
 
 ## Out Of Scope
 
@@ -744,23 +752,23 @@ benchmarks.
   applications processed on timely basis. Press Release, October 2017.
 - Bank Negara Malaysia. (2010). Measures to promote a stable and sustainable
   property market. Press Release, November 2010.
-- Bank Negara Malaysia. (2013). Guidelines on financing for residential
-  properties. Circular, July 2013.
+- Bank Negara Malaysia. (2013). Circular setting the 35-year maximum loan
+  tenure, July 2013.
 - Bank Negara Malaysia. (2026). Monthly Statistical Bulletin, Tables 1.10 and
   1.12.
 - Federal Court of Malaysia. (2021). _PJD Regency Sdn Bhd v Tribunal Tuntutan
-  Pembeli Rumah & Another_ [2021] 1 MLJ 460.
+  Pembeli Rumah & Another_, 19 January 2021.
 - Housing Development (Control and Licensing) Regulations 1989, Regulation 11(2)
-  (as amended by P.U. (A) 106/2015).
+  (as amended in 2015).
 - Housing Development (Control and Licensing) Regulations 2002, Schedule H.
 - Real Estate and Housing Developers' Association (REHDA). (2026). Property
-  Industry Survey 2H2025 and Market Outlook 2026.
+  Industry Survey 2H2025.
 - Personal Data Protection Act 2010 (Act 709) and Personal Data Protection
   (Amendment) Act 2024.
 
 ### Statistical And Technical References
 
 - Brown, L. D., Cai, T. T., & DasGupta, A. (2001). Interval estimation for a
-  binomial proportion. _Statistical Science_, 16(2), 101–117.
+  binomial proportion. _Statistical Science_, 16(2), 101–133.
 - TypeSafe AI. (2026). Jev API Documentation: Choice, Score, and Noul
   Primitives. `https://docs.typesafe.ai/llms.txt`.
