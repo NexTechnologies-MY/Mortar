@@ -6,6 +6,7 @@
  * `null` for non-API paths so the caller can fall through to static files.
  */
 import { REFERENCE_DATE, proposalFromExtraction, searchPlaybooks, simNow, summarizeCases } from '@mortar/core'
+import { defaultPlaybookQuery } from '@mortar/jev'
 import type {
   CaseEvent,
   CaseSummary,
@@ -85,6 +86,8 @@ type Handler = (ctx: { req: Request; url: URL; params: Record<string, string> })
 
 export function createApp(options: AppOptions): App {
   const { db, jev } = options
+  /** Wall clock of the last reset through this route; covers restarts via `meta` below. */
+  let lastResetAt = Number.NEGATIVE_INFINITY
 
   const summaryFor = async (bookingId: string): Promise<CaseSummary | null> => {
     const summaries = summarizeCases(await db.caseData(), REFERENCE_DATE)
@@ -233,10 +236,7 @@ export function createApp(options: AppOptions): App {
         if (!(await db.getBooking(params.id))) return error(404, `booking ${params.id} not found`)
         const summary = await summaryFor(params.id)
         if (!summary) return error(500, `no case summary for ${params.id}`)
-        const query =
-          url.searchParams.get('q')?.trim() ||
-          summary.stallReasons[0] ||
-          (summary.outstandingDocuments.length ? 'missing documents' : summary.stage)
+        const query = url.searchParams.get('q')?.trim() || defaultPlaybookQuery(summary)
         const candidates = searchPlaybooks(await db.listPlaybooks(), query)
         return json(await jev.rankPlaybooks({ summary, query, candidates }))
       }
@@ -299,10 +299,21 @@ export function createApp(options: AppOptions): App {
       '/api/admin/reset',
       async () => {
         const meta = await db.meta()
-        if (meta?.resetAt && Date.parse(meta.resetAt) > Date.now() - RESET_COOLDOWN_MS) {
-          return error(429, 'reset ran less than 30 seconds ago')
+        // `meta.resetAt` is sim time (the reference date plus the real time of
+        // day), so the cooldown measures it against `simNow`, not `Date.now`.
+        const recent =
+          Date.now() - lastResetAt < RESET_COOLDOWN_MS ||
+          (meta?.resetAt != null && Date.parse(meta.resetAt) > Date.parse(simNow(REFERENCE_DATE)) - RESET_COOLDOWN_MS)
+        if (recent) return error(429, 'reset ran less than 30 seconds ago')
+        // Arm before awaiting so a concurrent POST inside the reset's own
+        // runtime is also a 429; a failed reset frees the window again.
+        lastResetAt = Date.now()
+        try {
+          return json(await options.reset())
+        } catch (e) {
+          lastResetAt = Number.NEGATIVE_INFINITY
+          throw e
         }
-        return json(await options.reset())
       }
     ]
   ]

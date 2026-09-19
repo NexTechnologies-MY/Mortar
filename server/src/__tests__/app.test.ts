@@ -446,12 +446,14 @@ describe('createApp', () => {
       tags: ['slip gaji']
     }
 
-    test('defaults the query to the case blocker', async () => {
+    test('defaults the query to defaultPlaybookQuery so precomputed hashes hit', async () => {
       const db = new FakeDb()
       db.playbooks.push(playbook)
       const res = await call(makeApp(db), '/api/bookings/BK-9001/playbooks')
       const ranking = (await res?.json()) as realCore.PlaybookRanking
-      expect(ranking.query).toBe('Payslip Outstanding 5+ Days')
+      // An outstanding document outranks stall reasons; `defaultPlaybookQuery`
+      // is what the precompute cache and the frontend panel both use.
+      expect(ranking.query).toBe('missing payslip')
       expect(ranking.results[0].playbookId).toBe('PB-01')
       expect(ranking.meta.source).toBe('cache')
     })
@@ -566,6 +568,34 @@ describe('createApp', () => {
       const second = await call(app, '/api/admin/reset', post())
       expect(second?.status).toBe(429)
       expect(await errorOf(second)).toContain('30 seconds')
+    })
+
+    test('the cooldown still bites when resetAt is sim time', async () => {
+      const db = new FakeDb()
+      const app = makeApp(db, fakeJev(), async () => {
+        // `resetDatabase` stamps `resetAt` with `simNow`: the reference date and
+        // the real time of day, which `Date.now()` can be days ahead of.
+        db.resetAt = '2026-09-18T00:00:00+08:00'
+        return { seed: 20260918, referenceDate: '2026-09-18', resetAt: db.resetAt }
+      })
+      expect((await call(app, '/api/admin/reset', post()))?.status).toBe(200)
+      expect((await call(app, '/api/admin/reset', post()))?.status).toBe(429)
+    })
+
+    test('a reset recorded in meta by another path still cools down', async () => {
+      const db = new FakeDb()
+      // `simNow` is mocked to noon on the reference date, so a reset stamped at
+      // 11:59:59 sim time ran a second ago.
+      db.resetAt = '2026-09-18T11:59:59+08:00'
+      const res = await call(makeApp(db), '/api/admin/reset', post())
+      expect(res?.status).toBe(429)
+    })
+
+    test('a stale resetAt does not block a fresh reset', async () => {
+      const db = new FakeDb()
+      db.resetAt = '2026-09-18T00:00:00+08:00'
+      const res = await call(makeApp(db), '/api/admin/reset', post())
+      expect(res?.status).toBe(200)
     })
   })
 })

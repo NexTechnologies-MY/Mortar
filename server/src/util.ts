@@ -21,8 +21,13 @@ export function match(pathname: string, pattern: string): Record<string, string>
   if (have.length !== want.length) return null
   const params: Record<string, string> = {}
   for (let i = 0; i < want.length; i++) {
-    if (want[i].startsWith(':')) params[want[i].slice(1)] = decodeURIComponent(have[i])
-    else if (want[i] !== have[i]) return null
+    if (want[i].startsWith(':')) {
+      try {
+        params[want[i].slice(1)] = decodeURIComponent(have[i])
+      } catch {
+        return null
+      }
+    } else if (want[i] !== have[i]) return null
   }
   return params
 }
@@ -49,7 +54,7 @@ export function isOneOf<T extends string>(value: unknown, options: readonly T[])
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
 export function isIsoDate(value: unknown): value is string {
-  return typeof value === 'string' && ISO_DATE.test(value)
+  return typeof value === 'string' && ISO_DATE.test(value) && !Number.isNaN(Date.parse(value))
 }
 
 const CJK = /[぀-ヿ㐀-䶿一-鿿豈-﫿]/
