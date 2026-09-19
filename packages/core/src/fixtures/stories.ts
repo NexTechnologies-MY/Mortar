@@ -212,7 +212,7 @@ export const STORIES: StoryFixture[] = [
         verifiedBy: 'Nurul Aina',
         status: 'confirmed',
         source: 'story',
-        messageId: null,
+        messageId: 'MSG-9002-1',
         document: null,
         note: 'Booking confirmed'
       },
@@ -247,6 +247,22 @@ export const STORIES: StoryFixture[] = [
         messageId: 'MSG-9002-2',
         document: null,
         note: 'First bank rejected on income DSR'
+      },
+      {
+        id: 'EV-9002-5',
+        bookingId: 'BK-9002',
+        applicationId: null,
+        track: 'sales',
+        kind: 'buyer_contacted',
+        occurredAt: '2026-09-09T09:40:00+08:00',
+        recordedAt: '2026-09-09T09:40:00+08:00',
+        reportedBy: 'Tan Mei Ling',
+        verifiedBy: 'Nurul Aina',
+        status: 'confirmed',
+        source: 'story',
+        messageId: 'MSG-9002-3',
+        document: null,
+        note: null
       },
       {
         id: 'EV-9002-4',
@@ -349,7 +365,7 @@ export const STORIES: StoryFixture[] = [
         verifiedBy: 'Nurul Aina',
         status: 'confirmed',
         source: 'story',
-        messageId: null,
+        messageId: 'MSG-9003-1',
         document: null,
         note: 'Booking confirmed'
       },
@@ -444,7 +460,7 @@ export const STORIES: StoryFixture[] = [
         verifiedBy: 'Nurul Aina',
         status: 'confirmed',
         source: 'story',
-        messageId: null,
+        messageId: 'MSG-9004-1',
         document: null,
         note: 'Booking confirmed'
       },
@@ -555,7 +571,7 @@ export const STORIES: StoryFixture[] = [
         verifiedBy: 'Nurul Aina',
         status: 'confirmed',
         source: 'story',
-        messageId: null,
+        messageId: 'MSG-9005-1',
         document: null,
         note: 'Booking confirmed'
       },
@@ -761,7 +777,7 @@ export const STORIES: StoryFixture[] = [
         verifiedBy: 'Nurul Aina',
         status: 'confirmed',
         source: 'story',
-        messageId: null,
+        messageId: 'MSG-9007-1',
         document: null,
         note: 'Booking fee received'
       },
@@ -856,7 +872,7 @@ export const STORIES: StoryFixture[] = [
         verifiedBy: 'Nurul Aina',
         status: 'confirmed',
         source: 'story',
-        messageId: null,
+        messageId: 'MSG-9008-1',
         document: null,
         note: 'Booking confirmed'
       },

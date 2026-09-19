@@ -8,7 +8,7 @@ import type { CaseSummary, JevKind, Message, Playbook } from '@mortar/core'
 
 /** Bump a job's version when its state shape or question wording changes; it feeds the input hash. */
 export const QUESTION_VERSION: Record<JevKind, number> = {
-  extract: 1,
+  extract: 2,
   next_action: 1,
   playbooks: 1,
   signals: 1
@@ -56,7 +56,8 @@ export function extractJob(input: { message: Message; summary: CaseSummary }) {
         buyer_hesitant: 'The buyer voices doubts or compares other projects, without withdrawing.',
         buyer_withdrawing: 'The buyer wants to cancel or withdraw the booking.',
         spa_appointment: 'A Sale and Purchase Agreement signing appointment is arranged or confirmed.',
-        spa_signed: 'The Sale and Purchase Agreement was signed.',
+        spa_signed:
+          'The Sale and Purchase Agreement (SPA) itself was signed. Signing a booking form, a loan application form or a Letter of Offer is not an SPA signing.',
         no_update: 'No progress event: small talk, acknowledgements or an unclear message.'
       }
     ),
