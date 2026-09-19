@@ -119,7 +119,7 @@ export function BookingsPage() {
       ) : (
         <>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard label="Live Bookings" value={String(stats.live)} caption="Not Signed, Cancelled Or Lapsed" />
+            <StatCard label="Live Bookings" value={String(stats.live)} caption="Unresolved, Booked Within 30 Days" />
             <StatCard
               label="Stalled"
               value={String(stats.stalled)}

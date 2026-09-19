@@ -44,7 +44,7 @@ export function BookingDetailPage() {
   }, [refresh])
 
   useEffect(() => {
-    if (!id) return
+    if (!id || !snapshot || !snapshot.bookings.some((b) => b.id === id)) return
     let live = true
     fetchSignals(id)
       .then((signals) => {
@@ -54,7 +54,7 @@ export function BookingDetailPage() {
     return () => {
       live = false
     }
-  }, [id, refreshKey])
+  }, [id, refreshKey, snapshot])
 
   const data = useMemo(() => {
     if (!snapshot || !id) return null

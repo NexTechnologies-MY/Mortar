@@ -50,6 +50,7 @@ export function StageTracker({
         <TooltipTrigger asChild>
           <span
             role="img"
+            tabIndex={0}
             aria-label={`Stage ${progress} Of 5: ${SEGMENTS[Math.max(0, progress - 1)] ?? 'None'}`}
             className={cn('inline-flex cursor-default items-center gap-0.5', className)}
           >

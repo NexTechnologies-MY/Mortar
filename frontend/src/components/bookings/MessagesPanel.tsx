@@ -8,7 +8,7 @@
 
 import { useState, type ReactNode } from 'react'
 import { Check } from 'lucide-react'
-import type { CaseEvent, Extraction, Message } from '@mortar/core'
+import type { CaseEvent, EventKind, Extraction, ExtractedEvent, Message } from '@mortar/core'
 import { JEV_REVIEW_THRESHOLD } from '@mortar/core'
 import { JevTag } from '@/components/case/JevTag'
 import { ProbabilityBar } from '@/components/case/ProbabilityBar'
@@ -31,10 +31,31 @@ const DECISION_TOASTS: Record<Decision, string> = {
   dismiss: 'Proposal dismissed.'
 }
 
-/** The proposal event attached to a message: the newest one still standing. */
-function currentProposal(events: CaseEvent[], messageId: string): CaseEvent | null {
+/** The event kind an extraction records, mirroring `proposalFromExtraction`; `no_update` records nothing. */
+const EXTRACTED_EVENT_KIND: Partial<Record<ExtractedEvent, EventKind>> = {
+  loan_approved: 'loan_approved',
+  loan_rejected: 'loan_rejected',
+  documents_requested: 'documents_requested',
+  documents_received: 'documents_received',
+  valuation_shortfall: 'valuation_shortfall',
+  buyer_hesitant: 'buyer_hesitant',
+  buyer_withdrawing: 'buyer_withdrew',
+  spa_appointment: 'spa_appointment_set',
+  spa_signed: 'spa_signed'
+}
+
+/**
+ * The proposal event attached to a message: the newest one still standing that
+ * records Jev's extraction. An event linked to the message but recording a
+ * different claim — say a story `booked` — never passes for its proposal, so
+ * the extraction is not dressed in another event's status.
+ */
+function currentProposal(events: CaseEvent[], messageId: string, extraction: Extraction | null): CaseEvent | null {
+  const kind = extraction && EXTRACTED_EVENT_KIND[extraction.event.value]
+  if (!extraction || !kind) return null
+  const document = extraction.document.value === 'none' ? null : extraction.document.value
   const linked = events
-    .filter((e) => e.messageId === messageId)
+    .filter((e) => e.messageId === messageId && e.kind === kind && e.document === document)
     .sort((a, b) => b.recordedAt.localeCompare(a.recordedAt) || b.id.localeCompare(a.id))
   return linked.find((e) => e.status !== 'superseded') ?? linked[0] ?? null
 }
@@ -187,16 +208,19 @@ export function MessagesPanel({
           <p className="text-sm text-muted-foreground">No Messages Yet.</p>
         ) : (
           <ul className="divide-y divide-border">
-            {messages.map((message) => (
-              <MessageItem
-                key={message.id}
-                message={message}
-                extraction={extractions.get(message.id) ?? null}
-                proposal={currentProposal(events, message.id)}
-                reviewer={reviewer}
-                onChanged={onChanged}
-              />
-            ))}
+            {messages.map((message) => {
+              const extraction = extractions.get(message.id) ?? null
+              return (
+                <MessageItem
+                  key={message.id}
+                  message={message}
+                  extraction={extraction}
+                  proposal={currentProposal(events, message.id, extraction)}
+                  reviewer={reviewer}
+                  onChanged={onChanged}
+                />
+              )
+            })}
           </ul>
         )}
         {footer}

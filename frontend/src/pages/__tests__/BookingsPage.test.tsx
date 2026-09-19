@@ -48,6 +48,7 @@ describe('BookingsPage', () => {
 
     expect(await screen.findByRole('heading', { name: 'Bookings' })).toBeTruthy()
     expect(screen.getByText('Live Bookings')).toBeTruthy()
+    expect(screen.getByText('Unresolved, Booked Within 30 Days')).toBeTruthy()
     expect(screen.getByText('Stalled')).toBeTruthy()
     expect(screen.getAllByText('SPA Signed').length).toBeGreaterThan(0)
     expect(screen.getByText('BK-9001')).toBeTruthy()
