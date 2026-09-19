@@ -9,6 +9,9 @@
  * re-ranks. Rather than show playbooks for a blocker the case no longer has,
  * the panel falls back to the same keyword search locally and labels the
  * ranking as stale.
+ *
+ * Only playbooks Jev scored as a fit (direct or partial) are listed up front;
+ * the rest fold behind a single control that names their count.
  */
 
 import { useEffect, useMemo, useState } from 'react'
@@ -65,6 +68,8 @@ export function PlaybooksPanel({
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(true)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  /** The result whose no-fit tail is unfolded; a fresh ranking re-folds it. */
+  const [restOpen, setRestOpen] = useState<{ ranking: PlaybookRanking | null; requested: string } | null>(null)
   const byId = useMemo(() => new Map(playbooks.map((p) => [p.id, p])), [playbooks])
 
   useEffect(() => {
@@ -111,6 +116,15 @@ export function PlaybooksPanel({
     return { items, query: ranking.query }
   }, [result, playbooks, byId, defaultQuery])
 
+  const fits = (item: Ranked) => item.fit !== null && Math.round(item.fit.score) >= 1
+  const fitting = shown.items.filter(fits)
+  const rest = shown.items.filter((item) => !fits(item))
+  // With no scored fits at all (unscored stale results) there is nothing to
+  // fold behind; the full list shows.
+  const folded = fitting.length > 0 && rest.length > 0
+  const showRest = restOpen !== null && restOpen === result
+  const visible = folded && !showRest ? fitting : shown.items
+
   return (
     <Card>
       <CardContent className="flex flex-col gap-3 p-4">
@@ -144,11 +158,11 @@ export function PlaybooksPanel({
         ) : (
           shown.query && <p className="text-[13px] text-muted-foreground">Ranked For “{shown.query}”</p>
         )}
-        {shown.items.length === 0 ? (
+        {visible.length === 0 ? (
           <p className="text-sm text-muted-foreground">{loading ? 'Ranking Playbooks…' : 'No Playbooks Found.'}</p>
         ) : (
           <ul className="flex flex-col gap-2">
-            {shown.items.map(({ playbook, keywordScore, fit }) => {
+            {visible.map(({ playbook, keywordScore, fit }) => {
               const fitView = fit
                 ? FIT_PRESENTATION[Math.round(fit.score)]
                 : { tone: 'neutral' as const, label: 'Unscored' }
@@ -195,6 +209,17 @@ export function PlaybooksPanel({
               )
             })}
           </ul>
+        )}
+        {folded && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="self-start text-muted-foreground"
+            aria-expanded={showRest}
+            onClick={() => setRestOpen(showRest ? null : result)}
+          >
+            {showRest ? 'Show Fewer' : `Show ${rest.length} More`}
+          </Button>
         )}
       </CardContent>
     </Card>

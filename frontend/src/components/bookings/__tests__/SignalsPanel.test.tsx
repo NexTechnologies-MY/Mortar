@@ -1,7 +1,19 @@
-import { describe, expect, it } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import type { BuyerSignals } from '@mortar/core'
 import { SignalsPanel } from '@/components/bookings/SignalsPanel'
+
+// Radix positions tooltip content with floating-ui, which needs observers jsdom lacks.
+for (const observer of ['ResizeObserver', 'IntersectionObserver'] as const) {
+  vi.stubGlobal(
+    observer,
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+  )
+}
 
 const SIGNALS: BuyerSignals = {
   bookingId: 'BK-9001',
@@ -17,14 +29,23 @@ describe('SignalsPanel', () => {
     )
 
     expect(screen.getByText('Needs Review')).toBeTruthy()
-    expect(screen.getByText(/Responsiveness Confidence 13%/)).toBeTruthy()
   })
 
   it('omits Needs Review when both confidences clear the threshold', () => {
     render(<SignalsPanel signals={SIGNALS} hasBuyerMessages={true} />)
 
     expect(screen.queryByText('Needs Review')).toBeNull()
-    expect(screen.getByText(/Responsiveness Confidence 90%/)).toBeTruthy()
+  })
+
+  it('keeps the confidence sentence in a tooltip beside the heading', () => {
+    render(<SignalsPanel signals={SIGNALS} hasBuyerMessages={true} />)
+
+    expect(screen.queryByText(/Responsiveness Confidence 90%/)).toBeNull()
+    fireEvent.focusIn(screen.getByLabelText('Buyer signal confidences'))
+
+    const tooltip = screen.getByRole('tooltip')
+    expect(within(tooltip).getByText(/Responsiveness Confidence 90%/)).not.toBeNull()
+    expect(within(tooltip).getByText(/Hesitation Confidence 85%/)).not.toBeNull()
   })
 
   it('shows the empty state without signals', () => {
@@ -32,6 +53,7 @@ describe('SignalsPanel', () => {
 
     expect(screen.getByText('No Signal Read Yet.')).toBeTruthy()
     expect(screen.queryByText('Needs Review')).toBeNull()
+    expect(screen.queryByLabelText('Buyer signal confidences')).toBeNull()
   })
 
   it('says no buyer messages have arrived instead of faking a signal read', () => {

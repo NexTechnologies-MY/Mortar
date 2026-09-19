@@ -3,7 +3,9 @@
  * the extracted event, document and owner with probability, confidence and
  * the Needs Review marker under the 0.6 threshold, the JevTag source line,
  * and Confirm, Dispute and Dismiss actions on the pending proposal event.
- * Re-Run Jev re-extracts any message live and supersedes the old proposal.
+ * A `no_update` read collapses to one muted line; the full panel is reserved
+ * for proposals that need a decision. Re-Run Jev re-extracts any message
+ * live and supersedes the old proposal.
  */
 
 import { useState, type ReactNode } from 'react'
@@ -74,6 +76,15 @@ function ProposalBlock({
   const { event, document, owner, meta } = extraction
   const probability = event.probabilities[event.value] ?? 0
   const needsReview = event.confidence < JEV_REVIEW_THRESHOLD
+  if (event.value === 'no_update') {
+    return (
+      <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-muted-foreground">
+        <JevTag meta={meta} />
+        <span>No Case Update In This Message.</span>
+        {needsReview && <StatusPill tone="warning">Needs Review</StatusPill>}
+      </p>
+    )
+  }
   return (
     <div className="mt-2 rounded-md border border-border bg-muted/50 p-3">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -83,17 +94,13 @@ function ProposalBlock({
         <JevTag meta={meta} />
         {needsReview && <StatusPill tone="warning">Needs Review</StatusPill>}
       </div>
-      {event.value === 'no_update' ? (
-        <p className="mt-2 text-sm text-muted-foreground">No Case Update In This Message.</p>
-      ) : (
-        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm">
-          <span className="font-medium">{EXTRACTED_EVENT_LABELS[event.value]}</span>
-          {document.value !== 'none' && <span>{DOCUMENT_LABELS[document.value]}</span>}
-          {owner.value !== 'none' && <span className="text-muted-foreground">{OWNER_ROLE_LABELS[owner.value]}</span>}
-          <ProbabilityBar probability={probability} />
-          <span className="text-[13px] text-muted-foreground">Confidence {formatPercent(event.confidence)}</span>
-        </div>
-      )}
+      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm">
+        <span className="font-medium">{EXTRACTED_EVENT_LABELS[event.value]}</span>
+        {document.value !== 'none' && <span>{DOCUMENT_LABELS[document.value]}</span>}
+        {owner.value !== 'none' && <span className="text-muted-foreground">{OWNER_ROLE_LABELS[owner.value]}</span>}
+        <ProbabilityBar probability={probability} />
+        <span className="text-[13px] text-muted-foreground">Confidence {formatPercent(event.confidence)}</span>
+      </div>
       {proposal && (
         <div className="mt-2 flex flex-wrap items-center gap-2">
           {proposal.status === 'provisional' || proposal.status === 'disputed' ? (
@@ -150,7 +157,7 @@ function MessageItem({
   }
 
   return (
-    <li className="py-4 first:pt-0 last:pb-0">
+    <li className="group py-4 first:pt-0 last:pb-0">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <span className="text-sm font-medium">{message.senderName}</span>
         <Badge variant="secondary">{SENDER_ROLE_LABELS[message.senderRole]}</Badge>
@@ -158,7 +165,7 @@ function MessageItem({
         <Button
           size="sm"
           variant="ghost"
-          className="ml-auto h-7 px-2 text-xs"
+          className="ml-auto h-7 px-2 text-xs text-muted-foreground transition-opacity duration-[var(--motion-fast)] group-focus-within:opacity-100 group-hover:opacity-100 sm:opacity-0"
           disabled={pending}
           onClick={() => void run(() => extractMessage(message.id), 'Jev re-ran on this message.')}
         >

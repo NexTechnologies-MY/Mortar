@@ -114,6 +114,8 @@ describe('BookingDetailPage', () => {
     const body = await screen.findByText(/Very keen to sign once the loan is approved/)
     const item = body.closest('li')!
     expect(within(item).getByText('No Case Update In This Message.')).toBeTruthy()
+    // The no-update read collapses to one muted line — no proposal panel.
+    expect(within(item).queryByText('Jev Proposal')).toBeNull()
     expect(within(item).queryByText('Confirmed')).toBeNull()
   })
 

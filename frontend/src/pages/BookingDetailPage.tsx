@@ -131,9 +131,9 @@ export function BookingDetailPage() {
                   />
                 }
               />
-              <ApplicationsCard applications={data.applications} summary={data.summary} />
             </div>
             <div className="flex min-w-0 flex-col gap-4">
+              <ApplicationsCard applications={data.applications} summary={data.summary} />
               <PlaybooksPanel
                 bookingId={data.booking.id}
                 summary={data.summary}
