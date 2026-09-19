@@ -471,9 +471,14 @@ select:focus-visible,
 }
 
 /* The mobile drawer's backdrop reuses the scrim look inside the drawer's z-[70]
-   stacking context, but stays clickable so tapping it closes the drawer. */
+   stacking context, but stays clickable so tapping it closes the drawer. Only
+   while open: a child's own pointer-events beats the parent's none, so without
+   this gate the hidden scrim would swallow every tap on the page beneath. */
 .drawer-scrim {
   z-index: 0;
+}
+
+.drawer-scrim[data-open='true'] {
   pointer-events: auto;
 }
 

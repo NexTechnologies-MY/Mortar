@@ -3,7 +3,7 @@
  * Lets staff flip the workspace between the Sales Admin, Loan Admin, and Finance roles.
  */
 
-import { LogOut, UserCog } from 'lucide-react'
+import { Check, LogOut, UserCog } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import {
@@ -13,6 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/DropdownMenu'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { PERSONAS, usePersona } from '@/lib/persona'
 
 /**
@@ -25,12 +26,19 @@ export function PersonaSwitch() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="h-9 gap-2 px-2 sm:px-3" aria-label="Switch persona">
-          <UserCog className="h-4 w-4" />
-          <span className="hidden text-sm sm:inline">{meta.label}</span>
-        </Button>
-      </DropdownMenuTrigger>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-9 gap-2 px-2 sm:px-3" aria-label="Switch persona">
+                <UserCog className="h-4 w-4" />
+                <span className="hidden text-sm sm:inline">{meta.label}</span>
+              </Button>
+            </DropdownMenuTrigger>
+          </TooltipTrigger>
+          <TooltipContent>Switch Persona</TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
       <DropdownMenuContent align="end" className="w-44">
         {PERSONAS.map((p) => (
           <DropdownMenuItem
@@ -40,7 +48,7 @@ export function PersonaSwitch() {
           >
             <span className="flex w-full items-center justify-between gap-3">
               <span>{p.label}</span>
-              {persona === p.id && <span className="text-primary">●</span>}
+              {persona === p.id && <Check className="h-4 w-4 text-link" />}
             </span>
           </DropdownMenuItem>
         ))}

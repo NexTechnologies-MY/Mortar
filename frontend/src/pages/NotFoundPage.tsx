@@ -26,10 +26,10 @@ export function NotFoundPage() {
         </p>
 
         <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-          <Link to="/">
+          <Link to="/app">
             <Button size="lg" className="gap-2">
               <ArrowLeft className="h-4 w-4" />
-              Back To Home
+              Back To App
             </Button>
           </Link>
         </div>

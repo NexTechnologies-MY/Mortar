@@ -34,12 +34,12 @@ export function urgencyFor(suggestion: NextActionSuggestion | undefined, daysSin
   if (suggestion) {
     const score = Math.min(2, Math.max(0, Math.round(suggestion.urgency.score)))
     if (score === 2) return { label: 'Due Today', tone: 'warning', score }
-    if (score === 1) return { label: 'Due This Week', tone: 'neutral', score }
-    return { label: 'Within A Week', tone: 'neutral', score }
+    if (score === 1) return { label: 'In 2 Days', tone: 'neutral', score }
+    return { label: 'In 7 Days', tone: 'neutral', score }
   }
   if (daysSinceEvidence >= 10) return { label: `Overdue ${daysSinceEvidence} d`, tone: 'danger', score: -1 }
-  if (daysSinceEvidence >= 7) return { label: `Stale ${daysSinceEvidence} d`, tone: 'warning', score: -1 }
-  return { label: 'Watch', tone: 'neutral', score: -1 }
+  if (daysSinceEvidence >= 7) return { label: `Overdue ${daysSinceEvidence} d`, tone: 'warning', score: -1 }
+  return { label: 'In 2 Days', tone: 'neutral', score: -1 }
 }
 
 /** The staff name a suggested owner role resolves to on this booking. */
