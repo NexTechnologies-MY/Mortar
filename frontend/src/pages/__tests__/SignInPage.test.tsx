@@ -43,4 +43,21 @@ describe('SignInPage', () => {
     expect(window.localStorage.getItem(PERSONA_STORAGE_KEY)).toBe('finance')
     expect(screen.getByTestId('location').textContent).toBe('/forecast')
   })
+
+  it('makes the live guest button the primary action and the dead button transparent', () => {
+    renderSignIn()
+
+    expect(screen.getByRole('button', { name: 'Sign In As Guest' }).className).toContain('bg-primary')
+    const dead = screen.getByRole('button', { name: 'Sign In' })
+    expect(dead.className).toContain('disabled:bg-transparent')
+    expect(dead.className).toContain('disabled:border-input')
+  })
+
+  it('renders the joinery mark on the selected ground in the hero plate', () => {
+    const { container } = renderSignIn()
+
+    const aside = container.querySelector('aside')!
+    expect(aside.className).toContain('bg-selected')
+    expect(aside.querySelector('svg')).toBeTruthy()
+  })
 })

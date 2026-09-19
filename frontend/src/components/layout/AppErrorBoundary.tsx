@@ -27,7 +27,7 @@ function isChunkLoadError(error: unknown): boolean {
 /**
  * Top-level React error boundary mounted in `main.tsx`.
  * Catches rendering errors anywhere in the tree, logs them, and shows a recoverable
- * "Reload / Return to Dashboard" card instead of a blank screen.
+ * "Reload / Back To App" card instead of a blank screen.
  */
 export class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorBoundaryState> {
   state: AppErrorBoundaryState = {
@@ -62,8 +62,8 @@ export class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorB
     window.location.reload()
   }
 
-  private handleDashboardRedirect = () => {
-    window.location.assign('/dashboard')
+  private handleHomeRedirect = () => {
+    window.location.assign('/app')
   }
 
   render() {
@@ -75,19 +75,17 @@ export class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorB
       <div className="flex min-h-screen items-center justify-center bg-background px-4">
         <Card className="w-full max-w-lg border-border bg-card">
           <CardHeader className="space-y-3">
-            <CardTitle>Something went wrong</CardTitle>
-            <CardDescription>
-              The app hit an unexpected error while loading your session or project data.
-            </CardDescription>
+            <CardTitle>Something Went Wrong</CardTitle>
+            <CardDescription>Mortar hit an unexpected error while loading the workspace.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Reload the page to retry. If the issue persists, return to the dashboard and reopen the project.
+              Reload the page to retry. If the issue persists, head back to your desk and reopen the case.
             </p>
             <div className="flex flex-col gap-3 sm:flex-row">
               <Button onClick={this.handleReload}>Reload</Button>
-              <Button variant="outline" onClick={this.handleDashboardRedirect}>
-                Return to Dashboard
+              <Button variant="outline" onClick={this.handleHomeRedirect}>
+                Back To App
               </Button>
             </div>
           </CardContent>

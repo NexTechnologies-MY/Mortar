@@ -4,6 +4,7 @@
  */
 
 import { Link, useLocation, useParams } from 'react-router-dom'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
 import { PersonaSwitch } from '@/components/layout/PersonaSwitch'
 import { SimulationBadge } from '@/components/layout/SimulationBadge'
@@ -55,14 +56,21 @@ export function AppNav({ minimal, onMenuClick }: { minimal?: boolean; onMenuClic
         {/* Left — Hamburger (mobile) + Breadcrumbs */}
         <div className="flex min-w-0 items-center gap-2">
           {!minimal && onMenuClick && (
-            <button
-              type="button"
-              aria-label="Open menu"
-              onClick={onMenuClick}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground lg:hidden"
-            >
-              <Menu className="h-5 w-5" />
-            </button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="Open menu"
+                    onClick={onMenuClick}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground lg:hidden"
+                  >
+                    <Menu className="h-5 w-5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Open Menu</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           )}
           {!minimal && (
             <>

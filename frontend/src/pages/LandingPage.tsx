@@ -7,6 +7,7 @@
 import { Link } from 'react-router-dom'
 import { Moon, Sun } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { MortarMark } from '@/components/brand/MortarMark'
 import { HeroFilm } from '@/components/HeroFilm'
 import { useTheme } from '@/hooks/useTheme'
@@ -29,16 +30,23 @@ export function LandingPage() {
       <header className="land-head">
         <MortarMark size={36} className="text-foreground" />
         <span className="land-mark">Mortar</span>
-        <Button
-          type="button"
-          variant="secondary"
-          size="icon"
-          className="land-theme"
-          aria-label={`Switch to the ${next} theme`}
-          onClick={toggle}
-        >
-          {resolved === 'light' ? <Moon size={20} strokeWidth={1.75} /> : <Sun size={20} strokeWidth={1.75} />}
-        </Button>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="secondary"
+                size="icon"
+                className="land-theme"
+                aria-label={`Switch to the ${next} theme`}
+                onClick={toggle}
+              >
+                {resolved === 'light' ? <Moon size={20} strokeWidth={1.75} /> : <Sun size={20} strokeWidth={1.75} />}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Switch Theme</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
         <Button asChild className="land-go">
           <Link to="/sign-in">Open Mortar</Link>
         </Button>

@@ -8,6 +8,7 @@ import { Link, useLocation } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
 import { ChevronLeft, ClipboardList, BellRing, TrendingUp, FileUp, Settings, X } from 'lucide-react'
 import { MortarMark } from '@/components/brand/MortarMark'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePersona } from '@/lib/persona'
 
 interface NavItem {
@@ -209,14 +210,21 @@ export function AppSidebar({ mobileOpen = false, onMobileClose }: AppSidebarProp
               <MortarMark className="text-foreground" />
               <span className="whitespace-nowrap font-heading text-sm font-semibold tracking-tight">Mortar</span>
             </Link>
-            <button
-              type="button"
-              aria-label="Close menu"
-              onClick={onMobileClose}
-              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            >
-              <X className="h-4 w-4" />
-            </button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="Close menu"
+                    onClick={onMobileClose}
+                    className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Close Menu</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
 
           {/* Nav items */}

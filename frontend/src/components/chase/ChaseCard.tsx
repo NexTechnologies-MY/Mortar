@@ -67,7 +67,9 @@ export function ChaseCard({
             {booking.id} · {booking.buyer.name}
           </p>
         </div>
-        <StatusPill tone={urgency.tone}>{urgency.label}</StatusPill>
+        <StatusPill tone={urgency.tone} className="shrink-0 whitespace-nowrap">
+          {urgency.label}
+        </StatusPill>
       </div>
 
       {/* Blocker */}
