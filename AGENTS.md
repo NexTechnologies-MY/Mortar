@@ -32,8 +32,9 @@ flat config at the root, Prettier, husky + lint-staged.
 
 ## Rules
 
-- Prefix every shell command with `rtk` (`rtk git status`, `rtk bun run test`).
-  Details: [RTK](docs/agents/rtk.md).
+- If `rtk` is installed, prefix every shell command with it (`rtk git status`,
+  `rtk bun run test`); otherwise run commands as they are. Details:
+  [RTK](docs/agents/rtk.md).
 - Think before coding, keep changes minimal and surgical, and verify with a test
   before claiming done. Details:
   [Andrej Karpathy Skills](docs/agents/andrej-karpathy-skills.md).
