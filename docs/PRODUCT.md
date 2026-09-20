@@ -150,17 +150,17 @@ preventing stale cases from masquerading as healthy pipeline.
 
 Mortar adheres to the strict interface rules defined in the
 [Design Specification](DESIGN.md). Built for focused operational work, the
-interface functions as a digital paper ledger:
+interface functions as a digital ledger:
 
-- **Restrained Visual Tone:** Clean paper backgrounds, flat white cards, 1px
-  hairline borders, and 6px border radii. Decorative gradients, floating drop
-  shadows, and glassmorphism are banned.
+- **Restrained Visual Tone:** A white ground throughout, with cards set off by
+  1px hairlines rather than by a tinted page, and 6px border radii. Decorative
+  gradients, floating drop shadows, and glassmorphism are banned.
 - **Rigorous Typography:** Set exclusively in Geist for interface text and Geist
   Mono for unit codes, booking reference numbers, and financial data.
-- **Calibrated Color Tokens:** Orange is strictly reserved for primary user
-  actions and row selection. Status is communicated through six semantic tones
-  (positive, warning, danger, info, neutral, signed), always accompanied by
-  explicit text.
+- **Calibrated Color Tokens:** The interface is monochrome. Ink carries every
+  action, link and focus ring, and row selection is a grey step. Colour appears
+  only in the six semantic status tones (positive, warning, danger, info,
+  neutral, signed), each always accompanied by explicit text.
 
 ### Core Operational Capabilities
 

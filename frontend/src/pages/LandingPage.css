@@ -188,34 +188,3 @@
     justify-self: end;
   }
 }
-
-.land-strip {
-  display: flex;
-  gap: 8px;
-  height: 10px;
-}
-
-.land-strip span {
-  flex: 1;
-  border-radius: 9999px;
-}
-
-.land-strip span[data-stage='1'] {
-  background: var(--input);
-}
-
-.land-strip span[data-stage='2'] {
-  background: color-mix(in oklab, var(--foreground) 35%, var(--background));
-}
-
-.land-strip span[data-stage='3'] {
-  background: color-mix(in oklab, var(--foreground) 60%, var(--background));
-}
-
-.land-strip span[data-stage='4'] {
-  background: var(--foreground);
-}
-
-.land-strip span[data-stage='5'] {
-  background: var(--primary);
-}

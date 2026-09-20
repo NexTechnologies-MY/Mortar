@@ -6,30 +6,27 @@
 
 /* PRIMITIVE PALETTES + FIXED TOKENS */
 @theme {
-  /* Ink (warm neutral) */
-  --color-ink-50: #faf9f7;
-  --color-ink-100: #f2f0ed;
-  --color-ink-200: #e6e2dd;
-  --color-ink-300: #d3cec7;
-  --color-ink-400: #a8a29e;
-  --color-ink-500: #6e665f;
-  --color-ink-600: #57534e;
-  --color-ink-700: #44403c;
-  --color-ink-800: #292524;
-  --color-ink-900: #1c1917;
-  --color-ink-950: #0c0a09;
+  /* Ink (neutral grey) */
+  --color-ink-50: #fafafa;
+  --color-ink-100: #f5f5f5;
+  --color-ink-200: #e5e5e5;
+  --color-ink-300: #d4d4d4;
+  --color-ink-400: #a3a3a3;
+  --color-ink-500: #737373;
+  --color-ink-600: #525252;
+  --color-ink-700: #3a3a3a;
+  --color-ink-800: #262626;
+  --color-ink-900: #141414;
+  --color-ink-950: #0a0a0a;
 
   /* Paper */
   --color-paper-0: #ffffff;
-  --color-paper-50: #fdfbf8;
-  --color-paper-100: #f9f6f0;
-  --color-paper-200: #f5f0e8;
-  --color-paper-300: #ede6da;
-  --color-paper-400: #e2d9cb;
-  --color-paper-500: #cec3b1;
-
-  /* Extra orange step beyond Tailwind's 950 */
-  --color-orange-975: #2e1a12;
+  --color-paper-50: #fcfcfc;
+  --color-paper-100: #fafafa;
+  --color-paper-200: #f5f5f5;
+  --color-paper-300: #efefef;
+  --color-paper-400: #e5e5e5;
+  --color-paper-500: #d4d4d4;
 
   /* Radius — spec is 4px small / 6px medium; lg and xl land on 6px too */
   --radius-sm: 4px;
@@ -41,7 +38,7 @@
   --ease-out: cubic-bezier(0.2, 0.7, 0.3, 1);
 
   /* Elevation — overlay surfaces only (menus, popovers, pickers, dialogs); cards stay flat */
-  --shadow-overlay: 0 1px 2px rgba(28, 25, 23, 0.06), 0 8px 24px -4px rgba(28, 25, 23, 0.12);
+  --shadow-overlay: 0 1px 2px rgba(10, 10, 10, 0.06), 0 8px 24px -4px rgba(10, 10, 10, 0.12);
 
   /* Font tokens */
   --font-heading: 'Geist', ui-sans-serif, system-ui, sans-serif;
@@ -186,66 +183,68 @@
 
 /* LIGHT MODE */
 :root {
-  /* Surfaces */
-  --background: #f5f0e8;
-  --foreground: #1c1917;
+  /* Surfaces — a white ground throughout; structure comes from the hairline,
+     not from a grey page behind the cards. */
+  --background: #ffffff;
+  --foreground: #0a0a0a;
   --card: #ffffff;
   --card-foreground: var(--foreground);
   --popover: #ffffff;
   --popover-foreground: var(--foreground);
-  --sidebar: #f9f6f0;
-  --muted: #f9f6f0;
-  --accent: #ede6da;
+  --sidebar: #ffffff;
+  --muted: #f5f5f5;
+  --accent: #f0f0f0;
   --accent-foreground: var(--foreground);
-  --selected: #fff7ed;
-  --inverse: #1c1917;
-  --inverse-foreground: #f5f0e8;
+  --selected: #f5f5f5;
+  --inverse: #0a0a0a;
+  --inverse-foreground: #ffffff;
 
   /* Brand */
-  --primary: #c2410c;
-  --primary-hover: #9a3412;
+  --primary: #0a0a0a;
+  --primary-hover: #262626;
   --primary-foreground: #ffffff;
   --secondary: var(--card);
   --secondary-foreground: var(--foreground);
-  --link: #c2410c;
+  --link: #0a0a0a;
 
   /* Neutral */
-  --muted-foreground: #6e665f;
+  --muted-foreground: #6b6b6b;
 
   /* Feedback */
-  --destructive: #be123c;
+  --destructive: #b3261e;
   --destructive-foreground: #ffffff;
-  --disabled: #ede6da;
-  --disabled-foreground: #6e665f;
+  --disabled: #f5f5f5;
+  --disabled-foreground: #8a8a8a;
 
-  /* Borders & Input */
-  --border: #e2d9cb;
-  --input: #cec3b1;
-  --ring: #c2410c;
+  /* Borders & Input — 1.43:1 against white, the weight the cream ground used
+     to supply. A fainter line loses the ledger on a white page. */
+  --border: #d8d8d8;
+  --input: #c9c9c9;
+  --ring: #0a0a0a;
 
   /* Scrollbar */
-  --scrollbar-thumb: #e2d9cb;
-  --scrollbar-thumb-hover: #cec3b1;
+  --scrollbar-thumb: #d8d8d8;
+  --scrollbar-thumb-hover: #c9c9c9;
 
   /* Status tones */
-  --status-positive: #16a34a;
-  --status-positive-fg: #166534;
-  --status-positive-bg: #dcfce7;
-  --status-warning: #ca8a04;
-  --status-warning-fg: #854d0e;
-  --status-warning-bg: #fef9c3;
-  --status-danger: #e11d48;
-  --status-danger-fg: #be123c;
-  --status-danger-bg: #ffe4e6;
-  --status-info: #2563eb;
-  --status-info-fg: #1d4ed8;
-  --status-info-bg: #dbeafe;
-  --status-neutral: #a8a29e;
-  --status-neutral-fg: #57534e;
-  --status-neutral-bg: #ede6da;
-  --status-signed: #1c1917;
-  --status-signed-fg: #f5f0e8;
-  --status-signed-bg: #1c1917;
+  --status-positive: #3e7d5a;
+  --status-positive-fg: #1f4d35;
+  --status-positive-bg: #eef4f0;
+  --status-warning: #a9852f;
+  --status-warning-fg: #6b4e16;
+  --status-warning-bg: #f8f4e9;
+  --status-danger: #a53d4c;
+  --status-danger-fg: #7a2230;
+  --status-danger-bg: #faeef0;
+  --status-info: #3b6395;
+  --status-info-fg: #1e3a5f;
+  --status-info-bg: #eef2f8;
+  --status-neutral: #a3a3a3;
+  --status-neutral-fg: #525252;
+  --status-neutral-bg: #f5f5f5;
+  --status-signed: #0a0a0a;
+  --status-signed-fg: #ffffff;
+  --status-signed-bg: #0a0a0a;
 
   /* Charts — status solids as series colours (signed, info, positive, warning, danger) */
   --chart-1: var(--status-signed);
@@ -282,59 +281,60 @@
 /* DARK MODE */
 .dark {
   /* Surfaces */
-  --background: #0c0a09;
-  --foreground: #f5f0e8;
-  --card: #1c1917;
-  --popover: #292524;
-  --sidebar: #1c1917;
-  --muted: #292524;
-  --accent: #292524;
-  --selected: #2e1a12;
-  --inverse: #f5f0e8;
-  --inverse-foreground: #1c1917;
+  --background: #0a0a0a;
+  --foreground: #fafafa;
+  --card: #141414;
+  --popover: #1c1c1c;
+  --sidebar: #0f0f0f;
+  --muted: #1c1c1c;
+  --accent: #242424;
+  --selected: #1f1f1f;
+  --inverse: #fafafa;
+  --inverse-foreground: #0a0a0a;
 
-  /* Brand */
-  --primary: #f97316;
-  --primary-hover: #fb923c;
-  --primary-foreground: #1c1917;
-  --link: #fb923c;
+  /* Brand — the white button inverts on dark, as the reference does */
+  --primary: #fafafa;
+  --primary-hover: #e5e5e5;
+  --primary-foreground: #0a0a0a;
+  --link: #fafafa;
 
   /* Neutral */
-  --muted-foreground: #a8a29e;
+  --muted-foreground: #a1a1a1;
 
-  /* Feedback */
-  --destructive: #e11d48;
-  --disabled: #292524;
-  --disabled-foreground: #a8a29e;
+  /* Feedback — ink on the dark destructive reads 5.23:1; white would be 3.79:1 */
+  --destructive: #e05260;
+  --destructive-foreground: #0a0a0a;
+  --disabled: #1c1c1c;
+  --disabled-foreground: #a3a3a3;
 
   /* Borders & Input */
-  --border: #292524;
-  --input: #44403c;
-  --ring: #f97316;
+  --border: #262626;
+  --input: #3a3a3a;
+  --ring: #fafafa;
 
   /* Scrollbar */
-  --scrollbar-thumb: #292524;
-  --scrollbar-thumb-hover: #44403c;
+  --scrollbar-thumb: #262626;
+  --scrollbar-thumb-hover: #3a3a3a;
 
   /* Status tones */
-  --status-positive: #4ade80;
-  --status-positive-fg: #86efac;
-  --status-positive-bg: #052e16;
-  --status-warning: #facc15;
-  --status-warning-fg: #fde047;
-  --status-warning-bg: #422006;
-  --status-danger: #fb7185;
-  --status-danger-fg: #fda4af;
-  --status-danger-bg: #4c0519;
-  --status-info: #60a5fa;
-  --status-info-fg: #93c5fd;
-  --status-info-bg: #172554;
-  --status-neutral: #6e665f;
-  --status-neutral-fg: #d3cec7;
-  --status-neutral-bg: #292524;
-  --status-signed: #f5f0e8;
-  --status-signed-fg: #1c1917;
-  --status-signed-bg: #f5f0e8;
+  --status-positive: #5fa57e;
+  --status-positive-fg: #a7d8bc;
+  --status-positive-bg: #12251b;
+  --status-warning: #c9a34a;
+  --status-warning-fg: #e8ce8a;
+  --status-warning-bg: #2a2113;
+  --status-danger: #c76a76;
+  --status-danger-fg: #e9a8b0;
+  --status-danger-bg: #2b141a;
+  --status-info: #6e9bd1;
+  --status-info-fg: #aec8e8;
+  --status-info-bg: #141e2b;
+  --status-neutral: #6b6b6b;
+  --status-neutral-fg: #d4d4d4;
+  --status-neutral-bg: #1c1c1c;
+  --status-signed: #fafafa;
+  --status-signed-fg: #0a0a0a;
+  --status-signed-bg: #fafafa;
 
   /* Scrim */
   --scrim: color-mix(in oklab, black 45%, transparent);
@@ -414,7 +414,7 @@ select:focus-visible,
   border: 3px solid transparent;
   border-radius: 9999px;
   background-clip: content-box;
-  transition: background-color 150ms ease-out;
+  transition: background-color var(--motion-fast) var(--ease-out);
 }
 
 *::-webkit-scrollbar-thumb:hover {

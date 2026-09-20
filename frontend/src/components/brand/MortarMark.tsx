@@ -32,7 +32,7 @@ export function MortarMark({ size = 28, className, title = 'Mortar' }: MortarMar
       className={cn('shrink-0', className)}
     >
       <path d="M24 24H60V42H42V76H24Z" fill="currentColor" />
-      <path d="M76 76H46V58H64V24H76Z" className="fill-primary" />
+      <path d="M76 76H46V58H64V24H76Z" className="fill-muted-foreground" />
       <rect x="49" y="46" width="8" height="8" rx="1" fill="currentColor" />
     </svg>
   )
