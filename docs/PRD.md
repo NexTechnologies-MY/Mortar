@@ -493,8 +493,9 @@ The system must enforce persona routing and adhere to visual design standards.
 - **AC-14.2:** Navigating to `/app` must redirect to the persona's designated
   home (`/chase` for Sales Admin, `/bookings` for Loan Admin, `/forecast` for
   Finance).
-- **AC-14.3:** The header must display the badge: "Simulated Data · Seed
-  20260918 · As Of 18 Sep 2026".
+- **AC-14.3:** `/settings` must state plainly that the data is simulated, with
+  the seed and the reference date, and `/forecast` must keep its caption that a
+  backtest on simulated data proves the method, not the business.
 - **AC-14.4:** All UI elements must follow `docs/DESIGN.md`: paper ledger
   styling, 6px corner radius, 1px hairlines, Geist and Geist Mono typefaces, six
   status tones with explicit words, zero emoji, and exactly 10 Lucide icons.
