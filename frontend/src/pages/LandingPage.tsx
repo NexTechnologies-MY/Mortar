@@ -1,8 +1,8 @@
 /**
  * The public landing. It leads with the claim, then shows the product rather
  * than describing it: a sample of the Bookings ledger on the one chromatic
- * surface Mortar allows, and the three desks beneath it. The sitewide reveal
- * footer is owned by SiteShell.
+ * surface Mortar allows, and the three desks beneath it. The site footer below
+ * the desks is owned by PublicShell.
  *
  * The ledger below is a fixed illustration, not live data. It is labelled as
  * an example for assistive technology so the figures are never mistaken for a

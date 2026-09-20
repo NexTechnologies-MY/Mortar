@@ -1,11 +1,12 @@
 /**
  * Declares the top-level React Router shell for Mortar.
  * `/` is the landing and `/app` redirects to the active persona's home route.
- * Every route except `/sign-in` sits inside SiteShell, the reveal footer's page column.
+ * Only the public pages sit inside PublicShell, which adds the site footer; the
+ * app routes, the 404 and `/sign-in` render without one.
  */
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppShell } from './components/layout/AppShell'
-import { SiteShell } from './components/layout/SiteShell'
+import { PublicShell } from './components/layout/PublicShell'
 import { usePersona } from './lib/persona'
 import { BookingsPage } from './pages/BookingsPage'
 import { BookingDetailPage } from './pages/BookingDetailPage'
@@ -31,20 +32,20 @@ function HomeRedirect() {
 export function App() {
   return (
     <Routes>
-      <Route element={<SiteShell />}>
+      <Route element={<PublicShell />}>
         <Route path="/" element={<LandingPage />} />
         <Route path="/faq" element={<FaqPage />} />
-        <Route path="/app" element={<HomeRedirect />} />
-        <Route element={<AppShell />}>
-          <Route path="/bookings" element={<BookingsPage />} />
-          <Route path="/bookings/:id" element={<BookingDetailPage />} />
-          <Route path="/chase" element={<ChasePage />} />
-          <Route path="/forecast" element={<ForecastPage />} />
-          <Route path="/import" element={<ImportPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
-        </Route>
-        <Route path="*" element={<NotFoundPage />} />
       </Route>
+      <Route path="/app" element={<HomeRedirect />} />
+      <Route element={<AppShell />}>
+        <Route path="/bookings" element={<BookingsPage />} />
+        <Route path="/bookings/:id" element={<BookingDetailPage />} />
+        <Route path="/chase" element={<ChasePage />} />
+        <Route path="/forecast" element={<ForecastPage />} />
+        <Route path="/import" element={<ImportPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
+      </Route>
+      <Route path="*" element={<NotFoundPage />} />
       <Route path="/sign-in" element={<SignInPage />} />
     </Routes>
   )

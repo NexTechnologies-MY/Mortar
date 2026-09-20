@@ -2,7 +2,7 @@
  * FAQ route.
  * Plain answers for staff and reviewers: what Mortar is, who uses it, how the
  * labels, Jev and the forecast behave, and what is still theatre. Sits inside
- * SiteShell so the reveal footer shows, and outside AppShell like the landing.
+ * PublicShell so the site footer shows, and outside AppShell like the landing.
  */
 import { Link } from 'react-router-dom'
 import { MortarMark } from '@/components/brand/MortarMark'

@@ -740,7 +740,9 @@ ledger readable at a glance:
 
 The public pages (Landing, Footer, Sign-In) copy an earlier project, Perch: its
 structure, DOM organization, timings, and breakpoints (720px and 900px),
-re-skinned entirely with Mortar tokens:
+re-skinned entirely with Mortar tokens. The footer's inheritance is now
+typographic and dimensional only — its reveal mechanics were dropped for a
+static block, as [Footer](#footer) sets out.
 
 - **Mortar geometry:** 6px radius for controls and cards instead of Perch's
   999px pills; 1px hairlines instead of Perch's 3px outlines.
@@ -751,16 +753,15 @@ re-skinned entirely with Mortar tokens:
   and `/sign-in` do not either.
 - **Routes:**
   - `/`: Public landing page.
-  - `/faq`: Public skeleton page inside the site shell, with the reveal footer,
-    whose content is tracked in GitHub issue #1.
+  - `/faq`: Public FAQ page inside the public shell, with the site footer.
   - `/sign-in`: Bare sign-in page (no footer, no sidebar, no top bar).
   - `/app`: Redirects to the active persona's home desk.
   - App routes (`/chase`, `/bookings`, `/forecast`): Mount the sidebar and top
     bar inside the shell.
-- **Sitewide reveal footer:** A fixed 196px footer (184px from 720px up) on
-  ground `--footer` (`paper/0` `#FFFFFF` light / `ink/900` `#141414` dark), with
-  a 1px `--border` top hairline, sits under every page except `/sign-in`. It is
-  revealed by scrolling past the page floor and by keyboard focus.
+- **Public footer:** A static footer closes `/` and `/faq`, on ground `--footer`
+  with a 1px `--border` top hairline. It is mounted nowhere else — not on the
+  desks, not on `/app`, not on the 404, not on `/sign-in` — and no layout
+  reserves height for it.
 - **Authentication theatre:** There is no real backend authentication. Sign-in
   presents disabled email and password inputs, a permanently dead "Sign In"
   button, a "Signing In As" persona selector (Sales Admin, Loan Admin, Finance),
@@ -828,27 +829,24 @@ all — the panel above them is where the colour is spent.
 **Scroll:** The landing leads with a full viewport and continues below it. It is
 no longer a single screen; the claim fills the first viewport, and the panel and
 the cards are scrolled to. The page column ends with 72px of bottom padding
-(76px above 720px), after which the site shell's reveal footer is uncovered at
-the document floor.
+(76px above 720px), after which the footer's top hairline closes the document.
 
 Landing content copy binds to the following specification:
 
-| Slot                   | Copy                                                                                                                        |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| Header wordmark        | Mortar (beside the 26px joinery mark; the header carries no call to action)                                                 |
-| Display line           | Booked Is Not Sold. `<br />` Signed Is. (the break is explicit, not a width cap)                                            |
-| Lead line              | The AI operations layer that names the blocker on every stuck booking. (a full sentence, so sentence case with a full stop) |
-| Call to action         | Open Mortar (the page's one Primary button and its only link, to `/sign-in`)                                                |
-| Ledger caption         | Bookings — 148 live · 19 stalled · 5 signed this month                                                                      |
-| Ledger figcaption      | An example of the Bookings desk. These figures are illustrative. (`sr-only`)                                                |
-| Desk: Chase List       | Every stuck booking, the blocker in plain words, and who to chase today.                                                    |
-| Desk: Bookings         | Each unit from booking to SPA, with the days it has sat in every stage.                                                     |
-| Desk: Forecast         | The SPAs you can bank on, not the bookings you hope will convert.                                                           |
-| Footer line            | A Booking Is A Promise. The Signed SPA Is The Sale.                                                                         |
-| Footer link: FAQ       | FAQ (`/faq`)                                                                                                                |
-| Footer link: Dashboard | Dashboard (`/app`)                                                                                                          |
-| Footer link: Design    | Design (https://www.figma.com/design/CTy3FDK15W2QLQmB3h5f1I/Mortar-Design-System?node-id=0-1&t=BmfrHmxUj0uuvRDc-1, new tab) |
-| Footer link: GitHub    | GitHub (https://github.com/NexTechnologies-MY/mortar, new tab)                                                              |
+| Slot              | Copy                                                                                                                        |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Header wordmark   | Mortar (beside the 26px joinery mark; the header carries no call to action)                                                 |
+| Display line      | Booked Is Not Sold. `<br />` Signed Is. (the break is explicit, not a width cap)                                            |
+| Lead line         | The AI operations layer that names the blocker on every stuck booking. (a full sentence, so sentence case with a full stop) |
+| Call to action    | Open Mortar (the page's one Primary button and its only link, to `/sign-in`)                                                |
+| Ledger caption    | Bookings — 148 live · 19 stalled · 5 signed this month                                                                      |
+| Ledger figcaption | An example of the Bookings desk. These figures are illustrative. (`sr-only`)                                                |
+| Desk: Chase List  | Every stuck booking, the blocker in plain words, and who to chase today.                                                    |
+| Desk: Bookings    | Each unit from booking to SPA, with the days it has sat in every stage.                                                     |
+| Desk: Forecast    | The SPAs you can bank on, not the bookings you hope will convert.                                                           |
+
+Footer copy is specified in [Footer](#footer) rather than here, so the two
+cannot drift.
 
 The three desk blurbs are body copy written as complete sentences, so they take
 sentence case under the carve-out in [Text Case](#text-case); their card titles
@@ -856,49 +854,52 @@ stay Title Case.
 
 ### Footer
 
-The footer is mounted sitewide inside the site shell under every route except
-`/sign-in`.
+The footer closes the two public pages, `/` and `/faq`, and nothing else. It is
+a plain block at the end of the document: no fixed positioning, no layering, no
+reserved height, and no scroll or focus handling. The app desks, `/app`, the 404
+and `/sign-in` render without it. `PublicShell` is the layout route that mounts
+it, and the footer emits its own `<footer>` element, so it is the page's
+`contentinfo` landmark.
 
-- **Reveal mechanics:** The footer element is fixed to the viewport floor
-  (`fixed inset-x-0 bottom-0 z-0`, height `--footer-h`). The page column sits
-  above it (`relative z-[1] bg-background`, minimum height
-  `calc(100dvh - var(--footer-h))`) and reserves bottom margin equal to the
-  footer height (`mb-[var(--footer-h)]`). The footer is painted behind the page
-  and uncovered only as the user scrolls to the document floor.
-- **Ground and seam:** `--footer` is `paper/0` `#FFFFFF` in light and `ink/900`
-  `#141414` in dark, so the footer is the same white as the page above it. The
-  seam is marked by a 1px `--border` top hairline on the footer element
-  (`border-t border-border`), not by a change of ground. A grey band read as an
-  empty tray under the content and was dropped with the rest of the grey page.
-- **Dimensions and responsive layout:**
-  - Height: 196px below 720px; 184px at 720px and above (`--footer-h`).
-  - Alignment: The footer content is left-aligned to the page gutter, not
-    right-aligned: 24px of horizontal padding below 720px, 48px at 720px and
-    above, matching the landing's gutter exactly. The brand lockup, the tagline
-    and the links row all start at that gutter in both ranges. Nothing in the
-    footer is pinned to the opposite edge.
-- **Focus reveal (WCAG 2.4.11):** Because the footer is fixed inside the
-  viewport floor, default browser scroll-into-view is a no-op when tabbing into
-  footer links. The shell binds a native `focusin` listener on the footer
-  element: when any footer link receives keyboard focus, the window immediately
-  scrolls to `document.documentElement.scrollHeight`, ensuring the focused link
-  is never concealed beneath the page shell.
-- **Anatomy:** Three rows on a 12px gap, vertically centred in the footer's
-  height.
-  - Brand lockup: Link to `/` with `aria-label="Mortar home"`, 28px Mortar
-    joinery mark, and "Mortar" wordmark in 16px Geist SemiBold.
-  - Tagline: "A Booking Is A Promise. The Signed SPA Is The Sale." (14px Geist
-    Regular in `--muted-foreground`, maximum width 40ch).
-  - Links row: Four links in `Eyebrow` metrics — 11px SemiBold uppercase,
-    `tracking-[0.08em]`, in `--muted-foreground` — each with a 1px bottom border
-    in `color-mix(in oklab, var(--foreground) 18%, transparent)` that goes full
-    `--foreground` on hover and `:focus-visible`: "FAQ" (`/faq`), "Dashboard"
-    (`/app`), "Design" (Figma, new tab), and "GitHub" (GitHub, new tab).
+- **Ground and seam:** `--footer` is `paper/0` `#FFFFFF` in light, the same
+  white as the page, and `ink/900` `#141414` in dark, a step up from the
+  `#0A0A0A` page so the closing block still reads as its own surface. In light
+  the seam is carried entirely by a 1px `--border` top hairline on the footer
+  element (`border-t border-border`); in dark the hairline and the lift carry it
+  together.
+- **Gutter:** Full width on the landing's gutter — 24px of horizontal padding
+  below 720px, 48px at 720px and above — so the footer's brand lockup sits on
+  the same vertical line as the wordmark in the header above it. No centred
+  column, and nothing is pinned to the viewport edge.
+- **Layout:** One column below 720px, stacked in source order on a 40px gap,
+  with 48px of block padding. At 720px and above, four columns — the brand
+  column at `1.5fr`, the three link columns at `1fr` each — on a 32px gap with
+  64px of block padding.
+- **Brand column:** A link to `/` with `aria-label="Mortar home"` holding the
+  28px Mortar joinery mark and the "Mortar" wordmark in 16px Geist SemiBold,
+  then the line "A Booking Is A Promise. The Signed SPA Is The Sale." in
+  `Body/Default` `--muted-foreground`, capped at 40ch.
+- **Link columns:** Three groups, each a `<nav>` labelled by its title. The
+  title is 14px Geist SemiBold in `--foreground`, Title Case — not an `Eyebrow`,
+  because uppercase is reserved for that one style, and not a heading element,
+  because an `<h2>` here would inject "Product", "Company" and "Code" into the
+  FAQ's question outline. Links are `Body/Default` `--muted-foreground` on a
+  24px row, which is also the WCAG 2.5.8 target height, going `--foreground` on
+  hover across `--motion-fast`; keyboard focus is carried by the standard ring.
+  Every destination is real — there is no Changelog and no Status.
+  - Product: "Chase List" (`/chase`), "Bookings" (`/bookings`), "Forecast"
+    (`/forecast`).
+  - Company: "FAQ" (`/faq`), "Dashboard" (`/app`), "Design" (Figma, new tab).
+  - Code: "GitHub" (GitHub, new tab).
+- **Bottom bar:** 48px below the columns, a second 1px `--border` hairline, then
+  a 24px-padded row in `Body/Small` `--muted-foreground`: "© <year> Mortar" on
+  the left and "Internal Tool · Simulated Data" on the right, the year taken
+  from the system clock. The two stack to the left below 720px.
 
 ### Sign-In
 
-`/sign-in` is mounted completely bare without the site shell, top bar, sidebar,
-or reveal footer.
+`/sign-in` is mounted completely bare without the public shell, top bar,
+sidebar, or footer.
 
 - **Responsive grid:** Below 900px, a single centered column
   (`max-width: 520px`). At 900px and above, a two-pane grid
@@ -954,13 +955,13 @@ dark modes:
     light mode and dark mode before completion.
 9.  **Landing leads with a viewport:** The landing's claim fills the first
     viewport, and the page continues below it — the chromatic panel, the three
-    feature cards, then the reveal footer at the document floor. The page is
-    expected to scroll. The old rule that it occupy exactly one viewport existed
-    only because a looping video held the page up; there is no video now, and
-    the rule went with it.
-10. **Unobscured footer:** The fixed reveal footer never conceals page content,
-    uncovering cleanly on scroll and jumping fully into view whenever a footer
-    link receives keyboard focus.
+    feature cards, then the footer at the document floor. The page is expected
+    to scroll. The old rule that it occupy exactly one viewport existed only
+    because a looping video held the page up; there is no video now, and the
+    rule went with it.
+10. **Footer scope:** The footer appears on `/` and `/faq` only, as a static
+    block at the end of the document. No desk, redirect, 404 or sign-in route
+    renders it, and no layout reserves height for it.
 11. **Bare sign-in:** The sign-in route renders bare within the viewport,
     displaying no footer, no sidebar, and no top bar chrome.
 12. **Title Case:** Headings, subheadings, eyebrows, lead lines under titles,
@@ -987,8 +988,6 @@ dark modes:
 - **Do** route all user confirmation flows through restyled Dialog components.
 - **Do** keep the landing's sample ledger fixed, illustrative copy with its
   `sr-only` figcaption saying so; it is never wired to live data.
-- **Do** attach the `focusin` listener to the sitewide footer so keyboard
-  navigation brings it immediately into view.
 
 ### Do Not
 
@@ -1019,7 +1018,8 @@ dark modes:
 - **Do not** place more than one Primary button on any screen.
 - **Do not** apply 999px pill radii to buttons or form inputs; controls use 6px
   radius.
-- **Do not** render the app shell or reveal footer on `/sign-in`.
+- **Do not** mount the footer outside `/` and `/faq`, or make any layout reserve
+  height for it.
 
 ## See Also
 
@@ -1031,8 +1031,9 @@ dark modes:
 - [Perch Landing Research](/docs/research/perch/landing.md) — study of Perch's
   landing surface and its responsive breakpoints. Mortar's landing no longer
   copies Perch's background layer.
-- [Perch Footer And Chrome Research](/docs/research/perch/footer.md) — mechanics
-  of the fixed reveal footer and keyboard focus handling.
+- [Perch Footer And Chrome Research](/docs/research/perch/footer.md) —
+  historical record only. It documents the fixed reveal footer and its keyboard
+  focus handling, both of which Mortar has since dropped for a static footer.
 - [Perch Sign-In Research](/docs/research/perch/auth.md) — two-pane layout,
   guest sign-in flow, and simulated authentication.
 - [Landing Video Pipeline](/docs/research/design/video-pipeline.md) — historical
