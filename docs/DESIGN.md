@@ -38,23 +38,28 @@ Contents:
 Seven core decisions were settled during design system research. All seven are
 binding, and nothing below reopens them.
 
-| Question        | Decision                                                                                                                                                                                                                                                                                                              |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Look            | Flat ledger: white ground, white cards, 1px hairlines, 6px radius. The ground is the same white as the cards, and the 1px hairline does the separating. No glass, backdrop blur (the sidebar scrim is the sole exception), gradients (the landing veil is the sole exception), glow blobs or card shadows in the app. |
-| Status colour   | Ink is the action colour, carrying `--primary`, `--link`, `--ring` and `--selected`. There is no chromatic accent. Six status tones carry every state, each always with a word.                                                                                                                                       |
-| Type            | Geist for UI, Geist Mono for unit codes and IDs. Nine text styles. No third family.                                                                                                                                                                                                                                   |
-| Density         | Controls 36px, table rows 44px, body 14px. Built for a working day in lists.                                                                                                                                                                                                                                          |
-| Native controls | None. Select, date picker, menu, tooltip, file drop, checkbox and scrollbar are Mortar components (Radix/shadcn restyled). No alert/confirm/prompt.                                                                                                                                                                   |
-| Modes           | Light and dark from one token set (Color collection has Light and Dark modes).                                                                                                                                                                                                                                        |
-| Icons           | Lucide (lucide-react), 16px, stroke 2, coloured like adjacent text. 20px in empty states.                                                                                                                                                                                                                             |
+| Question        | Decision                                                                                                                                                                                                                                                                                                                                                      |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Look            | Flat ledger: white ground, white cards, 1px hairlines doing the separating, 6px radius. No glass and no backdrop blur (the sidebar scrim is the sole exception). No gradient, glow blob or card shadow in the application; the landing's chromatic panel is the one sanctioned gradient and the landing's three feature cards the one sanctioned card shadow. |
+| Status colour   | Ink is the action colour everywhere, the landing included; the application carries no chromatic accent. The landing panel is the one chromatic surface, scoped to public pages. Six status tones carry every state, each always with a word.                                                                                                                  |
+| Type            | Geist for UI, Geist Mono for unit codes and IDs. Nine text styles. No third family.                                                                                                                                                                                                                                                                           |
+| Density         | Controls 36px, table rows 44px, body 14px. Built for a working day in lists.                                                                                                                                                                                                                                                                                  |
+| Native controls | None. Select, date picker, menu, tooltip, file drop, checkbox and scrollbar are Mortar components (Radix/shadcn restyled). No alert/confirm/prompt.                                                                                                                                                                                                           |
+| Modes           | Light and dark from one token set (Color collection has Light and Dark modes).                                                                                                                                                                                                                                                                                |
+| Icons           | Lucide (lucide-react), 16px, stroke 2, coloured like adjacent text. 20px in empty states.                                                                                                                                                                                                                                                                     |
 
 Mortar is an internal operations tool for developer staff tracking property unit
 bookings from initial deposit through loan submission, loan approval, and final
 Sale and Purchase Agreement (SPA) signing. The interface rejects decorative SaaS
 styling: there are no frosted glass planes, no gradient card fills, no floating
 drop shadows on data tables, and no neon glow blobs. Every screen presents a
-crisp, high-density ledger on a white ground, where data and actionable blockers
+crisp, high-density ledger on a white ground where data and actionable blockers
 stand out immediately.
+
+The application shell never uses a gradient. The single sanctioned gradient in
+the product is the chromatic panel on the public landing, described in
+[Landing](#landing); nothing inside `/chase`, `/bookings`, `/forecast` or
+`/import` may reference its tokens.
 
 ## Typeface
 
@@ -75,10 +80,14 @@ Geist Mono for unit codes, booking reference numbers, and tabular data.
 
 Rules that are not obvious from the table:
 
-- **Landing display line exception:** The public landing hero display line
-  ("Booked Is Not Sold. Signed Is.") is the single exception to the scale: set
-  in Geist SemiBold, `clamp(2.5rem, 6vw, 4.5rem)`, line-height `1.05`, tracking
-  `-0.03em`.
+- **Landing type exceptions:** Three steps on the public landing sit outside the
+  scale, and nowhere else may use them. The hero display line ("Booked Is Not
+  Sold. Signed Is.") is Geist SemiBold `clamp(2.25rem, 5.4vw, 3.75rem)`,
+  line-height `1.04`, tracking `-0.035em`. It takes no width cap because the
+  break is set by hand: an explicit `<br />` after "Booked Is Not Sold." holds
+  the two sentences on two lines at every width. The lead line under it is 17 /
+  27 in `--muted-foreground`, capped at 52ch. The header wordmark is 15px Geist
+  SemiBold at `-0.01em`.
 - **Perch specimen conversion:** Perch's italic serif specimen lines become 14px
   Geist Regular in `--muted-foreground`. Do not load Newsreader or Georgia.
 - **Tabular figures:** Numerical values in `Display/Figure`, money amounts, and
@@ -95,26 +104,43 @@ capitalising every word including short ones (A, And, To, The); acronyms (SPA,
 RM, FAQ) stay in capitals; data values, placeholders, aria-labels and
 full-sentence toasts or tooltips keep their own case.
 
+One carve-out applies to lead lines. A lead line written as a complete sentence
+is set in sentence case and ends with a full stop; Title Case still applies to a
+lead line that is a phrase. The landing's lead line is the example: "The AI
+operations layer that names the blocker on every stuck booking." The same
+reading governs card body copy, which is prose rather than a label — the card
+title above it stays Title Case.
+
 ## Colour
 
 Mortar components consume semantic tokens defined in CSS custom properties and
 never write raw hex values. The primitives collection contains 18 calibrated
-neutral values across two families, `ink` (11 steps) and `paper` (7 steps).
+values across two neutral families, `ink` and `paper`. There is no chromatic
+family: every colour in the application lives in the six status tones. The one
+chromatic surface in the product is the landing panel, whose hues are
+public-page tokens listed in [Landing Panel Tokens](#landing-panel-tokens).
 
 ### Primitives Summary
 
 Primitives belong to the collection "Primitives", mapped in CSS as
 `var(--color-<family>-<step>)`, hidden from design pickers:
 
-- **`ink`:** a neutral grey ramp — 50 `#FAFAFA`, 100 `#F5F5F5`, 200 `#E5E5E5`,
-  300 `#D4D4D4`, 400 `#A3A3A3`, 500 `#737373`, 600 `#525252`, 700 `#3A3A3A`, 800
-  `#262626`, 900 `#141414`, 950 `#0A0A0A`.
+- **`ink`:** 50 `#FAFAFA`, 100 `#F5F5F5`, 200 `#E5E5E5`, 300 `#D4D4D4`, 400
+  `#A3A3A3`, 500 `#737373`, 600 `#525252`, 700 `#3A3A3A`, 800 `#262626`, 900
+  `#141414`, 950 `#0A0A0A`. A neutral grey ramp, with none of the warm cast the
+  earlier ink carried.
 - **`paper`:** 0 `#FFFFFF`, 50 `#FCFCFC`, 100 `#FAFAFA`, 200 `#F5F5F5`, 300
   `#EFEFEF`, 400 `#E5E5E5`, 500 `#D4D4D4`.
-- **Status tones:** No status colour is drawn from a Tailwind palette family.
-  The six tones are bespoke desaturated pairs, one value per mode, declared
-  directly on the semantic tokens listed in [Status Tones](#status-tones).
-- **Brand mark (Kigumi Joint):** ink `#0A0A0A` + grey `#6B6B6B` in light mode;
+- **Status Tones Are Not A Primitive Family:** No chromatic ramp exists. The six
+  status tones are six bespoke desaturated pairs, tuned per mode for their own
+  fill and text roles rather than drawn from a Tailwind family. Their values
+  live in [Status Tones](#status-tones) and nowhere else.
+- **Landing Hues Are Not A Primitive Family Either:** The four landing panel
+  hues are not a ramp and are not primitives. They are semantic public-page
+  tokens, defined once in `:root` and `.dark` and read only by
+  `LandingPage.css`. Their values live in
+  [Landing Panel Tokens](#landing-panel-tokens) and nowhere else.
+- **Brand Mark (Kigumi Joint):** ink `#0A0A0A` + grey `#6B6B6B` in light mode;
   `#FAFAFA` + `#A1A1A1` in dark mode.
 
 ### Semantic Colour
@@ -148,12 +174,8 @@ modes:
 | `color/border/focus`          | `--ring`                   | `#0A0A0A` (ink/950)        | `#FAFAFA` (ink/50)  |
 | `color/scrollbar/thumb`       | `--scrollbar-thumb`        | `#D8D8D8`                  | `#262626` (ink/800) |
 | `color/scrollbar/thumb-hover` | `--scrollbar-thumb-hover`  | `#C9C9C9`                  | `#3A3A3A` (ink/700) |
-| `color/bg/footer`             | `--footer`                 | `#EFEFEF` (paper/300)      | `#141414` (ink/900) |
+| `color/bg/footer`             | `--footer`                 | `#FFFFFF` (paper/0)        | `#141414` (ink/900) |
 | `color/bg/scrim`              | `--scrim`                  | ink-950 at 14% (color-mix) | black at 45%        |
-
-`--destructive-foreground` is declared in both modes. Dark mode previously
-inherited the light `#FFFFFF`, which read 3.79:1 on the dark destructive fill;
-ink `#0A0A0A` on `#E05260` reads 5.23:1.
 
 ### Status Tones
 
@@ -171,10 +193,13 @@ Six status tones carry every state. Each tone provides `fg` (text and icon),
 
 Rules that are not obvious from the table:
 
-- **Ink is the action colour:** Ink (`#0A0A0A` light / `#FAFAFA` dark) carries
-  `--primary` actions, `--link` text and `--ring` focus borders, and as a grey
-  step it carries the `--selected` row ground. The product has no chromatic
-  accent: colour appears only in the six status tones.
+- **Ink Is The Action Colour:** Ink — `#0A0A0A` in light mode, `#FAFAFA` in dark
+  — carries `--primary`, `--link` and `--ring`, and a grey step of the same ramp
+  carries the `--selected` row ground. There is no chromatic accent anywhere in
+  the application: colour appears only in the six status tones. The landing
+  panel is the single chromatic surface and it is scoped to the public pages;
+  ink still carries the button, the link and the focus ring on the landing
+  itself.
 - **Red is strictly for danger:** `--status-danger` and `--destructive` are
   restricted to risk conditions and irreversible actions (e.g. cancelling a
   booking).
@@ -184,18 +209,46 @@ Rules that are not obvious from the table:
 - **Chart series colours:** Data charts bind status solids directly: `signed`
   for actual signed SPAs, `info` for applications with banks, and `positive` /
   `warning` / `danger` for risk distributions.
-- **Calibrated contrast:** Muted text `#6B6B6B` achieves 5.33:1 on white,
-  surpassing the WCAG AA 4.5:1 floor. The `#D8D8D8` hairline is 1.43:1 against
-  white, chosen deliberately: `#E5E5E5` (1.26:1) was weaker than the hairline
-  the previous warm-ground palette supplied, and it lost the ledger's structure
-  on a white page. White text on light primary `#0A0A0A` achieves 19.8:1. In
-  dark mode, ink text on `#FAFAFA` achieves 18.97:1, and ink on destructive
-  `#E05260` achieves 5.23:1.
-- **Static board chrome:** Fixed interface framing (cover, board title bars)
-  binds primitives ink/950 `#0A0A0A` and paper/0 `#FFFFFF` so it never flips
+- **Calibrated Contrast:** Muted text `#6B6B6B` reads 5.33:1 on white, above the
+  WCAG AA 4.5:1 floor. The `#D8D8D8` hairline reads 1.43:1 against white — a
+  deliberate step darker than `#E5E5E5`, whose 1.26:1 fell below the 1.40:1 the
+  earlier hairline carried and lost the ledger structure on a white ground.
+  White on primary `#0A0A0A` reads 19.8:1. In dark mode, ink on `#FAFAFA` reads
+  18.97:1, and ink on destructive `#E05260` reads 5.23:1 where white would have
+  read 3.79:1.
+- **Static Board Chrome:** Fixed interface framing (cover, board title bars)
+  binds primitives ink/900 `#141414` and paper/200 `#F5F5F5` so it never flips
   with theme modes.
-- **No row tinting or zebra stripes:** Table rows remain neutral — the card
-  white, or `--muted` grey on hover. Never tint an entire row with risk colours.
+- **No row tinting or zebra stripes:** Table rows remain neutral white or paper.
+  Never tint an entire row with risk colours.
+
+### Landing Panel Tokens
+
+Six tokens exist solely to paint `.land-panel`, the chromatic gradient panel on
+the public landing. They are defined in `:root` and `.dark` beside the semantic
+colours and are read by `LandingPage.css` only:
+
+| Token               | Light         | Dark         | Role                                  |
+| ------------------- | ------------- | ------------ | ------------------------------------- |
+| `--land-hue-a`      | `118 106 246` | `96 86 200`  | Top-left wash, drawn at 0.62 alpha    |
+| `--land-hue-b`      | `52 184 243`  | `42 148 196` | Top-right wash, drawn at 0.55 alpha   |
+| `--land-hue-c`      | `48 208 168`  | `38 166 134` | Bottom-right wash, drawn at 0.5 alpha |
+| `--land-hue-d`      | `252 182 88`  | `200 146 70` | Bottom-left wash, drawn at 0.42 alpha |
+| `--land-hue-veil`   | `236 232 255` | `40 44 60`   | Centre veil, drawn at 0.45 alpha      |
+| `--land-panel-base` | `#E4E9F4`     | `#12161F`    | Flat base the five washes sit on      |
+
+Rules that are not obvious from the table:
+
+- **Channels, Not Colours:** The five hue tokens hold space-separated RGB
+  channels rather than a hex value, so the panel can vary the alpha per wash
+  with `rgb(var(--land-hue-a) / 0.62)`. `--land-panel-base` is a flat hex
+  because nothing varies its alpha.
+- **Public Pages Only:** No app-shell component may reference these tokens. They
+  are the product's one chromatic surface and its one gradient; the desks stay
+  monochrome.
+- **Dimmed On Dark:** The dark values are not the light values inverted. They
+  are pulled down so the panel reads as a lit surface on the ink ground rather
+  than as glare.
 
 ## Spacing, Radius And Elevation
 
@@ -223,12 +276,30 @@ Corner rounding is strictly restrained. There are no pill-shaped buttons:
   cards, menus, popovers, drop zones, dialog panels.
 - `radius/full` (9999px): scrollbar thumbs, stage tracker bars.
 
+Two larger steps exist for the public pages alone. The application shell is
+still restricted to 4px and 6px, and `--radius-lg` and `--radius-xl` resolve to
+6px so a stray utility class cannot smuggle a larger corner into a desk:
+
+- `radius/2xl` (11.2px, `--radius-2xl`): the landing's sample ledger card and
+  its three feature cards. Public pages only.
+- `radius/3xl` (22.4px, `--radius-3xl`): the landing's chromatic panel, the
+  outer surface the ledger is inset on. Public pages only.
+
 ### Elevation And Focus
 
 - **Overlay elevation (`--shadow-overlay`):**
   `0 1px 2px rgba(10,10,10,.06), 0 8px 24px -4px rgba(10,10,10,.12)`. Restricted
   to floating layers: menus, popovers, date picker calendar, and dialog modals.
-  Cards remain completely flat with a 1px `--border` hairline.
+  Cards in the application remain completely flat with a 1px `--border`
+  hairline.
+- **Landing card elevation:** The landing's three feature cards are the one
+  exception. They carry a two-layer shadow with a real offset,
+  `0 1px 2px color-mix(in oklab, var(--color-ink-950) 5%, transparent), 0 6px 16px -4px color-mix(in oklab, var(--color-ink-950) 8%, transparent)`,
+  over a 1px border in
+  `color-mix(in oklab, var(--color-ink-950) 5%, transparent)`. They sit on a
+  white ground with no grey band behind them and no rule above them, so the
+  shadow is what separates card from page. It is declared in `LandingPage.css`,
+  not as a token, so nothing in the app shell can reach it.
 - **Focus ring:** 2px solid ring in `--ring` with a 2px offset in `--background`
   (`outline: 2px solid var(--ring); outline-offset: 2px`). Active on keyboard
   navigation (`:focus-visible`) only; suppressed on pointer click.
@@ -272,8 +343,6 @@ entrance flourishes.
   width expansion (64px to 200px).
 - `motion/slow` (250ms, `ease-in-out`): Mobile drawer slide and dialog modal
   fade-in.
-- `motion/film` (800ms, `ease-out`): Hero film crossfade opacity dissolve
-  between stacked video elements.
 
 ### Reduced Motion
 
@@ -281,8 +350,9 @@ Under `prefers-reduced-motion: reduce`:
 
 - All translation, expansion, and sliding animations are disabled.
 - Transitions collapse to immediate 120ms cross-fades.
-- In the hero film, video elements do not play, no video files are fetched, and
-  only the still JPEG poster frame is rendered.
+- The public pages need no handling. There is no video, no autoplay and no
+  looping animation anywhere in the product, so the landing has nothing to
+  reduce.
 
 ## Status Language
 
@@ -508,9 +578,9 @@ browser control maps to a restyled Mortar component:
     appends elapsed time in Body/Small muted (e.g. "21 days").
   - Compact tracker: five 10px × 4px bars, gap 2px, placed beside the stage name
     in table rows.
-- **Rules:** The stage tracker carries no status tone and no accent colour: it
-  is `--inverse` and `--input` only. Lapsed or cancelled bookings freeze bars at
-  the last reached stage and display the cancellation status pill.
+- **Rules:** No status tone colours a stage bar; the tracker is ink and hairline
+  only. Lapsed or cancelled bookings freeze bars at the last reached stage and
+  display the cancellation status pill.
 
 ### Stat Tile
 
@@ -557,8 +627,8 @@ browser control maps to a restyled Mortar component:
   stuck bookings.
 - **Anatomy:** Width 360px, padding 16px, gap 12px, background `--card`
   (`#FFFFFF` / `#141414`), 1px `--border`, corner radius 6px (`--radius-md`).
-  The card has no coloured edge: urgency is carried by the pill and its word
-  alone (Overdue 3 d / Due today / In 2 days).
+  Left edge features a 3px solid bar in urgency tone solid. Urgency pill repeats
+  status in words (Overdue 3 d / Due today / In 2 days).
   - Stack order:
     1. Header: Unit code (Mono/Data) + Buyer name (muted) + Urgency pill.
     2. Blocker sentence: Heading/Section (Geist SemiBold 16/24).
@@ -567,12 +637,12 @@ browser control maps to a restyled Mortar component:
        Faizal, panel banker").
     5. Action footer: Primary button "Log follow-up" + Ghost button "Snooze".
 - **States and tokens:**
-  - `Overdue`: danger pill reading "Overdue 3 d" (fg `#7A2230` / `#E9A8B0`, bg
-    `#FAEEF0` / `#2B141A`).
-  - `Due today`: warning pill reading "Due today" (fg `#6B4E16` / `#E8CE8A`, bg
-    `#F8F4E9` / `#2A2113`).
-  - `Upcoming`: neutral pill reading "In 2 days" (fg `#525252` / `#D4D4D4`, bg
-    `#F5F5F5` / `#1C1C1C`).
+  - `Overdue`: 3px left edge `--status-danger` (`#A53D4C` / `#C76A76`), danger
+    pill.
+  - `Due today`: 3px left edge `--status-warning` (`#A9852F` / `#C9A34A`),
+    warning pill.
+  - `Upcoming`: 3px left edge `--status-neutral` (`#A3A3A3` / `#6B6B6B`),
+    neutral pill.
 - **Rules:** "Log follow-up" opens an inline modal dialog, not a new page. Cards
   sort by days overdue descending, then value at risk. Snoozed cards disappear
   until their snooze date arrives.
@@ -618,15 +688,13 @@ staff roles:
   hover over content. The active persona's primary home view sits at the top of
   the navigation items. Built with a solid `--sidebar` (`#FFFFFF` light /
   `#0F0F0F` dark) ground and a 1px `--border` hairline; no blur or translucency
-  even when content scrolls beneath. The active nav item carries no coloured
-  marker: it is a `--selected` fill with Label/Default weight and `--foreground`
-  text, against `--muted-foreground` for the rest. When the sidebar expands over
-  the content on hover, a scrim dims and blurs every layer beneath it (top bar,
-  page, footer): background `--scrim` (light: ink-950 at 14% through
-  `color-mix`; dark: black at 45%), backdrop blur `--scrim-blur` (3px), fading
-  in and out on `--motion-base`. The mobile drawer's backdrop uses the same
-  scrim and closes the drawer when tapped. This is the one place in the app a
-  backdrop blur is allowed.
+  even when content scrolls beneath. When the sidebar expands over the content
+  on hover, a scrim dims and blurs every layer beneath it (top bar, page,
+  footer): background `--scrim` (light: ink-950 at 14% through `color-mix`;
+  dark: black at 45%), backdrop blur `--scrim-blur` (3px), fading in and out on
+  `--motion-base`. The mobile drawer's backdrop uses the same scrim and closes
+  the drawer when tapped. This is the one place in the app a backdrop blur is
+  allowed.
 - **Top bar:** Fixed 56px height, containing breadcrumbs, with a right-hand
   cluster running, left to right, notification bell, theme switch, then the
   persona switch at the far right. Solid `--sidebar` ground with a 1px bottom
@@ -678,8 +746,9 @@ re-skinned entirely with Mortar tokens:
   999px pills; 1px hairlines instead of Perch's 3px outlines.
 - **Geist typography:** Perch's italic serif specimen lines become 14px Geist
   Regular in `--muted-foreground`. No Newsreader or italic serif is loaded.
-- **Gradients:** The landing veil is the single place in Mortar where gradients
-  are permitted.
+- **Gradients:** One, and only here. The landing's chromatic panel is the single
+  sanctioned gradient in the product. The app shell never uses one, and `/faq`
+  and `/sign-in` do not either.
 - **Routes:**
   - `/`: Public landing page.
   - `/faq`: Public skeleton page inside the site shell, with the reveal footer,
@@ -689,9 +758,9 @@ re-skinned entirely with Mortar tokens:
   - App routes (`/chase`, `/bookings`, `/forecast`): Mount the sidebar and top
     bar inside the shell.
 - **Sitewide reveal footer:** A fixed 196px footer (184px from 720px up) on
-  ground `--footer` (`paper-300` `#EFEFEF` light / `ink-900` `#141414` dark)
-  sits under every page except `/sign-in`. It is revealed by scrolling past the
-  page floor and by keyboard focus.
+  ground `--footer` (`paper/0` `#FFFFFF` light / `ink/900` `#141414` dark), with
+  a 1px `--border` top hairline, sits under every page except `/sign-in`. It is
+  revealed by scrolling past the page floor and by keyboard focus.
 - **Authentication theatre:** There is no real backend authentication. Sign-in
   presents disabled email and password inputs, a permanently dead "Sign In"
   button, a "Signing In As" persona selector (Sales Admin, Loan Admin, Finance),
@@ -702,108 +771,129 @@ re-skinned entirely with Mortar tokens:
 
 ### Landing
 
-The landing page is exactly one screen tall with no scroll of its own
-(`min-height: 100dvh`), so its only scroll is the reveal of the footer
-underneath (`margin-bottom: var(--footer-h)`).
+The landing runs full width in four stacked blocks — header row, centred claim,
+chromatic panel, three feature cards — on the `--background` ground, sharing one
+gutter: 24px below 720px, 48px at 720px and above. There is no centred fixed
+column, no background layer behind the page, and no video anywhere.
 
-The film ground sits absolutely positioned (`inset: 0`, `z-index: -1`,
-`overflow: hidden`) containing the hero film and the gradient veil. The veil
-provides readable contrast for typography:
+**Header Row:** 64px tall, a 1px `--border` bottom hairline, holding the 26px
+Mortar joinery mark, the "Mortar" wordmark (15px Geist SemiBold, `-0.01em`), and
+the theme switch pushed to the right edge by `margin-left: auto`. The theme
+switch is a `Secondary` icon button and the only control in the row. The header
+carries no call to action, which is what leaves the hero button as the page's
+single Primary.
 
-- **Below 720px:** Two vertical linear gradients using `color-mix` with
-  `--background`, which is white: top-down (92% white at 0%, 82% at 30%, 58% at
-  56%, transparent at 76%) and bottom-up (92% white at 0%, transparent at 34%).
-- **At 720px and above:** Two linear gradients: left-to-right (90% white at 0%,
-  70% at 28%, transparent at 54%) and bottom-up (92% white at 0%, 78% at 24%,
-  transparent at 42%).
+**Claim:** Centred, 72px of top padding below 720px and 96px above. The `h1`
+display line, then the lead line 20px under it, then the Primary button 28px
+under that. The button is the page's one Primary and its only link, and it goes
+to `/sign-in`. There is no eyebrow above the `h1`. Type steps for all three are
+in [Typeface](#typeface).
+
+**Chromatic Panel:** `.land-panel`, inset in the page gutter 56px under the
+claim (64px above 720px), with 28px of padding (68px above 720px) and a
+`--radius-3xl` 22.4px corner. Its ground is four radial hue washes plus a centre
+veil over `--land-panel-base`, drawn from the tokens in
+[Landing Panel Tokens](#landing-panel-tokens). This is the only gradient and the
+only chromatic surface in the product, and its padding is what makes the card
+inside read as inset rather than stacked.
+
+**Sample Ledger:** A `<figure>` on the panel, `--card` ground, `--radius-2xl`
+11.2px, clipped with `overflow: hidden`, edged with a 1px border in
+`color-mix(in oklab, var(--color-ink-950) 6%, transparent)` because a `--border`
+hairline would be lost against the colour under it. A caption row carries
+"Bookings" in 13px SemiBold with the counts beside it in `--muted-foreground`;
+the table beneath uses the standard ledger metrics — `Eyebrow` column headers,
+44px rows, `Body/Default` cells, `Mono/Data` for booking and unit codes, and
+StatusPills for stage, evidence and risk. A stalled row's age is set in
+`--status-danger-fg` at weight 500, because on that row the age is the warning.
+Below 900px the ledger scrolls horizontally rather than crushing its columns
+(table `min-width: 860px`); the panel keeps its padding throughout.
+
+**The Ledger Is Illustrative:** Its five rows are fixed copy in the component,
+never fetched, and they are not a reading of the real book. A `sr-only`
+`<figcaption>` says so — "An example of the Bookings desk. These figures are
+illustrative." — so assistive technology hears the disclaimer that the sighted
+reader infers from the marketing context. Do not wire this table to live data,
+and do not drop the figcaption.
+
+**Feature Cards:** `.land-desk`, appended directly under the panel with no rule
+between them, sharing the panel's gutter and the panel's rhythm: a 16px gap and
+16px of separation below 720px, 24px above. One column below 720px, three above.
+Each card is a white `--card` surface with a `--radius-2xl` corner, a 1px border
+in `color-mix(in oklab, var(--color-ink-950) 5%, transparent)`, and the
+two-layer shadow in [Elevation And Focus](#elevation-and-focus). They carry a
+`Heading/Section` title and body copy in `--muted-foreground`, and no colour at
+all — the panel above them is where the colour is spent.
+
+**Scroll:** The landing leads with a full viewport and continues below it. It is
+no longer a single screen; the claim fills the first viewport, and the panel and
+the cards are scrolled to. The page column ends with 72px of bottom padding
+(76px above 720px), after which the site shell's reveal footer is uncovered at
+the document floor.
 
 Landing content copy binds to the following specification:
 
 | Slot                   | Copy                                                                                                                        |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| Eyebrow                | Booking To SPA, For Sales, Loan And Finance                                                                                 |
-| Display line           | Booked Is Not Sold. Signed Is. (Geist SemiBold, clamp(2.5rem, 6vw, 4.5rem), line-height 1.05, -0.03em)                      |
-| Call to action         | Open Mortar (the page's one Primary button, links to `/sign-in`)                                                            |
-| Facts: Chase List      | Every Stuck Booking, The Blocker In Plain Words, And Who To Chase Today                                                     |
-| Facts: Bookings        | Each Unit From Booking To SPA, With The Days It Has Sat In Every Stage                                                      |
-| Facts: Forecast        | The SPAs You Can Bank On, Not The Bookings You Hope Will Convert                                                            |
+| Header wordmark        | Mortar (beside the 26px joinery mark; the header carries no call to action)                                                 |
+| Display line           | Booked Is Not Sold. `<br />` Signed Is. (the break is explicit, not a width cap)                                            |
+| Lead line              | The AI operations layer that names the blocker on every stuck booking. (a full sentence, so sentence case with a full stop) |
+| Call to action         | Open Mortar (the page's one Primary button and its only link, to `/sign-in`)                                                |
+| Ledger caption         | Bookings — 148 live · 19 stalled · 5 signed this month                                                                      |
+| Ledger figcaption      | An example of the Bookings desk. These figures are illustrative. (`sr-only`)                                                |
+| Desk: Chase List       | Every stuck booking, the blocker in plain words, and who to chase today.                                                    |
+| Desk: Bookings         | Each unit from booking to SPA, with the days it has sat in every stage.                                                     |
+| Desk: Forecast         | The SPAs you can bank on, not the bookings you hope will convert.                                                           |
 | Footer line            | A Booking Is A Promise. The Signed SPA Is The Sale.                                                                         |
 | Footer link: FAQ       | FAQ (`/faq`)                                                                                                                |
 | Footer link: Dashboard | Dashboard (`/app`)                                                                                                          |
 | Footer link: Design    | Design (https://www.figma.com/design/CTy3FDK15W2QLQmB3h5f1I/Mortar-Design-System?node-id=0-1&t=BmfrHmxUj0uuvRDc-1, new tab) |
 | Footer link: GitHub    | GitHub (https://github.com/NexTechnologies-MY/mortar, new tab)                                                              |
 
-### Hero Film
-
-The hero background uses a single looped clip:
-`frontend/public/media/hero-1.webm`, `hero-1.mp4`, and `hero-1.jpg` poster
-frame.
-
-- **Dimensions and duration:** 1280px × 560px (16:7 aspect ratio), 6.8 seconds,
-  silent.
-- **Dissolve mechanic:** Looped using Perch's two-element crossfade. Two stacked
-  `<video>` elements play the clip. An `onTimeUpdate` listener detects when the
-  active front clip reaches 800ms before completion, triggers playback on the
-  hidden rear clip at `currentTime = 0`, and flips the active slot. A CSS
-  transition (`opacity 800ms var(--ease-out)`) crossfades the layers seamlessly
-  without buffering cuts.
-- **Reduced motion:** Under `prefers-reduced-motion: reduce`, the component
-  renders the `hero-1.jpg` poster image directly. No video element is rendered
-  and zero video bytes are fetched across the network.
-- **Provenance for the record:** Generated in Gemini (Veo, 1280x720, 10 s) from
-  the prompt:
-  > "Slow, steady aerial drift from left to right over a new residential
-  > development in a Malaysian city in soft early-morning light; two finished
-  > condominium towers with balconies and a third tower under construction with
-  > a tower crane, low-rise terrace houses and palm trees below, light haze over
-  > distant green hills. Towers framed on the right so natural sky fills the
-  > left side. Warm, muted palette of cream, stone grey and a touch of burnt
-  > orange. No people in focus, no text, no logos. 16:9" The first 3.2 seconds
-  > (a wipe transition introduced by the model) was trimmed; Gemini's visible
-  > watermark in the lower-right corner was removed using
-  > `gemini-watermark-remover`; and the bottom 160px was cropped away, yielding
-  > the final 1280×560 (16:7) frame. The clip was encoded as H.264 CRF 22
-  > faststart and VP9 CRF 34, audio stripped. SynthID remains embedded in the
-  > file. The complete generation procedure is documented in
-  > [video-pipeline.md](/docs/research/design/video-pipeline.md).
+The three desk blurbs are body copy written as complete sentences, so they take
+sentence case under the carve-out in [Text Case](#text-case); their card titles
+stay Title Case.
 
 ### Footer
 
 The footer is mounted sitewide inside the site shell under every route except
 `/sign-in`.
 
-- **Reveal mechanics:** The footer (`<footer class="app-foot">`) is fixed to the
-  viewport floor (`position: fixed; inset: auto 0 0 0; z-index: 0`). The page
-  container sits above it
-  (`position: relative; z-index: 1; background: var(--background); min-height: 100dvh`)
-  and reserves bottom margin equal to the footer height
-  (`margin-bottom: var(--footer-h)`). The footer is painted behind the page and
-  uncovered only as the user scrolls to the document floor.
+- **Reveal mechanics:** The footer element is fixed to the viewport floor
+  (`fixed inset-x-0 bottom-0 z-0`, height `--footer-h`). The page column sits
+  above it (`relative z-[1] bg-background`, minimum height
+  `calc(100dvh - var(--footer-h))`) and reserves bottom margin equal to the
+  footer height (`mb-[var(--footer-h)]`). The footer is painted behind the page
+  and uncovered only as the user scrolls to the document floor.
+- **Ground and seam:** `--footer` is `paper/0` `#FFFFFF` in light and `ink/900`
+  `#141414` in dark, so the footer is the same white as the page above it. The
+  seam is marked by a 1px `--border` top hairline on the footer element
+  (`border-t border-border`), not by a change of ground. A grey band read as an
+  empty tray under the content and was dropped with the rest of the grey page.
 - **Dimensions and responsive layout:**
   - Height: 196px below 720px; 184px at 720px and above (`--footer-h`).
-  - Ground: `--footer` (`paper-300` `#EFEFEF` light / `ink-900` `#141414` dark).
-  - Alignment: Below 720px, left-aligned with 24px horizontal padding. At 720px
-    and above, right-aligned (`justify-items: end; text-align: right`) with 48px
-    horizontal padding.
+  - Alignment: The footer content is left-aligned to the page gutter, not
+    right-aligned: 24px of horizontal padding below 720px, 48px at 720px and
+    above, matching the landing's gutter exactly. The brand lockup, the tagline
+    and the links row all start at that gutter in both ranges. Nothing in the
+    footer is pinned to the opposite edge.
 - **Focus reveal (WCAG 2.4.11):** Because the footer is fixed inside the
   viewport floor, default browser scroll-into-view is a no-op when tabbing into
   footer links. The shell binds a native `focusin` listener on the footer
   element: when any footer link receives keyboard focus, the window immediately
   scrolls to `document.documentElement.scrollHeight`, ensuring the focused link
   is never concealed beneath the page shell.
-- **Anatomy:**
+- **Anatomy:** Three rows on a 12px gap, vertically centred in the footer's
+  height.
   - Brand lockup: Link to `/` with `aria-label="Mortar home"`, 28px Mortar
-    joinery mark, and "Mortar" wordmark in Geist Light 300 (20px, tracking
-    +0.01em).
+    joinery mark, and "Mortar" wordmark in 16px Geist SemiBold.
   - Tagline: "A Booking Is A Promise. The Signed SPA Is The Sale." (14px Geist
     Regular in `--muted-foreground`, maximum width 40ch).
-  - Links row: Four links in 12px bold uppercase (`tracking-[0.06em]`) with a
-    2px bottom border in
-    `color-mix(in oklab, var(--foreground) 18%, transparent)`: "FAQ" (`/faq`),
-    "Dashboard" (`/app`), "Design" (Figma, new tab), and "GitHub" (GitHub, new
-    tab).
-- **Print:** Under `@media print`, the footer is hidden
-  (`display: none !important`), and the page container margins are zeroed.
+  - Links row: Four links in `Eyebrow` metrics — 11px SemiBold uppercase,
+    `tracking-[0.08em]`, in `--muted-foreground` — each with a 1px bottom border
+    in `color-mix(in oklab, var(--foreground) 18%, transparent)` that goes full
+    `--foreground` on hover and `:focus-visible`: "FAQ" (`/faq`), "Dashboard"
+    (`/app`), "Design" (Figma, new tab), and "GitHub" (GitHub, new tab).
 
 ### Sign-In
 
@@ -855,14 +945,19 @@ dark modes:
     the 2px focus ring with 2px offset on keyboard navigation.
 5.  **Tabular numerals:** All monetary figures and elapsed day counters are
     right-aligned and rendered with tabular numerals.
-6.  **Single primary action:** Exactly one Primary button exists per view.
+6.  **Single primary action:** Exactly one Primary button exists per view. On
+    the landing this is the hero's "Open Mortar"; the header row carries no call
+    to action, which is what keeps the count at one.
 7.  **Responsive viewports:** Verified fully functional at 1280px and 1440px
     desktop widths, and cleanly usable down to 1024px.
 8.  **Dual-mode verification:** Every view is inspected and verified in both
     light mode and dark mode before completion.
-9.  **Single-screen landing:** The landing page occupies exactly one viewport
-    height (`100dvh`) with no scroll of its own; its sole scroll is the reveal
-    of the footer.
+9.  **Landing leads with a viewport:** The landing's claim fills the first
+    viewport, and the page continues below it — the chromatic panel, the three
+    feature cards, then the reveal footer at the document floor. The page is
+    expected to scroll. The old rule that it occupy exactly one viewport existed
+    only because a looping video held the page up; there is no video now, and
+    the rule went with it.
 10. **Unobscured footer:** The fixed reveal footer never conceals page content,
     uncovering cleanly on scroll and jumping fully into view whenever a footer
     link receives keyboard focus.
@@ -873,7 +968,8 @@ dark modes:
     footer text are Title Case, capitalising every word including short ones (A,
     And, To, The); acronyms (SPA, RM, FAQ) stay in capitals; data values,
     placeholders, aria-labels and full-sentence toasts or tooltips keep their
-    own case.
+    own case. A lead line written as a complete sentence is the carve-out: it
+    takes sentence case and a full stop, as [Text Case](#text-case) sets out.
 
 ## Do And Do Not
 
@@ -889,19 +985,29 @@ dark modes:
 - **Do** verify contrast ratios against the 4.5:1 WCAG AA floor in both light
   and dark modes before committing.
 - **Do** route all user confirmation flows through restyled Dialog components.
-- **Do** render the static JPEG poster and fetch zero video bytes when
-  `prefers-reduced-motion: reduce` is active.
+- **Do** keep the landing's sample ledger fixed, illustrative copy with its
+  `sr-only` figcaption saying so; it is never wired to live data.
 - **Do** attach the `focusin` listener to the sitewide footer so keyboard
   navigation brings it immediately into view.
 
 ### Do Not
 
 - **Do not** introduce glass fills, backdrop blurs, gradients, glow blobs, or
-  card drop shadows in the application (the sidebar scrim is the sole backdrop
-  blur exception; the landing veil is the sole gradient exception).
+  card drop shadows anywhere in the application (the sidebar scrim is the sole
+  backdrop blur exception). Two narrowly scoped exceptions exist and neither is
+  a licence to add a third: the landing's chromatic panel is the one sanctioned
+  gradient, and the landing's three feature cards carry the one sanctioned card
+  shadow. The app shell never uses either.
 - **Do not** introduce a chromatic accent of any kind outside the six status
-  tones, or use red for anything other than severe risk and irreversible
-  destructive actions.
+  tones — ink and grey carry every action, link, focus ring and selection — or
+  use red for anything other than severe risk and irreversible destructive
+  actions. The landing panel is the single chromatic surface, scoped to public
+  pages; its hue tokens may not be referenced from a desk.
+- **Do not** add a call to action to the landing header, or any second link to
+  the landing page. The hero's "Open Mortar" is the page's only Primary and its
+  only link.
+- **Do not** reintroduce video, autoplay or a looping background to any surface
+  in the product.
 - **Do not** apply colored background washes or zebra striping to table rows.
 - **Do not** use emoji as icons, or import a secondary icon set beyond Lucide.
 - **Do not** load a third typeface family, or style text outside the nine
@@ -923,13 +1029,16 @@ dark modes:
 - [Design Research Index](/docs/research/design/README.md) — index of design
   sources and foundational studies.
 - [Perch Landing Research](/docs/research/perch/landing.md) — study of Perch's
-  landing surface, film ground, and responsive veil.
+  landing surface and its responsive breakpoints. Mortar's landing no longer
+  copies Perch's background layer.
 - [Perch Footer And Chrome Research](/docs/research/perch/footer.md) — mechanics
   of the fixed reveal footer and keyboard focus handling.
 - [Perch Sign-In Research](/docs/research/perch/auth.md) — two-pane layout,
   guest sign-in flow, and simulated authentication.
-- [Landing Video Pipeline](/docs/research/design/video-pipeline.md) — Gemini
-  video generation, watermark removal, and encoding pipeline.
+- [Landing Video Pipeline](/docs/research/design/video-pipeline.md) — historical
+  record only. The landing no longer ships a hero film; this page keeps the
+  Gemini generation, watermark removal and encoding procedure for the superseded
+  clip.
 - [House Markdown Style Guide](/docs/markdown-style.md) — rules for ATX
   headings, line limits, and table formatting.
 - [Mortar Project Guidelines](/AGENTS.md) — engineering conventions and Bun
