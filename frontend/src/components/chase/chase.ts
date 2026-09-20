@@ -4,7 +4,7 @@
  * for a booking. Kept component-free so cards and tests share them.
  */
 import type { LucideIcon } from 'lucide-react'
-import { CalendarCheck, Clock, Eye, FileText, FileWarning, Landmark, Phone, Scale } from 'lucide-react'
+import { CalendarCheck, Clock, Eye, FileSignature, FileText, FileWarning, Landmark, Phone, Scale } from 'lucide-react'
 import { PERSONA_STAFF } from '@mortar/core'
 import type { Booking, DocumentKind, NextAction, NextActionSuggestion, OwnerRole } from '@mortar/core'
 import { OWNER_ROLE_LABELS } from '@/components/case'
@@ -71,10 +71,15 @@ export function dueOnForUrgency(urgencyScore: number, referenceDate: string): st
   return addDays(referenceDate, score >= 2 ? 0 : score === 1 ? 2 : 7)
 }
 
-/** A short task title from the suggestion and case context. */
-export function taskTitle(suggestion: NextActionSuggestion, booking: Booking, document?: DocumentKind): string {
+/**
+ * A short task title from the action and case context. Takes the action
+ * itself, not a Jev suggestion: Ask raises the same tasks without consulting
+ * Jev, and fabricating a suggestion to reach this helper would put Jev's name
+ * on work it never did.
+ */
+export function taskTitle(action: NextAction, booking: Booking, document?: DocumentKind): string {
   const buyer = booking.buyer.name
-  switch (suggestion.action.value) {
+  switch (action) {
     case 'request_document':
       return `Request ${document ? DOCUMENT_LABELS[document] : 'Documents'} From ${buyer}`
     case 'chase_banker':
@@ -120,12 +125,14 @@ export function actionIcon(action: NextAction): LucideIcon {
 
 /**
  * Glyph for the blocker sentence, picked from what is actually blocking:
- * an outstanding document, a bank that has not moved, otherwise elapsed time.
+ * an outstanding document, a bank that has not moved, an SPA that has not been
+ * scheduled or signed, otherwise elapsed time.
  */
 export function blockerIcon(stallReasons: readonly string[], document?: DocumentKind): LucideIcon {
   if (document) return FileWarning
   const text = stallReasons.join(' ').toLowerCase()
   if (text.includes('document') || text.includes('payslip') || text.includes('outstanding')) return FileWarning
   if (text.includes('bank') || text.includes('application') || text.includes('undecided')) return Landmark
+  if (text.includes('spa') || text.includes('appointment')) return FileSignature
   return Clock
 }

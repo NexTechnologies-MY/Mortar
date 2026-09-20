@@ -21,6 +21,8 @@ import { generateDataset } from './sim/generate'
 import { financingRiskFor } from './sim/risk'
 
 export { DEFAULT_SEED, REFERENCE_DATE, HORIZON_DAYS, PERSONA_STAFF } from './sim/constants'
+export { leakage } from './sim/leakage'
+export type { Leakage, LeakageCause, RecoveryEstimate } from './sim/leakage'
 export { DEFAULT_ASSUMPTIONS }
 
 export interface GeneratorOptions {

@@ -171,6 +171,10 @@ export interface CaseSummary {
   unknown: boolean
   bookingAgeDays: number
   daysSinceEvidence: number
+  /** Days since the loan was approved — the legal waiting room's clock. `null` when never approved. */
+  daysSinceLoIssued: number | null
+  /** Days since an SPA appointment was recorded. `null` when none is on the log. */
+  daysSinceSpaSet: number | null
   applications: { id: string; bank: string; status: ApplicationStatus }[]
   outstandingDocuments: DocumentKind[]
   risk: FinancingRisk
@@ -352,4 +356,65 @@ export interface Snapshot extends Dataset {
   extractions: Extraction[]
   signals: BuyerSignals[]
   nextActions: NextActionSuggestion[]
+}
+
+// Personas ------------------------------------------------------------------
+
+/** The three staff desks. Persisted in the browser under `mortar.persona`. */
+export type Persona = 'sales-admin' | 'loan-admin' | 'legal-admin'
+
+// Ask -----------------------------------------------------------------------
+
+/**
+ * Everything a scripted answer may read. Built once per snapshot — the
+ * forecast is a Monte Carlo and must not run per question.
+ */
+export interface AskContext {
+  snapshot: Snapshot
+  cases: CaseSummary[]
+  /** The authoritative live set: `perBooking` lists exactly the bookings in play. */
+  forecast: Forecast
+}
+
+/**
+ * The follow-through an answer may offer. Domain only — the panel maps this
+ * onto `POST /api/tasks`, so core never encodes the transport.
+ */
+export interface AskAction {
+  label: string
+  bookingIds: string[]
+  action: NextAction
+  ownerRole: OwnerRole
+}
+
+/** One answer: prose, the bookings it counted, and an optional follow-through. */
+export interface AskReply {
+  text: string
+  /** Booking ids the answer counted; the panel renders them as links. */
+  citations: string[]
+  action?: AskAction
+}
+
+/**
+ * One scripted question. `answer` computes from the snapshot rather than
+ * returning a stored string, so its numbers can never drift from the screens.
+ * `predicate` states the same claim as a test: every booking it accepts must
+ * be cited, and every citation must satisfy it.
+ */
+export interface AskQuestion {
+  id: string
+  /** Canonical phrasing, shown as a suggestion chip. */
+  question: string
+  /** Alternate phrasings plus Malay and Manglish synonyms, like `Playbook.tags`. */
+  tags: string[]
+  /** Whose desk this belongs to; orders the chips. `all` shows for everyone. */
+  desk: Persona | 'all'
+  answer: (context: AskContext) => AskReply
+  /**
+   * The set the answer claims. `null` when an answer names no set — a summary
+   * over every booking rather than a filtered list.
+   */
+  predicate: ((context: AskContext, bookingId: string) => boolean) | null
+  /** How many bookings the answer names. Defaults to the shared cap of six. */
+  cites?: number
 }

@@ -23,6 +23,7 @@ const LINK_COLUMNS: { heading: string; links: FooterLink[] }[] = [
     links: [
       { label: 'Chase List', to: '/chase' },
       { label: 'Bookings', to: '/bookings' },
+      { label: 'Legal', to: '/legal' },
       { label: 'Forecast', to: '/forecast' }
     ]
   },

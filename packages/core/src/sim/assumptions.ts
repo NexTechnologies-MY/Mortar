@@ -177,7 +177,19 @@ export const DEFAULT_ASSUMPTIONS: Assumption[] = [
     5,
     15,
     1
-  )
+  ),
+  a(
+    'spaSchedulingStallDays',
+    'Stall: SPA Not Scheduled After LO',
+    10,
+    'days',
+    'assumption',
+    'Assumptions panel',
+    3,
+    30,
+    1
+  ),
+  a('spaSigningStallDays', 'Stall: SPA Set But Unsigned After', 14, 'days', 'assumption', 'Assumptions panel', 5, 45, 1)
 ]
 
 /** The value for `key`, falling back to the default entry when the list omits it. */

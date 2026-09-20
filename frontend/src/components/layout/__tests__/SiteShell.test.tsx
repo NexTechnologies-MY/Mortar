@@ -45,15 +45,23 @@ describe('SiteShell', () => {
     expect(href('Mortar home')).toBe('/')
     expect(href('Chase List')).toBe('/chase')
     expect(href('Bookings')).toBe('/bookings')
+    expect(href('Legal')).toBe('/legal')
     expect(href('Forecast')).toBe('/forecast')
     expect(href('FAQ')).toBe('/faq')
     expect(href('Dashboard')).toBe('/app')
     expect(href('Design')).toBe(FIGMA_URL)
     expect(href('GitHub')).toBe(GITHUB_URL)
 
-    for (const column of ['Product', 'Company', 'Code']) {
-      expect(within(footer).getByRole('navigation', { name: column })).toBeTruthy()
-    }
+    // Membership and order, not just presence: a column losing or reordering a
+    // destination is the failure worth catching.
+    const labels = (column: string) =>
+      within(within(footer).getByRole('navigation', { name: column }))
+        .getAllByRole('link')
+        .map((a) => a.textContent)
+
+    expect(labels('Product')).toEqual(['Chase List', 'Bookings', 'Legal', 'Forecast'])
+    expect(labels('Company')).toEqual(['FAQ', 'Dashboard', 'Design'])
+    expect(labels('Code')).toEqual(['GitHub'])
   })
 
   it('opens the two off-site links in a new tab, safely', () => {

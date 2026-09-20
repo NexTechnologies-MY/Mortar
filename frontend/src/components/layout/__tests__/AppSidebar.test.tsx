@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { render } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { PersonaProvider } from '@/lib/persona'
+import { PERSONA_STORAGE_KEY, PersonaProvider } from '@/lib/persona'
 import { AppSidebar } from '../AppSidebar'
 
 function renderSidebar(mobileOpen: boolean) {
@@ -34,11 +34,11 @@ describe('AppSidebar', () => {
   })
 
   it("hoists the active persona's home to the top of the nav", () => {
-    window.localStorage.setItem('mortar.persona', 'finance')
+    window.localStorage.setItem(PERSONA_STORAGE_KEY, 'legal-admin')
     const { container } = renderSidebar(true)
     const links = container.querySelectorAll('nav a')
 
-    expect(links[0].getAttribute('href')).toBe('/forecast')
+    expect(links[0].getAttribute('href')).toBe('/legal')
     window.localStorage.clear()
   })
 })

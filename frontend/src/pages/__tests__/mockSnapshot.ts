@@ -45,6 +45,8 @@ export function stalledCase(id: string, overrides: Partial<CaseSummary> = {}): C
     unknown: false,
     bookingAgeDays: 16,
     daysSinceEvidence: 6,
+    daysSinceLoIssued: null,
+    daysSinceSpaSet: null,
     applications: [],
     outstandingDocuments: [],
     risk: {

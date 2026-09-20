@@ -1,6 +1,6 @@
 /**
  * Persona switcher for the app header.
- * Lets staff flip the workspace between the Sales Admin, Loan Admin, and Finance roles.
+ * Lets staff flip the workspace between the Sales Admin, Loan Admin, and Legal Admin roles.
  */
 
 import { Check, LogOut, UserCog } from 'lucide-react'

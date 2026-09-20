@@ -26,7 +26,7 @@ Contents:
 ## Goals And Non-Goals
 
 Mortar unifies property unit booking operations across sales administration,
-loan administration, and finance. The primary goal is closing the visibility gap
+loan administration, and legal. The primary goal is closing the visibility gap
 between booking deposit collection and SPA signing, transforming stalled cases
 into an actionable daily follow-up queue.
 
@@ -74,7 +74,7 @@ records.
 | ----------- | ------------- | ----------- | ------------------------------------------------------------------------------- |
 | Sales Admin | Nurul Aina    | `/chase`    | Daily stalled booking follow-ups, buyer communication, and task execution       |
 | Loan Admin  | Tan Mei Ling  | `/bookings` | Multi-bank application tracking, document completeness, and banker coordination |
-| Finance     | Arvind Raj    | `/forecast` | Risk-weighted conversion forecasting, assumptions calibration, and backtesting  |
+| Legal Admin | Arvind Raj    | `/legal`    | SPA execution: what sits between an approved loan and a signed agreement        |
 
 ### Sales Admin
 
@@ -108,21 +108,21 @@ shortfalls occur, I want to find approved procedural playbooks with actionable
 limits, so that I can guide the buyer through second-bank submissions or top-up
 arrangements.
 
-### Finance
+### Legal Admin
 
-**Profile:** Arvind Raj evaluates project revenue realization, monitors
-operating cash flow against sales projections, and assesses portfolio conversion
-performance.
+**Profile:** Arvind Raj runs the SPA execution stretch. Once a loan is approved
+he is accountable for getting the agreement scheduled, executed and stamped, and
+he works across a panel of external law firms he does not manage directly.
 
-**Job To Be Done 1 (Conversion Forecasting):** When projecting cash flow and
-bankable revenue, I want a 30-day forecast weighted by empirical stage
-conversion probabilities rather than unearned face value, so that the business
-does not borrow or spend against phantom sales.
+**Job To Be Done 1 (Seeing What Has Stopped):** When a loan has been approved
+but no SPA has been signed, I want the elapsed time on that case and the firm
+holding it, so that a case cannot sit quietly past the point where the booking
+was worth holding.
 
-**Job To Be Done 2 (Sensitivity Auditing):** When evaluating forecast
-sensitivity, I want to inspect every underlying assumption, test alternative
-seeds, and review historical backtest calibration, so that I can verify the
-predictive methodology.
+**Job To Be Done 2 (Closing Out Appointments):** When an SPA appointment has
+been put on the log and no signing has followed it, I want that gap surfaced as
+its own condition, so that a booked appointment is not mistaken for a completed
+one.
 
 ## User Stories Per Screen
 
@@ -182,23 +182,36 @@ predictive methodology.
 
 ### Forecast (`/forecast`)
 
-- **US-14 (Risk-Weighted SPA Forecast):** As a Finance officer, I want to view
+- **US-14 (Risk-Weighted SPA Forecast):** As a user on any desk, I want to view
   projected SPA signings within 30 days of booking, with an expected figure,
   10th to 90th percentile simulation range, and live count, so that cash
   projections reflect realistic conversion.
-- **US-15 (Conversion Rates With Intervals):** As a Finance officer, I want to
+- **US-15 (Conversion Rates With Intervals):** As a user on any desk, I want to
   inspect stage conversion rates with resolved sample sizes and Wilson 95%
   confidence intervals, so that sample uncertainty is transparent.
-- **US-16 (Historical Backtesting):** As a Finance officer, I want to inspect a
+- **US-16 (Historical Backtesting):** As a user on any desk, I want to inspect a
   backtest cut at reference date minus 30 days showing predicted versus observed
   signings, Brier score, and calibration table, so that model performance is
   verified.
-- **US-17 (Assumptions Transparency):** As a Finance officer, I want an
+- **US-17 (Assumptions Transparency):** As a user on any desk, I want an
   assumptions panel detailing every simulation parameter with its value, unit,
   source tag, and reference, so that all baseline figures are auditable.
-- **US-18 (Client-Side Seed Variance):** As a Finance officer, I want a "Try
+- **US-18 (Client-Side Seed Variance):** As a user on any desk, I want a "Try
   Another Seed" action that regenerates bookings in-browser to observe outcome
   spread without modifying the shared database.
+
+### Legal (`/legal`)
+
+- **US-24 (SPA Execution Queue):** As a Legal Admin, I want every booking with
+  an approved loan and no signed SPA, ordered by how long it has waited, so that
+  the oldest case is the first thing I see rather than something I have to go
+  looking for.
+- **US-25 (Scheduled Versus Unscheduled):** As a Legal Admin, I want to tell a
+  case with no SPA appointment on the log apart from one whose appointment was
+  recorded and never signed, so that I chase the right party.
+- **US-26 (Panel Load):** As a Legal Admin, I want the count, median wait and
+  value sitting with each panel firm, so that I can see where the queue is
+  concentrated without inferring firm performance the data cannot support.
 
 ### Settings And Administration (`/settings`)
 
@@ -254,8 +267,8 @@ using a seeded pseudo-random number generator (`sfc32` or `mulberry32`).
   ICs (`000000-00-0001` format) and phone numbers (`+60 00-000 0001` format)
   must be obviously fake.
 - **AC-1.11:** The system must export `PERSONA_STAFF` defining Sales Admin Nurul
-  Aina (`sales_admin`), Loan Admin Tan Mei Ling (`loan_admin`), and Finance
-  Arvind Raj (`finance`).
+  Aina (`sales_admin`), Loan Admin Tan Mei Ling (`loan_admin`), and Legal Admin
+  Arvind Raj (`legal`).
 
 ### FR-2: Case Summarization And Stall Detection
 
@@ -282,6 +295,15 @@ without storing transient state in database tables.
   2. A required document outstanding for 5 or more calendar days.
   3. A bank application undecided after 9 working days.
   4. An unresolved disputed event.
+  5. A loan approved 10 or more calendar days ago with no SPA appointment on the
+     log.
+  6. An SPA appointment recorded 14 or more calendar days ago with no signing
+     against it.
+- **AC-2.7:** Stall detection must apply to every booking that is unsigned and
+  not exited, with no upper bound on booking age. The 30-day horizon governs
+  what the forecast counts, not what the desks are shown; gating stall reasons
+  on it hides the longest-running failures, which are the ones worth chasing.
+  Any derived answer that reads stall reasons must apply the same rule.
 
 ### FR-3: Deterministic Financing Risk Calculation
 
@@ -491,8 +513,10 @@ The system must enforce persona routing and adhere to visual design standards.
 - **AC-14.1:** The active persona must persist in `localStorage` under key
   `mortar.persona`.
 - **AC-14.2:** Navigating to `/app` must redirect to the persona's designated
-  home (`/chase` for Sales Admin, `/bookings` for Loan Admin, `/forecast` for
-  Finance).
+  home (`/chase` for Sales Admin, `/bookings` for Loan Admin, `/legal` for Legal
+  Admin). `/forecast` is the shared projection and is homed to no desk. A
+  `mortar.persona` value of `finance`, the retired identifier, must resolve to
+  `legal-admin` rather than falling back to the default.
 - **AC-14.3:** `/settings` must state plainly that the data is simulated, with
   the seed and the reference date, and `/forecast` must keep its caption that a
   backtest on simulated data proves the method, not the business.
@@ -501,6 +525,50 @@ The system must enforce persona routing and adhere to visual design standards.
   Mono typefaces, six status tones with explicit words, zero emoji, and exactly
   10 Lucide icons.
 - **AC-14.5:** All mutations must display a toast and trigger snapshot refresh.
+
+### FR-16: Leakage Analysis And Recovery Sizing
+
+The system must state where bookings are lost, in order of size, from the event
+log rather than from opinion.
+
+- **AC-16.1:** `/forecast` must rank cancelled and lapsed bookings by value
+  lost, with units, value and share of total loss per cause, and must report the
+  unit-days those bookings held inventory off the market.
+- **AC-16.2:** Causes must be assigned in a stated root-cause order. A booking
+  that took a rejection and then saw the buyer withdraw is counted against the
+  rejection. The order is a judgement and must be visible on screen.
+- **AC-16.3:** The system must size the recoverable share: bookings that died
+  after a rejection with no second submission, multiplied by the rate at which
+  resubmitted cases reached signing.
+- **AC-16.4:** That rate must be measured over resolved cases only, and must be
+  presented with its sample size and a Wilson 95% interval. The recoverable
+  figure must never appear as a bare point estimate; the arithmetic producing it
+  must be shown.
+- **AC-16.5:** Live bookings sitting on a rejection with no second submission
+  must be named individually and linked to their case files, so the estimate
+  resolves into work rather than a headline.
+
+### FR-15: SPA Execution Desk
+
+The system must surface the stretch between loan approval and a signed SPA,
+which is otherwise measured nowhere.
+
+- **AC-15.1:** `/legal` must list every booking at stage `lo_issued`, ordered by
+  days since loan approval descending, breaking ties on booking value. Each row
+  must carry the booking, unit, buyer, panel firm, days since approval, the SPA
+  appointment note where one exists, and the value.
+- **AC-15.2:** Rows tripping a legal stall reason (AC-2.6 conditions 5 and 6)
+  must be visually distinguished on the days-since-approval figure alone. No
+  other column may carry a pill, per the Chip Economy rule in `docs/DESIGN.md`.
+- **AC-15.3:** The page must report awaiting count, the number past a stall
+  threshold, the longest wait in days, and the total value held.
+- **AC-15.4:** Panel load must group the queue by `legalFirm` with count, median
+  wait and value, and must state on the screen that it reports load rather than
+  firm performance, because firms are assigned by a uniform draw in the seeded
+  data and any difference between rows is the luck of the seed.
+- **AC-15.5:** `CaseSummary` must carry `daysSinceLoIssued` and
+  `daysSinceSpaSet`, both nullable, so the desk and the chase list read one
+  derivation rather than two.
 
 ## Non-Functional Requirements
 
@@ -592,8 +660,8 @@ following six-step pitch video script without error or manual intervention:
       extraction in under three seconds: Documents Received, Payslip.
     - Once confirmed, the outstanding payslip requirement clears, and the
       booking's stall condition clears.
-5.  **Finance Opens `/forecast`:**
-    - The user switches persona to Finance and navigates to `/forecast`.
+5.  **Legal Admin Opens `/forecast`:**
+    - The user switches persona to Legal Admin and navigates to `/forecast`.
     - The headline card displays expected SPA signings within 30 days of
       booking, with 10th to 90th percentile range, stage conversion rates,
       resolved sample sizes (n), and Wilson 95% confidence intervals.

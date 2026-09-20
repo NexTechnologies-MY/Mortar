@@ -406,10 +406,10 @@ Chase card urgency states repeat this linguistic rigor:
 
 ## Plain Language
 
-Mortar is read by sales, loan, finance and legal staff at a property developer.
-It is not read by engineers. Every visible string is written in the words those
-teams already use in the office, and the vocabulary of the system that produces
-the string never reaches the screen.
+Mortar is read by sales, loan and legal staff at a property developer. It is not
+read by engineers. Every visible string is written in the words those teams
+already use in the office, and the vocabulary of the system that produces the
+string never reaches the screen.
 
 Industry terms stay, because the audience uses them daily: SPA, LO, RM, booking,
 unit, stage, panel bank, disbursement, developer, solicitor. Terms from
@@ -775,6 +775,27 @@ control, and none appears. Do not "fix" this by removing the input.
   cancel button on destructive dialogs. Replaces all native browser `alert()`,
   `confirm()`, and `prompt()` calls.
 
+### Ask Panel
+
+- **Purpose:** Answering a set list of questions about the current bookings,
+  from any app screen.
+- **Anatomy:** The Dialog above at maximum width 672px, opened from a Sparkles
+  button in the top bar's right cluster or `Cmd/Ctrl-K`. Header: the mascot at
+  40px on a white rounded square, title, and one lead line. Body: a scrolling
+  transcript capped at 50vh. Footer: a text field and the Ask button.
+- **Answer:** the question in `--foreground`, then the mascot at 28px beside the
+  answer in `--muted-foreground`. Below it, one bordered chip per booking named,
+  in Geist Mono, linking to that case; then a neutral Status Pill reading
+  "Counted From Your Bookings"; then the action button, if the answer offers
+  one, which becomes a positive Status Pill once it has been used.
+- **Rules:** Answers are sentences, so they take sentence case and a full stop;
+  the suggested questions and every label stay Title Case. An answer never
+  changes once given. When nothing matches, the panel says so and re-offers the
+  suggestions rather than guessing. The panel carries Jev's name because Jev is
+  the assistant staff ask by name, but it never implies the model wrote the
+  answer: the Status Pill says the answer was counted, and the lead line says
+  plainly that it does not write new ones — see Plain Language.
+
 ## App Shell
 
 The application shell organizes the internal operations dashboard across three
@@ -784,7 +805,8 @@ staff roles:
   redirects to that role's primary desk:
   - Sales Admin: `/chase` (stuck bookings and daily follow-up targets).
   - Loan Admin: `/bookings` (unit pipeline and bank submission tracker).
-  - Finance: `/forecast` (cashflow projections and signed SPA conversions).
+  - Legal Admin: `/legal` (approved loans with no signed SPA, longest wait
+    first). `/forecast` is the shared projection and is homed to no desk.
 - **Navigation sidebar:** Fixed 64px width collapsed, expanding to 200px on
   hover over content. The active persona's primary home view sits at the top of
   the navigation items. Built with a solid `--sidebar` (`#FFFFFF` light /
@@ -819,10 +841,11 @@ ledger readable at a glance:
 - **One focus per screen:** A page opens on the answer — the figure, queue or
   card a person acts on now — and everything else ranks behind it. Supporting
   detail follows in reading order: `/forecast` leads with expected signings, its
-  range and the live count, then the stage rates and the backtest.
+  range and the live count, then where bookings died ranked by what they cost,
+  then the stage rates and the backtest.
 - **Progressive disclosure:** Nothing is deleted, but long reference material
   waits behind one control that names what it hides — the assumptions table
-  folds behind "Show 49 Assumptions". The control is a real button with
+  folds behind "Show 51 Assumptions". The control is a real button with
   `aria-expanded`; the revealed content renders in full, identical to what it
   replaces.
 - **Chip economy:** A chip earns its place only when it discriminates between
@@ -865,11 +888,11 @@ static block, as [Footer](#footer) sets out.
   reserves height for it.
 - **Authentication theatre:** There is no real backend authentication. Sign-in
   presents disabled email and password inputs, a permanently dead "Sign In"
-  button, a "Signing In As" persona selector (Sales Admin, Loan Admin, Finance),
-  and a live "Sign In As Guest" button. Clicking the live button stores the
-  persona in `localStorage` key `mortar.persona` and navigates to that role's
-  home. A "Sign out" item in the app's persona menu navigates back to `/sign-in`
-  and clears nothing from storage.
+  button, a "Signing In As" persona selector (Sales Admin, Loan Admin, Legal
+  Admin), and a live "Sign In As Guest" button. Clicking the live button stores
+  the persona in `localStorage` key `mortar.persona` and navigates to that
+  role's home. A "Sign out" item in the app's persona menu navigates back to
+  `/sign-in` and clears nothing from storage.
 
 ### Landing
 
@@ -1017,7 +1040,7 @@ sidebar, or footer.
   - Dead button: "Sign In" (permanently disabled, 1px `--input` border,
     background transparent, text `--disabled-foreground`, cursor `not-allowed`).
   - Persona picker: "Signing In As" selection group offering Sales Admin, Loan
-    Admin, and Finance.
+    Admin, and Legal Admin.
   - Live button: "Sign In As Guest" (full width, 36px high, corner radius 6px,
     background `--primary`, text `--primary-foreground`). On click, writes the
     selected role to `localStorage` key `mortar.persona` and navigates
@@ -1080,8 +1103,8 @@ and dark modes:
     else. No coloured strip, bar, rule or accent runs along any edge on any
     side, and no grey band sits behind a card to separate it from the page.
 14. **Plain language:** Every visible string, tooltip, toast and `aria-label`
-    reads in the words a sales, loan, finance or legal officer uses. No cache
-    state, snapshot, seed, score, interval, model name or component name appears
+    reads in the words a sales, loan or legal officer uses. No cache state,
+    snapshot, seed, score, interval, model name or component name appears
     anywhere on screen, per [Plain Language](#plain-language).
 
 ## Do And Do Not

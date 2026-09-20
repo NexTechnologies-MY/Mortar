@@ -14,6 +14,7 @@ import { ChasePage } from './pages/ChasePage'
 import { FaqPage } from './pages/FaqPage'
 import { ForecastPage } from './pages/ForecastPage'
 import { ImportPage } from './pages/ImportPage'
+import { LegalPage } from './pages/LegalPage'
 import { LandingPage } from './pages/LandingPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { SettingsPage } from './pages/SettingsPage'
@@ -41,6 +42,7 @@ export function App() {
         <Route path="/bookings" element={<BookingsPage />} />
         <Route path="/bookings/:id" element={<BookingDetailPage />} />
         <Route path="/chase" element={<ChasePage />} />
+        <Route path="/legal" element={<LegalPage />} />
         <Route path="/forecast" element={<ForecastPage />} />
         <Route path="/import" element={<ImportPage />} />
         <Route path="/settings" element={<SettingsPage />} />

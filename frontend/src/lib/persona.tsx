@@ -1,7 +1,7 @@
 /**
  * Persona provider + hook for the staff role the app is being used as.
  *
- * Mortar is shared by Sales Admin, Loan Admin, and Finance staff; the active
+ * Mortar is shared by Sales Admin, Loan Admin, and Legal Admin staff; the active
  * persona decides which route `/` redirects to and which sidebar item leads.
  * The choice persists in localStorage under `mortar.persona` so a workstation
  * reopens in the same role.
@@ -23,7 +23,7 @@ export type PersonaMeta = {
 export const PERSONAS: PersonaMeta[] = [
   { id: 'sales-admin', label: 'Sales Admin', home: '/chase' },
   { id: 'loan-admin', label: 'Loan Admin', home: '/bookings' },
-  { id: 'finance', label: 'Finance', home: '/forecast' }
+  { id: 'legal-admin', label: 'Legal Admin', home: '/legal' }
 ]
 
 /** Persona used before the user expresses a preference. */
@@ -36,11 +36,19 @@ function isPersona(value: string | null): value is Persona {
   return PERSONAS.some((p) => p.id === value)
 }
 
+/**
+ * Personas renamed since a workstation last stored its choice. Without this a
+ * stored `finance` would fail validation and silently reset the seat to Sales
+ * Admin on the next visit.
+ */
+const RENAMED_PERSONAS: Record<string, Persona> = { finance: 'legal-admin' }
+
 /** Reads the persisted persona, falling back to the default on any failure. */
 function readStoredPersona(): Persona {
   try {
     const stored = window.localStorage.getItem(PERSONA_STORAGE_KEY)
     if (isPersona(stored)) return stored
+    if (stored !== null && stored in RENAMED_PERSONAS) return RENAMED_PERSONAS[stored]
   } catch {
     // localStorage unavailable (private mode etc) — fall through to default
   }

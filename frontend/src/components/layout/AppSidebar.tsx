@@ -6,7 +6,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
-import { ChevronLeft, ClipboardList, BellRing, TrendingUp, FileUp, Settings, X } from 'lucide-react'
+import { ChevronLeft, ClipboardList, BellRing, Scale, TrendingUp, FileUp, Settings, X } from 'lucide-react'
 import { MortarMark } from '@/components/brand/MortarMark'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePersona } from '@/lib/persona'
@@ -24,6 +24,7 @@ const SIDEBAR_COLLAPSED = 64
 const NAV_ITEMS: NavItem[] = [
   { to: '/bookings', label: 'Bookings', icon: ClipboardList },
   { to: '/chase', label: 'Chase List', icon: BellRing },
+  { to: '/legal', label: 'Legal', icon: Scale },
   { to: '/forecast', label: 'Forecast', icon: TrendingUp },
   { to: '/import', label: 'Import', icon: FileUp },
   { to: '/settings', label: 'Settings', icon: Settings }

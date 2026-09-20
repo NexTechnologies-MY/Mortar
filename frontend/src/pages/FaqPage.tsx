@@ -17,7 +17,7 @@ const FAQS: { question: string; answer: string[] }[] = [
   {
     question: 'Who Uses Mortar, And Where Does Each Role Start?',
     answer: [
-      'Three staff roles, chosen on the sign-in page or switched in the header. Sales Admin starts on the Chase List — every stalled booking, its blocker in plain words, and who to chase today. Loan Admin starts on Bookings — each unit\u2019s case file, its bank applications and its evidence log. Finance starts on Forecast — the signings you can bank on, not the bookings you hope will convert.'
+      'Three staff roles, chosen on the sign-in page or switched in the header. Sales Admin starts on the Chase List — every stalled booking, its blocker in plain words, and who to chase today. Loan Admin starts on Bookings — each unit\u2019s case file, its bank applications and its evidence log. Legal Admin starts on Legal — what is sitting with the lawyers, with whom, and for how long.'
     ]
   },
   {

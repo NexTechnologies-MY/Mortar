@@ -189,6 +189,72 @@ describe('summarizeCases', () => {
   })
 })
 
+describe('the legal waiting room', () => {
+  /** A case that reached `lo_issued` on `approvedOn` and went no further. */
+  const awaiting = (bookingDate: string, approvedOn: string, appointmentOn?: string) => {
+    const events = [
+      event({ occurredAt: at(bookingDate) }),
+      event({ id: 'EV-T010', kind: 'loan_approved', track: 'loan', occurredAt: at(approvedOn) })
+    ]
+    if (appointmentOn) {
+      events.push(event({ id: 'EV-T011', kind: 'spa_appointment_set', track: 'legal', occurredAt: at(appointmentOn) }))
+    }
+    const b = booking({ bookingDate })
+    return summarizeCases({ bookings: [b], applications: [], events, tasks: [] }, REFERENCE_DATE)[0]
+  }
+
+  it('flags an approved loan whose SPA was never scheduled', () => {
+    const out = awaiting('2026-08-01', '2026-08-05')
+    expect(out.stage).toBe('lo_issued')
+    expect(out.daysSinceLoIssued).toBe(44)
+    expect(out.daysSinceSpaSet).toBeNull()
+    expect(out.stallReasons).toContain('SPA Not Scheduled 44 Days After LO')
+  })
+
+  it('stays quiet while the scheduling threshold has not passed', () => {
+    const out = awaiting('2026-09-01', '2026-09-12')
+    expect(out.daysSinceLoIssued).toBe(6)
+    expect(out.stallReasons).toEqual([])
+  })
+
+  it('flags an appointment that was set and left unsigned, and drops the scheduling reason', () => {
+    const out = awaiting('2026-08-20', '2026-08-25', '2026-08-28')
+    expect(out.daysSinceSpaSet).toBe(21)
+    expect(out.stallReasons).toContain('SPA Set 21 Days Ago, Still Unsigned')
+    expect(out.stallReasons.some((r) => r.startsWith('SPA Not Scheduled'))).toBe(false)
+  })
+
+  it('says nothing once the SPA is signed', () => {
+    const b = booking({ bookingDate: '2026-08-01' })
+    const events = [
+      event({ occurredAt: at('2026-08-01') }),
+      event({ id: 'EV-T010', kind: 'loan_approved', track: 'loan', occurredAt: at('2026-08-05') }),
+      event({ id: 'EV-T011', kind: 'spa_appointment_set', track: 'legal', occurredAt: at('2026-08-08') }),
+      event({ id: 'EV-T012', kind: 'spa_signed', track: 'legal', occurredAt: at('2026-08-12') })
+    ]
+    const out = summarizeCases({ bookings: [b], applications: [], events, tasks: [] }, REFERENCE_DATE)[0]
+    expect(out.stage).toBe('spa_signed')
+    expect(out.stallReasons).toEqual([])
+  })
+
+  it('keeps stalling a case that has sat past the forecast horizon', () => {
+    // `live` closes at 30 days so the forecast stops counting it; `open` does
+    // not, because a case that has sat this long is the one worth chasing.
+    const b = booking({ bookingDate: '2026-08-01' })
+    const events = [
+      event({ occurredAt: at('2026-08-01') }),
+      event({ id: 'EV-T010', kind: 'loan_approved', track: 'loan', occurredAt: at('2026-08-05') })
+    ]
+    const facts = deriveCase(b, [], events, REFERENCE_DATE)
+    expect(facts.ageDays).toBe(48)
+    expect(facts.live).toBe(false)
+    expect(facts.open).toBe(true)
+    expect(
+      summarizeCases({ bookings: [b], applications: [], events, tasks: [] }, REFERENCE_DATE)[0].stallReasons.length
+    ).toBeGreaterThan(0)
+  })
+})
+
 describe('financingRisk', () => {
   it('computes the annuity instalment', () => {
     expect(monthlyInstalment(450_000, 4.2, 30)).toBeCloseTo(2200.58, 2)
@@ -365,7 +431,7 @@ describe('staff and assumptions', () => {
   it('names one staff member per persona', () => {
     expect(PERSONA_STAFF['sales-admin'].name).toBe('Nurul Aina')
     expect(PERSONA_STAFF['loan-admin'].name).toBe('Tan Mei Ling')
-    expect(PERSONA_STAFF.finance.name).toBe('Arvind Raj')
+    expect(PERSONA_STAFF['legal-admin'].name).toBe('Arvind Raj')
   })
 
   it('tags every number the simulation uses', () => {

@@ -37,11 +37,11 @@ describe('SignInPage', () => {
   it('signs in as the chosen persona and navigates to its home', () => {
     renderSignIn()
 
-    fireEvent.click(screen.getByRole('radio', { name: 'Finance' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'Legal Admin' }))
     fireEvent.click(screen.getByRole('button', { name: 'Sign In As Guest' }))
 
-    expect(window.localStorage.getItem(PERSONA_STORAGE_KEY)).toBe('finance')
-    expect(screen.getByTestId('location').textContent).toBe('/forecast')
+    expect(window.localStorage.getItem(PERSONA_STORAGE_KEY)).toBe('legal-admin')
+    expect(screen.getByTestId('location').textContent).toBe('/legal')
   })
 
   it('makes the live guest button the primary action and the dead button transparent', () => {
