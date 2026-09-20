@@ -15,7 +15,7 @@ import './LandingPage.css'
 
 const still = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
-/** Renders the landing page: film layer, header row, text column, facts, stage strip. */
+/** Renders the landing page: film layer, header row, text column, facts. */
 export function LandingPage() {
   const { resolved, toggle } = useTheme()
   const next = resolved === 'light' ? 'dark' : 'light'
@@ -73,14 +73,6 @@ export function LandingPage() {
           <dd>The SPAs You Can Bank On, Not The Bookings You Hope Will Convert</dd>
         </div>
       </dl>
-
-      <div className="land-strip" aria-hidden="true">
-        <span data-stage="1" />
-        <span data-stage="2" />
-        <span data-stage="3" />
-        <span data-stage="4" />
-        <span data-stage="5" />
-      </div>
     </main>
   )
 }

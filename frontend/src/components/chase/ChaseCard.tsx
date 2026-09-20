@@ -1,8 +1,9 @@
 /**
  * Chase card — one stalled live booking in the Sales Admin chase queue.
- * Follows the spec's chase-card anatomy: a 3px urgency edge, unit and buyer
- * header with an urgency pill, the blocker in plain words, a meta line, Jev's
- * suggested next action with its source tag, and the action footer.
+ * Follows the spec's chase-card anatomy: unit and buyer header with an urgency
+ * pill, the blocker in plain words, a meta line, Jev's suggested next action
+ * with its source tag, and the action footer. Urgency is carried by the pill
+ * and its word alone — the card has no coloured edge.
  */
 
 import { Link } from 'react-router-dom'
@@ -11,14 +12,7 @@ import type { Booking, CaseSummary, DocumentKind, NextActionSuggestion } from '@
 import { JevTag, RiskChip, STAGE_LABELS, formatDaysLong, formatRm } from '@/components/case'
 import { Button } from '@/components/ui/button'
 import { StatusPill } from '@/components/ui/status-pill'
-import { cn } from '@/lib/utils'
 import { NEXT_ACTION_LABELS, DOCUMENT_LABELS, ownerName, ownerRoleLabel, urgencyFor } from './chase'
-
-const EDGE_TONES = {
-  danger: 'border-l-status-danger',
-  warning: 'border-l-status-warning',
-  neutral: 'border-l-status-neutral'
-} as const
 
 export function ChaseCard({
   booking,
@@ -49,10 +43,7 @@ export function ChaseCard({
   return (
     <article
       data-testid={`chase-card-${booking.id}`}
-      className={cn(
-        'flex flex-col gap-3 rounded-md border border-border border-l-[3px] bg-card p-4',
-        EDGE_TONES[urgency.tone]
-      )}
+      className="flex flex-col gap-3 rounded-md border border-border bg-card p-4"
     >
       {/* Header: unit + buyer + urgency pill */}
       <div className="flex items-start justify-between gap-2">

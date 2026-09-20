@@ -38,23 +38,23 @@ Contents:
 Seven core decisions were settled during design system research. All seven are
 binding, and nothing below reopens them.
 
-| Question        | Decision                                                                                                                                                                                                                         |
-| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Look            | Flat ledger: paper ground, white cards, 1px hairlines, 6px radius. No glass, backdrop blur (the sidebar scrim is the sole exception), gradients (the landing veil is the sole exception), glow blobs or card shadows in the app. |
-| Status colour   | Orange is for action and selection only. Six status tones carry every state, each always with a word.                                                                                                                            |
-| Type            | Geist for UI, Geist Mono for unit codes and IDs. Nine text styles. No third family.                                                                                                                                              |
-| Density         | Controls 36px, table rows 44px, body 14px. Built for a working day in lists.                                                                                                                                                     |
-| Native controls | None. Select, date picker, menu, tooltip, file drop, checkbox and scrollbar are Mortar components (Radix/shadcn restyled). No alert/confirm/prompt.                                                                              |
-| Modes           | Light and dark from one token set (Color collection has Light and Dark modes).                                                                                                                                                   |
-| Icons           | Lucide (lucide-react), 16px, stroke 2, coloured like adjacent text. 20px in empty states.                                                                                                                                        |
+| Question        | Decision                                                                                                                                                                                                                                                                                                              |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Look            | Flat ledger: white ground, white cards, 1px hairlines, 6px radius. The ground is the same white as the cards, and the 1px hairline does the separating. No glass, backdrop blur (the sidebar scrim is the sole exception), gradients (the landing veil is the sole exception), glow blobs or card shadows in the app. |
+| Status colour   | Ink is the action colour, carrying `--primary`, `--link`, `--ring` and `--selected`. There is no chromatic accent. Six status tones carry every state, each always with a word.                                                                                                                                       |
+| Type            | Geist for UI, Geist Mono for unit codes and IDs. Nine text styles. No third family.                                                                                                                                                                                                                                   |
+| Density         | Controls 36px, table rows 44px, body 14px. Built for a working day in lists.                                                                                                                                                                                                                                          |
+| Native controls | None. Select, date picker, menu, tooltip, file drop, checkbox and scrollbar are Mortar components (Radix/shadcn restyled). No alert/confirm/prompt.                                                                                                                                                                   |
+| Modes           | Light and dark from one token set (Color collection has Light and Dark modes).                                                                                                                                                                                                                                        |
+| Icons           | Lucide (lucide-react), 16px, stroke 2, coloured like adjacent text. 20px in empty states.                                                                                                                                                                                                                             |
 
 Mortar is an internal operations tool for developer staff tracking property unit
 bookings from initial deposit through loan submission, loan approval, and final
 Sale and Purchase Agreement (SPA) signing. The interface rejects decorative SaaS
 styling: there are no frosted glass planes, no gradient card fills, no floating
 drop shadows on data tables, and no neon glow blobs. Every screen presents a
-crisp, high-density paper ledger where data and actionable blockers stand out
-immediately.
+crisp, high-density ledger on a white ground, where data and actionable blockers
+stand out immediately.
 
 ## Typeface
 
@@ -98,65 +98,62 @@ full-sentence toasts or tooltips keep their own case.
 ## Colour
 
 Mortar components consume semantic tokens defined in CSS custom properties and
-never write raw hex values. The primitives collection contains 55 calibrated
-values across seven color families.
+never write raw hex values. The primitives collection contains 18 calibrated
+neutral values across two families, `ink` (11 steps) and `paper` (7 steps).
 
 ### Primitives Summary
 
 Primitives belong to the collection "Primitives", mapped in CSS as
 `var(--color-<family>-<step>)`, hidden from design pickers:
 
-- **`orange`:** 50 `#FFF7ED`, 100 `#FFEDD5`, 200 `#FED7AA`, 300 `#FDBA74`, 400
-  `#FB923C`, 500 `#F97316`, 600 `#EA580C`, 700 `#C2410C`, 800 `#9A3412`, 900
-  `#7C2D12`, 950 `#431407`, 975 `#2E1A12` (custom deep ground).
-- **`ink`:** 50 `#FAF9F7`, 100 `#F2F0ED`, 200 `#E6E2DD`, 300 `#D3CEC7`, 400
-  `#A8A29E`, 500 `#6E665F`, 600 `#57534E`, 700 `#44403C`, 800 `#292524`, 900
-  `#1C1917`, 950 `#0C0A09`.
-- **`paper`:** 0 `#FFFFFF`, 50 `#FDFBF8`, 100 `#F9F6F0`, 200 `#F5F0E8`, 300
-  `#EDE6DA`, 400 `#E2D9CB`, 500 `#CEC3B1`.
-- **`green`:** 100 `#DCFCE7`, 300 `#86EFAC`, 400 `#4ADE80`, 600 `#16A34A`, 800
-  `#166534`, 950 `#052E16`.
-- **`yellow`:** 100 `#FEF9C3`, 300 `#FDE047`, 400 `#FACC15`, 600 `#CA8A04`, 800
-  `#854D0E`, 950 `#422006`.
-- **`rose`:** 100 `#FFE4E6`, 300 `#FDA4AF`, 400 `#FB7185`, 600 `#E11D48`, 700
-  `#BE123C`, 950 `#4C0519`.
-- **`blue`:** 100 `#DBEAFE`, 300 `#93C5FD`, 400 `#60A5FA`, 600 `#2563EB`, 700
-  `#1D4ED8`, 950 `#172554`.
-- **Brand mark (Kigumi Joint):** ink `#1C1917` + orange `#C2410C` in light mode;
-  paper `#F5F0E8` + orange `#F97316` in dark mode.
+- **`ink`:** a neutral grey ramp — 50 `#FAFAFA`, 100 `#F5F5F5`, 200 `#E5E5E5`,
+  300 `#D4D4D4`, 400 `#A3A3A3`, 500 `#737373`, 600 `#525252`, 700 `#3A3A3A`, 800
+  `#262626`, 900 `#141414`, 950 `#0A0A0A`.
+- **`paper`:** 0 `#FFFFFF`, 50 `#FCFCFC`, 100 `#FAFAFA`, 200 `#F5F5F5`, 300
+  `#EFEFEF`, 400 `#E5E5E5`, 500 `#D4D4D4`.
+- **Status tones:** No status colour is drawn from a Tailwind palette family.
+  The six tones are bespoke desaturated pairs, one value per mode, declared
+  directly on the semantic tokens listed in [Status Tones](#status-tones).
+- **Brand mark (Kigumi Joint):** ink `#0A0A0A` + grey `#6B6B6B` in light mode;
+  `#FAFAFA` + `#A1A1A1` in dark mode.
 
 ### Semantic Colour
 
 The semantic collection "Color" defines functional roles across Light and Dark
 modes:
 
-| Token                         | CSS                       | Light                      | Dark                   |
-| ----------------------------- | ------------------------- | -------------------------- | ---------------------- |
-| `color/bg/page`               | `--background`            | `#F5F0E8` (paper/200)      | `#0C0A09` (ink/950)    |
-| `color/bg/card`               | `--card`                  | `#FFFFFF` (paper/0)        | `#1C1917` (ink/900)    |
-| `color/bg/popover`            | `--popover`               | `#FFFFFF` (paper/0)        | `#292524` (ink/800)    |
-| `color/bg/sidebar`            | `--sidebar`               | `#F9F6F0` (paper/100)      | `#1C1917` (ink/900)    |
-| `color/bg/muted`              | `--muted`                 | `#F9F6F0` (paper/100)      | `#292524` (ink/800)    |
-| `color/bg/hover`              | `--accent`                | `#EDE6DA` (paper/300)      | `#292524` (ink/800)    |
-| `color/bg/selected`           | `--selected`              | `#FFF7ED` (orange/50)      | `#2E1A12` (orange/975) |
-| `color/bg/inverse`            | `--inverse`               | `#1C1917` (ink/900)        | `#F5F0E8` (paper/200)  |
-| `color/bg/primary`            | `--primary`               | `#C2410C` (orange/700)     | `#F97316` (orange/500) |
-| `color/bg/primary-hover`      | `--primary-hover`         | `#9A3412` (orange/800)     | `#FB923C` (orange/400) |
-| `color/bg/destructive`        | `--destructive`           | `#BE123C` (rose/700)       | `#E11D48` (rose/600)   |
-| `color/bg/disabled`           | `--disabled`              | `#EDE6DA` (paper/300)      | `#292524` (ink/800)    |
-| `color/text/primary`          | `--foreground`            | `#1C1917` (ink/900)        | `#F5F0E8` (paper/200)  |
-| `color/text/muted`            | `--muted-foreground`      | `#6E665F` (ink/500)        | `#A8A29E` (ink/400)    |
-| `color/text/on-primary`       | `--primary-foreground`    | `#FFFFFF` (paper/0)        | `#1C1917` (ink/900)    |
-| `color/text/on-inverse`       | `--inverse-foreground`    | `#F5F0E8` (paper/200)      | `#1C1917` (ink/900)    |
-| `color/text/disabled`         | `--disabled-foreground`   | `#6E665F` (ink/500)        | `#A8A29E` (ink/400)    |
-| `color/text/link`             | `--link`                  | `#C2410C` (orange/700)     | `#FB923C` (orange/400) |
-| `color/border/default`        | `--border`                | `#E2D9CB` (paper/400)      | `#292524` (ink/800)    |
-| `color/border/strong`         | `--input`                 | `#CEC3B1` (paper/500)      | `#44403C` (ink/700)    |
-| `color/border/focus`          | `--ring`                  | `#C2410C` (orange/700)     | `#F97316` (orange/500) |
-| `color/scrollbar/thumb`       | `--scrollbar-thumb`       | `#E2D9CB` (paper/400)      | `#292524` (ink/800)    |
-| `color/scrollbar/thumb-hover` | `--scrollbar-thumb-hover` | `#CEC3B1` (paper/500)      | `#44403C` (ink/700)    |
-| `color/bg/footer`             | `--footer`                | `#EDE6DA` (paper/300)      | `#1C1917` (ink/900)    |
-| `color/bg/scrim`              | `--scrim`                 | ink-950 at 14% (color-mix) | black at 45%           |
+| Token                         | CSS                        | Light                      | Dark                |
+| ----------------------------- | -------------------------- | -------------------------- | ------------------- |
+| `color/bg/page`               | `--background`             | `#FFFFFF` (paper/0)        | `#0A0A0A` (ink/950) |
+| `color/bg/card`               | `--card`                   | `#FFFFFF` (paper/0)        | `#141414` (ink/900) |
+| `color/bg/popover`            | `--popover`                | `#FFFFFF` (paper/0)        | `#1C1C1C`           |
+| `color/bg/sidebar`            | `--sidebar`                | `#FFFFFF` (paper/0)        | `#0F0F0F`           |
+| `color/bg/muted`              | `--muted`                  | `#F5F5F5` (paper/200)      | `#1C1C1C`           |
+| `color/bg/hover`              | `--accent`                 | `#F0F0F0`                  | `#242424`           |
+| `color/bg/selected`           | `--selected`               | `#F5F5F5` (paper/200)      | `#1F1F1F`           |
+| `color/bg/inverse`            | `--inverse`                | `#0A0A0A` (ink/950)        | `#FAFAFA` (ink/50)  |
+| `color/bg/primary`            | `--primary`                | `#0A0A0A` (ink/950)        | `#FAFAFA` (ink/50)  |
+| `color/bg/primary-hover`      | `--primary-hover`          | `#262626` (ink/800)        | `#E5E5E5` (ink/200) |
+| `color/bg/destructive`        | `--destructive`            | `#B3261E`                  | `#E05260`           |
+| `color/bg/disabled`           | `--disabled`               | `#F5F5F5` (paper/200)      | `#1C1C1C`           |
+| `color/text/primary`          | `--foreground`             | `#0A0A0A` (ink/950)        | `#FAFAFA` (ink/50)  |
+| `color/text/muted`            | `--muted-foreground`       | `#6B6B6B`                  | `#A1A1A1`           |
+| `color/text/on-primary`       | `--primary-foreground`     | `#FFFFFF` (paper/0)        | `#0A0A0A` (ink/950) |
+| `color/text/on-inverse`       | `--inverse-foreground`     | `#FFFFFF` (paper/0)        | `#0A0A0A` (ink/950) |
+| `color/text/on-destructive`   | `--destructive-foreground` | `#FFFFFF` (paper/0)        | `#0A0A0A` (ink/950) |
+| `color/text/disabled`         | `--disabled-foreground`    | `#8A8A8A`                  | `#A3A3A3` (ink/400) |
+| `color/text/link`             | `--link`                   | `#0A0A0A` (ink/950)        | `#FAFAFA` (ink/50)  |
+| `color/border/default`        | `--border`                 | `#D8D8D8`                  | `#262626` (ink/800) |
+| `color/border/strong`         | `--input`                  | `#C9C9C9`                  | `#3A3A3A` (ink/700) |
+| `color/border/focus`          | `--ring`                   | `#0A0A0A` (ink/950)        | `#FAFAFA` (ink/50)  |
+| `color/scrollbar/thumb`       | `--scrollbar-thumb`        | `#D8D8D8`                  | `#262626` (ink/800) |
+| `color/scrollbar/thumb-hover` | `--scrollbar-thumb-hover`  | `#C9C9C9`                  | `#3A3A3A` (ink/700) |
+| `color/bg/footer`             | `--footer`                 | `#EFEFEF` (paper/300)      | `#141414` (ink/900) |
+| `color/bg/scrim`              | `--scrim`                  | ink-950 at 14% (color-mix) | black at 45%        |
+
+`--destructive-foreground` is declared in both modes. Dark mode previously
+inherited the light `#FFFFFF`, which read 3.79:1 on the dark destructive fill;
+ink `#0A0A0A` on `#E05260` reads 5.23:1.
 
 ### Status Tones
 
@@ -165,37 +162,40 @@ Six status tones carry every state. Each tone provides `fg` (text and icon),
 
 | Tone       | CSS Variable Prefix | fg (Light / Dark)     | bg (Light / Dark)     | solid (Light / Dark)  | Word       |
 | ---------- | ------------------- | --------------------- | --------------------- | --------------------- | ---------- |
-| `positive` | `--status-positive` | `#166534` / `#86EFAC` | `#DCFCE7` / `#052E16` | `#16A34A` / `#4ADE80` | On track   |
-| `warning`  | `--status-warning`  | `#854D0E` / `#FDE047` | `#FEF9C3` / `#422006` | `#CA8A04` / `#FACC15` | Watch      |
-| `danger`   | `--status-danger`   | `#BE123C` / `#FDA4AF` | `#FFE4E6` / `#4C0519` | `#E11D48` / `#FB7185` | At risk    |
-| `info`     | `--status-info`     | `#1D4ED8` / `#93C5FD` | `#DBEAFE` / `#172554` | `#2563EB` / `#60A5FA` | With bank  |
-| `neutral`  | `--status-neutral`  | `#57534E` / `#D3CEC7` | `#EDE6DA` / `#292524` | `#A8A29E` / `#6E665F` | Booked     |
-| `signed`   | `--status-signed`   | `#F5F0E8` / `#1C1917` | `#1C1917` / `#F5F0E8` | `#1C1917` / `#F5F0E8` | SPA signed |
+| `positive` | `--status-positive` | `#1F4D35` / `#A7D8BC` | `#EEF4F0` / `#12251B` | `#3E7D5A` / `#5FA57E` | On track   |
+| `warning`  | `--status-warning`  | `#6B4E16` / `#E8CE8A` | `#F8F4E9` / `#2A2113` | `#A9852F` / `#C9A34A` | Watch      |
+| `danger`   | `--status-danger`   | `#7A2230` / `#E9A8B0` | `#FAEEF0` / `#2B141A` | `#A53D4C` / `#C76A76` | At risk    |
+| `info`     | `--status-info`     | `#1E3A5F` / `#AEC8E8` | `#EEF2F8` / `#141E2B` | `#3B6395` / `#6E9BD1` | With bank  |
+| `neutral`  | `--status-neutral`  | `#525252` / `#D4D4D4` | `#F5F5F5` / `#1C1C1C` | `#A3A3A3` / `#6B6B6B` | Booked     |
+| `signed`   | `--status-signed`   | `#FFFFFF` / `#0A0A0A` | `#0A0A0A` / `#FAFAFA` | `#0A0A0A` / `#FAFAFA` | SPA signed |
 
 Rules that are not obvious from the table:
 
-- **Orange is for action and selection only:** Orange never conveys status or
-  warning. It is reserved for `--primary` actions, `--link` text, `--ring` focus
-  borders, and `--selected` row ground.
-- **Red is strictly for danger:** Rose / `--status-danger` / `--destructive` is
+- **Ink is the action colour:** Ink (`#0A0A0A` light / `#FAFAFA` dark) carries
+  `--primary` actions, `--link` text and `--ring` focus borders, and as a grey
+  step it carries the `--selected` row ground. The product has no chromatic
+  accent: colour appears only in the six status tones.
+- **Red is strictly for danger:** `--status-danger` and `--destructive` are
   restricted to risk conditions and irreversible actions (e.g. cancelling a
   booking).
 - **Signed pill inversion:** `signed` is the only solid pill: its background
-  uses solid `#1C1917` (light) / `#F5F0E8` (dark), its text uses
+  uses solid `#0A0A0A` (light) / `#FAFAFA` (dark), its text uses
   `--status-signed-fg`, and its 6px dot uses the foreground color.
 - **Chart series colours:** Data charts bind status solids directly: `signed`
   for actual signed SPAs, `info` for applications with banks, and `positive` /
   `warning` / `danger` for risk distributions.
-- **Calibrated contrast:** Muted text `#6E665F` achieves 4.96:1 contrast on
-  paper and 5.6:1 on white (surpassing the WCAG AA 4.5:1 floor). Stone `#78716C`
-  was rejected because its 4.2:1 contrast failed on paper. White text on light
-  primary `#C2410C` achieves 5.2:1. Dark primary `#F97316` binds ink text
-  `#1C1917` (5.9:1), never white.
+- **Calibrated contrast:** Muted text `#6B6B6B` achieves 5.33:1 on white,
+  surpassing the WCAG AA 4.5:1 floor. The `#D8D8D8` hairline is 1.43:1 against
+  white, chosen deliberately: `#E5E5E5` (1.26:1) was weaker than the hairline
+  the previous warm-ground palette supplied, and it lost the ledger's structure
+  on a white page. White text on light primary `#0A0A0A` achieves 19.8:1. In
+  dark mode, ink text on `#FAFAFA` achieves 18.97:1, and ink on destructive
+  `#E05260` achieves 5.23:1.
 - **Static board chrome:** Fixed interface framing (cover, board title bars)
-  binds primitives ink/900 `#1C1917`, paper/200 `#F5F0E8` and orange/500
-  `#F97316` so it never flips with theme modes.
-- **No row tinting or zebra stripes:** Table rows remain neutral white or paper.
-  Never tint an entire row with risk colours.
+  binds primitives ink/950 `#0A0A0A` and paper/0 `#FFFFFF` so it never flips
+  with theme modes.
+- **No row tinting or zebra stripes:** Table rows remain neutral — the card
+  white, or `--muted` grey on hover. Never tint an entire row with risk colours.
 
 ## Spacing, Radius And Elevation
 
@@ -221,13 +221,12 @@ Corner rounding is strictly restrained. There are no pill-shaped buttons:
   items, calendar day cells, tooltips.
 - `radius/md` (6px, `--radius-md`): buttons, input fields, select triggers,
   cards, menus, popovers, drop zones, dialog panels.
-- `radius/full` (9999px): scrollbar thumbs, stage tracker bars, landing strip
-  bars.
+- `radius/full` (9999px): scrollbar thumbs, stage tracker bars.
 
 ### Elevation And Focus
 
 - **Overlay elevation (`--shadow-overlay`):**
-  `0 1px 2px rgba(28,25,23,.06), 0 8px 24px -4px rgba(28,25,23,.12)`. Restricted
+  `0 1px 2px rgba(10,10,10,.06), 0 8px 24px -4px rgba(10,10,10,.12)`. Restricted
   to floating layers: menus, popovers, date picker calendar, and dialog modals.
   Cards remain completely flat with a 1px `--border` hairline.
 - **Focus ring:** 2px solid ring in `--ring` with a 2px offset in `--background`
@@ -350,20 +349,21 @@ browser control maps to a restyled Mortar component:
   (`--radius-md`), content gap 8px. Optional 16px Lucide leading icon. Text set
   in Label/Default (Geist Medium 14/20).
 - **States and tokens:**
-  - `Primary`: background `--primary` (`#C2410C` light / `#F97316` dark), hover
-    `--primary-hover` (`#9A3412` / `#FB923C`), text `--primary-foreground`
-    (`#FFFFFF` / `#1C1917`).
-  - `Secondary`: background `--card` (`#FFFFFF` / `#1C1917`), border 1px
-    `--input` (`#CEC3B1` / `#44403C`), hover `--accent` (`#EDE6DA` / `#292524`),
-    text `--foreground` (`#1C1917` / `#F5F0E8`).
+  - `Primary`: background `--primary` (`#0A0A0A` light / `#FAFAFA` dark), hover
+    `--primary-hover` (`#262626` / `#E5E5E5`), text `--primary-foreground`
+    (`#FFFFFF` / `#0A0A0A`).
+  - `Secondary`: background `--card` (`#FFFFFF` / `#141414`), border 1px
+    `--input` (`#C9C9C9` / `#3A3A3A`), hover `--accent` (`#F0F0F0` / `#242424`),
+    text `--foreground` (`#0A0A0A` / `#FAFAFA`).
   - `Ghost`: background transparent, hover `--accent`, text `--foreground`.
-  - `Destructive`: background `--destructive` (`#BE123C` / `#E11D48`), text
-    `--primary-foreground`. Always prompts confirmation in a Dialog.
-  - `Disabled`: background `--disabled` (`#EDE6DA` / `#292524`), text
-    `--disabled-foreground` (`#6E665F` / `#A8A29E`). Never use opacity.
+  - `Destructive`: background `--destructive` (`#B3261E` / `#E05260`), text
+    `--destructive-foreground` (`#FFFFFF` / `#0A0A0A`). Always prompts
+    confirmation in a Dialog.
+  - `Disabled`: background `--disabled` (`#F5F5F5` / `#1C1C1C`), text
+    `--disabled-foreground` (`#8A8A8A` / `#A3A3A3`). Never use opacity.
   - `Focus`: 2px `--ring` outline with 2px `--background` offset.
-- **Rules:** Primary is the only orange surface on a screen; exactly one Primary
-  button per view. No gradients, shadows, or press scale.
+- **Rules:** Primary is the only ink-filled surface on a screen; exactly one
+  Primary button per view. No gradients, shadows, or press scale.
 
 ### Checkbox
 
@@ -372,8 +372,8 @@ browser control maps to a restyled Mortar component:
   border on `--card`.
 - **States and tokens:**
   - `Unchecked`: 1px `--input` border, `--card` background.
-  - `Checked`: fills `--primary` (`#C2410C` / `#F97316`), 12px Check icon in
-    `--primary-foreground` (`#FFFFFF` / `#1C1917`).
+  - `Checked`: fills `--primary` (`#0A0A0A` / `#FAFAFA`), 12px Check icon in
+    `--primary-foreground` (`#FFFFFF` / `#0A0A0A`).
   - `Disabled`: `--disabled` fill, `--disabled-foreground` border and check
     icon.
   - `Focus`: 2px `--ring` outline with 2px offset.
@@ -395,10 +395,10 @@ browser control maps to a restyled Mortar component:
     picker.
 - **States and tokens:**
   - `Default`: 1px `--input` border on `--card`.
-  - `Focus`: 2px `--ring` border (`#C2410C` / `#F97316`).
-  - `Error`: 1px `--status-danger` border (`#E11D48` / `#FB7185`), validation
-    message below in `--status-danger-fg` (`#BE123C` / `#FDA4AF`), Body/Small.
-  - `Disabled`: `--disabled` fill (`#EDE6DA` / `#292524`),
+  - `Focus`: 2px `--ring` border (`#0A0A0A` / `#FAFAFA`).
+  - `Error`: 1px `--status-danger` border (`#A53D4C` / `#C76A76`), validation
+    message below in `--status-danger-fg` (`#7A2230` / `#E9A8B0`), Body/Small.
+  - `Disabled`: `--disabled` fill (`#F5F5F5` / `#1C1C1C`),
     `--disabled-foreground` text.
 - **Rules:** A visible label in Label/Small must sit above every field. No
   native select, date inputs, number spinners, or browser autofill yellow.
@@ -406,8 +406,8 @@ browser control maps to a restyled Mortar component:
 ### Tooltip
 
 - **Purpose:** Non-critical supplementary notes and exact unrounded values.
-- **Anatomy:** Background `--inverse` (`#1C1917` light / `#F5F0E8` dark), text
-  `--inverse-foreground` (`#F5F0E8` / `#1C1917`), Body/Small (13/18), corner
+- **Anatomy:** Background `--inverse` (`#0A0A0A` light / `#FAFAFA` dark), text
+  `--inverse-foreground` (`#FFFFFF` / `#0A0A0A`), Body/Small (13/18), corner
   radius 4px (`--radius-sm`), padding 4px vertical by 8px horizontal, maximum
   width 240px.
 - **States and tokens:**
@@ -424,18 +424,18 @@ browser control maps to a restyled Mortar component:
   padding 8px, content gap 6px. Contains a 6px solid dot in tone solid, fill in
   tone bg, text in Label/Small (Geist Medium 12/16) in tone fg.
 - **Variants:**
-  - `Neutral`: Booked (fg `#57534E` / `#D3CEC7`, bg `#EDE6DA` / `#292524`, dot
-    `#A8A29E` / `#6E665F`).
-  - `Info`: With bank (fg `#1D4ED8` / `#93C5FD`, bg `#DBEAFE` / `#172554`, dot
-    `#2563EB` / `#60A5FA`).
-  - `Positive`: On track (fg `#166534` / `#86EFAC`, bg `#DCFCE7` / `#052E16`,
-    dot `#16A34A` / `#4ADE80`).
-  - `Warning`: Watch (fg `#854D0E` / `#FDE047`, bg `#FEF9C3` / `#422006`, dot
-    `#CA8A04` / `#FACC15`).
-  - `Danger`: At risk (fg `#BE123C` / `#FDA4AF`, bg `#FFE4E6` / `#4C0519`, dot
-    `#E11D48` / `#FB7185`).
-  - `Signed`: SPA signed (fg `#F5F0E8` / `#1C1917`, bg `#1C1917` / `#F5F0E8`,
-    dot `#F5F0E8` / `#1C1917`).
+  - `Neutral`: Booked (fg `#525252` / `#D4D4D4`, bg `#F5F5F5` / `#1C1C1C`, dot
+    `#A3A3A3` / `#6B6B6B`).
+  - `Info`: With bank (fg `#1E3A5F` / `#AEC8E8`, bg `#EEF2F8` / `#141E2B`, dot
+    `#3B6395` / `#6E9BD1`).
+  - `Positive`: On track (fg `#1F4D35` / `#A7D8BC`, bg `#EEF4F0` / `#12251B`,
+    dot `#3E7D5A` / `#5FA57E`).
+  - `Warning`: Watch (fg `#6B4E16` / `#E8CE8A`, bg `#F8F4E9` / `#2A2113`, dot
+    `#A9852F` / `#C9A34A`).
+  - `Danger`: At risk (fg `#7A2230` / `#E9A8B0`, bg `#FAEEF0` / `#2B141A`, dot
+    `#A53D4C` / `#C76A76`).
+  - `Signed`: SPA signed (fg `#FFFFFF` / `#0A0A0A`, bg `#0A0A0A` / `#FAFAFA`,
+    dot `#FFFFFF` / `#0A0A0A`).
 - **Rules:** Signed is the only solid pill (dot uses signed fg). Never present
   color alone without text. Never tint an entire table row or card.
 
@@ -444,11 +444,11 @@ browser control maps to a restyled Mortar component:
 - **Purpose:** Consistent, unobtrusive scrolling across data tables, menus, and
   drawers.
 - **Anatomy:** Transparent track, no arrow buttons, 6px thumb in
-  `--scrollbar-thumb` (`#E2D9CB` light / `#292524` dark), corner radius full
+  `--scrollbar-thumb` (`#D8D8D8` light / `#262626` dark), corner radius full
   (9999px).
 - **States and tokens:**
   - `Rest`: 6px thumb in `--scrollbar-thumb`.
-  - `Hover`: 8px thumb in `--scrollbar-thumb-hover` (`#CEC3B1` / `#44403C`),
+  - `Hover`: 8px thumb in `--scrollbar-thumb-hover` (`#C9C9C9` / `#3A3A3A`),
     150ms color transition ease.
 - **Rules:** Defined once globally in `globals.css`
   (`scrollbar-width: thin; ::-webkit-scrollbar`). Never hide scrollbars; never
@@ -459,16 +459,16 @@ browser control maps to a restyled Mortar component:
 - **Purpose:** Option lists for Select dropdowns, table row actions, and the
   persona switcher.
 - **Anatomy:**
-  - Menu container: background `--popover` (`#FFFFFF` / `#292524`), 1px
-    `--border` (`#E2D9CB` / `#292524`), corner radius 6px (`--radius-md`),
+  - Menu container: background `--popover` (`#FFFFFF` / `#1C1C1C`), 1px
+    `--border` (`#D8D8D8` / `#262626`), corner radius 6px (`--radius-md`),
     padding 4px, `Elevation/Overlay` shadow, width 240px, maximum height 320px
     (scrolls beyond).
   - Menu item: 32px high, corner radius 4px (`--radius-sm`), padding 8px
     horizontal, text in Body/Default.
 - **States and tokens:**
-  - `Hover/Focus`: background `--accent` (`#EDE6DA` / `#292524`).
-  - `Selected`: displays trailing 16px Check icon in `--link` (`#C2410C` /
-    `#FB923C`).
+  - `Hover/Focus`: background `--accent` (`#F0F0F0` / `#242424`).
+  - `Selected`: displays trailing 16px Check icon in `--link` (`#0A0A0A` /
+    `#FAFAFA`).
 - **Rules:** Full keyboard navigation: ArrowUp/ArrowDown to traverse, type-ahead
   to jump by initial character, Enter to pick, Esc to close and return focus to
   trigger.
@@ -487,9 +487,9 @@ browser control maps to a restyled Mortar component:
     (Malaysian business convention).
 - **States and tokens:**
   - `Default day`: Body/Default text, transparent background.
-  - `Today`: 1px `--input` ring (`#CEC3B1` / `#44403C`), Label/Default weight.
-  - `Selected day`: `--primary` fill (`#C2410C` / `#F97316`),
-    `--primary-foreground` text (`#FFFFFF` / `#1C1917`).
+  - `Today`: 1px `--input` ring (`#C9C9C9` / `#3A3A3A`), Label/Default weight.
+  - `Selected day`: `--primary` fill (`#0A0A0A` / `#FAFAFA`),
+    `--primary-foreground` text (`#FFFFFF` / `#0A0A0A`).
   - `Outside month`: `--muted-foreground` text.
   - `Disabled`: strikethrough, `--disabled-foreground` text, unclickable.
 - **Rules:** Built on shadcn Calendar (`react-day-picker`) restyled. Arrow keys
@@ -503,24 +503,25 @@ browser control maps to a restyled Mortar component:
 - **Anatomy:** Five equal segments: Booked, Documents, Loan submitted, Loan
   approved, SPA signed.
   - Full tracker: 4px bar per segment (completed and current use `--inverse`
-    `#1C1917` / `#F5F0E8`; upcoming use `--input` `#CEC3B1` / `#44403C`). Stage
+    `#0A0A0A` / `#FAFAFA`; upcoming use `--input` `#C9C9C9` / `#3A3A3A`). Stage
     name in Label/Small (current in `--foreground`, others muted). Current stage
     appends elapsed time in Body/Small muted (e.g. "21 days").
   - Compact tracker: five 10px × 4px bars, gap 2px, placed beside the stage name
     in table rows.
-- **Rules:** No orange in the stage tracker. Lapsed or cancelled bookings freeze
-  bars at the last reached stage and display the cancellation status pill.
+- **Rules:** The stage tracker carries no status tone and no accent colour: it
+  is `--inverse` and `--input` only. Lapsed or cancelled bookings freeze bars at
+  the last reached stage and display the cancellation status pill.
 
 ### Stat Tile
 
 - **Purpose:** Top-of-page KPI summary cards for operations desks.
 - **Anatomy:** Width 240px+, padding 16px, gap 4px, background `--card`
-  (`#FFFFFF` / `#1C1917`), 1px `--border` (`#E2D9CB` / `#292524`), corner radius
+  (`#FFFFFF` / `#141414`), 1px `--border` (`#D8D8D8` / `#262626`), corner radius
   6px (`--radius-md`), no shadow. Eyebrow label, `Display/Figure` figure
   (30/36), Body/Small caption.
 - **States and tokens:**
   - `Default`: figure in `--foreground`.
-  - `Alert`: figure in `--status-danger-fg` (`#BE123C` / `#FDA4AF`).
+  - `Alert`: figure in `--status-danger-fg` (`#7A2230` / `#E9A8B0`).
 - **Rules:** Maximum four tiles per row. Figures round for rapid reading
   (`RM 7.4m`, `38 SPAs`) with exact unrounded value available via Tooltip.
   Clicking a tile filters the list behind its number.
@@ -529,7 +530,7 @@ browser control maps to a restyled Mortar component:
 
 - **Purpose:** Primary tabular ledger for unit bookings and pipeline tracking.
 - **Anatomy:**
-  - Table header: 36px high, background `--muted` (`#F9F6F0` / `#292524`), text
+  - Table header: 36px high, background `--muted` (`#F5F5F5` / `#1C1C1C`), text
     in Eyebrow muted (`--muted-foreground`).
   - Booking row: 44px high, 1040px wide in Figma, horizontal padding 16px, gap
     16px, 1px bottom border in `--border`.
@@ -544,8 +545,8 @@ browser control maps to a restyled Mortar component:
     7. Value: 104px, right-aligned tabular numerals (`RM 612,800`).
 - **States and tokens:**
   - `Rest`: transparent background on `--card` or `--background`.
-  - `Hover`: `--muted` background (`#F9F6F0` / `#292524`).
-  - `Selected`: `--selected` background (`#FFF7ED` / `#2E1A12`) with a 2px
+  - `Hover`: `--muted` background (`#F5F5F5` / `#1C1C1C`).
+  - `Selected`: `--selected` background (`#F5F5F5` / `#1F1F1F`) with a 2px
     `--primary` left border.
 - **Rules:** No zebra striping, no row risk tinting. Clicking a row opens the
   unit booking detail drawer; column headers trigger sorting.
@@ -555,9 +556,9 @@ browser control maps to a restyled Mortar component:
 - **Purpose:** Action card in Sales Admin Chase List directing staff to unblock
   stuck bookings.
 - **Anatomy:** Width 360px, padding 16px, gap 12px, background `--card`
-  (`#FFFFFF` / `#1C1917`), 1px `--border`, corner radius 6px (`--radius-md`).
-  Left edge features a 3px solid bar in urgency tone solid. Urgency pill repeats
-  status in words (Overdue 3 d / Due today / In 2 days).
+  (`#FFFFFF` / `#141414`), 1px `--border`, corner radius 6px (`--radius-md`).
+  The card has no coloured edge: urgency is carried by the pill and its word
+  alone (Overdue 3 d / Due today / In 2 days).
   - Stack order:
     1. Header: Unit code (Mono/Data) + Buyer name (muted) + Urgency pill.
     2. Blocker sentence: Heading/Section (Geist SemiBold 16/24).
@@ -566,12 +567,12 @@ browser control maps to a restyled Mortar component:
        Faizal, panel banker").
     5. Action footer: Primary button "Log follow-up" + Ghost button "Snooze".
 - **States and tokens:**
-  - `Overdue`: 3px left edge `--status-danger` (`#E11D48` / `#FB7185`), danger
-    pill.
-  - `Due today`: 3px left edge `--status-warning` (`#CA8A04` / `#FACC15`),
-    warning pill.
-  - `Upcoming`: 3px left edge `--status-neutral` (`#A8A29E` / `#6E665F`),
-    neutral pill.
+  - `Overdue`: danger pill reading "Overdue 3 d" (fg `#7A2230` / `#E9A8B0`, bg
+    `#FAEEF0` / `#2B141A`).
+  - `Due today`: warning pill reading "Due today" (fg `#6B4E16` / `#E8CE8A`, bg
+    `#F8F4E9` / `#2A2113`).
+  - `Upcoming`: neutral pill reading "In 2 days" (fg `#525252` / `#D4D4D4`, bg
+    `#F5F5F5` / `#1C1C1C`).
 - **Rules:** "Log follow-up" opens an inline modal dialog, not a new page. Cards
   sort by days overdue descending, then value at risk. Snoozed cards disappear
   until their snooze date arrives.
@@ -585,8 +586,8 @@ browser control maps to a restyled Mortar component:
   - `Idle`: 1px dashed (6px dash / 4px gap) `--input` border on `--card`,
     `Upload` icon 20px in `--muted-foreground`, "Drop the booking sheet" in
     Label/Default, "XLSX or CSV, up to 10 MB" in Eyebrow muted.
-  - `Dragging`: 2px dashed `--ring` border on `--selected` (`#FFF7ED` /
-    `#2E1A12`), `Upload` icon in `--link`, "Release to import" in Label/Default.
+  - `Dragging`: 2px dashed `--ring` border on `--selected` (`#F5F5F5` /
+    `#1F1F1F`), `Upload` icon in `--link`, "Release to import" in Label/Default.
   - `Parsed`: 1px solid `--border`, `FileSpreadsheet` icon, file name, "146 rows
     read", Warning pill "3 to review".
 - **Rules:** Replaces native file inputs. Entire zone is clickable and keyboard
@@ -596,8 +597,8 @@ browser control maps to a restyled Mortar component:
 
 - **Purpose:** Destructive action confirmations and quick modal task workflows.
 - **Anatomy:** Centered modal panel, maximum width 480px, background `--card`
-  (`#FFFFFF` / `#1C1917`), 1px `--border`, corner radius 6px (`--radius-md`),
-  `Elevation/Overlay` shadow. Backdrop overlay: `rgba(12, 10, 9, 0.4)` (ink/950
+  (`#FFFFFF` / `#141414`), 1px `--border`, corner radius 6px (`--radius-md`),
+  `Elevation/Overlay` shadow. Backdrop overlay: `rgba(10, 10, 10, 0.4)` (ink/950
   at 40%), without backdrop blur.
 - **Rules:** Traps keyboard focus, Esc dismisses, autofocuses the secondary
   cancel button on destructive dialogs. Replaces all native browser `alert()`,
@@ -615,15 +616,17 @@ staff roles:
   - Finance: `/forecast` (cashflow projections and signed SPA conversions).
 - **Navigation sidebar:** Fixed 64px width collapsed, expanding to 200px on
   hover over content. The active persona's primary home view sits at the top of
-  the navigation items. Built with a solid `--sidebar` (`#F9F6F0` light /
-  `#1C1917` dark) ground and a 1px `--border` hairline; no blur or translucency
-  even when content scrolls beneath. When the sidebar expands over the content
-  on hover, a scrim dims and blurs every layer beneath it (top bar, page,
-  footer): background `--scrim` (light: ink-950 at 14% through `color-mix`;
-  dark: black at 45%), backdrop blur `--scrim-blur` (3px), fading in and out on
-  `--motion-base`. The mobile drawer's backdrop uses the same scrim and closes
-  the drawer when tapped. This is the one place in the app a backdrop blur is
-  allowed.
+  the navigation items. Built with a solid `--sidebar` (`#FFFFFF` light /
+  `#0F0F0F` dark) ground and a 1px `--border` hairline; no blur or translucency
+  even when content scrolls beneath. The active nav item carries no coloured
+  marker: it is a `--selected` fill with Label/Default weight and `--foreground`
+  text, against `--muted-foreground` for the rest. When the sidebar expands over
+  the content on hover, a scrim dims and blurs every layer beneath it (top bar,
+  page, footer): background `--scrim` (light: ink-950 at 14% through
+  `color-mix`; dark: black at 45%), backdrop blur `--scrim-blur` (3px), fading
+  in and out on `--motion-base`. The mobile drawer's backdrop uses the same
+  scrim and closes the drawer when tapped. This is the one place in the app a
+  backdrop blur is allowed.
 - **Top bar:** Fixed 56px height, containing breadcrumbs, with a right-hand
   cluster running, left to right, notification bell, theme switch, then the
   persona switch at the far right. Solid `--sidebar` ground with a 1px bottom
@@ -686,7 +689,7 @@ re-skinned entirely with Mortar tokens:
   - App routes (`/chase`, `/bookings`, `/forecast`): Mount the sidebar and top
     bar inside the shell.
 - **Sitewide reveal footer:** A fixed 196px footer (184px from 720px up) on
-  ground `--footer` (`paper-300` `#EDE6DA` light / `ink-900` `#1C1917` dark)
+  ground `--footer` (`paper-300` `#EFEFEF` light / `ink-900` `#141414` dark)
   sits under every page except `/sign-in`. It is revealed by scrolling past the
   page floor and by keyboard focus.
 - **Authentication theatre:** There is no real backend authentication. Sign-in
@@ -708,32 +711,27 @@ The film ground sits absolutely positioned (`inset: 0`, `z-index: -1`,
 provides readable contrast for typography:
 
 - **Below 720px:** Two vertical linear gradients using `color-mix` with
-  `--background`: top-down (92% paper at 0%, 82% at 30%, 58% at 56%, transparent
-  at 76%) and bottom-up (92% paper at 0%, transparent at 34%).
-- **At 720px and above:** Two linear gradients: left-to-right (90% paper at 0%,
-  70% at 28%, transparent at 54%) and bottom-up (92% paper at 0%, 78% at 24%,
+  `--background`, which is white: top-down (92% white at 0%, 82% at 30%, 58% at
+  56%, transparent at 76%) and bottom-up (92% white at 0%, transparent at 34%).
+- **At 720px and above:** Two linear gradients: left-to-right (90% white at 0%,
+  70% at 28%, transparent at 54%) and bottom-up (92% white at 0%, 78% at 24%,
   transparent at 42%).
 
 Landing content copy binds to the following specification:
 
-| Slot                   | Copy                                                                                                                           |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| Eyebrow                | Booking To SPA, For Sales, Loan And Finance                                                                                    |
-| Display line           | Booked Is Not Sold. Signed Is. (Geist SemiBold, clamp(2.5rem, 6vw, 4.5rem), line-height 1.05, -0.03em)                         |
-| Call to action         | Open Mortar (the page's one Primary button, links to `/sign-in`)                                                               |
-| Facts: Chase List      | Every Stuck Booking, The Blocker In Plain Words, And Who To Chase Today                                                        |
-| Facts: Bookings        | Each Unit From Booking To SPA, With The Days It Has Sat In Every Stage                                                         |
-| Facts: Forecast        | The SPAs You Can Bank On, Not The Bookings You Hope Will Convert                                                               |
-| Strip                  | Five bars for Booked, Documents, Loan submitted, Loan approved, SPA signed, stepping from `--input` through ink to `--primary` |
-| Footer line            | A Booking Is A Promise. The Signed SPA Is The Sale.                                                                            |
-| Footer link: FAQ       | FAQ (`/faq`)                                                                                                                   |
-| Footer link: Dashboard | Dashboard (`/app`)                                                                                                             |
-| Footer link: Design    | Design (https://www.figma.com/design/CTy3FDK15W2QLQmB3h5f1I/Mortar-Design-System?node-id=0-1&t=BmfrHmxUj0uuvRDc-1, new tab)    |
-| Footer link: GitHub    | GitHub (https://github.com/NexTechnologies-MY/mortar, new tab)                                                                 |
-
-The day strip displays five 10px tall bars (`border-radius: 9999px`, gap 8px),
-stepping across pipeline progression: Booked (`--input`), Documents (ink/300),
-Loan submitted (ink/600), Loan approved (ink/900), and SPA signed (`--primary`).
+| Slot                   | Copy                                                                                                                        |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Eyebrow                | Booking To SPA, For Sales, Loan And Finance                                                                                 |
+| Display line           | Booked Is Not Sold. Signed Is. (Geist SemiBold, clamp(2.5rem, 6vw, 4.5rem), line-height 1.05, -0.03em)                      |
+| Call to action         | Open Mortar (the page's one Primary button, links to `/sign-in`)                                                            |
+| Facts: Chase List      | Every Stuck Booking, The Blocker In Plain Words, And Who To Chase Today                                                     |
+| Facts: Bookings        | Each Unit From Booking To SPA, With The Days It Has Sat In Every Stage                                                      |
+| Facts: Forecast        | The SPAs You Can Bank On, Not The Bookings You Hope Will Convert                                                            |
+| Footer line            | A Booking Is A Promise. The Signed SPA Is The Sale.                                                                         |
+| Footer link: FAQ       | FAQ (`/faq`)                                                                                                                |
+| Footer link: Dashboard | Dashboard (`/app`)                                                                                                          |
+| Footer link: Design    | Design (https://www.figma.com/design/CTy3FDK15W2QLQmB3h5f1I/Mortar-Design-System?node-id=0-1&t=BmfrHmxUj0uuvRDc-1, new tab) |
+| Footer link: GitHub    | GitHub (https://github.com/NexTechnologies-MY/mortar, new tab)                                                              |
 
 ### Hero Film
 
@@ -783,7 +781,7 @@ The footer is mounted sitewide inside the site shell under every route except
   uncovered only as the user scrolls to the document floor.
 - **Dimensions and responsive layout:**
   - Height: 196px below 720px; 184px at 720px and above (`--footer-h`).
-  - Ground: `--footer` (`paper-300` `#EDE6DA` light / `ink-900` `#1C1917` dark).
+  - Ground: `--footer` (`paper-300` `#EFEFEF` light / `ink-900` `#141414` dark).
   - Alignment: Below 720px, left-aligned with 24px horizontal padding. At 720px
     and above, right-aligned (`justify-items: end; text-align: right`) with 48px
     horizontal padding.
@@ -834,8 +832,8 @@ or reveal footer.
     immediately to that persona's home route (`/chase`, `/bookings`, or
     `/forecast`).
 - **Right pane (hero plate):** Hidden below 900px. Displays a decorative SVG
-  plate featuring Mortar's joinery mark in `--foreground` and `--primary` on a
-  warm `--selected` ground.
+  plate featuring Mortar's joinery mark in `--foreground` and
+  `--muted-foreground` on a `--selected` ground.
 - **Sign out flow:** A "Sign out" item in the top bar's persona menu navigates
   to `/sign-in` and clears nothing from `localStorage`. The persona persists so
   signing back in returns to the previous working desk.
@@ -901,8 +899,9 @@ dark modes:
 - **Do not** introduce glass fills, backdrop blurs, gradients, glow blobs, or
   card drop shadows in the application (the sidebar scrim is the sole backdrop
   blur exception; the landing veil is the sole gradient exception).
-- **Do not** use orange for any status indicator, or red for anything other than
-  severe risk and irreversible destructive actions.
+- **Do not** introduce a chromatic accent of any kind outside the six status
+  tones, or use red for anything other than severe risk and irreversible
+  destructive actions.
 - **Do not** apply colored background washes or zebra striping to table rows.
 - **Do not** use emoji as icons, or import a secondary icon set beyond Lucide.
 - **Do not** load a third typeface family, or style text outside the nine

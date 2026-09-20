@@ -496,9 +496,10 @@ The system must enforce persona routing and adhere to visual design standards.
 - **AC-14.3:** `/settings` must state plainly that the data is simulated, with
   the seed and the reference date, and `/forecast` must keep its caption that a
   backtest on simulated data proves the method, not the business.
-- **AC-14.4:** All UI elements must follow `docs/DESIGN.md`: paper ledger
-  styling, 6px corner radius, 1px hairlines, Geist and Geist Mono typefaces, six
-  status tones with explicit words, zero emoji, and exactly 10 Lucide icons.
+- **AC-14.4:** All UI elements must follow `docs/DESIGN.md`: monochrome ledger
+  styling on a white ground, 6px corner radius, 1px hairlines, Geist and Geist
+  Mono typefaces, six status tones with explicit words, zero emoji, and exactly
+  10 Lucide icons.
 - **AC-14.5:** All mutations must display a toast and trigger snapshot refresh.
 
 ## Non-Functional Requirements
@@ -551,8 +552,8 @@ The system must enforce persona routing and adhere to visual design standards.
 ### Accessibility And Design Standards
 
 - **NFR-10 (WCAG AA Contrast):** All text elements must satisfy WCAG AA contrast
-  (minimum 4.5:1 on background; muted text `#6E665F` achieves 4.96:1 on paper
-  and 5.6:1 on white).
+  (minimum 4.5:1 on background; muted text `#6B6B6B` achieves 5.33:1 on the
+  white ground).
 - **NFR-11 (Keyboard Accessibility):** All interactive components (menus, dialog
   modals, date picker calendars) must provide complete keyboard navigation and
   visible 2px focus rings (`--ring`).
