@@ -1,0 +1,2490 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Mortar — Pitch Deck</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&family=Geist:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script>
+      // Deck controller: fixed 1920x1080 design canvas scaled to the viewport,
+      // keyboard navigation, auto-hiding controls, presenter notes (N) and a
+      // print page rule sized so each slide lands on one landscape PDF page.
+      ;(() => {
+        const DESIGN_W = 1920
+        const DESIGN_H = 1080
+        const STORE_KEY = 'mortar-deck:slide:'
+        const HIDE_MS = 1800
+        const VALIDATE_ATTR = 'no_overflowing_text,no_overlapping_text,slide_sized_text'
+        const pad2 = (n) => String(n).padStart(2, '0')
+
+        const CSS = `
+          :host { position: fixed; inset: 0; display: block; background: #0a0a0a; overflow: hidden; }
+          .stage { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+          .canvas { position: relative; flex-shrink: 0; transform-origin: center center; background: #fff; will-change: transform; }
+          ::slotted(*) { position: absolute !important; inset: 0 !important; width: 100% !important; height: 100% !important; box-sizing: border-box !important; overflow: hidden; opacity: 0; visibility: hidden; pointer-events: none; }
+          ::slotted([data-deck-active]) { opacity: 1; visibility: visible; pointer-events: auto; }
+          .tapzones { position: fixed; inset: 0; display: flex; z-index: 2147482000; pointer-events: none; }
+          .tapzone { flex: 1; pointer-events: auto; -webkit-tap-highlight-color: transparent; }
+          @media (hover: hover) and (pointer: fine) { .tapzones { display: none; } }
+          .overlay { position: fixed; left: 50%; bottom: 22px; transform: translate(-50%, 6px); display: flex; align-items: center; gap: 4px; padding: 4px; background: #0a0a0a; color: #fff; border-radius: 999px; font: 500 12px/1 "Geist", ui-sans-serif, system-ui, sans-serif; font-feature-settings: "tnum" 1; letter-spacing: 0.02em; opacity: 0; pointer-events: none; transition: opacity 220ms ease, transform 220ms ease; z-index: 2147483000; user-select: none; }
+          .overlay[data-visible] { opacity: 1; pointer-events: auto; transform: translate(-50%, 0); }
+          .btn { appearance: none; background: transparent; border: 0; margin: 0; padding: 0; color: rgba(255,255,255,0.72); font: inherit; cursor: default; display: inline-flex; align-items: center; justify-content: center; height: 28px; min-width: 28px; border-radius: 999px; }
+          .btn:hover { background: rgba(255,255,255,0.12); color: #fff; }
+          .btn:focus { outline: none; }
+          .btn svg { width: 14px; height: 14px; display: block; }
+          .count { min-width: 46px; padding: 0 8px; text-align: center; font-variant-numeric: tabular-nums; color: #fff; }
+          .count .sep, .count .total { color: rgba(255,255,255,0.5); }
+          .hint { padding: 0 12px 0 10px; color: rgba(255,255,255,0.45); font-size: 11px; letter-spacing: 0.05em; }
+          .notes { position: fixed; left: 24px; bottom: 22px; max-width: 620px; padding: 14px 18px; background: #0a0a0a; color: rgba(255,255,255,0.88); border-radius: 8px; font: 400 15px/1.5 "Geist", ui-sans-serif, system-ui, sans-serif; opacity: 0; visibility: hidden; transition: opacity 220ms ease; z-index: 2147483000; pointer-events: none; }
+          .notes[data-visible] { opacity: 1; visibility: visible; }
+          .notes .nl { display: block; font: 600 10px/1 "Geist", sans-serif; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255,255,255,0.45); margin-bottom: 7px; }
+          @media print {
+            :host { position: static; inset: auto; background: none; overflow: visible; }
+            .stage { position: static; display: block; }
+            .canvas { transform: none !important; width: auto !important; height: auto !important; background: none; }
+            ::slotted(*) { position: relative !important; inset: auto !important; width: var(--deck-w) !important; height: var(--deck-h) !important; opacity: 1 !important; visibility: visible !important; pointer-events: auto; break-after: page; page-break-after: always; break-inside: avoid; }
+            ::slotted(*:last-child) { break-after: auto; page-break-after: auto; }
+            .overlay, .tapzones, .notes { display: none !important; }
+          }
+        `
+
+        class DeckStage extends HTMLElement {
+          static get observedAttributes() {
+            return ['width', 'height', 'noscale']
+          }
+
+          constructor() {
+            super()
+            this._root = this.attachShadow({ mode: 'open' })
+            this._index = 0
+            this._slides = []
+            this._notes = []
+            this._notesOn = false
+            this._hideTimer = null
+            this._idleTimer = null
+            this._storageKey = STORE_KEY + (location.pathname || '/')
+            this._onKey = this._onKey.bind(this)
+            this._onResize = this._onResize.bind(this)
+            this._onSlotChange = this._onSlotChange.bind(this)
+            this._onMouseMove = this._onMouseMove.bind(this)
+          }
+
+          get designWidth() {
+            return parseInt(this.getAttribute('width'), 10) || DESIGN_W
+          }
+          get designHeight() {
+            return parseInt(this.getAttribute('height'), 10) || DESIGN_H
+          }
+          get index() {
+            return this._index
+          }
+          get length() {
+            return this._slides.length
+          }
+
+          connectedCallback() {
+            this._render()
+            this._loadNotes()
+            this._syncPrintRule()
+            window.addEventListener('keydown', this._onKey)
+            window.addEventListener('resize', this._onResize)
+            window.addEventListener('mousemove', this._onMouseMove, { passive: true })
+          }
+
+          disconnectedCallback() {
+            window.removeEventListener('keydown', this._onKey)
+            window.removeEventListener('resize', this._onResize)
+            window.removeEventListener('mousemove', this._onMouseMove)
+            if (this._hideTimer) clearTimeout(this._hideTimer)
+            if (this._idleTimer) clearTimeout(this._idleTimer)
+          }
+
+          attributeChangedCallback() {
+            if (this._canvas) {
+              this._sizeCanvas()
+              this._fit()
+              this._syncPrintRule()
+            }
+          }
+
+          _sizeCanvas() {
+            this._canvas.style.width = this.designWidth + 'px'
+            this._canvas.style.height = this.designHeight + 'px'
+            this._canvas.style.setProperty('--deck-w', this.designWidth + 'px')
+            this._canvas.style.setProperty('--deck-h', this.designHeight + 'px')
+          }
+
+          _render() {
+            const style = document.createElement('style')
+            style.textContent = CSS
+
+            const stage = document.createElement('div')
+            stage.className = 'stage'
+            const canvas = document.createElement('div')
+            canvas.className = 'canvas'
+            const slot = document.createElement('slot')
+            slot.addEventListener('slotchange', this._onSlotChange)
+            canvas.appendChild(slot)
+            stage.appendChild(canvas)
+
+            const tapzones = document.createElement('div')
+            tapzones.className = 'tapzones'
+            tapzones.setAttribute('aria-hidden', 'true')
+            const back = document.createElement('div')
+            back.className = 'tapzone'
+            const mid = document.createElement('div')
+            mid.className = 'tapzone'
+            mid.style.pointerEvents = 'none'
+            const fwd = document.createElement('div')
+            fwd.className = 'tapzone'
+            back.addEventListener('click', () => this._go(this._index - 1, 'tap'))
+            fwd.addEventListener('click', () => this._go(this._index + 1, 'tap'))
+            tapzones.append(back, mid, fwd)
+
+            const overlay = document.createElement('div')
+            overlay.className = 'overlay'
+            overlay.setAttribute('role', 'toolbar')
+            overlay.setAttribute('aria-label', 'Deck controls')
+            overlay.innerHTML = `
+              <button class="btn prev" type="button" aria-label="Previous slide" title="Previous (←)">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3L5 8l5 5"/></svg>
+              </button>
+              <span class="count" aria-live="polite"><span class="current">1</span><span class="sep"> / </span><span class="total">1</span></span>
+              <button class="btn next" type="button" aria-label="Next slide" title="Next (→)">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3l5 5-5 5"/></svg>
+              </button>
+              <span class="hint">R Reset · N Notes</span>
+            `
+            overlay.querySelector('.prev').addEventListener('click', () => this._go(this._index - 1, 'click'))
+            overlay.querySelector('.next').addEventListener('click', () => this._go(this._index + 1, 'click'))
+
+            const notes = document.createElement('div')
+            notes.className = 'notes'
+            notes.setAttribute('aria-live', 'polite')
+
+            this._root.append(style, stage, tapzones, overlay, notes)
+            this._canvas = canvas
+            this._slot = slot
+            this._overlay = overlay
+            this._notesEl = notes
+            this._countEl = overlay.querySelector('.current')
+            this._totalEl = overlay.querySelector('.total')
+            this._sizeCanvas()
+          }
+
+          _syncPrintRule() {
+            const id = 'deck-stage-print-page'
+            let tag = document.getElementById(id)
+            if (!tag) {
+              tag = document.createElement('style')
+              tag.id = id
+              document.head.appendChild(tag)
+            }
+            tag.textContent =
+              '@page { size: ' +
+              this.designWidth +
+              'px ' +
+              this.designHeight +
+              'px; margin: 0; } ' +
+              '@media print { html, body { margin: 0 !important; padding: 0 !important; background: none !important; overflow: visible !important; height: auto !important; } ' +
+              '* { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }'
+          }
+
+          _onSlotChange() {
+            this._collectSlides()
+            this._restoreIndex()
+            this._applyIndex({ showOverlay: false, reason: 'init' })
+            this._fit()
+          }
+
+          _collectSlides() {
+            const assigned = this._slot.assignedElements({ flatten: true })
+            this._slides = assigned.filter((el) => !/^(TEMPLATE|SCRIPT|STYLE)$/.test(el.tagName))
+            this._slides.forEach((slide, i) => {
+              let label = slide.getAttribute('data-label')
+              if (!label) {
+                const h = slide.querySelector('h1, h2, h3, [data-title]')
+                if (h) label = (h.textContent || '').trim().slice(0, 40)
+              }
+              slide.setAttribute('data-screen-label', /^\d+\s/.test(label || '') ? label : `${pad2(i + 1)} ${label || 'Slide'}`)
+              if (!slide.hasAttribute('data-om-validate')) slide.setAttribute('data-om-validate', VALIDATE_ATTR)
+              slide.setAttribute('data-deck-slide', String(i))
+            })
+            if (this._totalEl) this._totalEl.textContent = String(this._slides.length || 1)
+            if (this._index >= this._slides.length) this._index = Math.max(0, this._slides.length - 1)
+          }
+
+          _loadNotes() {
+            const tag = document.getElementById('speaker-notes')
+            try {
+              const parsed = JSON.parse(tag ? tag.textContent : '[]')
+              if (Array.isArray(parsed)) this._notes = parsed
+            } catch (e) {
+              this._notes = []
+            }
+          }
+
+          _restoreIndex() {
+            try {
+              const n = parseInt(localStorage.getItem(this._storageKey), 10)
+              if (Number.isFinite(n) && n >= 0 && n < this._slides.length) this._index = n
+            } catch (e) {}
+          }
+
+          _applyIndex({ showOverlay = true, reason = 'init' } = {}) {
+            if (!this._slides.length) return
+            const prev = this._prevIndex == null ? -1 : this._prevIndex
+            this._slides.forEach((s, i) => {
+              if (i === this._index) s.setAttribute('data-deck-active', '')
+              else s.removeAttribute('data-deck-active')
+            })
+            if (this._countEl) this._countEl.textContent = String(this._index + 1)
+            try {
+              localStorage.setItem(this._storageKey, String(this._index))
+            } catch (e) {}
+            try {
+              window.postMessage({ slideIndexChanged: this._index }, '*')
+            } catch (e) {}
+            this.dispatchEvent(
+              new CustomEvent('slidechange', {
+                detail: { index: this._index, previousIndex: prev, total: this._slides.length, reason },
+                bubbles: true,
+                composed: true
+              })
+            )
+            this._renderNote()
+            this._prevIndex = this._index
+            if (showOverlay) this._flashOverlay()
+          }
+
+          _renderNote() {
+            if (!this._notesEl) return
+            if (!this._notes.length) this._loadNotes()
+            const note = this._notes[this._index]
+            if (this._notesOn && note) {
+              this._notesEl.innerHTML =
+                '<span class="nl">Note · ' + pad2(this._index + 1) + '</span>' + String(note).replace(/</g, '&lt;')
+              this._notesEl.setAttribute('data-visible', '')
+            } else {
+              this._notesEl.removeAttribute('data-visible')
+            }
+          }
+
+          _toggleNotes() {
+            this._notesOn = !this._notesOn
+            this._renderNote()
+          }
+
+          _flashOverlay() {
+            if (!this._overlay) return
+            this._overlay.setAttribute('data-visible', '')
+            if (this._hideTimer) clearTimeout(this._hideTimer)
+            this._hideTimer = setTimeout(() => this._overlay.removeAttribute('data-visible'), HIDE_MS)
+          }
+
+          _fit() {
+            if (!this._canvas) return
+            if (this.hasAttribute('noscale')) {
+              this._canvas.style.transform = 'none'
+              return
+            }
+            const s = Math.min(window.innerWidth / this.designWidth, window.innerHeight / this.designHeight)
+            this._canvas.style.transform = `scale(${s})`
+          }
+
+          _onResize() {
+            this._fit()
+          }
+
+          _onMouseMove() {
+            this._flashOverlay()
+          }
+
+          _onKey(e) {
+            const t = e.target
+            if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return
+            if (e.metaKey || e.ctrlKey || e.altKey) return
+            const key = e.key
+            let handled = true
+            if (key === 'ArrowRight' || key === 'PageDown' || key === ' ') {
+              this._go(this._index + 1, 'keyboard')
+            } else if (key === 'ArrowLeft' || key === 'PageUp') {
+              this._go(this._index - 1, 'keyboard')
+            } else if (key === 'Home') {
+              this._go(0, 'keyboard')
+            } else if (key === 'End') {
+              this._go(this._slides.length - 1, 'keyboard')
+            } else if (key === 'r' || key === 'R') {
+              this._go(0, 'keyboard')
+            } else if (key === 'n' || key === 'N') {
+              this._toggleNotes()
+            } else if (/^[0-9]$/.test(key)) {
+              const n = key === '0' ? 9 : parseInt(key, 10) - 1
+              if (n < this._slides.length) this._go(n, 'keyboard')
+            } else {
+              handled = false
+            }
+            if (handled) {
+              e.preventDefault()
+              this._flashOverlay()
+            }
+          }
+
+          _go(i, reason = 'api') {
+            if (!this._slides.length) return
+            const clamped = Math.max(0, Math.min(this._slides.length - 1, i))
+            if (clamped === this._index) {
+              this._flashOverlay()
+              return
+            }
+            this._index = clamped
+            this._applyIndex({ showOverlay: true, reason })
+          }
+
+          goTo(i) {
+            this._go(i, 'api')
+          }
+          next() {
+            this._go(this._index + 1, 'api')
+          }
+          prev() {
+            this._go(this._index - 1, 'api')
+          }
+          reset() {
+            this._go(0, 'api')
+          }
+        }
+
+        if (!customElements.get('deck-stage')) customElements.define('deck-stage', DeckStage)
+      })()
+    </script>
+    <style>
+      /* Mortar deck — docs/DESIGN.md tokens applied to a 1920x1080 canvas.
+         White ground, ink actions, six status tones, Geist + Geist Mono,
+         the Kigumi brand mark in #c2410c. No gradients, no emoji, no
+         horizontal divider lines: structure comes from whitespace and type. */
+      :root {
+        --paper: #ffffff;
+        --paper-2: #f5f5f5;
+        --ink: #0a0a0a;
+        --ink-2: #3a3a3a;
+        --muted: #6b6b6b;
+        --faint: #8a8a8a;
+        --card-line: rgba(10, 10, 10, 0.06);
+        --card-line-strong: rgba(10, 10, 10, 0.12);
+        --shadow-card:
+          0 1px 2px rgba(10, 10, 10, 0.05),
+          0 6px 16px -4px rgba(10, 10, 10, 0.08);
+        --brand: #c2410c;
+        --pos-fg: #1f4d35;
+        --pos-bg: #eef4f0;
+        --pos: #3e7d5a;
+        --warn-fg: #6b4e16;
+        --warn-bg: #f8f4e9;
+        --warn: #a9852f;
+        --dan-fg: #7a2230;
+        --dan-bg: #faeef0;
+        --dan: #a53d4c;
+        --info-fg: #1e3a5f;
+        --info-bg: #eef2f8;
+        --info: #3b6395;
+        --neu-fg: #525252;
+        --neu-bg: #f5f5f5;
+        --neu: #a3a3a3;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: #0a0a0a;
+        font-family: 'Geist', ui-sans-serif, system-ui, sans-serif;
+        color: var(--ink);
+      }
+
+      section.slide {
+        background: var(--paper);
+        color: var(--ink);
+        overflow: hidden;
+        position: relative;
+        box-sizing: border-box;
+      }
+
+      /* ===== SHARED FRAME ===== */
+      .pad {
+        height: 100%;
+        padding: 72px 104px;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+      }
+      .chrome {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-shrink: 0;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        font-size: 26px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        color: var(--ink);
+      }
+      .mark {
+        width: 30px;
+        height: 30px;
+        display: block;
+        color: var(--ink);
+      }
+      .chrome-meta {
+        font-family: 'Geist Mono', ui-monospace, monospace;
+        font-size: 20px;
+        font-weight: 500;
+        color: var(--muted);
+        letter-spacing: 0.06em;
+      }
+      .chrome.on-dark .brand,
+      .chrome.on-dark {
+        color: #fafafa;
+      }
+      .chrome.on-dark .chrome-meta {
+        color: rgba(250, 250, 250, 0.55);
+      }
+      .chrome.on-dark .mark {
+        color: #fafafa;
+      }
+
+      .head {
+        margin-top: 52px;
+        flex-shrink: 0;
+      }
+      .eyebrow {
+        font-size: 20px;
+        font-weight: 600;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      .eyebrow.accent {
+        color: var(--brand);
+      }
+      .title {
+        margin: 20px 0 0;
+        font-size: 76px;
+        font-weight: 600;
+        line-height: 1.04;
+        letter-spacing: -0.025em;
+        color: var(--ink);
+      }
+      .title.md {
+        font-size: 64px;
+      }
+      .title.sm {
+        font-size: 56px;
+      }
+      .lead {
+        margin: 34px 0 0;
+        font-size: 31px;
+        line-height: 1.42;
+        font-weight: 400;
+        color: var(--ink-2);
+        max-width: 1500px;
+      }
+      .lead strong {
+        font-weight: 600;
+        color: var(--ink);
+      }
+
+      /* ===== COMPONENTS ===== */
+      .card {
+        background: var(--paper);
+        border: 1px solid var(--card-line);
+        border-radius: 6px;
+        box-shadow: var(--shadow-card);
+        box-sizing: border-box;
+      }
+      .card.dark {
+        background: var(--ink);
+        color: #fafafa;
+        border-color: transparent;
+      }
+      .card.flat {
+        box-shadow: none;
+        border-color: var(--card-line-strong);
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 14px;
+        border-radius: 4px;
+        font-size: 20px;
+        font-weight: 500;
+        line-height: 1;
+        white-space: nowrap;
+      }
+      .pill i {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        display: block;
+      }
+      .pill.neu {
+        background: var(--neu-bg);
+        color: var(--neu-fg);
+      }
+      .pill.neu i {
+        background: var(--neu);
+      }
+      .pill.info {
+        background: var(--info-bg);
+        color: var(--info-fg);
+      }
+      .pill.info i {
+        background: var(--info);
+      }
+      .pill.pos {
+        background: var(--pos-bg);
+        color: var(--pos-fg);
+      }
+      .pill.pos i {
+        background: var(--pos);
+      }
+      .pill.warn {
+        background: var(--warn-bg);
+        color: var(--warn-fg);
+      }
+      .pill.warn i {
+        background: var(--warn);
+      }
+      .pill.dan {
+        background: var(--dan-bg);
+        color: var(--dan-fg);
+      }
+      .pill.dan i {
+        background: var(--dan);
+      }
+      .pill.signed {
+        background: var(--ink);
+        color: #fff;
+      }
+      .pill.signed i {
+        background: #fff;
+      }
+
+      .mono {
+        font-family: 'Geist Mono', ui-monospace, monospace;
+        font-variant-numeric: tabular-nums;
+      }
+      .muted {
+        color: var(--muted);
+      }
+
+      /* Framed product screenshot */
+      .shot {
+        background: var(--paper);
+        border: 1px solid var(--card-line);
+        border-radius: 6px;
+        box-shadow: var(--shadow-card);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+      .shot-bar {
+        background: var(--paper-2);
+        padding: 14px 20px;
+        font-family: 'Geist Mono', ui-monospace, monospace;
+        font-size: 18px;
+        color: var(--muted);
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .shot-bar .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--neu);
+        flex-shrink: 0;
+      }
+      .shot img {
+        width: 100%;
+        flex: 1;
+        min-height: 0;
+        object-fit: cover;
+        object-position: top left;
+        display: block;
+      }
+      .shot.center img {
+        object-position: top center;
+      }
+      .shot.fit img {
+        object-fit: contain;
+        background: var(--paper-2);
+      }
+      .shot.strip img {
+        object-fit: contain;
+        flex: none;
+        height: auto;
+      }
+
+      /* Full-height art panel */
+      .art-panel {
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        overflow: hidden;
+        background: var(--paper-2);
+      }
+      .art-panel img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+      .art-panel::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 1px;
+        background: var(--card-line-strong);
+        z-index: 2;
+      }
+      .chrome-meta.on-art {
+        position: relative;
+        z-index: 3;
+        background: var(--paper);
+        padding: 8px 16px;
+        border-radius: 4px;
+        box-shadow: var(--shadow-card);
+      }
+
+      /* ===== SLIDE-SPECIFIC LAYOUTS ===== */
+
+      /* 01 Cover */
+      .cover-grid {
+        display: grid;
+        grid-template-columns: 1.15fr 1fr;
+        height: 100%;
+      }
+      .cover-left {
+        padding: 96px 0 96px 104px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+      .cover-brand {
+        display: flex;
+        align-items: center;
+        gap: 22px;
+      }
+      .cover-brand .mark {
+        width: 44px;
+        height: 44px;
+      }
+      .cover-word {
+        font-size: 34px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+      }
+      .cover-title {
+        font-size: 108px;
+        font-weight: 600;
+        line-height: 1.02;
+        letter-spacing: -0.03em;
+        margin: 0;
+        max-width: 900px;
+      }
+      .cover-sub {
+        margin-top: 36px;
+        font-size: 32px;
+        line-height: 1.4;
+        color: var(--ink-2);
+        max-width: 780px;
+      }
+      .cover-meta {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .cover-meta .row {
+        font-family: 'Geist Mono', ui-monospace, monospace;
+        font-size: 21px;
+        color: var(--muted);
+        letter-spacing: 0.04em;
+      }
+      .cover-meta .row b {
+        color: var(--ink);
+        font-weight: 600;
+      }
+      .cover-art {
+        position: relative;
+        overflow: hidden;
+      }
+      .cover-art img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+      .cover-art::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 1px;
+        background: var(--card-line-strong);
+        z-index: 2;
+      }
+
+      /* Generic split: text left, visual right */
+      .split {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 72px;
+        flex: 1;
+        min-height: 0;
+        margin-top: 44px;
+      }
+      .split.wide-left {
+        grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+      }
+      .split.wide-right {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+      }
+      .vcol {
+        display: flex;
+        flex-direction: column;
+        gap: 30px;
+        min-height: 0;
+        justify-content: center;
+      }
+      .vcol.top {
+        justify-content: flex-start;
+      }
+
+      /* Stat cards */
+      .stat-row {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 36px;
+      }
+      .stat-card {
+        padding: 44px 44px 40px;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+      }
+      .stat-num {
+        font-size: 92px;
+        font-weight: 600;
+        letter-spacing: -0.035em;
+        line-height: 0.95;
+        font-variant-numeric: tabular-nums;
+        color: var(--ink);
+      }
+      .stat-num.brand {
+        color: var(--brand);
+      }
+      .stat-cap {
+        font-size: 23px;
+        line-height: 1.4;
+        font-weight: 500;
+        color: var(--ink-2);
+      }
+      .stat-src {
+        font-family: 'Geist Mono', ui-monospace, monospace;
+        font-size: 17px;
+        color: var(--muted);
+        letter-spacing: 0.02em;
+      }
+
+      /* Leak rows */
+      .leak-list {
+        display: flex;
+        flex-direction: column;
+        gap: 26px;
+      }
+      .leak-row {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .leak-name {
+        font-size: 34px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+      .leak-name i {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: var(--dan);
+        flex-shrink: 0;
+      }
+      .leak-sub {
+        font-size: 24px;
+        line-height: 1.4;
+        color: var(--muted);
+        padding-left: 28px;
+      }
+
+      /* Survey findings */
+      .find-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 32px;
+        flex: 1;
+        min-height: 0;
+        margin-top: 44px;
+      }
+      .find-card {
+        padding: 36px 38px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        justify-content: center;
+      }
+      .find-num {
+        font-size: 74px;
+        font-weight: 600;
+        letter-spacing: -0.03em;
+        line-height: 0.95;
+        font-variant-numeric: tabular-nums;
+        color: var(--ink);
+      }
+      .find-num span {
+        font-size: 40px;
+        color: var(--faint);
+        font-weight: 500;
+      }
+      .find-txt {
+        font-size: 23px;
+        line-height: 1.38;
+        font-weight: 500;
+        color: var(--ink-2);
+      }
+
+      /* Persona cards */
+      .desk-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 36px;
+        flex: 1;
+        min-height: 0;
+        margin-top: 44px;
+      }
+      .desk-card {
+        padding: 44px;
+        display: flex;
+        flex-direction: column;
+        gap: 22px;
+      }
+      .desk-role {
+        font-size: 20px;
+        font-weight: 600;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--brand);
+      }
+      .desk-name {
+        font-size: 46px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        line-height: 1.05;
+      }
+      .desk-route {
+        font-family: 'Geist Mono', ui-monospace, monospace;
+        font-size: 21px;
+        color: var(--muted);
+        background: var(--paper-2);
+        align-self: flex-start;
+        padding: 8px 14px;
+        border-radius: 4px;
+      }
+      .desk-copy {
+        font-size: 24px;
+        line-height: 1.45;
+        color: var(--ink-2);
+      }
+
+      /* Bullet rows with a marker */
+      .rows {
+        display: flex;
+        flex-direction: column;
+        gap: 26px;
+      }
+      .row-item {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .row-head {
+        font-size: 28px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        color: var(--ink);
+      }
+      .row-sub {
+        font-size: 24px;
+        line-height: 1.42;
+        color: var(--muted);
+      }
+
+      /* Message + proposal mock */
+      .msg-card {
+        padding: 34px 38px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      .msg-meta {
+        font-family: 'Geist Mono', ui-monospace, monospace;
+        font-size: 19px;
+        color: var(--muted);
+      }
+      .msg-body {
+        font-size: 27px;
+        line-height: 1.45;
+        color: var(--ink-2);
+      }
+
+      /* Two-column compare */
+      .cmp-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 40px;
+        flex: 1;
+        min-height: 0;
+        margin-top: 44px;
+      }
+      .cmp-card {
+        padding: 44px 48px;
+        display: flex;
+        flex-direction: column;
+        gap: 26px;
+      }
+      .cmp-title {
+        font-size: 34px;
+        font-weight: 600;
+        letter-spacing: -0.015em;
+      }
+      .cmp-list {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+      .cmp-list li {
+        font-size: 25px;
+        line-height: 1.4;
+        color: var(--ink-2);
+        padding-left: 26px;
+        position: relative;
+      }
+      .cmp-list li::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 14px;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--neu);
+      }
+      .cmp-card.dark .cmp-list li {
+        color: rgba(250, 250, 250, 0.85);
+      }
+      .cmp-card.dark .cmp-list li::before {
+        background: var(--brand);
+      }
+      .cmp-sub {
+        font-size: 21px;
+        color: var(--muted);
+        line-height: 1.4;
+      }
+      .cmp-card.dark .cmp-sub {
+        color: rgba(250, 250, 250, 0.6);
+      }
+
+      /* Pipeline stepper */
+      .pipe {
+        display: flex;
+        align-items: stretch;
+        gap: 0;
+        margin-top: 40px;
+      }
+      .pipe-step {
+        flex: 1;
+        padding: 30px 28px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        justify-content: center;
+      }
+      .pipe-ix {
+        font-family: 'Geist Mono', ui-monospace, monospace;
+        font-size: 18px;
+        color: var(--muted);
+        letter-spacing: 0.08em;
+      }
+      .pipe-name {
+        font-size: 26px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+      }
+      .pipe-sub {
+        font-size: 19px;
+        color: var(--muted);
+        line-height: 1.35;
+      }
+      .pipe-arrow {
+        display: flex;
+        align-items: center;
+        padding: 0 10px;
+        font-size: 30px;
+        color: var(--faint);
+        flex-shrink: 0;
+      }
+
+      /* Risk flag cards */
+      .flag-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 32px;
+        margin-top: 36px;
+      }
+      .flag-card {
+        padding: 34px 38px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .flag-rule {
+        font-size: 22px;
+        line-height: 1.4;
+        color: var(--ink-2);
+      }
+
+      /* Architecture */
+      .arch {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+        margin-top: 40px;
+        flex: 1;
+        min-height: 0;
+      }
+      .arch-row {
+        display: grid;
+        grid-template-columns: 300px minmax(0, 1fr);
+        gap: 36px;
+        align-items: stretch;
+      }
+      .arch-label {
+        font-size: 20px;
+        font-weight: 600;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--muted);
+        display: flex;
+        align-items: center;
+      }
+      .arch-cells {
+        display: flex;
+        gap: 24px;
+        align-items: stretch;
+      }
+      .arch-cell {
+        flex: 1;
+        padding: 26px 30px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        justify-content: center;
+      }
+      .arch-cell .name {
+        font-size: 27px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+      }
+      .arch-cell .sub {
+        font-size: 20px;
+        color: var(--muted);
+        line-height: 1.35;
+      }
+      .arch-cell.dark {
+        background: var(--ink);
+        color: #fafafa;
+        border-color: transparent;
+      }
+      .arch-cell.dark .sub {
+        color: rgba(250, 250, 250, 0.62);
+      }
+      .arch-arrow {
+        padding: 12px 0 12px 336px;
+        font-family: 'Geist Mono', ui-monospace, monospace;
+        font-size: 19px;
+        color: var(--muted);
+      }
+
+      /* Chip strip */
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+        margin-top: 36px;
+      }
+      .chip {
+        font-size: 20px;
+        font-weight: 500;
+        color: var(--ink-2);
+        background: var(--paper-2);
+        border: 1px solid var(--card-line-strong);
+        padding: 12px 18px;
+        border-radius: 4px;
+      }
+      .chip b {
+        font-weight: 600;
+        color: var(--ink);
+      }
+
+      /* Fact band */
+      .fact-band {
+        margin-top: auto;
+        padding-top: 34px;
+        display: flex;
+        align-items: baseline;
+        gap: 40px;
+        font-size: 22px;
+        color: var(--muted);
+      }
+      .fact-band b {
+        color: var(--ink);
+        font-weight: 600;
+      }
+
+      /* Pilot phases */
+      .phase-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 30px;
+        flex: 1;
+        min-height: 0;
+      }
+      .phase-card {
+        padding: 34px 38px;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+      .phase-wk {
+        font-family: 'Geist Mono', ui-monospace, monospace;
+        font-size: 19px;
+        color: var(--brand);
+        font-weight: 600;
+        letter-spacing: 0.08em;
+      }
+      .phase-name {
+        font-size: 30px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+      }
+      .phase-sub {
+        font-size: 21px;
+        line-height: 1.4;
+        color: var(--muted);
+      }
+
+      /* Roadmap compare */
+      .road-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+        gap: 40px;
+        flex: 1;
+        min-height: 0;
+        margin-top: 44px;
+      }
+      .road-card {
+        padding: 42px 46px;
+        display: flex;
+        flex-direction: column;
+        gap: 22px;
+      }
+      .road-title {
+        font-size: 30px;
+        font-weight: 600;
+        letter-spacing: -0.015em;
+      }
+      .road-rows {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+      }
+      .road-row {
+        display: grid;
+        grid-template-columns: 190px 1fr;
+        gap: 22px;
+        align-items: baseline;
+      }
+      .road-k {
+        font-size: 20px;
+        font-weight: 600;
+        color: var(--muted);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      .road-v {
+        font-size: 24px;
+        line-height: 1.35;
+        color: var(--ink-2);
+      }
+
+      /* Big number slide */
+      .big-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+        gap: 72px;
+        flex: 1;
+        min-height: 0;
+        margin-top: 40px;
+      }
+      .big-formula {
+        font-size: 88px;
+        font-weight: 600;
+        letter-spacing: -0.03em;
+        line-height: 1.02;
+        color: var(--ink);
+      }
+      .big-formula .accent {
+        color: var(--brand);
+      }
+      .big-eq {
+        margin-top: 28px;
+        font-size: 26px;
+        line-height: 1.4;
+        color: var(--ink-2);
+        max-width: 900px;
+      }
+
+      /* Dark closer */
+      .ty-grid {
+        display: grid;
+        grid-template-columns: 1.15fr 1fr;
+        height: 100%;
+        background: var(--ink);
+        color: #fafafa;
+      }
+      .ty-left {
+        padding: 96px 0 96px 104px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+      .ty-brand {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+      }
+      .ty-brand .mark {
+        width: 40px;
+        height: 40px;
+        color: #fafafa;
+      }
+      .ty-brand span {
+        font-size: 30px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+      }
+      .ty-title {
+        font-size: 108px;
+        font-weight: 600;
+        line-height: 1.02;
+        letter-spacing: -0.03em;
+        margin: 0;
+      }
+      .ty-title .accent {
+        color: var(--brand);
+      }
+      .ty-sub {
+        margin-top: 36px;
+        font-size: 30px;
+        line-height: 1.4;
+        color: rgba(250, 250, 250, 0.72);
+        max-width: 800px;
+      }
+      .ty-meta {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        font-family: 'Geist Mono', ui-monospace, monospace;
+        font-size: 20px;
+        color: rgba(250, 250, 250, 0.55);
+        letter-spacing: 0.04em;
+      }
+      .ty-art {
+        position: relative;
+        overflow: hidden;
+      }
+      .ty-art img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+      }
+
+      .foot-line {
+        margin-top: auto;
+        padding-top: 30px;
+        font-size: 22px;
+        color: var(--muted);
+        line-height: 1.45;
+      }
+      .foot-line b {
+        color: var(--ink);
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <deck-stage width="1920" height="1080">
+      <!-- ============ SLIDE 01 — COVER ============ -->
+      <section class="slide" data-label="01 Cover">
+        <div class="cover-grid">
+          <div class="cover-left">
+            <div class="cover-brand">
+              <svg class="mark" viewBox="0 0 100 100" role="img" aria-label="Mortar">
+                <path d="M24 24H60V42H42V76H24Z" fill="currentColor" />
+                <path d="M76 76H46V58H64V24H76Z" fill="#c2410c" />
+                <rect x="49" y="46" width="8" height="8" rx="1" fill="currentColor" />
+              </svg>
+              <span class="cover-word">Mortar</span>
+            </div>
+            <div>
+              <div class="eyebrow accent" style="margin-bottom: 26px">
+                Chin Hin · Property Booking Conversion Intelligence · YEI 3.0
+              </div>
+              <h1 class="cover-title">Booked Is Not Sold. Signed Is.</h1>
+              <p class="cover-sub">
+                The shared case record that carries every unit booking to a signed Sale &amp; Purchase Agreement.
+              </p>
+            </div>
+            <div class="cover-meta">
+              <div class="row"><b>Kabel DXP</b> · Youth Innovation Sandbox</div>
+              <div class="row">Pitch Video · <b>20 September 2026</b></div>
+              <div class="row">All Data On Screen Is Simulated</div>
+            </div>
+          </div>
+          <div class="cover-art">
+            <img src="assets/art-cover.webp" alt="Mortar cover artwork" />
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ SLIDE 02 — THE LAUNCH ============ -->
+      <section class="slide" data-label="02 The Launch That Looked Like A Win">
+        <div class="pad">
+          <div class="chrome">
+            <div class="brand">
+              <svg class="mark" viewBox="0 0 100 100" role="img" aria-label="Mortar">
+                <path d="M24 24H60V42H42V76H24Z" fill="currentColor" />
+                <path d="M76 76H46V58H64V24H76Z" fill="#c2410c" />
+                <rect x="49" y="46" width="8" height="8" rx="1" fill="currentColor" />
+              </svg>
+              <span>Mortar</span>
+            </div>
+            <div class="chrome-meta">02 / 20 · The Problem</div>
+          </div>
+
+          <div class="head">
+            <div class="eyebrow">The Problem</div>
+            <h2 class="title">The Launch That Looked Like A Win.</h2>
+            <p class="lead">
+              A project launches. Sales books the first month's units, and the launch reads as a success. Over the
+              following months a share of those bookings quietly falls apart — while the units sat off the market.
+            </p>
+          </div>
+
+          <div class="stat-row" style="margin-top: 56px; flex: 1; align-content: center">
+            <div class="card stat-card">
+              <div class="stat-num">6–12<span style="font-size: 48px; color: var(--faint)"> wk</span></div>
+              <div class="stat-cap">One booking can hold a unit off the market</div>
+              <div class="stat-src">Challenge Brief</div>
+            </div>
+            <div class="card stat-card">
+              <div class="stat-num">~64<span style="font-size: 48px; color: var(--faint)"> days</span></div>
+              <div class="stat-cap">Booking to SPA in the PJD Regency case</div>
+              <div class="stat-src">Federal Court, 2021 · Official</div>
+            </div>
+            <div class="card stat-card">
+              <div class="stat-num">Day<span style="font-size: 48px; color: var(--faint)"> 0</span></div>
+              <div class="stat-cap">Late-delivery damages run from the booking-fee date, not the SPA</div>
+              <div class="stat-src">PJD Regency v Tribunal, 2021 · Official</div>
+            </div>
+          </div>
+
+          <div class="foot-line">
+            Sales fears slowing bookings. <b>Finance knows an unsigned booking is not cash.</b> Both are right.
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ SLIDE 03 — WHAT LEAKS ============ -->
+      <section class="slide" data-label="03 What Leaks">
+        <div class="pad" style="padding-right: 0">
+          <div class="chrome" style="padding-right: 104px">
+            <div class="brand">
+              <svg class="mark" viewBox="0 0 100 100" role="img" aria-label="Mortar">
+                <path d="M24 24H60V42H42V76H24Z" fill="currentColor" />
+                <path d="M76 76H46V58H64V24H76Z" fill="#c2410c" />
+                <rect x="49" y="46" width="8" height="8" rx="1" fill="currentColor" />
+              </svg>
+              <span>Mortar</span>
+            </div>
+            <div class="chrome-meta on-art">03 / 20 · The Leak</div>
+          </div>
+
+          <div class="art-panel" style="width: 680px">
+            <img src="assets/art-leak.webp" alt="Bookings leaking out of a pipeline" />
+          </div>
+          <div style="display: grid; grid-template-columns: minmax(0, 1.05fr) 680px; gap: 72px; flex: 1; min-height: 0">
+            <div class="vcol" style="padding-right: 0">
+              <div class="head" style="margin-top: 0">
+                <div class="eyebrow">Where The Bookings Go</div>
+                <h2 class="title md">What Leaks, And Why Nobody Sees It.</h2>
+              </div>
+              <div class="leak-list">
+                <div class="leak-row">
+                  <div class="leak-name"><i></i>The Loan Falls Through</div>
+                  <div class="leak-sub">The buyer's bank application is rejected — after the unit is already held.</div>
+                </div>
+                <div class="leak-row">
+                  <div class="leak-name"><i></i>The Buyer Walks Away</div>
+                  <div class="leak-sub">The mind changes; the file stays open and the unit stays locked.</div>
+                </div>
+                <div class="leak-row">
+                  <div class="leak-name"><i></i>The Paperwork Stalls</div>
+                  <div class="leak-sub">A missing payslip sits unnoticed for weeks.</div>
+                </div>
+                <div class="leak-row">
+                  <div class="leak-name"><i></i>The File Goes Quiet</div>
+                  <div class="leak-sub">The case sits with a panel banker and quietly dies.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ SLIDE 04 — SURVEY ============ -->
+      <section class="slide" data-label="04 What Practitioners Told Us">
+        <div class="pad">
+          <div class="chrome">
+            <div class="brand">
+              <svg class="mark" viewBox="0 0 100 100" role="img" aria-label="Mortar">
+                <path d="M24 24H60V42H42V76H24Z" fill="currentColor" />
+                <path d="M76 76H46V58H64V24H76Z" fill="#c2410c" />
+                <rect x="49" y="46" width="8" height="8" rx="1" fill="currentColor" />
+              </svg>
+              <span>Mortar</span>
+            </div>
+            <div class="chrome-meta">04 / 20 · Evidence</div>
+          </div>
+
+          <div class="head">
+            <div class="eyebrow">Anonymous Practitioner Survey · 18 Sep 2026 · n = 5 · Mixed Roles</div>
+            <h2 class="title">What Practitioners Told Us.</h2>
+          </div>
+
+          <div class="find-grid">
+            <div class="card find-card">
+              <div class="find-num">5<span> / 5</span></div>
+              <div class="find-txt">Name loan rejection or insufficient financing the biggest cause of leakage</div>
+            </div>
+            <div class="card find-card">
+              <div class="find-num">4<span> / 5</span></div>
+              <div class="find-txt">Say bookings stall at bank credit assessment</div>
+            </div>
+            <div class="card find-card">
+              <div class="find-num">4<span> / 5</span></div>
+              <div class="find-txt">Want an earlier financing eligibility check above any other improvement</div>
+            </div>
+            <div class="card find-card">
+              <div class="find-num">3<span> / 5</span></div>
+              <div class="find-txt">Estimate only 0–2 of every 10 bookings reach a signed SPA</div>
+            </div>
+            <div class="card find-card">
+              <div class="find-num">3<span> / 5</span></div>
+              <div class="find-txt">Call document checking a safe job for AI — 1 of 5 would let AI score risk</div>
+            </div>
+            <div class="card find-card">
+              <div class="find-num">3·2·1</div>
+              <div class="find-txt">Track bookings across a CRM, spreadsheets and email — no shared record</div>
+            </div>
+          </div>
+
+          <div class="foot-line">
+            A convenience sample, self-reported. Used to <b>rank the causes</b> — not to set the rates.
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ SLIDE 05 — ONE CASE RECORD ============ -->
+      <section class="slide" data-label="05 One Shared Case Record">
+        <div class="pad">
+          <div class="chrome">
+            <div class="brand">
+              <svg class="mark" viewBox="0 0 100 100" role="img" aria-label="Mortar">
+                <path d="M24 24H60V42H42V76H24Z" fill="currentColor" />
+                <path d="M76 76H46V58H64V24H76Z" fill="#c2410c" />
+                <rect x="49" y="46" width="8" height="8" rx="1" fill="currentColor" />
+              </svg>
+              <span>Mortar</span>
+            </div>
+            <div class="chrome-meta">05 / 20 · The Product</div>
+          </div>
+
+          <div class="split wide-right">
+            <div class="vcol">
+              <div>
+                <div class="eyebrow accent">Meet Mortar</div>
+                <h2 class="title md" style="margin-top: 18px">One Shared Case Record.</h2>
+              </div>
+              <p class="lead" style="margin-top: 0">
+                Every booking becomes one case page with a timestamped event log — <strong>what happened, when we
+                learned of it, who reported it, who verified it.</strong>
+              </p>
+              <div class="rows">
+                <div class="row-item">
+                  <div class="row-head">Loan And Legal Run As Separate Tracks</div>
+                  <div class="row-sub">A slow bank does not freeze the solicitor's file.</div>
+                </div>
+                <div class="row-item">
+                  <div class="row-head">Only Confirmed Events Move The Case</div>
+                  <div class="row-sub">Unconfirmed, disputed or replaced updates stay visible but change nothing.</div>
+                </div>
+                <div class="row-item">
+                  <div class="row-head">Silence Shows As Unknown</div>
+                  <div class="row-sub">Ten quiet days reads as unknown — never as healthy pipeline.</div>
+                </div>
+              </div>
+            </div>
+            <div class="shot center">
+              <div class="shot-bar"><span class="dot"></span>mortar — public landing</div>
+              <img src="assets/shot-landing.webp" alt="The Mortar landing page" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ SLIDE 06 — THREE DESKS ============ -->
+      <section class="slide" data-label="06 Three Desks One Book">
+        <div class="pad">
+          <div class="chrome">
+            <div class="brand">
+              <svg class="mark" viewBox="0 0 100 100" role="img" aria-label="Mortar">
+                <path d="M24 24H60V42H42V76H24Z" fill="currentColor" />
+                <path d="M76 76H46V58H64V24H76Z" fill="#c2410c" />
+                <rect x="49" y="46" width="8" height="8" rx="1" fill="currentColor" />
+              </svg>
+              <span>Mortar</span>
+            </div>
+            <div class="chrome-meta">06 / 20 · Who Uses It</div>
+          </div>
+
+          <div class="head">
+            <div class="eyebrow">Who Uses It</div>
+            <h2 class="title">Three Desks, One Book.</h2>
+          </div>
+
+          <div class="desk-grid">
+            <div class="card desk-card">
+              <div class="desk-role">Sales Admin</div>
+              <div class="desk-name">Nurul Aina</div>
+              <div class="desk-route">/chase</div>
+              <div class="desk-copy">
+                Starts the day on the chase list — every stalled booking, its blocker in plain words, and a suggested
+                next action. One click turns the suggestion into a task.
+              </div>
+            </div>
+            <div class="card desk-card">
+              <div class="desk-role">Loan Admin</div>
+              <div class="desk-name">Tan Mei Ling</div>
+              <div class="desk-route">/bookings</div>
+              <div class="desk-copy">
+                Lives in the case ledger — verifies banker messages and document receipts, and watches applications
+                across up to three banks per booking.
+              </div>
+            </div>
+            <div class="card desk-card">
+              <div class="desk-role">Finance</div>
+              <div class="desk-name">Arvind Raj</div>
+              <div class="desk-route">/forecast</div>
+              <div class="desk-copy">
+                Reads expected SPA signings with a range and the method behind them — not gross bookings counted at
+                face value.
+              </div>
+            </div>
+          </div>
+
+          <div class="foot-line">
+            The same events, filtered for the job at hand — <b>nobody re-keys status into a second system.</b>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ SLIDE 07 — CASE PAGE ============ -->
+      <section class="slide" data-label="07 The Case Page">
+        <div class="pad">
+          <div class="chrome">
+            <div class="brand">
+              <svg class="mark" viewBox="0 0 100 100" role="img" aria-label="Mortar">
+                <path d="M24 24H60V42H42V76H24Z" fill="currentColor" />
+                <path d="M76 76H46V58H64V24H76Z" fill="#c2410c" />
+                <rect x="49" y="46" width="8" height="8" rx="1" fill="currentColor" />
+              </svg>
+              <span>Mortar</span>
+            </div>
+            <div class="chrome-meta">07 / 20 · The Case Page</div>
+          </div>
+
+          <div class="split">
+            <div class="shot">
+              <div class="shot-bar"><span class="dot"></span>/bookings/BK-9001</div>
+              <img src="assets/shot-case.webp" alt="The Mortar case page for booking BK-9001" />
+            </div>
+            <div class="vcol">
+              <div>
+                <div class="eyebrow accent">Evidence</div>
+                <h2 class="title md" style="margin-top: 18px">Evidence With A Name On It.</h2>
+              </div>
+              <div class="rows">
+                <div class="row-item">
+                  <div class="row-head">Every Update Keeps Four Facts</div>
+                  <div class="row-sub">When it happened, when Mortar learned of it, who reported it, who verified it.</div>
+                </div>
+                <div class="row-item">
+                  <div class="row-head">Every Update Carries A Status</div>
+                  <div class="row-sub">Confirmed, unconfirmed, disputed or replaced — only confirmed moves the case.</div>
+                </div>
+                <div class="row-item">
+                  <div class="row-head">One Rejection Is Not A Failure</div>
+                  <div class="row-sub">A booking can run one to three bank applications in parallel.</div>
+                </div>
+              </div>
+              <div class="card flat" style="padding: 26px 30px">
+                <div class="mono" style="font-size: 19px; color: var(--muted)">EVIDENCE LOG · BK-9001</div>
+                <div style="font-size: 24px; font-weight: 600; margin-top: 10px">
+                  Documents Requested · Payslip
+                </div>
+                <div class="mono" style="font-size: 19px; color: var(--muted); margin-top: 8px">
+                  Reported By Jev · Verified By Nurul Aina · 16 Sep 2026
+                </div>
+                <div style="margin-top: 16px"><span class="pill pos"><i></i>Confirmed</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ SLIDE 08 — CHASE LIST ============ -->
+      <section class="slide" data-label="08 The Chase List">
+        <div class="pad">
+          <div class="chrome">
+            <div class="brand">
+              <svg class="mark" viewBox="0 0 100 100" role="img" aria-label="Mortar">
+                <path d="M24 24H60V42H42V76H24Z" fill="currentColor" />
+                <path d="M76 76H46V58H64V24H76Z" fill="#c2410c" />
+                <rect x="49" y="46" width="8" height="8" rx="1" fill="currentColor" />
+              </svg>
+              <span>Mortar</span>
+            </div>
+            <div class="chrome-meta">08 / 20 · The Sales Morning</div>
+          </div>
+
+          <div class="split">
+            <div class="vcol">
+              <div>
+                <div class="eyebrow accent">The Sales Morning</div>
+                <h2 class="title md" style="margin-top: 18px">The Chase List: What To Do Today.</h2>
+              </div>
+              <p class="lead" style="margin-top: 0; font-size: 28px">
+                Stalled bookings surface first — each with its stall reason in plain words, a financing-risk chip,
+                and Jev's suggested next action with an owner and a date.
+              </p>
+              <div class="card" style="padding: 30px 34px">
+                <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 20px">
+                  <span class="mono" style="font-size: 21px; font-weight: 600">A-12-03 · BK-9001</span>
+                  <span class="pill warn"><i></i>Due Today</span>
+                </div>
+                <div style="font-size: 20px; color: var(--muted); margin-top: 6px">Raymond Tan Wei Hong</div>
+                <div style="font-size: 24px; font-weight: 600; margin-top: 14px">
+                  Bank Has Not Decided After 10 Working Days
+                </div>
+                <div style="font-size: 20px; color: var(--muted); margin-top: 8px">
+                  Low Risk · With Bank · 16 Days Old · Last Update 6 Days Ago · RM 550,000
+                </div>
+                <div
+                  style="
+                    margin-top: 18px;
+                    background: var(--paper-2);
+                    border-radius: 4px;
+                    padding: 14px 18px;
+                    font-size: 21px;
+                    color: var(--ink-2);
+                  "
+                >
+                  <b>Jev suggests:</b> Request Document · Payslip — Sales · Nurul Aina
+                </div>
+              </div>
+              <div style="font-size: 24px; color: var(--ink-2)">
+                <b style="color: var(--ink)">19 stalled · 7 high risk · RM 10.5m value at risk</b>
+                <span class="muted" style="font-size: 20px"> — the demo dataset, simulated</span>
+              </div>
+            </div>
+            <div class="shot">
+              <div class="shot-bar"><span class="dot"></span>/chase</div>
+              <img src="assets/shot-chase.webp" alt="The Mortar chase list" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ SLIDE 09 — JEV READS, A PERSON CONFIRMS ============ -->
+      <section class="slide" data-label="09 Jev Reads The Message">
+        <div class="pad">
+          <div class="chrome">
+            <div class="brand">
+              <svg class="mark" viewBox="0 0 100 100" role="img" aria-label="Mortar">
+                <path d="M24 24H60V42H42V76H24Z" fill="currentColor" />
+                <path d="M76 76H46V58H64V24H76Z" fill="#c2410c" />
+                <rect x="49" y="46" width="8" height="8" rx="1" fill="currentColor" />
+              </svg>
+              <span>Mortar</span>
+            </div>
+            <div class="chrome-meta">09 / 20 · AI In The Loop</div>
+          </div>
+
+          <div class="split">
+            <div class="vcol">
+              <div>
+                <div class="eyebrow accent">AI In The Loop</div>
+                <h2 class="title sm" style="margin-top: 18px">Jev Reads The Message. A Person Confirms It.</h2>
+              </div>
+              <div class="rows">
+                <div class="row-item">
+                  <div class="row-head">A Typed Answer, Never Prose</div>
+                  <div class="row-sub">
+                    Event, document, owner — plus a probability and a confidence. Jev never writes sentences.
+                  </div>
+                </div>
+                <div class="row-item">
+                  <div class="row-head">Below 0.6 It Reads Needs Review</div>
+                  <div class="row-sub">Unsure reads as unsure, in plain words — never smoothed over.</div>
+                </div>
+                <div class="row-item">
+                  <div class="row-head">Only A Confirmation Moves The Case</div>
+                  <div class="row-sub">Confirm, dispute or dismiss — the case waits for a person.</div>
+                </div>
+                <div class="row-item">
+                  <div class="row-head">Fast Enough To Sit In The Flow</div>
+                  <div class="row-sub">A live answer landed in 299 ms during verification — under three seconds.</div>
+                </div>
+              </div>
+            </div>
+            <div class="vcol">
+              <div class="card msg-card">
+                <div class="msg-meta">Kelvin Teo · Banker · 16 Sep 2026 · 15:30</div>
+                <div class="msg-body">
+                  "Still need latest 3 months slip gaji ah, current one only got June. Can get from buyer asap?"
+                </div>
+              </div>
+              <div class="shot strip" style="flex: none">
+                <div class="shot-bar"><span class="dot"></span>/bookings/BK-9001 · jev's answer</div>
+                <img src="assets/shot-proposal.webp" alt="Jev's typed proposal: Documents Requested, Payslip, Sales" />
+              </div>
+              <div class="card flat" style="padding: 26px 30px">
+                <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 20px">
+                  <span style="font-size: 23px; font-weight: 600">Nurul Aina Confirmed It</span>
+                  <span class="pill pos"><i></i>Confirmed</span>
+                </div>
+                <div class="mono" style="font-size: 19px; color: var(--muted); margin-top: 10px">
+                  Documents Requested · Payslip — Now Evidence On The Case
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ SLIDE 10 — AI VS PEOPLE ============ -->
+      <section class="slide" data-label="10 Where AI Helps">
+        <div class="pad">
+          <div class="chrome">
+            <div class="brand">
+              <svg class="mark" viewBox="0 0 100 100" role="img" aria-label="Mortar">
+                <path d="M24 24H60V42H42V76H24Z" fill="currentColor" />
+                <path d="M76 76H46V58H64V24H76Z" fill="#c2410c" />
+                <rect x="49" y="46" width="8" height="8" rx="1" fill="currentColor" />
+              </svg>
+              <span>Mortar</span>
+            </div>
+            <div class="chrome-meta">10 / 20 · The Boundary</div>
+          </div>
+
+          <div class="head">
+            <div class="eyebrow">The Boundary</div>
+            <h2 class="title">Where AI Helps, Where People Decide.</h2>
+          </div>
+
+          <div class="cmp-grid">
+            <div class="card cmp-card">
+              <div class="cmp-title">Jev — Typed Judgments, Never Prose</div>
+              <ul class="cmp-list">
+                <li>Reads English, Malay, Chinese and Manglish messages into event, document and owner fields</li>
+                <li>Suggests the next action and its urgency for a stalled case</li>
+                <li>Ranks reviewed playbooks by fit to the live blocker</li>
+                <li>Scores buyer responsiveness and hesitation from message gaps</li>
+              </ul>
+              <div class="cmp-sub">One fan-out request per job · probability and confidence on every answer</div>
+            </div>
+            <div class="card cmp-card dark">
+              <div class="cmp-title">People And Plain Math Decide</div>
+              <ul class="cmp-list">
+                <li>A person confirms every milestone — unconfirmed evidence never moves a case</li>
+                <li>Financing risk is deterministic rules, not a model</li>
+                <li>The forecast is stage rates and intervals, not generated prediction</li>
+                <li>Staff author and review every playbook</li>
+                <li>Executives cancel bookings and release units</li>
+              </ul>
+              <div class="cmp-sub">Jev proposes. People dispose.</div>
+            </div>
+          </div>
+
+          <div class="foot-line">
+            The survey agrees — document checks <b>3 of 5</b>, next actions <b>2 of 5</b>, conversion risk
+            <b>1 of 5</b>. So the forecast stays statistical.
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ SLIDE 11 — FORECAST ============ -->
+      <section class="slide" data-label="11 The Forecast">
+        <div class="pad">
+          <div class="chrome">
+            <div class="brand">
+              <svg class="mark" viewBox="0 0 100 100" role="img" aria-label="Mortar">
+                <path d="M24 24H60V42H42V76H24Z" fill="currentColor" />
+                <path d="M76 76H46V58H64V24H76Z" fill="#c2410c" />
+                <rect x="49" y="46" width="8" height="8" rx="1" fill="currentColor" />
+              </svg>
+              <span>Mortar</span>
+            </div>
+            <div class="chrome-meta">11 / 20 · The Finance Desk</div>
+          </div>
+
+          <div class="split">
+            <div class="vcol">
+              <div>
+                <div class="eyebrow accent">The Finance Desk</div>
+                <h2 class="title sm" style="margin-top: 18px">The Forecast: Signed SPAs, Not Bookings.</h2>
+              </div>
+              <div class="rows" style="gap: 22px">
+                <div class="row-item">
+                  <div class="row-head">A Probability Per Live Booking</div>
+                  <div class="row-sub">
+                    The share of resolved cases that reached the same stage and signed within 30 days, grouped by age.
+                  </div>
+                </div>
+                <div class="row-item">
+                  <div class="row-head">Every Rate Shows Its n And Range</div>
+                  <div class="row-sub">Sample size and a Wilson 95% interval beside each stage conversion.</div>
+                </div>
+                <div class="row-item">
+                  <div class="row-head">A Sum, Not A Hope</div>
+                  <div class="row-sub">Expected signings add the probabilities; the range is the 10–90 band of 2,000 draws.</div>
+                </div>
+              </div>
+              <div class="card" style="padding: 28px 32px">
+                <div style="font-size: 26px; font-weight: 600">
+                  Expected 21 · Range 17–25 · Live Bookings 50
+                </div>
+                <div class="mono" style="font-size: 19px; color: var(--muted); margin-top: 10px">
+                  Prototype Output · Seed 20260918 · Simulated · Another Seed Gives 19.7 (16–24)
+                </div>
+              </div>
+            </div>
+            <div class="shot">
+              <div class="shot-bar"><span class="dot"></span>/forecast</div>
+              <img src="assets/shot-forecast.webp" alt="The Mortar forecast desk" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ SLIDE 12 — BACKTEST ============ -->
+      <section class="slide" data-label="12 The Backtest">
+        <div class="pad">
+          <div class="chrome">
+            <div class="brand">
+              <svg class="mark" viewBox="0 0 100 100" role="img" aria-label="Mortar">
+                <path d="M24 24H60V42H42V76H24Z" fill="currentColor" />
+                <path d="M76 76H46V58H64V24H76Z" fill="#c2410c" />
+                <rect x="49" y="46" width="8" height="8" rx="1" fill="currentColor" />
+              </svg>
+              <span>Mortar</span>
+            </div>
+            <div class="chrome-meta">12 / 20 · Honesty Check</div>
+          </div>
+
+          <div class="split">
+            <div class="vcol">
+              <div>
+                <div class="eyebrow accent">Honesty Check</div>
+                <h2 class="title sm" style="margin-top: 18px">The Backtest — And What It Does Not Prove.</h2>
+              </div>
+              <p class="lead" style="margin-top: 0; font-size: 27px">
+                Thirty days back, the engine forecasts the bookings that were live at the cut, using only what was
+                known then. The full log supplies what actually signed — the product calls this the Accuracy Check.
+              </p>
+              <div style="display: flex; gap: 36px; align-items: baseline">
+                <div>
+                  <div class="stat-num" style="font-size: 68px">9.9</div>
+                  <div class="stat-src">Forecast</div>
+                </div>
+                <div>
+                  <div class="stat-num" style="font-size: 68px">10</div>
+                  <div class="stat-src">Actual</div>
+                </div>
+                <div>
+                  <div class="stat-num" style="font-size: 68px">0.180</div>
+                  <div class="stat-src">Accuracy Score · Simulated</div>
+                </div>
+              </div>
+              <div class="card dark" style="padding: 30px 34px">
+                <div style="font-size: 26px; font-weight: 600; line-height: 1.35">
+                  "An Accuracy Check On Simulated Data Proves The Method, Not The Business."
+                </div>
+                <div class="mono" style="font-size: 18px; color: rgba(250, 250, 250, 0.55); margin-top: 12px">
+                  The caption the product itself shows
+                </div>
+              </div>
+            </div>
+            <div class="shot fit">
+              <div class="shot-bar"><span class="dot"></span>/forecast · accuracy check</div>
+              <img src="assets/shot-backtest.webp" alt="The Accuracy Check card on the forecast desk" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ SLIDE 13 — FINANCING RISK FLAG ============ -->
+      <section class="slide" data-label="13 The Financing Risk Flag">
+        <div class="pad">
+          <div class="chrome">
+            <div class="brand">
+              <svg class="mark" viewBox="0 0 100 100" role="img" aria-label="Mortar">
+                <path d="M24 24H60V42H42V76H24Z" fill="currentColor" />
+                <path d="M76 76H46V58H64V24H76Z" fill="#c2410c" />
+                <rect x="49" y="46" width="8" height="8" rx="1" fill="currentColor" />
+              </svg>
+              <span>Mortar</span>
+            </div>
+            <div class="chrome-meta">13 / 20 · Advisory, Not A Gate</div>
+          </div>
+
+          <div class="head">
+            <div class="eyebrow">Advisory, Not A Gate</div>
+            <h2 class="title">The Financing Risk Flag.</h2>
+          </div>
+
+          <div class="card" style="margin-top: 48px">
+            <div class="pipe">
+              <div class="pipe-step">
+                <div class="pipe-ix">PRICE</div>
+                <div class="pipe-name">× Margin → Loan</div>
+                <div class="pipe-sub">90% · 70% from the third home (BNM)</div>
+              </div>
+              <div class="pipe-arrow">→</div>
+              <div class="pipe-step">
+                <div class="pipe-ix">LOAN</div>
+                <div class="pipe-name">Annuity → Instalment</div>
+                <div class="pipe-sub">At 4.2% · up to 35 years, ending by 70</div>
+              </div>
+              <div class="pipe-arrow">→</div>
+              <div class="pipe-step">
+                <div class="pipe-ix">INCOME</div>
+                <div class="pipe-name">÷ Into DSR</div>
+                <div class="pipe-sub">(Commitments + instalment) over gross income</div>
+              </div>
+              <div class="pipe-arrow">→</div>
+              <div class="pipe-step">
+                <div class="pipe-ix">FLAG</div>
+                <div class="pipe-name">Vs The 40% Cap</div>
+                <div class="pipe-sub">ABM 2017 guideline · reasons attached in words</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="flag-grid">
+            <div class="card flag-card">
+              <span class="pill dan" style="align-self: flex-start"><i></i>High</span>
+              <div class="flag-rule">Debt service above 40% — the file needs attention before the bank sees it.</div>
+            </div>
+            <div class="card flag-card">
+              <span class="pill warn" style="align-self: flex-start"><i></i>Medium</span>
+              <div class="flag-rule">Within 5 points of the cap — or an income document is still outstanding.</div>
+            </div>
+            <div class="card flag-card">
+              <span class="pill pos" style="align-self: flex-start"><i></i>Low</span>
+              <div class="flag-rule">Otherwise — the flag stays quiet and the case keeps moving.</div>
+            </div>
+          </div>
+
+          <div class="foot-line">
+            Every practitioner ranked financing the top signal and <b>4 of 5 asked for an earlier check</b>. The flag
+            prompts the follow-up — it never blocks a booking. (BK-9008: third home, 70% margin, high DSR.)
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ SLIDE 14 — PLAYBOOKS ============ -->
+      <section class="slide" data-label="14 Playbooks">
+        <div class="pad" style="padding-right: 0">
+          <div class="chrome" style="padding-right: 104px">
+            <div class="brand">
+              <svg class="mark" viewBox="0 0 100 100" role="img" aria-label="Mortar">
+                <path d="M24 24H60V42H42V76H24Z" fill="currentColor" />
+                <path d="M76 76H46V58H64V24H76Z" fill="#c2410c" />
+                <rect x="49" y="46" width="8" height="8" rx="1" fill="currentColor" />
+              </svg>
+              <span>Mortar</span>
+            </div>
+            <div class="chrome-meta on-art">14 / 20 · The Knowledge Layer</div>
+          </div>
+
+          <div class="art-panel" style="width: 620px">
+            <img src="assets/art-evidence.webp" alt="Reviewed staff guidance artwork" />
+          </div>
+          <div style="display: grid; grid-template-columns: minmax(0, 1.05fr) 620px; gap: 72px; flex: 1; min-height: 0">
+            <div class="vcol" style="padding-right: 0">
+              <div class="head" style="margin-top: 0">
+                <div class="eyebrow">The Knowledge Layer</div>
+                <h2 class="title md">Playbooks: Staff Experience, Reviewed.</h2>
+              </div>
+              <div class="rows" style="gap: 22px">
+                <div class="row-item">
+                  <div class="row-head">A Reviewed Record, Not A Wiki Page</div>
+                  <div class="row-sub">Situation, action, limits, outcome — with an author, a reviewer and a status.</div>
+                </div>
+                <div class="row-item">
+                  <div class="row-head">Ranked By Fit To The Live Blocker</div>
+                  <div class="row-sub">
+                    Jev scores each candidate 0–2; for BK-9001, Missing Income Documents ranks first.
+                  </div>
+                </div>
+                <div class="row-item">
+                  <div class="row-head">Found In The Words Staff Use</div>
+                  <div class="row-sub">Malay and Manglish tags — "slip gaji" finds the payslip playbook.</div>
+                </div>
+              </div>
+              <div class="card flat" style="padding: 26px 30px">
+                <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 20px">
+                  <span style="font-size: 22px; font-weight: 600">Missing Income Documents</span>
+                  <span class="pill pos"><i></i>Approved</span>
+                </div>
+                <div class="mono" style="font-size: 18px; color: var(--muted); margin-top: 12px">
+                  Direct Fit · Securing Latest Three Months' Payslips · 27 Records In The Library
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ SLIDE 15 — HOW IT IS BUILT ============ -->
+      <section class="slide" data-label="15 How It Is Built">
+        <div class="pad">
+          <div class="chrome">
+            <div class="brand">
+              <svg class="mark" viewBox="0 0 100 100" role="img" aria-label="Mortar">
+                <path d="M24 24H60V42H42V76H24Z" fill="currentColor" />
+                <path d="M76 76H46V58H64V24H76Z" fill="#c2410c" />
+                <rect x="49" y="46" width="8" height="8" rx="1" fill="currentColor" />
+              </svg>
+              <span>Mortar</span>
+            </div>
+            <div class="chrome-meta">15 / 20 · Under The Hood</div>
+          </div>
+
+          <div class="head">
+            <div class="eyebrow">Under The Hood</div>
+            <h2 class="title sm">How It Is Built.</h2>
+          </div>
+
+          <div class="arch">
+            <div class="arch-row">
+              <div class="arch-label">Browser</div>
+              <div class="arch-cells">
+                <div class="card arch-cell">
+                  <span class="name">React 19 SPA + @mortar/core</span>
+                  <span class="sub">One snapshot; every view derived in the client — pages never wait on a model</span>
+                </div>
+              </div>
+            </div>
+            <div class="arch-arrow">↓ GET /api/snapshot · POST /api/* writes ↓</div>
+            <div class="arch-row">
+              <div class="arch-label">Bun · Cloud Run</div>
+              <div class="arch-cells">
+                <div class="card arch-cell">
+                  <span class="name">One Server, Static + API</span>
+                  <span class="sub">Bun.serve · SPA fallback · pooled SQL · no separate proxy</span>
+                </div>
+                <div class="card arch-cell dark">
+                  <span class="name">@mortar/jev → TypeSafe</span>
+                  <span class="sub">Server-side only; the API key never reaches the browser</span>
+                </div>
+              </div>
+            </div>
+            <div class="arch-arrow">↓ pooled connection ↓</div>
+            <div class="arch-row">
+              <div class="arch-label">Neon Postgres</div>
+              <div class="arch-cells">
+                <div class="card arch-cell">
+                  <span class="name">One Event Ledger</span>
+                  <span class="sub">bookings · applications · events · messages · tasks · jev_answers</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="chips">
+            <span class="chip"><b>Jev actions:</b> live → cached → last known → manual</span>
+            <span class="chip"><b>Reads:</b> cache-first, so a page never waits</span>
+            <span class="chip"><b>Timeout:</b> 3 s, then the ladder</span>
+            <span class="chip"><b>Dataset:</b> 148 bookings · ~900 events · 27 playbooks</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ SLIDE 16 — SIMULATED DATA ============ -->
+      <section class="slide" data-label="16 Simulated Data By Design">
+        <div class="pad">
+          <div class="chrome">
+            <div class="brand">
+              <svg class="mark" viewBox="0 0 100 100" role="img" aria-label="Mortar">
+                <path d="M24 24H60V42H42V76H24Z" fill="currentColor" />
+                <path d="M76 76H46V58H64V24H76Z" fill="#c2410c" />
+                <rect x="49" y="46" width="8" height="8" rx="1" fill="currentColor" />
+              </svg>
+              <span>Mortar</span>
+            </div>
+            <div class="chrome-meta">16 / 20 · Honest By Design</div>
+          </div>
+
+          <div class="split">
+            <div class="vcol">
+              <div>
+                <div class="eyebrow accent">Honest By Design</div>
+                <h2 class="title md" style="margin-top: 18px">Simulated Data, By Design.</h2>
+              </div>
+              <div class="rows" style="gap: 22px">
+                <div class="row-item">
+                  <div class="row-head">Labelled On Every Screen</div>
+                  <div class="row-sub">Simulated Data · Seed 20260918 · As Of 18 Sep 2026 — the badge never hides.</div>
+                </div>
+                <div class="row-item">
+                  <div class="row-head">One Seed, One Dataset</div>
+                  <div class="row-sub">A seeded generator rebuilds the same 148 bookings every time.</div>
+                </div>
+                <div class="row-item">
+                  <div class="row-head">No Personal Data</div>
+                  <div class="row-sub">
+                    Invented buyers, banks and firms; identifiers that could not be real — nothing for PDPA to hold.
+                  </div>
+                </div>
+                <div class="row-item">
+                  <div class="row-head">Every Rate Tagged</div>
+                  <div class="row-sub">
+                    Official, Industry, Survey or Assumption — each marked "Placeholder To Calibrate On Company Data."
+                  </div>
+                </div>
+              </div>
+              <div class="row-sub" style="font-size: 20px">
+                Precedent: Columbia's MortarBench evaluates mortgage agents entirely on synthetic files.
+              </div>
+            </div>
+            <div class="shot">
+              <div class="shot-bar"><span class="dot"></span>/settings · demo data</div>
+              <img src="assets/shot-settings.webp" alt="The Mortar settings page showing the demo seed" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ SLIDE 17 — THE ONE NUMBER ============ -->
+      <section class="slide" data-label="17 The One Number">
+        <div class="pad" style="padding-right: 0">
+          <div class="chrome" style="padding-right: 104px">
+            <div class="brand">
+              <svg class="mark" viewBox="0 0 100 100" role="img" aria-label="Mortar">
+                <path d="M24 24H60V42H42V76H24Z" fill="currentColor" />
+                <path d="M76 76H46V58H64V24H76Z" fill="#c2410c" />
+                <rect x="49" y="46" width="8" height="8" rx="1" fill="currentColor" />
+              </svg>
+              <span>Mortar</span>
+            </div>
+            <div class="chrome-meta on-art">17 / 20 · The Measure</div>
+          </div>
+
+          <div class="art-panel" style="width: 620px">
+            <img src="assets/art-measure.webp" alt="Measurement artwork" />
+          </div>
+          <div style="display: grid; grid-template-columns: minmax(0, 1.15fr) 620px; gap: 72px; flex: 1; min-height: 0">
+            <div class="vcol" style="padding-right: 0">
+              <div class="head" style="margin-top: 0">
+                <div class="eyebrow">The Measure</div>
+                <h2 class="title md">The One Number We Are Judged By.</h2>
+              </div>
+              <div>
+                <div class="big-formula">30-Day <span class="accent">Verified SPA</span> Rate</div>
+                <div class="big-eq">
+                  Bookings that sign a verified SPA within 30 days ÷ eligible bookings in the cohort.
+                </div>
+              </div>
+              <div class="rows" style="gap: 18px">
+                <div class="row-item">
+                  <div class="row-head" style="font-size: 25px">Definitive</div>
+                  <div class="row-sub">A signed SPA is an executed contract of sale — 10% falls due on signing.</div>
+                </div>
+                <div class="row-item">
+                  <div class="row-head" style="font-size: 25px">Readable In One Quarter</div>
+                  <div class="row-sub">Enroll a cohort between day 15 and 44; observe by day 74; reconcile by 84.</div>
+                </div>
+                <div class="row-item">
+                  <div class="row-head" style="font-size: 25px">Forces The Behaviour</div>
+                  <div class="row-sub">Unblock early, or release the unit while the campaign still fits it.</div>
+                </div>
+              </div>
+              <div class="card flat" style="padding: 24px 30px">
+                <div style="font-size: 23px; line-height: 1.4; color: var(--ink-2)">
+                  If follow-up lifts 40 stalled bookings from 20% to 40%, that is <b>+8 signed SPAs</b> — a planning
+                  assumption to replace with pilot data. Never converted to cash.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ SLIDE 18 — 12-WEEK PILOT ============ -->
+      <section class="slide" data-label="18 A 12-Week Pilot">
+        <div class="pad" style="padding-right: 0">
+          <div class="chrome" style="padding-right: 104px">
+            <div class="brand">
+              <svg class="mark" viewBox="0 0 100 100" role="img" aria-label="Mortar">
+                <path d="M24 24H60V42H42V76H24Z" fill="currentColor" />
+                <path d="M76 76H46V58H64V24H76Z" fill="#c2410c" />
+                <rect x="49" y="46" width="8" height="8" rx="1" fill="currentColor" />
+              </svg>
+              <span>Mortar</span>
+            </div>
+            <div class="chrome-meta on-art">18 / 20 · The Path To Proof</div>
+          </div>
+
+          <div class="art-panel" style="width: 560px">
+            <img src="assets/art-pilot.webp" alt="Pilot rollout artwork" />
+          </div>
+          <div style="display: grid; grid-template-columns: minmax(0, 1.15fr) 560px; gap: 64px; flex: 1; min-height: 0">
+            <div class="vcol top" style="padding-right: 0">
+              <div class="head" style="margin-top: 0; margin-bottom: 36px">
+                <div class="eyebrow">The Path To Proof</div>
+                <h2 class="title md">A 12-Week Pilot.</h2>
+              </div>
+              <div class="phase-grid">
+                <div class="card phase-card">
+                  <div class="phase-wk">WEEKS 1–2</div>
+                  <div class="phase-name">Intake &amp; Baseline</div>
+                  <div class="phase-sub">
+                    Existing booking exports, one project, one Sales Admin. Reconcile closed cases; capture the first
+                    playbooks.
+                  </div>
+                </div>
+                <div class="card phase-card">
+                  <div class="phase-wk">WEEKS 3–4</div>
+                  <div class="phase-name">Assisted Queue</div>
+                  <div class="phase-sub">
+                    The daily chase list with one administrator. Jev extraction where it removes a burden.
+                  </div>
+                </div>
+                <div class="card phase-card">
+                  <div class="phase-wk">WEEKS 5–8</div>
+                  <div class="phase-name">Live Cohort</div>
+                  <div class="phase-sub">
+                    Bookings from day 15–44 get the assisted queue; a comparable group keeps ordinary follow-up.
+                  </div>
+                </div>
+                <div class="card phase-card">
+                  <div class="phase-wk">WEEKS 9–12</div>
+                  <div class="phase-name">Audit &amp; Decide</div>
+                  <div class="phase-sub">
+                    Verified SPAs with Legal. Compare cohorts; count signed SPAs and inventory days released.
+                  </div>
+                </div>
+              </div>
+              <div class="foot-line" style="margin-top: 30px; padding-top: 0">
+                Inside the brief's rules: <b>no new CRM, no consultant, no vendor</b> — one project, existing
+                channels, twelve weeks.
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ SLIDE 19 — AFTER THE PROTOTYPE ============ -->
+      <section class="slide" data-label="19 After The Prototype">
+        <div class="pad">
+          <div class="chrome">
+            <div class="brand">
+              <svg class="mark" viewBox="0 0 100 100" role="img" aria-label="Mortar">
+                <path d="M24 24H60V42H42V76H24Z" fill="currentColor" />
+                <path d="M76 76H46V58H64V24H76Z" fill="#c2410c" />
+                <rect x="49" y="46" width="8" height="8" rx="1" fill="currentColor" />
+              </svg>
+              <span>Mortar</span>
+            </div>
+            <div class="chrome-meta">19 / 20 · Roadmap</div>
+          </div>
+
+          <div class="head">
+            <div class="eyebrow">Roadmap</div>
+            <h2 class="title sm">What Comes After The Prototype.</h2>
+          </div>
+
+          <div class="road-grid">
+            <div class="card road-card">
+              <div class="road-title">Today — The Prototype</div>
+              <div class="road-rows">
+                <div class="road-row"><span class="road-k">Rates</span><span class="road-v">Seeded from public research and the survey</span></div>
+                <div class="road-row"><span class="road-k">Messages</span><span class="road-v">Pasted by staff into the case</span></div>
+                <div class="road-row"><span class="road-k">Search</span><span class="road-v">Keyword playbook lookup with local tags</span></div>
+                <div class="road-row"><span class="road-k">Data</span><span class="road-v">Synthetic, seeded, one fixed date</span></div>
+                <div class="road-row"><span class="road-k">Sign-In</span><span class="road-v">A persona switch, no real accounts</span></div>
+              </div>
+            </div>
+            <div class="card road-card dark">
+              <div class="road-title">Next — Production</div>
+              <div class="road-rows">
+                <div class="road-row">
+                  <span class="road-k" style="color: rgba(250,250,250,0.55)">Calibrate</span>
+                  <span class="road-v" style="color: rgba(250,250,250,0.85)">Rates relearned on consented company records</span>
+                </div>
+                <div class="road-row">
+                  <span class="road-k" style="color: rgba(250,250,250,0.55)">Intake</span>
+                  <span class="road-v" style="color: rgba(250,250,250,0.85)">WhatsApp Business Cloud, then OCR of scanned documents</span>
+                </div>
+                <div class="road-row">
+                  <span class="road-k" style="color: rgba(250,250,250,0.55)">Integrate</span>
+                  <span class="road-v" style="color: rgba(250,250,250,0.85)">ERP read-only first — a practitioner asked for IFCA by name</span>
+                </div>
+                <div class="road-row">
+                  <span class="road-k" style="color: rgba(250,250,250,0.55)">Access</span>
+                  <span class="road-v" style="color: rgba(250,250,250,0.85)">Single sign-on and role-based permissions</span>
+                </div>
+                <div class="road-row">
+                  <span class="road-k" style="color: rgba(250,250,250,0.55)">Later</span>
+                  <span class="road-v" style="color: rgba(250,250,250,0.85)">A knowledge graph only when the event log stops answering the questions</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="chips" style="margin-top: 32px">
+            <span class="chip">Still not: <b>a generative chatbot</b></span>
+            <span class="chip">Still not: <b>autonomous cancellation</b></span>
+            <span class="chip">Still not: <b>a buyer-facing portal</b></span>
+            <span class="chip">Still not: <b>signed SPAs read as cash</b></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ SLIDE 20 — THANK YOU ============ -->
+      <section class="slide" data-label="20 Thank You">
+        <div class="ty-grid">
+          <div class="ty-left">
+            <div class="ty-brand">
+              <svg class="mark" viewBox="0 0 100 100" role="img" aria-label="Mortar">
+                <path d="M24 24H60V42H42V76H24Z" fill="currentColor" />
+                <path d="M76 76H46V58H64V24H76Z" fill="#c2410c" />
+                <rect x="49" y="46" width="8" height="8" rx="1" fill="currentColor" />
+              </svg>
+              <span>Mortar</span>
+            </div>
+            <div>
+              <h2 class="ty-title">Booked Is Not Sold.<br /><span class="accent">Signed Is.</span></h2>
+              <p class="ty-sub">
+                One case record. One chase list. One number — with a person confirming every step.
+              </p>
+            </div>
+            <div class="ty-meta">
+              <span>Chin Hin · Property Booking Conversion Intelligence</span>
+              <span>YEI 3.0 · Kabel DXP · Pitch Video</span>
+              <span>Terima Kasih — The Mortar Team · 20 September 2026</span>
+            </div>
+          </div>
+          <div class="ty-art">
+            <img src="assets/art-close.webp" alt="Closing artwork" />
+          </div>
+        </div>
+      </section>
+    </deck-stage>
+
+    <script type="application/json" id="speaker-notes">
+      [
+        "Open on the product's own claim: booked is not sold — signed is. Frame the challenge and the date.",
+        "The launch reads as a win while units sit locked for weeks. PJD Regency makes stall time a legal clock, not just a sales problem.",
+        "Four ways a booking dies, and a structural reason nobody catches it: the knowledge lives in three heads and the forecast counts bookings at face value.",
+        "Evidence, not guesses. Five practitioners, unanimous on financing as the biggest leak — and they want earlier checks, not more AI scoring.",
+        "Mortar's answer is boring on purpose: one shared case record with an auditable event log.",
+        "Three personas, three desks, one book. Each sees the same events filtered for their job.",
+        "The case page is the trust mechanism — every update names who reported and who verified it.",
+        "The chase list turns visibility into a morning routine: blocker, risk, suggested action, one click to a task.",
+        "Jev reads the message; a person confirms it. The human verification step is the product, not a fallback.",
+        "The boundary is deliberate and matches the survey: AI reads and ranks; people and plain math decide.",
+        "The forecast prices honesty: stage rates with sample sizes and intervals, expected signings as a range.",
+        "We show the backtest failing gracefully on screen — the product itself says the method is what it proves.",
+        "The risk flag answers the survey's top ask — an early eligibility check — without gating sales momentum.",
+        "Playbooks capture staff experience as reviewed records; Jev ranks them, people approve them.",
+        "Boring, inspectable architecture: pure core, one Bun server, Postgres, Jev behind a fallback ladder.",
+        "Everything you saw is simulated on purpose — seeded, labelled, and safe under PDPA.",
+        "One number, readable in a quarter, that finance and sales can both accept.",
+        "Twelve weeks, one project, one administrator — sized to the brief's constraints.",
+        "The roadmap is calibration and integration, not more AI.",
+        "Close on the claim and thank the room."
+      ]
+    </script>
+  </body>
+</html>
