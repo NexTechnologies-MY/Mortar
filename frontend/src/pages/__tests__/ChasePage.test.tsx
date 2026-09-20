@@ -86,7 +86,7 @@ describe('ChasePage', () => {
     expect(cards[0].textContent).toContain('Request Document · Payslip')
     expect(cards[0].textContent).toContain('Sales · Nurul Aina')
     expect(cards[0].textContent).toContain('Application Undecided For 10 Working Days')
-    expect(cards[0].textContent).toContain('Re-Run Jev')
+    expect(cards[0].textContent).toContain('Ask Jev Again')
   })
 
   it('creates the suggested task with one click', async () => {

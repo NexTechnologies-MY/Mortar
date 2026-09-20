@@ -1,19 +1,20 @@
 /**
  * Bookings list route — the Loan Admin desk.
- * Every unit booking with its age, stage, evidence freshness, financing risk,
- * buyer signals and open tasks. Stalled bookings sort first; filters cover
- * stage, risk and the unknown-evidence flag.
+ * Every unit booking with its age, stage, how current its updates are,
+ * financing risk, buyer response and value. Stalled bookings sort first until
+ * the reader sorts a column; filters cover stage, risk and the no-recent-update
+ * flag.
  */
 
 import { useMemo, useState } from 'react'
-import { ClipboardList } from 'lucide-react'
+import { AlertTriangle, ClipboardList, FileSignature, HelpCircle } from 'lucide-react'
 import type { EventKind } from '@mortar/core'
 import { useCases, useSnapshot } from '@/lib/data'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { PageHeaderCard } from '@/components/layout/PageHeaderCard'
 import { StatCard } from '@/components/StatCard'
 import { BookingFilters, type BookingFilter } from '@/components/bookings/BookingFilters'
-import { BookingsTable, type BookingRow } from '@/components/bookings/BookingsTable'
+import { BookingsTable, type BookingRow, type Sort, type SortKey } from '@/components/bookings/BookingsTable'
 import { Pagination, usePagination } from '@/components/ui/Pagination'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -69,6 +70,10 @@ export function BookingsPage() {
       )
   }, [snapshot, cases, confirmedKinds, signalsByBooking])
 
+  const [sort, setSort] = useState<Sort>(null)
+
+  // Third click clears back to the default stalled-first ranking, so the
+  // reader can always get back without reloading.
   const visible = useMemo(
     () =>
       rows.filter(
@@ -80,6 +85,20 @@ export function BookingsPage() {
     [rows, filter]
   )
 
+  // Applied after filtering so the sort acts on what the reader can see.
+  const sorted = useMemo(() => {
+    if (!sort) return visible
+    const RISK_ORDER = { low: 0, medium: 1, high: 2 } as const
+    const value = (r: (typeof visible)[number]) =>
+      sort.key === 'age'
+        ? r.summary.bookingAgeDays
+        : sort.key === 'value'
+          ? r.booking.priceRm
+          : RISK_ORDER[r.summary.risk.level]
+    const dir = sort.dir === 'asc' ? 1 : -1
+    return [...visible].sort((a, b) => (value(a) - value(b)) * dir || a.booking.id.localeCompare(b.booking.id))
+  }, [visible, sort])
+
   const stats = useMemo(
     () => ({
       live: rows.filter((r) => r.live).length,
@@ -90,7 +109,15 @@ export function BookingsPage() {
     [rows]
   )
 
-  const { pageRows, pagination } = usePagination(visible)
+  const { pageRows, pagination } = usePagination(sorted)
+
+  /** A re-sort returns to page one, for the same reason a filter change does. */
+  const toggleSort = (key: SortKey) => {
+    setSort((current) =>
+      current?.key !== key ? { key, dir: 'desc' } : current.dir === 'desc' ? { key, dir: 'asc' } : null
+    )
+    pagination.onPageChange(1)
+  }
 
   /** A changed filter always returns the table to page one. */
   const applyFilter = (next: BookingFilter) => {
@@ -101,7 +128,7 @@ export function BookingsPage() {
   return (
     <PageContainer>
       <PageHeaderCard>
-        <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground">Bookings</h1>
+        <h1 className="text-[32px] font-semibold leading-[1.16] tracking-[-0.02em] text-foreground">Bookings</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Every Unit Booking, From Reservation Through To SPA Signing.
         </p>
@@ -128,20 +155,32 @@ export function BookingsPage() {
       ) : (
         <>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard label="Live Bookings" value={String(stats.live)} info="Unresolved, booked within 30 days." />
+            <StatCard
+              label="Live Bookings"
+              icon={ClipboardList}
+              value={String(stats.live)}
+              info="Unresolved, booked within 30 days."
+            />
             <StatCard
               label="Stalled"
+              icon={AlertTriangle}
               value={String(stats.stalled)}
               info="Live bookings with a stall reason."
               tone={stats.stalled > 0 ? 'alert' : 'default'}
             />
             <StatCard
               label="Unknown"
+              icon={HelpCircle}
               value={String(stats.unknown)}
               info="No confirmed evidence for 10 or more days."
               tone={stats.unknown > 0 ? 'alert' : 'default'}
             />
-            <StatCard label="SPA Signed" value={String(stats.signed)} info="Reached SPA signing — legally sold." />
+            <StatCard
+              label="SPA Signed"
+              icon={FileSignature}
+              value={String(stats.signed)}
+              info="Reached SPA signing — legally sold."
+            />
           </div>
           <div className="mt-4">
             <BookingFilters filter={filter} onChange={applyFilter} shown={visible.length} total={rows.length} />
@@ -155,7 +194,7 @@ export function BookingsPage() {
               />
             ) : (
               <>
-                <BookingsTable rows={pageRows} />
+                <BookingsTable rows={pageRows} sort={sort} onSort={toggleSort} />
                 <Pagination {...pagination} />
               </>
             )}

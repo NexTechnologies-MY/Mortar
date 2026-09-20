@@ -1,5 +1,5 @@
 /**
- * Evidence log — every event on the case, newest first: what happened, who
+ * Case history — every event on the case, newest first: what happened, who
  * reported it, who verified it and where it stands. Provisional Jev proposals
  * become confirmed here when a reviewer accepts them.
  */
@@ -29,9 +29,9 @@ export function EvidenceLog({ events }: { events: CaseEvent[] }) {
   return (
     <Card>
       <CardContent className="flex flex-col gap-3 p-4">
-        <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Evidence Log</h2>
+        <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Case History</h2>
         {sorted.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No Evidence Yet.</p>
+          <p className="text-sm text-muted-foreground">No Updates Yet.</p>
         ) : (
           <Table>
             <TableHeader>

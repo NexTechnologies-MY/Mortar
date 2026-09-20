@@ -1,7 +1,10 @@
 /**
  * Flat page header used above the working list on every page.
- * Spec: no card, gradient, blobs or artwork — just the title (Display/Page:
- * 24px semibold, -0.02em tracking) and one line of supporting copy.
+ * Spec: no card, gradient, blobs or artwork — just the title (Display/Large:
+ * 32px semibold, -0.02em tracking) and one line of supporting copy.
+ * The title styles live on the h1 at each call site, not on a descendant
+ * selector here: `[&_h1]:*` outranks a class on the child and silently beat
+ * every page's own heading classes.
  */
 
 import type { ReactNode } from 'react'
@@ -21,7 +24,5 @@ type PageHeaderCardProps = {
  * compatibility but never rendered.
  */
 export function PageHeaderCard({ children, className }: PageHeaderCardProps) {
-  return (
-    <div className={cn('[&_h1]:text-2xl [&_h1]:font-semibold [&_h1]:tracking-[-0.02em]', className)}>{children}</div>
-  )
+  return <div className={cn(className)}>{children}</div>
 }

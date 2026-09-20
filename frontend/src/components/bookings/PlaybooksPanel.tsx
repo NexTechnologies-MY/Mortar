@@ -129,7 +129,7 @@ export function PlaybooksPanel({
     <Card>
       <CardContent className="flex flex-col gap-3 p-4">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Playbooks</h2>
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">What To Do</h2>
           {result?.ranking && <JevTag meta={result.ranking.meta} />}
         </div>
         <form
@@ -144,9 +144,9 @@ export function PlaybooksPanel({
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder={shown.query || 'Search Playbooks'}
+              placeholder={shown.query || 'Search Guidance'}
               className="pl-9"
-              aria-label="Search Playbooks"
+              aria-label="Search guidance"
             />
           </div>
           <Button type="submit" size="sm" variant="secondary" disabled={loading}>
@@ -154,7 +154,9 @@ export function PlaybooksPanel({
           </Button>
         </form>
         {stale ? (
-          <p className="text-[13px] text-muted-foreground">Jev Ranking Stale — Keyword Matches For “{shown.query}”</p>
+          <p className="text-[13px] text-muted-foreground">
+            Jev's Ranking May Be Out Of Date — Keyword Matches For “{shown.query}”
+          </p>
         ) : (
           shown.query && <p className="text-[13px] text-muted-foreground">Ranked For “{shown.query}”</p>
         )}

@@ -155,11 +155,21 @@ export const DEFAULT_ASSUMPTIONS: Assumption[] = [
   a('dsrMediumBand', 'Medium Band Below Cap', 5, 'pts', 'assumption', 'Assumptions panel', 0, 15, 1),
   // Evidence and stalls
   a('unknownAfterDays', 'Unknown After', 10, 'days', 'assumption', 'Assumptions panel', 5, 21, 1),
-  a('staleEvidenceDays', 'Stall: No Evidence For', 7, 'days', 'assumption', 'Assumptions panel', 3, 14, 1),
-  a('documentStallDays', 'Stall: Document Outstanding For', 5, 'days', 'assumption', 'Assumptions panel', 2, 14, 1),
+  a('staleEvidenceDays', 'Stall: No Update For', 7, 'days', 'assumption', 'Assumptions panel', 3, 14, 1),
+  a(
+    'documentStallDays',
+    'Stall: Document Still Outstanding After',
+    5,
+    'days',
+    'assumption',
+    'Assumptions panel',
+    2,
+    14,
+    1
+  ),
   a(
     'undecidedStallWorkDays',
-    'Stall: Application Undecided For',
+    'Stall: Bank Has Not Decided After',
     9,
     'working days',
     'industry',

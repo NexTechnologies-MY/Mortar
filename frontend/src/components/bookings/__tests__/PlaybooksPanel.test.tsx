@@ -76,6 +76,6 @@ describe('PlaybooksPanel', () => {
     renderPanel()
 
     expect(await screen.findByText('Ranked For “missing payslip”')).toBeTruthy()
-    expect(screen.getByRole('textbox', { name: 'Search Playbooks' })).toBeTruthy()
+    expect(screen.getByRole('textbox', { name: 'Search guidance' })).toBeTruthy()
   })
 })

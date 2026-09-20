@@ -18,7 +18,7 @@ export function CaseHeader({ booking, summary }: { booking: Booking; summary: Ca
   return (
     <header className="flex flex-col gap-3">
       <div>
-        <h1 className="text-2xl font-semibold tracking-[-0.02em]">
+        <h1 className="text-[32px] font-semibold leading-[1.16] tracking-[-0.02em]">
           <span className="font-mono font-medium">{booking.unit}</span>
           <span className="text-muted-foreground"> · </span>
           {booking.buyer.name}

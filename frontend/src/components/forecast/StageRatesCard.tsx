@@ -27,7 +27,7 @@ export function StageRatesCard({ stageRates }: { stageRates: StageRate[] }) {
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-base">
-          Stage Conversion Rates
+          How Often Each Stage Reaches Signing
           <InfoTooltip text="Share of resolved bookings reaching each stage that signed within 30 days of booking." />
         </CardTitle>
       </CardHeader>
@@ -69,7 +69,7 @@ export function StageRatesCard({ stageRates }: { stageRates: StageRate[] }) {
                 <InfoTooltip text="Approval falls as the debt service ratio rises — by construction, so the risk flag carries signal." />
               </TableHead>
               <TableHead className="text-right">
-                95% Interval
+                Likely Range
                 <InfoTooltip text="Wilson score interval at 95% confidence; wide bands mean few resolved cases." />
               </TableHead>
             </TableRow>

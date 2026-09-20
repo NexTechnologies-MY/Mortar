@@ -5,7 +5,7 @@
  * owner. Filters narrow the queue by risk and by suggested owner.
  */
 import { useMemo, useState, type Dispatch, type SetStateAction } from 'react'
-import { BellRing, SearchX } from 'lucide-react'
+import { AlertTriangle, Banknote, BellRing, Flame, ListChecks, SearchX, SlidersHorizontal, Users } from 'lucide-react'
 import type { CaseSummary, NextActionSuggestion, OwnerRole, RiskLevel, Task } from '@mortar/core'
 import { useCases, useSnapshot } from '@/lib/data'
 import { fetchNextAction, postTask, updateTask } from '@/lib/api'
@@ -170,7 +170,7 @@ export function ChasePage() {
   return (
     <PageContainer>
       <PageHeaderCard>
-        <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground">Chase List</h1>
+        <h1 className="text-[32px] font-semibold leading-[1.16] tracking-[-0.02em] text-foreground">Chase List</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Every Stalled Booking, Its Blocker In Plain Words, And Who To Chase Today.
         </p>
@@ -178,10 +178,10 @@ export function ChasePage() {
 
       {error ? (
         <div className="mt-4">
-          <EmptyState icon={SearchX} title="Could Not Load The Snapshot" description={error} />
+          <EmptyState icon={SearchX} title="Could Not Load Your Bookings" description={error} />
         </div>
       ) : loading && !snapshot ? (
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
           {[0, 1, 2].map((i) => (
             <Skeleton key={i} className="h-48" />
           ))}
@@ -191,6 +191,7 @@ export function ChasePage() {
           <div className="mt-4 flex flex-wrap gap-3">
             <StatCard
               label="Stalled Bookings"
+              icon={AlertTriangle}
               value={String(allStalled.length)}
               info="Live bookings with a stall reason."
               exact="Click To Clear The Filters"
@@ -198,15 +199,22 @@ export function ChasePage() {
             />
             <StatCard
               label="High Risk"
+              icon={Flame}
               value={String(highRisk)}
               info="Stalled bookings flagged high financing risk."
               exact={riskFilter === 'high' ? 'Filtered — Click To Clear' : 'Click To Filter The Queue'}
               tone={highRisk > 0 ? 'alert' : 'default'}
               onClick={() => applyFilters(riskFilter === 'high' ? 'all' : 'high', ownerFilter)}
             />
-            <StatCard label="Open Tasks" value={String(openTasks.length)} info="Open tasks across every owner below." />
+            <StatCard
+              label="Open Tasks"
+              icon={ListChecks}
+              value={String(openTasks.length)}
+              info="Open tasks across every owner below."
+            />
             <StatCard
               label="Value At Risk"
+              icon={Banknote}
               value={formatRmCompact(valueAtRisk)}
               info="Sum of stalled booking prices."
               exact={formatRm(valueAtRisk)}
@@ -215,7 +223,8 @@ export function ChasePage() {
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <Select value={riskFilter} onValueChange={(v) => applyFilters(v as 'all' | RiskLevel, ownerFilter)}>
-              <SelectTrigger aria-label="Filter by risk">
+              <SelectTrigger aria-label="Filter by risk" className="w-44">
+                <SlidersHorizontal aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -227,7 +236,8 @@ export function ChasePage() {
               </SelectContent>
             </Select>
             <Select value={ownerFilter} onValueChange={(v) => applyFilters(riskFilter, v as 'all' | OwnerRole)}>
-              <SelectTrigger aria-label="Filter by owner">
+              <SelectTrigger aria-label="Filter by owner" className="w-44">
+                <Users aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -254,12 +264,12 @@ export function ChasePage() {
             </div>
           ) : (
             <section className="mt-6">
-              <h2 className="text-base font-semibold tracking-[-0.01em] text-foreground">
+              <h2 className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                 Action Today
                 <InfoTooltip text="Stalled Bookings, Ranked By Urgency." />
               </h2>
               <div className="mt-3 grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
-                {(queueExpanded ? stalled : stalled.slice(0, QUEUE_PREVIEW)).map((summary, i) => {
+                {(queueExpanded ? stalled : stalled.slice(0, QUEUE_PREVIEW)).map((summary) => {
                   const booking = bookings.get(summary.bookingId)
                   if (!booking) return null
                   return (
@@ -269,7 +279,6 @@ export function ChasePage() {
                       summary={summary}
                       suggestion={suggestions.get(summary.bookingId)}
                       document={documentFor(summary.bookingId)}
-                      primary={i === 0}
                       suggesting={suggesting.has(summary.bookingId)}
                       creating={creating.has(summary.bookingId)}
                       onSuggest={() => void suggest(summary.bookingId)}
@@ -290,7 +299,7 @@ export function ChasePage() {
 
           {openTasks.length > 0 ? (
             <section className="mt-8">
-              <h2 className="text-base font-semibold tracking-[-0.01em] text-foreground">
+              <h2 className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                 Open Tasks
                 <InfoTooltip text="Grouped By Owner." />
               </h2>

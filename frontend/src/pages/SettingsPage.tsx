@@ -52,7 +52,7 @@ export function SettingsPage() {
   return (
     <PageContainer flex>
       <PageHeaderCard>
-        <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground">Settings</h1>
+        <h1 className="text-[32px] font-semibold leading-[1.16] tracking-[-0.02em] text-foreground">Settings</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           The Simulated Dataset Behind Every Screen, And The Services Serving It.
         </p>
@@ -60,7 +60,7 @@ export function SettingsPage() {
 
       {error ? (
         <div className="mt-4">
-          <EmptyState icon={SearchX} title="Could Not Load The Snapshot" description={error} />
+          <EmptyState icon={SearchX} title="Could Not Load Your Bookings" description={error} />
         </div>
       ) : loading && !snapshot ? (
         <div className="mt-4 grid gap-4 lg:grid-cols-2">

@@ -15,21 +15,21 @@ const signals = (responsiveness: number, hesitation: number): BuyerSignals => ({
 describe('SignalChips', () => {
   it('renders both signal words for a keen buyer', () => {
     render(<SignalChips signals={signals(2, 0)} />)
-    const group = screen.getByRole('group', { name: 'Buyer Signals' })
+    const group = screen.getByRole('group', { name: 'Buyer response' })
     expect(group.textContent).toContain('Prompt Replies')
     expect(group.textContent).toContain('Committed')
   })
 
   it('renders the doubtful end of the scale', () => {
     render(<SignalChips signals={signals(0, 2)} />)
-    const group = screen.getByRole('group', { name: 'Buyer Signals' })
+    const group = screen.getByRole('group', { name: 'Buyer response' })
     expect(group.textContent).toContain('Unresponsive')
     expect(group.textContent).toContain('Strong Doubts')
   })
 
   it('clamps out-of-range scores into the 0–2 bands', () => {
     render(<SignalChips signals={signals(7, -3)} />)
-    const group = screen.getByRole('group', { name: 'Buyer Signals' })
+    const group = screen.getByRole('group', { name: 'Buyer response' })
     expect(group.textContent).toContain('Prompt Replies')
     expect(group.textContent).toContain('Committed')
   })

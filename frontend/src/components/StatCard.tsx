@@ -1,10 +1,13 @@
 /**
  * Stat tile — the spec's KPI tile.
- * Flat --card surface with a 1px hairline: Eyebrow label, Display/Figure
- * value, Body/Small caption. Alert colours only the figure. An optional
- * `exact` value shows in a tooltip (figures are rounded for reading).
+ * --card surface lifted by --shadow-card: an optional Lucide glyph beside the
+ * Eyebrow label, the Display/Figure value, then a Body/Small caption. Alert
+ * colours only the figure. An optional `exact` value shows in a tooltip
+ * (figures are rounded for reading). The glyph is decorative and always sits
+ * beside the label, never beside the figure (DESIGN.md Icons).
  */
 
+import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { InfoTooltip } from '@/components/ui/InfoTooltip'
@@ -12,6 +15,8 @@ import { InfoTooltip } from '@/components/ui/InfoTooltip'
 type StatCardProps = {
   /** Eyebrow label above the figure */
   label: string
+  /** Decorative Lucide glyph beside the label */
+  icon?: LucideIcon
   /** Display/Figure value, rounded for reading (e.g. "RM 7.4m") */
   value: string
   /** One-sentence explanation shown in an InfoTooltip beside the label */
@@ -28,7 +33,17 @@ type StatCardProps = {
 }
 
 /** Renders one stat tile with eyebrow label, figure, and optional caption. */
-export function StatCard({ label, value, info, caption, tone = 'default', exact, onClick, className }: StatCardProps) {
+export function StatCard({
+  label,
+  icon: Icon,
+  value,
+  info,
+  caption,
+  tone = 'default',
+  exact,
+  onClick,
+  className
+}: StatCardProps) {
   const figure = (
     <p
       className={cn(
@@ -42,7 +57,8 @@ export function StatCard({ label, value, info, caption, tone = 'default', exact,
 
   const body = (
     <>
-      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+      <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+        {Icon ? <Icon aria-hidden="true" className="size-4 shrink-0" /> : null}
         {label}
         {info ? (
           // In a clickable tile the icon's own press must not also fire the tile's.
@@ -69,7 +85,10 @@ export function StatCard({ label, value, info, caption, tone = 'default', exact,
     </>
   )
 
-  const tileClass = cn('flex min-w-60 flex-col gap-1 rounded-md border border-border bg-card p-4', className)
+  const tileClass = cn(
+    'flex min-w-60 flex-col gap-1 rounded-md border border-card-border bg-card p-4 shadow-card',
+    className
+  )
 
   if (onClick) {
     // A div with button semantics: the info tooltip's trigger is itself a

@@ -23,6 +23,7 @@ Contents:
 1.  [Icons](#icons)
 1.  [Motion](#motion)
 1.  [Status Language](#status-language)
+1.  [Plain Language](#plain-language)
 1.  [Data Formats](#data-formats)
 1.  [Native Controls](#native-controls)
 1.  [Components](#components)
@@ -38,15 +39,15 @@ Contents:
 Seven core decisions were settled during design system research. All seven are
 binding, and nothing below reopens them.
 
-| Question        | Decision                                                                                                                                                                                                                                                                                                                                                      |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Look            | Flat ledger: white ground, white cards, 1px hairlines doing the separating, 6px radius. No glass and no backdrop blur (the sidebar scrim is the sole exception). No gradient, glow blob or card shadow in the application; the landing's chromatic panel is the one sanctioned gradient and the landing's three feature cards the one sanctioned card shadow. |
-| Status colour   | Ink is the action colour everywhere, the landing included; the application carries no chromatic accent. The landing panel is the one chromatic surface, scoped to public pages. Six status tones carry every state, each always with a word.                                                                                                                  |
-| Type            | Geist for UI, Geist Mono for unit codes and IDs. Nine text styles. No third family.                                                                                                                                                                                                                                                                           |
-| Density         | Controls 36px, table rows 44px, body 14px. Built for a working day in lists.                                                                                                                                                                                                                                                                                  |
-| Native controls | None. Select, date picker, menu, tooltip, file drop, checkbox and scrollbar are Mortar components (Radix/shadcn restyled). No alert/confirm/prompt.                                                                                                                                                                                                           |
-| Modes           | Light and dark from one token set (Color collection has Light and Dark modes).                                                                                                                                                                                                                                                                                |
-| Icons           | Lucide (lucide-react), 16px, stroke 2, coloured like adjacent text. 20px in empty states.                                                                                                                                                                                                                                                                     |
+| Question        | Decision                                                                                                                                                                                                                                                                                                                                                                                 |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Look            | Flat ledger: white ground, white cards lifted off it by `Elevation/Card`, 6px radius. No glass and no backdrop blur (the sidebar scrim is the sole exception). No gradient or glow blob in the application; the landing's chromatic panel is the one sanctioned gradient. A card is separated from the page by its shadow, never by a coloured edge strip and never by a grey page band. |
+| Status colour   | Ink is the action colour everywhere, the landing included; the application carries no chromatic accent. The landing panel is the one chromatic surface, scoped to public pages. Six status tones carry every state, each always with a word.                                                                                                                                             |
+| Type            | Geist for UI, Geist Mono for unit codes and IDs. Nine text styles. No third family.                                                                                                                                                                                                                                                                                                      |
+| Density         | Controls 36px, table rows 44px, body 14px. Built for a working day in lists.                                                                                                                                                                                                                                                                                                             |
+| Native controls | None. Select, date picker, menu, tooltip, file drop, checkbox and scrollbar are Mortar components (Radix/shadcn restyled). No alert/confirm/prompt.                                                                                                                                                                                                                                      |
+| Modes           | Light and dark from one token set (Color collection has Light and Dark modes).                                                                                                                                                                                                                                                                                                           |
+| Icons           | Lucide (lucide-react), 16px, stroke 2, coloured like adjacent text. 20px in empty states.                                                                                                                                                                                                                                                                                                |
 
 Mortar is an internal operations tool for developer staff tracking property unit
 bookings from initial deposit through loan submission, loan approval, and final
@@ -170,6 +171,7 @@ modes:
 | `color/text/disabled`         | `--disabled-foreground`    | `#8A8A8A`                  | `#A3A3A3` (ink/400) |
 | `color/text/link`             | `--link`                   | `#0A0A0A` (ink/950)        | `#FAFAFA` (ink/50)  |
 | `color/border/default`        | `--border`                 | `#D8D8D8`                  | `#262626` (ink/800) |
+| `color/border/card`           | `--card-border`            | ink-950 at 6% (color-mix)  | ink-50 at 8%        |
 | `color/border/strong`         | `--input`                  | `#C9C9C9`                  | `#3A3A3A` (ink/700) |
 | `color/border/focus`          | `--ring`                   | `#0A0A0A` (ink/950)        | `#FAFAFA` (ink/50)  |
 | `color/scrollbar/thumb`       | `--scrollbar-thumb`        | `#D8D8D8`                  | `#262626` (ink/800) |
@@ -290,16 +292,25 @@ still restricted to 4px and 6px, and `--radius-lg` and `--radius-xl` resolve to
 - **Overlay elevation (`--shadow-overlay`):**
   `0 1px 2px rgba(10,10,10,.06), 0 8px 24px -4px rgba(10,10,10,.12)`. Restricted
   to floating layers: menus, popovers, date picker calendar, and dialog modals.
-  Cards in the application remain completely flat with a 1px `--border`
-  hairline.
-- **Landing card elevation:** The landing's three feature cards are the one
-  exception. They carry a two-layer shadow with a real offset,
+  Cards do not use it; they carry `--shadow-card` below.
+- **Card elevation (`--shadow-card`):**
   `0 1px 2px color-mix(in oklab, var(--color-ink-950) 5%, transparent), 0 6px 16px -4px color-mix(in oklab, var(--color-ink-950) 8%, transparent)`,
-  over a 1px border in
-  `color-mix(in oklab, var(--color-ink-950) 5%, transparent)`. They sit on a
-  white ground with no grey band behind them and no rule above them, so the
-  shadow is what separates card from page. It is declared in `LandingPage.css`,
-  not as a token, so nothing in the app shell can reach it.
+  over a 1px border in `--card-border`
+  (`color-mix(in oklab, var(--color-ink-950) 6%, transparent)`). Carried by
+  every card surface in the application: chase cards, stat tiles, panel cards
+  and the bookings table panel. The page ground stays white, so the shadow is
+  the only thing separating card from page. The hairline softens from `--border`
+  to `--card-border` because a full `#D8D8D8` line underneath a shadow reads as
+  a doubled edge.
+- **Card hover elevation (`--shadow-card-hover`):**
+  `0 1px 2px color-mix(in oklab, var(--color-ink-950) 6%, transparent), 0 10px 24px -6px color-mix(in oklab, var(--color-ink-950) 12%, transparent)`
+  plus a 1px upward translate, on interactive cards only, over 160ms
+  `--ease-out`. Suppressed under `prefers-reduced-motion: reduce`, where the
+  shadow still changes but the translate does not.
+- **Landing card elevation:** The landing's three feature cards use the same
+  two-layer shadow as `--shadow-card`, declared in `LandingPage.css` against the
+  public-page tokens. It predates the app token and the two are kept in step by
+  hand.
 - **Focus ring:** 2px solid ring in `--ring` with a 2px offset in `--background`
   (`outline: 2px solid var(--ring); outline-offset: 2px`). Active on keyboard
   navigation (`:focus-visible`) only; suppressed on pointer click.
@@ -314,7 +325,8 @@ Iconography is provided exclusively by Lucide (`lucide-react`).
 - **Size and stroke:** 16px × 16px with stroke width 2 by default. Sized to
   match adjacent text height, rendered with `currentColor`.
 - **Exceptions:** 20px in empty state displays and the drop zone upload target.
-- **Approved components:** Ten Lucide glyphs comprise the entire interface:
+- **Approved components:** Lucide is the only source and every glyph in the
+  interface is listed here. Controls and chrome:
   1.  `ChevronDown`: Select triggers and expandable section headers.
   2.  `ChevronLeft`: Calendar month navigation.
   3.  `ChevronRight`: Calendar month navigation and table pagination.
@@ -325,9 +337,24 @@ Iconography is provided exclusively by Lucide (`lucide-react`).
   8.  `FileSpreadsheet`: Drop zone parsed file indicator.
   9.  `MessageCircle`: Chase card panel banker contact action.
   10. `Clock`: Elapsed duration and stage timing indicators.
-- **Rules:** Icons never carry meaning or status alone. Every icon-only button
-  must provide an explicit `aria-label` and an interactive Tooltip. No emoji,
-  and no second icon library.
+  11. `SlidersHorizontal`: Filter select prefix.
+  12. `Users`: Owner select prefix and persona switch.
+  13. `Plus`: Create Task and other create actions.
+  14. `RefreshCw`: Re-Run Jev and other re-run actions.
+- **Stat tile glyphs:** One per tile, set in `--muted-foreground` beside the
+  eyebrow, never beside the figure. `AlertTriangle` (stalled), `Flame` (high
+  risk), `ListChecks` (tasks), `Banknote` (money).
+- **Blocker and action glyphs:** One per chase card blocker line and one per
+  suggested action, chosen by kind, never by severity: `FileWarning` (missing or
+  outstanding document), `Landmark` (bank or financing stall), `Clock` (time or
+  evidence stall); `FileText` (request document), `Phone` (call buyer), `Eye`
+  (review), `CalendarCheck` (schedule).
+- **Rules:** Icons never carry meaning or status alone, and never carry a status
+  tone as their colour: they render in `currentColor` at the weight of the text
+  beside them. An icon supplements a word, it never replaces one. Every
+  icon-only button must provide an explicit `aria-label` and an interactive
+  Tooltip. No emoji, and no second icon library. Adding a glyph means adding it
+  to this list in the same change.
 
 ## Motion
 
@@ -377,6 +404,67 @@ Chase card urgency states repeat this linguistic rigor:
 - **`Due today`:** "Due today" in warning tone.
 - **`Upcoming`:** "In 2 days" in neutral tone.
 
+## Plain Language
+
+Mortar is read by sales, loan, finance and legal staff at a property developer.
+It is not read by engineers. Every visible string is written in the words those
+teams already use in the office, and the vocabulary of the system that produces
+the string never reaches the screen.
+
+Industry terms stay, because the audience uses them daily: SPA, LO, RM, booking,
+unit, stage, panel bank, disbursement, developer, solicitor. Terms from
+software, statistics or the data pipeline do not.
+
+Jev also stays. Jev is Mortar's assistant and staff refer to it by name, so it
+is a subject in a sentence, not a status code: "Jev checked 2 h ago", "Ask Jev
+again", "Jev suggests". What goes is the machine state attached to it.
+
+| Do not write        | Write instead                                     |
+| ------------------- | ------------------------------------------------- |
+| Jev · Cached        | Jev checked 2 h ago                               |
+| Jev · Live 420 ms   | Jev checked just now                              |
+| Jev · Stale         | Jev's answer may be out of date                   |
+| Jev · Unavailable   | Jev could not check                               |
+| Re-Run Jev          | Ask Jev again                                     |
+| Jev Proposal        | Jev suggests                                      |
+| Not Analysed By Jev | Jev has not looked at this yet                    |
+| Snapshot            | (drop it) "Could not load bookings"               |
+| Evidence            | Update, or the document's own name                |
+| No evidence for 8 d | No update for 8 days                              |
+| Fresh               | Up to date                                        |
+| Unknown             | No recent update                                  |
+| Provisional         | Unconfirmed                                       |
+| Superseded          | Replaced                                          |
+| Signals             | Buyer response                                    |
+| Playbooks           | What to do                                        |
+| Confidence 0.84     | How sure: high / medium / low                     |
+| Probability         | Chance                                            |
+| Backtest            | Accuracy check                                    |
+| Brier score         | (drop it) state accuracy in a sentence            |
+| 95% interval        | Likely range                                      |
+| Conversion rate     | How often this stage reaches signing              |
+| Seed / canonical    | (drop it) simulation plumbing, not a desk concern |
+
+Rules that are not obvious from the table:
+
+- **Name the thing, not the mechanism.** "Ask buyer for payslip" beats "Request
+  document · Payslip". The user acts on the thing; the record type is ours.
+- **Say when, not what state.** Freshness reads as a time ("Jev checked 2 h
+  ago"), never as a cache state. A person can act on a time.
+- **Jev acts, it does not report status.** Jev is named because attribution
+  builds trust: someone reading a suggested action should know who suggested it.
+  So Jev takes a verb a person understands ("checked", "suggests", "could not
+  check"), never a system state ("cached", "stale", "unavailable"), and never a
+  latency figure. `Jev · Live 420 ms` tells a sales officer nothing.
+- **Errors say what to do.** "Could not load bookings. Try again." Never a raw
+  error string, a status code, or the word snapshot.
+- **No abbreviations we invented.** Industry abbreviations are fine; ours are
+  not.
+- **Internal names stay internal.** Component names, token names, table names,
+  model names and pipeline stages never appear in a visible string, a tooltip, a
+  toast or an `aria-label`. Jev is the one exception, because it is a product
+  name the staff already use.
+
 ## Data Formats
 
 Data formats enforce precision across Malaysian property operations:
@@ -405,10 +493,16 @@ browser control maps to a restyled Mortar component:
 | `<select>`                                              | OS popup variation, unstyleable options, bad keyboard behavior     | Select and Menu    | Radix / shadcn `Select` + `Menu`                          |
 | `<input type="date">`                                   | OS date picker wheels, uncontrollable date formatting              | Date picker        | Calendar (`react-day-picker`) in Popover                  |
 | `title` attribute                                       | Delayed display, unstyled browser tooltip, screen reader traps     | Tooltip            | Radix / shadcn `Tooltip` (`--inverse` fill)               |
-| `<input type="file">`                                   | OS file button, no drag-and-drop feedback, bad layout fit          | Drop zone          | Custom dashed drop container with drag cues               |
+| `<input type="file">`                                   | OS file button, no drag-and-drop feedback, bad layout fit          | Drop zone          | Custom dashed drop container with drag cues (see note)    |
 | `<input type="checkbox">`                               | OS-rendered tickbox, inconsistent sizing and focus ring            | Checkbox           | Radix / shadcn `Checkbox` (16px, 4px radius)              |
 | Default scrollbar                                       | Clashing OS scrollbars, layout reflow, inconsistent track sizing   | Scrollbar          | Global CSS (`scrollbar-width: thin; ::-webkit-scrollbar`) |
 | `window.alert()`, `window.confirm()`, `window.prompt()` | Blocks browser thread, unstyleable dialog, breaks single-page flow | Dialog             | Radix / shadcn `Dialog` with focus trap                   |
+
+The one qualification to the table: a browser cannot open a file picker without
+an `<input type="file">`. The Drop Zone therefore keeps one, rendered `sr-only`
+with `tabIndex={-1}` and `aria-hidden`, purely as the mechanism the custom
+control triggers. What is banned is the OS-rendered file button as a visible
+control, and none appears. Do not "fix" this by removing the input.
 
 ## Components
 
@@ -432,8 +526,14 @@ browser control maps to a restyled Mortar component:
   - `Disabled`: background `--disabled` (`#F5F5F5` / `#1C1C1C`), text
     `--disabled-foreground` (`#8A8A8A` / `#A3A3A3`). Never use opacity.
   - `Focus`: 2px `--ring` outline with 2px `--background` offset.
-- **Rules:** Primary is the only ink-filled surface on a screen; exactly one
-  Primary button per view. No gradients, shadows, or press scale.
+- **Rules:** Primary is the only ink-filled surface on a screen. A view offers
+  **one Primary action**, not one Primary button. When a list repeats that same
+  action on every row or card, it renders Primary on every one of them: a queue
+  of "Create Task" buttons is one action offered many times, not many competing
+  calls to action. Two _different_ Primary actions never appear on one view.
+  Filling the first item only is forbidden outright, because it singles out a
+  row that is merely top of the sort and reads as a rendering fault. No
+  gradients, shadows, or press scale.
 
 ### Checkbox
 
@@ -626,9 +726,10 @@ browser control maps to a restyled Mortar component:
 - **Purpose:** Action card in Sales Admin Chase List directing staff to unblock
   stuck bookings.
 - **Anatomy:** Width 360px, padding 16px, gap 12px, background `--card`
-  (`#FFFFFF` / `#141414`), 1px `--border`, corner radius 6px (`--radius-md`).
-  Left edge features a 3px solid bar in urgency tone solid. Urgency pill repeats
-  status in words (Overdue 3 d / Due today / In 2 days).
+  (`#FFFFFF` / `#141414`), 1px `--card-border`, corner radius 6px
+  (`--radius-md`), `Elevation/Card`. No coloured strip, bar or rule runs down
+  any edge of the card. Urgency is carried by the pill and its word alone
+  (Overdue 3 d / Due today / In 2 days).
   - Stack order:
     1. Header: Unit code (Mono/Data) + Buyer name (muted) + Urgency pill.
     2. Blocker sentence: Heading/Section (Geist SemiBold 16/24).
@@ -636,13 +737,13 @@ browser control maps to a restyled Mortar component:
     4. Contact line: 16px `MessageCircle` icon + contact note ("Chase Ahmad
        Faizal, panel banker").
     5. Action footer: Primary button "Log follow-up" + Ghost button "Snooze".
+       Primary on every card in the queue, identically: it is one action offered
+       many times. Never filled on the first card only.
 - **States and tokens:**
-  - `Overdue`: 3px left edge `--status-danger` (`#A53D4C` / `#C76A76`), danger
-    pill.
-  - `Due today`: 3px left edge `--status-warning` (`#A9852F` / `#C9A34A`),
-    warning pill.
-  - `Upcoming`: 3px left edge `--status-neutral` (`#A3A3A3` / `#6B6B6B`),
-    neutral pill.
+  - `Overdue`: danger pill reading "Overdue N d". No edge treatment.
+  - `Due today`: warning pill reading "Due today". No edge treatment.
+  - `Upcoming`: neutral pill reading "In N days". No edge treatment.
+  - `Hover`: the card raises to `Elevation/Card-Hover`. Nothing else changes.
 - **Rules:** "Log follow-up" opens an inline modal dialog, not a new page. Cards
   sort by days overdue descending, then value at risk. Snoozed cards disappear
   until their snooze date arrives.
@@ -931,8 +1032,8 @@ sidebar, or footer.
 
 ## Acceptance
 
-A screen or component ships when all twelve criteria hold across both light and
-dark modes:
+A screen or component ships when all fourteen criteria hold across both light
+and dark modes:
 
 1.  **No raw hex values:** No hex color value exists outside `globals.css`;
     components read semantic CSS tokens exclusively.
@@ -946,9 +1047,12 @@ dark modes:
     the 2px focus ring with 2px offset on keyboard navigation.
 5.  **Tabular numerals:** All monetary figures and elapsed day counters are
     right-aligned and rendered with tabular numerals.
-6.  **Single primary action:** Exactly one Primary button exists per view. On
-    the landing this is the hero's "Open Mortar"; the header row carries no call
-    to action, which is what keeps the count at one.
+6.  **Single primary action:** A view offers one Primary action, not one Primary
+    button. On the landing this is the hero's "Open Mortar"; the header row
+    carries no call to action, which is what keeps the count at one. Where a
+    list repeats that same action per row or card, every item renders it
+    Primary; what never appears is a second, different Primary action on the
+    same view, or a list that fills the first item and leaves the rest outlined.
 7.  **Responsive viewports:** Verified fully functional at 1280px and 1440px
     desktop widths, and cleanly usable down to 1024px.
 8.  **Dual-mode verification:** Every view is inspected and verified in both
@@ -971,6 +1075,14 @@ dark modes:
     placeholders, aria-labels and full-sentence toasts or tooltips keep their
     own case. A lead line written as a complete sentence is the carve-out: it
     takes sentence case and a full stop, as [Text Case](#text-case) sets out.
+13. **Clean card edges:** Every card, stat tile and panel sits on the white page
+    ground carrying `--shadow-card` and a `--card-border` hairline, and nothing
+    else. No coloured strip, bar, rule or accent runs along any edge on any
+    side, and no grey band sits behind a card to separate it from the page.
+14. **Plain language:** Every visible string, tooltip, toast and `aria-label`
+    reads in the words a sales, loan, finance or legal officer uses. No cache
+    state, snapshot, seed, score, interval, model name or component name appears
+    anywhere on screen, per [Plain Language](#plain-language).
 
 ## Do And Do Not
 
@@ -991,12 +1103,28 @@ dark modes:
 
 ### Do Not
 
-- **Do not** introduce glass fills, backdrop blurs, gradients, glow blobs, or
-  card drop shadows anywhere in the application (the sidebar scrim is the sole
-  backdrop blur exception). Two narrowly scoped exceptions exist and neither is
-  a licence to add a third: the landing's chromatic panel is the one sanctioned
-  gradient, and the landing's three feature cards carry the one sanctioned card
-  shadow. The app shell never uses either.
+- **Do not** introduce glass fills, backdrop blurs, gradients or glow blobs
+  anywhere in the application (the sidebar scrim is the sole backdrop blur
+  exception). The landing's chromatic panel is the one sanctioned gradient and
+  no desk may reference it. Card shadows are not on this list: cards carry
+  `--shadow-card`, and nothing invents a shadow of its own outside that token
+  and `--shadow-overlay`.
+- **Do not** run a coloured strip, bar, rule or accent edge along any border of
+  a card, stat tile or panel, in any tone, at any width, on any side. Urgency,
+  risk and status are carried by the pill and its word. The only edges a card
+  has are its `--card-border` hairline and its shadow. The one bar that remains
+  anywhere is the table row's 2px `--primary` selection inset, which marks
+  selection rather than status and is ink, not a tone.
+- **Do not** put software, statistics or data-pipeline vocabulary in a visible
+  string, tooltip, toast or `aria-label`: cache states, snapshots, seeds,
+  probabilities, scores, intervals, model names or component names. Write what a
+  sales, loan or legal officer would say, per [Plain Language](#plain-language).
+  Industry terms (SPA, LO, RM, panel bank) stay, and so does Jev, which is a
+  named assistant the staff refer to; what goes is the machine state bolted to
+  it.
+- **Do not** put a grey band or tinted ground behind cards to separate them from
+  the page. The page ground is `--background` and the shadow does the
+  separating.
 - **Do not** introduce a chromatic accent of any kind outside the six status
   tones — ink and grey carry every action, link, focus ring and selection — or
   use red for anything other than severe risk and irreversible destructive
@@ -1014,7 +1142,8 @@ dark modes:
 - **Do not** invoke native `window.alert()`, `window.confirm()`, or
   `window.prompt()`.
 - **Do not** render native `<select>`, `<input type="date">`, or
-  `<input type="file">` elements.
+  `<input type="file">` elements as visible controls. The Drop Zone's hidden
+  input is the documented exception; see [Native Controls](#native-controls).
 - **Do not** place more than one Primary button on any screen.
 - **Do not** apply 999px pill radii to buttons or form inputs; controls use 6px
   radius.

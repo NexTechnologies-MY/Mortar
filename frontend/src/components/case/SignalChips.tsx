@@ -29,7 +29,7 @@ export function SignalChips({ signals, className }: { signals?: BuyerSignals | n
   const responsiveness = RESPONSIVENESS[band(signals.responsiveness.score)]
   const hesitation = HESITATION[band(signals.hesitation.score)]
   return (
-    <span role="group" aria-label="Buyer Signals" className={cn('inline-flex items-center gap-1', className)}>
+    <span role="group" aria-label="Buyer response" className={cn('inline-flex items-center gap-1', className)}>
       <StatusPill tone={responsiveness.tone}>{responsiveness.label}</StatusPill>
       <StatusPill tone={hesitation.tone}>{hesitation.label}</StatusPill>
     </span>

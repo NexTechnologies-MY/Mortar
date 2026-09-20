@@ -1,6 +1,6 @@
 /**
- * Backtest card — what the method predicted at the cutoff against what the
- * event log actually produced: predicted vs observed signings, the Brier
+ * Accuracy check — what the forecast said at the cutoff against what actually
+ * happened afterwards: forecast vs actual signings, the accuracy
  * score, and a four-bucket calibration table with a paired chart.
  */
 
@@ -23,7 +23,7 @@ export function BacktestCard({ backtest }: { backtest: Backtest }) {
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-base">
-          Backtest
+          Accuracy Check
           <InfoTooltip
             text={`The same method run at ${formatDate(backtest.cutoff)}, scored against the events that followed.`}
           />
@@ -33,7 +33,7 @@ export function BacktestCard({ backtest }: { backtest: Backtest }) {
         <div className="grid gap-3 sm:grid-cols-3">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-              Predicted
+              Forecast
               <InfoTooltip text="Expected signings at the cut." />
             </p>
             <p className="text-2xl font-semibold tracking-[-0.03em] tabular-nums text-foreground">
@@ -42,7 +42,7 @@ export function BacktestCard({ backtest }: { backtest: Backtest }) {
           </div>
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-              Observed
+              Actual
               <InfoTooltip text="Signed within 30 days of booking." />
             </p>
             <p className="text-2xl font-semibold tracking-[-0.03em] tabular-nums text-foreground">
@@ -51,7 +51,7 @@ export function BacktestCard({ backtest }: { backtest: Backtest }) {
           </div>
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-              Brier Score
+              Accuracy Score
               <InfoTooltip text="Mean squared error, lower is better." />
             </p>
             <p className="text-2xl font-semibold tracking-[-0.03em] tabular-nums text-foreground">
@@ -81,8 +81,8 @@ export function BacktestCard({ backtest }: { backtest: Backtest }) {
                 content={<ChartTooltipContent valueFormatter={(v) => `${v}%`} />}
               />
               <Legend wrapperStyle={{ fontSize: 12, color: 'var(--muted-foreground)' }} />
-              <Bar dataKey="predicted" name="Predicted" fill="var(--status-info)" radius={[2, 2, 0, 0]} />
-              <Bar dataKey="observed" name="Observed" fill="var(--status-signed)" radius={[2, 2, 0, 0]} />
+              <Bar dataKey="predicted" name="Forecast" fill="var(--status-info)" radius={[2, 2, 0, 0]} />
+              <Bar dataKey="observed" name="Actual" fill="var(--status-signed)" radius={[2, 2, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -90,10 +90,10 @@ export function BacktestCard({ backtest }: { backtest: Backtest }) {
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead>Predicted Probability</TableHead>
+              <TableHead>Forecast Chance</TableHead>
               <TableHead className="text-right">Bookings</TableHead>
-              <TableHead className="text-right">Predicted</TableHead>
-              <TableHead className="text-right">Observed</TableHead>
+              <TableHead className="text-right">Forecast</TableHead>
+              <TableHead className="text-right">Actual</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -110,7 +110,7 @@ export function BacktestCard({ backtest }: { backtest: Backtest }) {
           </TableBody>
         </Table>
         <p className="text-[13px] text-muted-foreground">
-          A Backtest On Simulated Data Proves The Method, Not The Business.
+          An Accuracy Check On Simulated Data Proves The Method, Not The Business.
         </p>
       </CardContent>
     </Card>
