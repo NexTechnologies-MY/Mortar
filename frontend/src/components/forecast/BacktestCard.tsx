@@ -9,6 +9,7 @@ import type { Backtest } from '@mortar/core'
 import { formatDate, formatPercent } from '@/components/case'
 import { ChartTooltipContent } from '@/components/charts/ChartTooltipContent'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 export function BacktestCard({ backtest }: { backtest: Backtest }) {
@@ -21,33 +22,41 @@ export function BacktestCard({ backtest }: { backtest: Backtest }) {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">Backtest</CardTitle>
-        <p className="text-[13px] text-muted-foreground">
-          The Same Method Run At {formatDate(backtest.cutoff)}, Scored Against The Events That Followed.
-        </p>
+        <CardTitle className="text-base">
+          Backtest
+          <InfoTooltip
+            text={`The same method run at ${formatDate(backtest.cutoff)}, scored against the events that followed.`}
+          />
+        </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <div className="grid gap-3 sm:grid-cols-3">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Predicted</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+              Predicted
+              <InfoTooltip text="Expected signings at the cut." />
+            </p>
             <p className="text-2xl font-semibold tracking-[-0.03em] tabular-nums text-foreground">
               {backtest.predicted.toFixed(1)}
             </p>
-            <p className="text-[13px] text-muted-foreground">Expected Signings At The Cut</p>
           </div>
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Observed</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+              Observed
+              <InfoTooltip text="Signed within 30 days of booking." />
+            </p>
             <p className="text-2xl font-semibold tracking-[-0.03em] tabular-nums text-foreground">
               {backtest.observed}
             </p>
-            <p className="text-[13px] text-muted-foreground">Signed Within 30 Days Of Booking</p>
           </div>
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Brier Score</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+              Brier Score
+              <InfoTooltip text="Mean squared error, lower is better." />
+            </p>
             <p className="text-2xl font-semibold tracking-[-0.03em] tabular-nums text-foreground">
               {backtest.brier.toFixed(3)}
             </p>
-            <p className="text-[13px] text-muted-foreground">Mean Squared Error, Lower Is Better</p>
           </div>
         </div>
 

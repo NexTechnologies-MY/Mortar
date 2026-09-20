@@ -62,6 +62,13 @@ describe('SettingsPage', () => {
     await waitFor(() => expect(mocks.fetchHealth).toHaveBeenCalled())
   })
 
+  it('states the simulated-data fact plainly beside the seed and reference date', () => {
+    renderPage()
+    expect(screen.getByText('Simulated Data')).toBeTruthy()
+    expect(screen.getByText('Seed')).toBeTruthy()
+    expect(screen.getByText('Reference Date')).toBeTruthy()
+  })
+
   it('reports the stored jev_answers count from health, not the snapshot views', async () => {
     renderPage()
     // The snapshot carries zero extractions/signals/nextActions; the stored

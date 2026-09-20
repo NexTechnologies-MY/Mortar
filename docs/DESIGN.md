@@ -27,6 +27,7 @@ Contents:
 1.  [Native Controls](#native-controls)
 1.  [Components](#components)
 1.  [App Shell](#app-shell)
+1.  [Screen Density](#screen-density)
 1.  [Public Pages](#public-pages)
 1.  [Acceptance](#acceptance)
 1.  [Do And Do Not](#do-and-do-not)
@@ -637,6 +638,32 @@ staff roles:
 Every route change, back and forward included, lands at the top of the page (a
 `ScrollToTop` component, `history.scrollRestoration` set to `manual`, an instant
 jump rather than smooth).
+
+## Screen Density
+
+An operations screen is a working surface, not a report. Four rules keep the
+ledger readable at a glance:
+
+- **One focus per screen:** A page opens on the answer — the figure, queue or
+  card a person acts on now — and everything else ranks behind it. Supporting
+  detail follows in reading order: `/forecast` leads with expected signings, its
+  range and the live count, then the stage rates and the backtest.
+- **Progressive disclosure:** Nothing is deleted, but long reference material
+  waits behind one control that names what it hides — the assumptions table
+  folds behind "Show 49 Assumptions". The control is a real button with
+  `aria-expanded`; the revealed content renders in full, identical to what it
+  replaces.
+- **Chip economy:** A chip earns its place only when it discriminates between
+  rows or marks a state worth noticing. A fact true of the whole dataset —
+  simulated data, its seed and as-of date — is stated once on `/settings`, never
+  repeated as chrome on every screen or a badge on every row.
+- **Tooltip rule:** An explanatory sub-caption under a heading or the second
+  line of a metric tile moves into an `InfoTooltip` beside its label: one short
+  sentence, never a paragraph, opened on hover or keyboard focus. The heading
+  and the figure stay on the surface. Captions that carry required context — "A
+  Backtest On Simulated Data Proves The Method, Not The Business", the
+  placeholder marking on Assumptions — remain visible text; tooltips hold
+  explanation, not obligations.
 
 ## Public Pages
 

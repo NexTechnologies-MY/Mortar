@@ -8,6 +8,7 @@ import type { Forecast } from '@mortar/core'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 export interface SeedRun {
@@ -31,10 +32,10 @@ export function SeedSpreadCard({
     <Card>
       <CardHeader className="flex-row items-start justify-between gap-4 pb-2">
         <div>
-          <CardTitle className="text-base">Seed Spread</CardTitle>
-          <p className="text-[13px] text-muted-foreground">
-            The Same Method On A Fresh Simulation. Expected Signings Move; The Method Does Not.
-          </p>
+          <CardTitle className="text-base">
+            Seed Spread
+            <InfoTooltip text="The same method on a fresh simulation; expected signings move, the method does not." />
+          </CardTitle>
         </div>
         <Button type="button" size="sm" disabled={running} onClick={onTryAnother}>
           {running ? 'Simulating…' : 'Try Another Seed'}

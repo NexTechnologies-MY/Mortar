@@ -7,12 +7,15 @@
 
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
 
 type StatCardProps = {
   /** Eyebrow label above the figure */
   label: string
   /** Display/Figure value, rounded for reading (e.g. "RM 7.4m") */
   value: string
+  /** One-sentence explanation shown in an InfoTooltip beside the label */
+  info?: string
   /** Body/Small caption under the figure */
   caption?: string
   /** 'alert' colours only the figure in --status-danger-fg */
@@ -25,7 +28,7 @@ type StatCardProps = {
 }
 
 /** Renders one stat tile with eyebrow label, figure, and optional caption. */
-export function StatCard({ label, value, caption, tone = 'default', exact, onClick, className }: StatCardProps) {
+export function StatCard({ label, value, info, caption, tone = 'default', exact, onClick, className }: StatCardProps) {
   const figure = (
     <p
       className={cn(
@@ -39,7 +42,10 @@ export function StatCard({ label, value, caption, tone = 'default', exact, onCli
 
   const body = (
     <>
-      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">{label}</p>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+        {label}
+        {info ? <InfoTooltip text={info} /> : null}
+      </p>
       {exact ? (
         <TooltipProvider>
           <Tooltip>

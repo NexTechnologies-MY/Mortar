@@ -71,18 +71,18 @@ export function ForecastPage() {
             <StatCard
               label={`Expected Signings In ${result.forecast.horizonDays} Days`}
               value={String(Math.round(result.forecast.expectedSignings))}
-              caption="Sum Of Live Signing Probabilities"
+              info="Sum of live signing probabilities."
               exact={result.forecast.expectedSignings.toFixed(1)}
             />
             <StatCard
               label="Forecast Range"
               value={`${result.forecast.rangeLow} – ${result.forecast.rangeHigh}`}
-              caption="10th – 90th Percentile Of Simulated Signings"
+              info="10th – 90th percentile of simulated signings."
             />
             <StatCard
               label="Live Bookings"
               value={String(result.forecast.liveBookings)}
-              caption="Unsigned And Under 30 Days Old"
+              info="Unsigned and under 30 days old."
             />
           </div>
 
@@ -91,7 +91,7 @@ export function ForecastPage() {
             <BacktestCard backtest={result.backtest} />
           </div>
 
-          <div className="mt-4 grid gap-4 xl:grid-cols-2 [&>*]:min-w-0">
+          <div className="mt-4 grid items-start gap-4 xl:grid-cols-2 [&>*]:min-w-0">
             <AssumptionsCard />
             <SeedSpreadCard
               canonicalSeed={snapshot?.meta.seed ?? 0}
