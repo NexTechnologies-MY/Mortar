@@ -1,6 +1,7 @@
 /**
- * Evidence pill — the review status of a case event, or the freshness of a
- * case's evidence (`fresh` / `unknown`, for the list's evidence column).
+ * Update pill — the review status of a case event, or how current a case's
+ * updates are (`fresh` / `unknown`, for the list's Last Update column).
+ * Wording follows DESIGN.md Plain Language: no "evidence", no "provisional".
  */
 
 import type { EvidenceStatus } from '@mortar/core'
@@ -10,11 +11,11 @@ export type EvidenceState = EvidenceStatus | 'fresh' | 'unknown'
 
 export const EVIDENCE_LABELS: Record<EvidenceState, string> = {
   confirmed: 'Confirmed',
-  provisional: 'Provisional',
-  disputed: 'Disputed',
-  superseded: 'Superseded',
-  fresh: 'Fresh',
-  unknown: 'Unknown'
+  provisional: 'Unconfirmed',
+  disputed: 'Queried',
+  superseded: 'Replaced',
+  fresh: 'Up To Date',
+  unknown: 'No Recent Update'
 }
 
 const EVIDENCE_TONES: Record<EvidenceState, StatusPillTone> = {

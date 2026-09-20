@@ -13,6 +13,7 @@ const buttonVariants = cva(
         destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:bg-disabled',
         secondary:
           'border border-input bg-card text-foreground hover:bg-accent disabled:border-transparent disabled:bg-disabled',
+        // Same rendering as secondary; kept as an alias for shadcn call sites.
         outline:
           'border border-input bg-card text-foreground hover:bg-accent disabled:border-transparent disabled:bg-disabled',
         ghost: 'text-foreground hover:bg-accent',

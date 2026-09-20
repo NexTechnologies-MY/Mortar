@@ -38,7 +38,7 @@ export function HealthCard({ health, failed }: { health: Health | null; failed: 
       </CardHeader>
       <CardContent>
         {row('API', failed ? false : health ? health.ok : null, 'The Bun Server And Its Routes')}
-        {row('Database', failed ? false : health ? health.db : null, 'The Neon Postgres Branch Behind The Snapshot')}
+        {row('Database', failed ? false : health ? health.db : null, 'Where Your Bookings Are Stored')}
         {row('Jev', failed ? false : health ? health.jev : null, 'Whether A TypeSafe API Key Is Configured', {
           up: 'Configured',
           down: 'Missing'

@@ -50,7 +50,9 @@ export function SignalsPanel({
     <Card>
       <CardContent className="flex flex-col gap-3 p-4">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Buyer Signals</h2>
+          <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            Buyer Response
+          </h2>
           {signals && (
             <HeadingNote
               label="Buyer signal confidences"

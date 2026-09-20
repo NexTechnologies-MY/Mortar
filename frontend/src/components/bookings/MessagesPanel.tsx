@@ -4,7 +4,7 @@
  * the Needs Review marker under the 0.6 threshold, the JevTag source line,
  * and Confirm, Dispute and Dismiss actions on the pending proposal event.
  * A `no_update` read collapses to one muted line; the full panel is reserved
- * for proposals that need a decision. Re-Run Jev re-extracts any message
+ * for proposals that need a decision. Ask Jev Again re-reads any message
  * live and supersedes the old proposal.
  */
 
@@ -89,7 +89,7 @@ function ProposalBlock({
     <div className="mt-2 rounded-md border border-border bg-muted/50 p-3">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-          Jev Proposal
+          Jev Suggests
         </span>
         <JevTag meta={meta} />
         {needsReview && <StatusPill tone="warning">Needs Review</StatusPill>}
@@ -169,7 +169,7 @@ function MessageItem({
           disabled={pending}
           onClick={() => void run(() => extractMessage(message.id), 'Jev re-ran on this message.')}
         >
-          {extraction ? 'Re-Run Jev' : 'Run Jev'}
+          {extraction ? 'Ask Jev Again' : 'Ask Jev'}
         </Button>
       </div>
       <p className="mt-1.5 max-w-3xl text-sm">{message.body}</p>
@@ -183,7 +183,7 @@ function MessageItem({
           }
         />
       ) : (
-        <p className="mt-2 text-[13px] text-muted-foreground">Not Analysed By Jev Yet.</p>
+        <p className="mt-2 text-[13px] text-muted-foreground">Jev Has Not Looked At This Yet.</p>
       )}
     </li>
   )

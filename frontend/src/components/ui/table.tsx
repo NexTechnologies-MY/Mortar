@@ -40,7 +40,7 @@ function TableRow({ className, ...props }: React.ComponentProps<'tr'>) {
     <tr
       data-slot="table-row"
       className={cn(
-        'h-11 border-b border-border transition-colors duration-[var(--motion-fast)] hover:bg-muted data-[state=selected]:bg-selected data-[state=selected]:shadow-[inset_2px_0_0_0_var(--primary)]',
+        'h-11 border-b border-border transition-colors duration-[var(--motion-fast)] hover:bg-accent data-[state=selected]:bg-selected data-[state=selected]:shadow-[inset_2px_0_0_0_var(--primary)]',
         className
       )}
       {...props}

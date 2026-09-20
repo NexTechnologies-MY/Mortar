@@ -1,5 +1,5 @@
 /**
- * Seed spread — "Try Another Seed" regenerates the dataset in the browser
+ * Alternative runs — "Run It Again" regenerates the dataset in the browser
  * under a new seed and lines its forecast up beside the canonical one, so the
  * demo can show how much the answer moves. The database is never touched.
  */
@@ -33,19 +33,19 @@ export function SeedSpreadCard({
       <CardHeader className="flex-row items-start justify-between gap-4 pb-2">
         <div>
           <CardTitle className="text-base">
-            Seed Spread
+            Alternative Runs
             <InfoTooltip text="The same method on a fresh simulation; expected signings move, the method does not." />
           </CardTitle>
         </div>
         <Button type="button" size="sm" disabled={running} onClick={onTryAnother}>
-          {running ? 'Simulating…' : 'Try Another Seed'}
+          {running ? 'Running…' : 'Run It Again'}
         </Button>
       </CardHeader>
       <CardContent>
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead>Seed</TableHead>
+              <TableHead>Run</TableHead>
               <TableHead className="text-right">Expected Signings</TableHead>
               <TableHead className="text-right">10th – 90th Percentile</TableHead>
               <TableHead className="text-right">Live Bookings</TableHead>
@@ -58,7 +58,7 @@ export function SeedSpreadCard({
                   {seed}
                   {seed === canonicalSeed ? (
                     <Badge variant="secondary" className="ml-2">
-                      Canonical
+                      This Run
                     </Badge>
                   ) : null}
                 </TableCell>

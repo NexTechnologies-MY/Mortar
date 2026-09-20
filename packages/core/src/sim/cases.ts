@@ -255,17 +255,17 @@ export function summarizeCases(data: CaseDataInput, asOf: IsoDate, assumptions: 
     const stallReasons: string[] = []
     if (facts.live) {
       if (facts.daysSinceEvidence >= staleDays) {
-        stallReasons.push(`No Evidence For ${facts.daysSinceEvidence} Days`)
+        stallReasons.push(`No Update For ${facts.daysSinceEvidence} Days`)
       }
       for (const d of facts.outstandingDocuments) {
         if (d.sinceDays >= docStallDays) {
-          stallReasons.push(`${DOCUMENT_LABELS[d.document]} Outstanding For ${d.sinceDays} Days`)
+          stallReasons.push(`${DOCUMENT_LABELS[d.document]} Still Outstanding After ${d.sinceDays} Days`)
         }
       }
       for (const app of facts.applications) {
         if (app.pendingSince !== null) {
           const wd = workDaysBetween(app.pendingSince, asOf)
-          if (wd >= undecidedWorkDays) stallReasons.push(`Application Undecided For ${wd} Working Days`)
+          if (wd >= undecidedWorkDays) stallReasons.push(`Bank Has Not Decided After ${wd} Working Days`)
         }
       }
       if (facts.disputedCount > 0) stallReasons.push('Disputed Evidence Awaits Review')

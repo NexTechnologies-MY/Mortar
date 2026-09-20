@@ -49,14 +49,14 @@ describe('BookingDetailPage', () => {
     expect(screen.getByText('Loan Track')).toBeTruthy()
     expect(screen.getByText('Legal Track')).toBeTruthy()
     expect(screen.getByText('Apex Bank')).toBeTruthy()
-    expect(screen.getByText('Evidence Log')).toBeTruthy()
+    expect(screen.getByText('Case History')).toBeTruthy()
   })
 
   it("shows the banker's message with Jev's proposal and confirms it", async () => {
     renderDetail()
 
     expect(await screen.findByText(/Still need latest 3 months slip gaji/)).toBeTruthy()
-    expect(screen.getAllByText('Jev Proposal').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Jev Suggests').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Documents Requested').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Payslip').length).toBeGreaterThan(0)
     expect(screen.getByText('Confidence 91%')).toBeTruthy()
@@ -115,7 +115,7 @@ describe('BookingDetailPage', () => {
     const item = body.closest('li')!
     expect(within(item).getByText('No Case Update In This Message.')).toBeTruthy()
     // The no-update read collapses to one muted line — no proposal panel.
-    expect(within(item).queryByText('Jev Proposal')).toBeNull()
+    expect(within(item).queryByText('Jev Suggests')).toBeNull()
     expect(within(item).queryByText('Confirmed')).toBeNull()
   })
 

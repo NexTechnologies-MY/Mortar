@@ -1,17 +1,24 @@
 /**
  * Bookings table — the loan admin's ledger of every unit booking.
- * Columns: booking ID, unit, buyer, age, stage (compact tracker + pill),
- * evidence freshness, financing risk, buyer signals and open tasks.
- * Rows navigate to the case page; stalled rows sort first by the caller.
+ * Columns: booking ID, unit, buyer, age, stage, last update, risk, buyer
+ * response and value. Rows navigate to the case page.
+ *
+ * Chip economy (DESIGN.md Screen Density): a pill earns its place only when it
+ * discriminates between rows. Stage and Last Update are plain text at their
+ * common values and only become a pill at the states worth noticing, so the
+ * eye is not asked to scan a hundred near-white rectangles to find the one
+ * that matters.
  */
 
 import { useNavigate } from 'react-router-dom'
-import type { Booking, BuyerSignals, CaseSummary, EventKind } from '@mortar/core'
+import { ArrowDown, ArrowUp, ChevronsUpDown } from 'lucide-react'
+import type { Booking, BuyerSignals, CaseSummary, EventKind, Stage } from '@mortar/core'
 import { EvidencePill } from '@/components/case/EvidencePill'
 import { RiskChip } from '@/components/case/RiskChip'
 import { SignalChips } from '@/components/case/SignalChips'
 import { StagePill } from '@/components/case/StagePill'
-import { formatDays } from '@/components/case/format'
+import { STAGE_LABELS } from '@/components/case/StagePill'
+import { formatDays, formatRm } from '@/components/case/format'
 import { StageTracker } from './StageTracker'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
@@ -23,10 +30,58 @@ export interface BookingRow {
   confirmedKinds: ReadonlySet<EventKind>
 }
 
-export function BookingsTable({ rows }: { rows: BookingRow[] }) {
+/** Sortable columns. The rest of the ledger keeps the caller's ranking. */
+export type SortKey = 'age' | 'value' | 'risk'
+export type SortDir = 'asc' | 'desc'
+export type Sort = { key: SortKey; dir: SortDir } | null
+
+/** Stages where the pill carries news; everywhere else the word alone does. */
+const PILL_STAGES: ReadonlySet<Stage> = new Set<Stage>(['spa_signed', 'cancelled', 'lapsed'])
+
+function SortHeader({
+  label,
+  columnKey,
+  sort,
+  onSort,
+  className
+}: {
+  label: string
+  columnKey: SortKey
+  sort: Sort
+  onSort: (key: SortKey) => void
+  className?: string
+}) {
+  const active = sort?.key === columnKey
+  const Icon = !active ? ChevronsUpDown : sort.dir === 'asc' ? ArrowUp : ArrowDown
+  return (
+    <TableHead className={className} aria-sort={!active ? 'none' : sort.dir === 'asc' ? 'ascending' : 'descending'}>
+      <button
+        type="button"
+        onClick={() => onSort(columnKey)}
+        className={cn(
+          'inline-flex items-center gap-1 rounded-sm text-[11px] font-semibold uppercase tracking-[0.08em] transition-colors duration-[var(--motion-fast)] hover:text-foreground',
+          active ? 'text-foreground' : 'text-muted-foreground',
+          className?.includes('text-right') && 'flex-row-reverse'
+        )}
+      >
+        {label}
+        <Icon aria-hidden="true" className="size-3 shrink-0" />
+      </button>
+    </TableHead>
+  )
+}
+
+export function BookingsTable({
+  rows,
+  sort = null,
+  onSort
+}: {
+  rows: BookingRow[]
+  sort?: Sort
+  onSort?: (key: SortKey) => void
+}) {
   const navigate = useNavigate()
-  // Nine pill-heavy columns need tighter cells than the shared `px-4`, or the
-  // table outgrows the 1280px container and the last column clips.
+  const sortable = onSort ?? (() => {})
   return (
     <Table className="[&_td]:px-3 [&_th]:px-3">
       <TableHeader>
@@ -34,12 +89,12 @@ export function BookingsTable({ rows }: { rows: BookingRow[] }) {
           <TableHead>Booking</TableHead>
           <TableHead>Unit</TableHead>
           <TableHead>Buyer</TableHead>
-          <TableHead className="text-right">Age</TableHead>
+          <SortHeader label="Age" columnKey="age" sort={sort} onSort={sortable} className="text-right" />
           <TableHead>Stage</TableHead>
-          <TableHead>Evidence</TableHead>
-          <TableHead>Risk</TableHead>
-          <TableHead>Signals</TableHead>
-          <TableHead className="text-right">Tasks</TableHead>
+          <TableHead>Last Update</TableHead>
+          <SortHeader label="Risk" columnKey="risk" sort={sort} onSort={sortable} />
+          <TableHead>Buyer Response</TableHead>
+          <SortHeader label="Value" columnKey="value" sort={sort} onSort={sortable} className="text-right" />
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -59,7 +114,7 @@ export function BookingsTable({ rows }: { rows: BookingRow[] }) {
           >
             <TableCell className="font-mono text-[13px] font-medium">{booking.id}</TableCell>
             <TableCell className="font-mono text-[13px] font-medium">{booking.unit}</TableCell>
-            <TableCell className="max-w-44 truncate">{booking.buyer.name}</TableCell>
+            <TableCell className="max-w-56 truncate">{booking.buyer.name}</TableCell>
             <TableCell
               className={cn(
                 'text-right tabular-nums',
@@ -71,11 +126,19 @@ export function BookingsTable({ rows }: { rows: BookingRow[] }) {
             <TableCell>
               <span className="flex items-center gap-1.5">
                 <StageTracker stage={summary.stage} confirmedKinds={confirmedKinds} />
-                <StagePill stage={summary.stage} />
+                {PILL_STAGES.has(summary.stage) ? (
+                  <StagePill stage={summary.stage} />
+                ) : (
+                  <span className="text-[13px] text-muted-foreground">{STAGE_LABELS[summary.stage]}</span>
+                )}
               </span>
             </TableCell>
             <TableCell>
-              <EvidencePill status={summary.unknown ? 'unknown' : 'fresh'} />
+              {summary.unknown ? (
+                <EvidencePill status="unknown" />
+              ) : (
+                <span className="text-[13px] text-muted-foreground">Up to date</span>
+              )}
             </TableCell>
             <TableCell>
               <RiskChip risk={summary.risk} />
@@ -83,7 +146,7 @@ export function BookingsTable({ rows }: { rows: BookingRow[] }) {
             <TableCell>
               <SignalChips signals={signals} />
             </TableCell>
-            <TableCell className="text-right tabular-nums">{summary.openTasks > 0 ? summary.openTasks : '—'}</TableCell>
+            <TableCell className="text-right tabular-nums">{formatRm(booking.priceRm)}</TableCell>
           </TableRow>
         ))}
       </TableBody>

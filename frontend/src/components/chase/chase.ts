@@ -3,6 +3,8 @@
  * date an urgency score implies, and the staff name an owner role resolves to
  * for a booking. Kept component-free so cards and tests share them.
  */
+import type { LucideIcon } from 'lucide-react'
+import { CalendarCheck, Clock, Eye, FileText, FileWarning, Landmark, Phone, Scale } from 'lucide-react'
 import { PERSONA_STAFF } from '@mortar/core'
 import type { Booking, DocumentKind, NextAction, NextActionSuggestion, OwnerRole } from '@mortar/core'
 import { OWNER_ROLE_LABELS } from '@/components/case'
@@ -95,4 +97,35 @@ export function taskTitle(suggestion: NextActionSuggestion, booking: Booking, do
 /** The label used by the owner filter, shared by suggestions and task groups. */
 export function ownerRoleLabel(role: OwnerRole): string {
   return OWNER_ROLE_LABELS[role]
+}
+
+/**
+ * Glyph per next action. The icon names the kind of action, never its urgency:
+ * a call is a phone whether it is overdue or not (DESIGN.md Icons).
+ */
+export const NEXT_ACTION_ICONS: Record<NextAction, LucideIcon> = {
+  request_document: FileText,
+  chase_banker: Landmark,
+  submit_another_bank: Landmark,
+  call_buyer: Phone,
+  schedule_spa: CalendarCheck,
+  escalate_legal: Scale,
+  review_release: Eye,
+  wait: Clock
+}
+
+export function actionIcon(action: NextAction): LucideIcon {
+  return NEXT_ACTION_ICONS[action] ?? FileText
+}
+
+/**
+ * Glyph for the blocker sentence, picked from what is actually blocking:
+ * an outstanding document, a bank that has not moved, otherwise elapsed time.
+ */
+export function blockerIcon(stallReasons: readonly string[], document?: DocumentKind): LucideIcon {
+  if (document) return FileWarning
+  const text = stallReasons.join(' ').toLowerCase()
+  if (text.includes('document') || text.includes('payslip') || text.includes('outstanding')) return FileWarning
+  if (text.includes('bank') || text.includes('application') || text.includes('undecided')) return Landmark
+  return Clock
 }

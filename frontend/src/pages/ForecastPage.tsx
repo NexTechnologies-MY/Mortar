@@ -50,7 +50,7 @@ export function ForecastPage() {
   return (
     <PageContainer>
       <PageHeaderCard>
-        <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground">Forecast</h1>
+        <h1 className="text-[32px] font-semibold leading-[1.16] tracking-[-0.02em] text-foreground">Forecast</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           The SPAs You Can Bank On: Expected Signings Within 30 Days Of Booking, With A Range.
         </p>
@@ -58,7 +58,7 @@ export function ForecastPage() {
 
       {error ? (
         <div className="mt-4">
-          <EmptyState icon={SearchX} title="Could Not Load The Snapshot" description={error} />
+          <EmptyState icon={SearchX} title="Could Not Load Your Bookings" description={error} />
         </div>
       ) : loading && !result ? (
         <div className="mt-4 grid gap-4">

@@ -101,7 +101,7 @@ export function BookingDetailPage() {
           <EmptyState
             icon={FileText}
             title="Booking Not Found"
-            description={`No Booking Matches ${id ?? '—'} In The Current Snapshot.`}
+            description={`No Booking Matches ${id ?? '—'}. Check The Reference And Try Again.`}
           />
           <div className="mt-3 flex justify-center">
             <Button variant="secondary" asChild>

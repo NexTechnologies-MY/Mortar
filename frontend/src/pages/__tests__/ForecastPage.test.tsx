@@ -70,8 +70,8 @@ describe('ForecastPage', () => {
     expect(screen.getByText('Expected Signings In 30 Days')).toBeTruthy()
     expect(screen.getByText('Forecast Range')).toBeTruthy()
     expect(screen.getAllByText('Live Bookings').length).toBeGreaterThan(0)
-    expect(screen.getByText('Stage Conversion Rates')).toBeTruthy()
-    expect(screen.getByText('A Backtest On Simulated Data Proves The Method, Not The Business.')).toBeTruthy()
+    expect(screen.getByText('How Often Each Stage Reaches Signing')).toBeTruthy()
+    expect(screen.getByText('An Accuracy Check On Simulated Data Proves The Method, Not The Business.')).toBeTruthy()
     expect(screen.getByText('Assumptions')).toBeTruthy()
     expect(screen.getByText('Placeholder To Calibrate On Company Data')).toBeTruthy()
   })
@@ -101,16 +101,16 @@ describe('ForecastPage', () => {
     expect(screen.queryByText('Mean Squared Error, Lower Is Better')).toBeNull()
     expect(screen.queryByText(/Approval Falls As The Debt Service Ratio Rises/)).toBeNull()
 
-    for (const label of ['Live Bookings', 'Forecast Range', 'Brier Score', 'Rate', '95% Interval']) {
+    for (const label of ['Live Bookings', 'Forecast Range', 'Accuracy Score', 'Rate', 'Likely Range']) {
       expect(infoTrigger(label)).toBeTruthy()
     }
   })
 
-  it('Try Another Seed adds a browser-only run beside the canonical forecast', async () => {
+  it('Run It Again adds a browser-only run beside the canonical forecast', async () => {
     renderPage()
-    fireEvent.click(screen.getByRole('button', { name: 'Try Another Seed' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Run It Again' }))
     await waitFor(() => expect(screen.getByText('20260919')).toBeTruthy())
-    expect(screen.getByText('Canonical')).toBeTruthy()
+    expect(screen.getByText('This Run')).toBeTruthy()
     expect(screen.getByText('Regenerated In The Browser Only; The Saved Simulation Is Untouched.')).toBeTruthy()
   })
 
