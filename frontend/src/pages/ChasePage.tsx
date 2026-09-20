@@ -6,19 +6,21 @@
  */
 import { useMemo, useState, type Dispatch, type SetStateAction } from 'react'
 import { BellRing, SearchX } from 'lucide-react'
-import type { NextActionSuggestion, OwnerRole, RiskLevel, Task } from '@mortar/core'
+import type { CaseSummary, NextActionSuggestion, OwnerRole, RiskLevel, Task } from '@mortar/core'
 import { useCases, useSnapshot } from '@/lib/data'
 import { fetchNextAction, postTask, updateTask } from '@/lib/api'
 import { notify } from '@/components/ui/toastConfig'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { PageHeaderCard } from '@/components/layout/PageHeaderCard'
 import { StatCard } from '@/components/StatCard'
+import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ChaseCard } from '@/components/chase/ChaseCard'
 import { ChaseTasks } from '@/components/chase/ChaseTasks'
-import { NEXT_ACTION_LABELS, dueOnForUrgency, ownerName, taskTitle } from '@/components/chase/chase'
+import { NEXT_ACTION_LABELS, dueOnForUrgency, ownerName, taskTitle, urgencyFor } from '@/components/chase/chase'
 import { formatRm, formatRmCompact } from '@/components/case'
 import type { DocumentKind } from '@mortar/core'
 
@@ -37,11 +39,21 @@ const OWNER_OPTIONS: { value: 'all' | OwnerRole; label: string }[] = [
   { value: 'legal', label: 'Legal' }
 ]
 
+const QUEUE_PREVIEW = 6
+
 export function ChasePage() {
   const { snapshot, loading, error, refresh } = useSnapshot()
   const cases = useCases()
   const [riskFilter, setRiskFilter] = useState<'all' | RiskLevel>('all')
   const [ownerFilter, setOwnerFilter] = useState<'all' | OwnerRole>('all')
+  const [queueExpanded, setQueueExpanded] = useState(false)
+
+  /** A changed filter re-folds the queue to its first few cards. */
+  const applyFilters = (risk: 'all' | RiskLevel, owner: 'all' | OwnerRole) => {
+    setRiskFilter(risk)
+    setOwnerFilter(owner)
+    setQueueExpanded(false)
+  }
   const [live, setLive] = useState<Record<string, NextActionSuggestion>>({})
   const [suggesting, setSuggesting] = useState<ReadonlySet<string>>(new Set())
   const [creating, setCreating] = useState<ReadonlySet<string>>(new Set())
@@ -64,24 +76,31 @@ export function ChasePage() {
     return proposed[proposed.length - 1]?.document ?? undefined
   }
 
-  /** Evidence awaiting review can clear a stall with one confirmation, so it leads; then the
-   * sales desk's own actions; within each group the freshest stall chases best. */
+  /** The queue ranks by urgency. Evidence awaiting review can clear a stall with
+   * one confirmation, so it leads; then overdue, due-today and upcoming cards,
+   * urgent scores first; ties break on value at risk, then the stalest stall. */
   const stalled = useMemo(() => {
     const pending = new Set((snapshot?.events ?? []).filter((e) => e.status === 'provisional').map((e) => e.bookingId))
-    const rank = (id: string) => {
-      const owner = suggestions.get(id)?.owner.value
-      return (pending.has(id) ? 0 : 2) + (owner === 'sales' || owner === 'sales_admin' ? 0 : 1)
+    const toneOrder = { danger: 0, warning: 1, neutral: 2 } as const
+    const rank = (c: CaseSummary) => {
+      const urgency = urgencyFor(suggestions.get(c.bookingId), c.daysSinceEvidence)
+      return { pending: !pending.has(c.bookingId), tone: toneOrder[urgency.tone], score: urgency.score }
     }
     return cases
       .filter((c) => c.stallReasons.length > 0)
       .filter((c) => riskFilter === 'all' || c.risk.level === riskFilter)
       .filter((c) => ownerFilter === 'all' || suggestions.get(c.bookingId)?.owner.value === ownerFilter)
-      .sort(
-        (a, b) =>
-          rank(a.bookingId) - rank(b.bookingId) ||
-          a.daysSinceEvidence - b.daysSinceEvidence ||
-          (bookings.get(b.bookingId)?.priceRm ?? 0) - (bookings.get(a.bookingId)?.priceRm ?? 0)
-      )
+      .sort((a, b) => {
+        const ra = rank(a)
+        const rb = rank(b)
+        return (
+          Number(ra.pending) - Number(rb.pending) ||
+          ra.tone - rb.tone ||
+          rb.score - ra.score ||
+          (bookings.get(b.bookingId)?.priceRm ?? 0) - (bookings.get(a.bookingId)?.priceRm ?? 0) ||
+          b.daysSinceEvidence - a.daysSinceEvidence
+        )
+      })
   }, [cases, riskFilter, ownerFilter, suggestions, bookings, snapshot])
 
   const allStalled = useMemo(() => cases.filter((c) => c.stallReasons.length > 0), [cases])
@@ -173,30 +192,26 @@ export function ChasePage() {
             <StatCard
               label="Stalled Bookings"
               value={String(allStalled.length)}
-              caption="Live Bookings With A Stall Reason"
-              onClick={() => {
-                setRiskFilter('all')
-                setOwnerFilter('all')
-              }}
+              exact="Live Bookings With A Stall Reason"
+              onClick={() => applyFilters('all', 'all')}
             />
             <StatCard
               label="High Risk"
               value={String(highRisk)}
-              caption={riskFilter === 'high' ? 'Filtered — Click To Clear' : 'Click To Filter The Queue'}
+              exact={riskFilter === 'high' ? 'Filtered — Click To Clear' : 'Click To Filter The Queue'}
               tone={highRisk > 0 ? 'alert' : 'default'}
-              onClick={() => setRiskFilter((f) => (f === 'high' ? 'all' : 'high'))}
+              onClick={() => applyFilters(riskFilter === 'high' ? 'all' : 'high', ownerFilter)}
             />
-            <StatCard label="Open Tasks" value={String(openTasks.length)} caption="Across Every Owner Below" />
+            <StatCard label="Open Tasks" value={String(openTasks.length)} exact="Across Every Owner Below" />
             <StatCard
               label="Value At Risk"
               value={formatRmCompact(valueAtRisk)}
-              caption="Sum Of Stalled Booking Prices"
-              exact={formatRm(valueAtRisk)}
+              exact={`Sum Of Stalled Booking Prices · ${formatRm(valueAtRisk)}`}
             />
           </div>
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            <Select value={riskFilter} onValueChange={(v) => setRiskFilter(v as 'all' | RiskLevel)}>
+            <Select value={riskFilter} onValueChange={(v) => applyFilters(v as 'all' | RiskLevel, ownerFilter)}>
               <SelectTrigger aria-label="Filter by risk">
                 <SelectValue />
               </SelectTrigger>
@@ -208,7 +223,7 @@ export function ChasePage() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={ownerFilter} onValueChange={(v) => setOwnerFilter(v as 'all' | OwnerRole)}>
+            <Select value={ownerFilter} onValueChange={(v) => applyFilters(riskFilter, v as 'all' | OwnerRole)}>
               <SelectTrigger aria-label="Filter by owner">
                 <SelectValue />
               </SelectTrigger>
@@ -235,32 +250,47 @@ export function ChasePage() {
               />
             </div>
           ) : (
-            <div className="mt-4 grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
-              {stalled.map((summary, i) => {
-                const booking = bookings.get(summary.bookingId)
-                if (!booking) return null
-                return (
-                  <ChaseCard
-                    key={summary.bookingId}
-                    booking={booking}
-                    summary={summary}
-                    suggestion={suggestions.get(summary.bookingId)}
-                    document={documentFor(summary.bookingId)}
-                    primary={i === 0}
-                    suggesting={suggesting.has(summary.bookingId)}
-                    creating={creating.has(summary.bookingId)}
-                    onSuggest={() => void suggest(summary.bookingId)}
-                    onCreateTask={() => void createTask(summary.bookingId)}
-                  />
-                )
-              })}
-            </div>
+            <section className="mt-6">
+              <h2 className="text-base font-semibold tracking-[-0.01em] text-foreground">
+                Action Today
+                <InfoTooltip text="Stalled Bookings, Ranked By Urgency." />
+              </h2>
+              <div className="mt-3 grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
+                {(queueExpanded ? stalled : stalled.slice(0, QUEUE_PREVIEW)).map((summary, i) => {
+                  const booking = bookings.get(summary.bookingId)
+                  if (!booking) return null
+                  return (
+                    <ChaseCard
+                      key={summary.bookingId}
+                      booking={booking}
+                      summary={summary}
+                      suggestion={suggestions.get(summary.bookingId)}
+                      document={documentFor(summary.bookingId)}
+                      primary={i === 0}
+                      suggesting={suggesting.has(summary.bookingId)}
+                      creating={creating.has(summary.bookingId)}
+                      onSuggest={() => void suggest(summary.bookingId)}
+                      onCreateTask={() => void createTask(summary.bookingId)}
+                    />
+                  )
+                })}
+              </div>
+              {stalled.length > QUEUE_PREVIEW ? (
+                <div className="mt-4 flex justify-center">
+                  <Button type="button" variant="secondary" onClick={() => setQueueExpanded((v) => !v)}>
+                    {queueExpanded ? 'Show Fewer' : `Show ${stalled.length - QUEUE_PREVIEW} More Stalled Bookings`}
+                  </Button>
+                </div>
+              ) : null}
+            </section>
           )}
 
           {openTasks.length > 0 ? (
             <section className="mt-8">
-              <h2 className="text-base font-semibold tracking-[-0.01em] text-foreground">Open Tasks</h2>
-              <p className="mt-0.5 text-[13px] text-muted-foreground">Grouped By Owner.</p>
+              <h2 className="text-base font-semibold tracking-[-0.01em] text-foreground">
+                Open Tasks
+                <InfoTooltip text="Grouped By Owner." />
+              </h2>
               <div className="mt-3">
                 <ChaseTasks tasks={openTasks} completing={completing} onComplete={(t) => void completeTask(t)} />
               </div>

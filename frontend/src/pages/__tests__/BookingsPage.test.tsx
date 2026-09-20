@@ -43,18 +43,33 @@ describe('BookingsPage', () => {
     window.localStorage.clear()
   })
 
-  it('renders the stats and every booking row', async () => {
+  it('renders the stats and the first page of booking rows', async () => {
     renderBookings()
 
     expect(await screen.findByRole('heading', { name: 'Bookings' })).toBeTruthy()
     expect(screen.getByText('Live Bookings')).toBeTruthy()
-    expect(screen.getByText('Unresolved, Booked Within 30 Days')).toBeTruthy()
+    // The explanatory second line moved into a tooltip on the figure.
+    expect(screen.queryByText('Unresolved, Booked Within 30 Days')).toBeNull()
     expect(screen.getByText('Stalled')).toBeTruthy()
     expect(screen.getAllByText('SPA Signed').length).toBeGreaterThan(0)
     expect(screen.getByText('BK-9001')).toBeTruthy()
     expect(screen.getByText('A-12-03')).toBeTruthy()
     expect(screen.getByText('Raymond Tan Wei Hong')).toBeTruthy()
     expect(screen.getByText('28 Bookings')).toBeTruthy()
+    expect(screen.getByText('Showing 1 To 25 Of 28')).toBeTruthy()
+  })
+
+  it('pages the table and returns to page one when a filter changes', async () => {
+    renderBookings()
+    await screen.findByText('BK-9001')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next Page' }))
+    expect(screen.getByText('Showing 26 To 28 Of 28')).toBeTruthy()
+    expect(document.querySelectorAll('tbody tr')).toHaveLength(3)
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Unknown Only' }))
+    expect(screen.getByText(/Showing 1 To/)).toBeTruthy()
+    expect(screen.getByText('BK-9007')).toBeTruthy()
   })
 
   it('sorts stalled bookings first', async () => {

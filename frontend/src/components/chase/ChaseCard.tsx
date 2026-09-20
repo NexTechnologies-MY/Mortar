@@ -8,7 +8,7 @@
 import { Link } from 'react-router-dom'
 import { JEV_REVIEW_THRESHOLD } from '@mortar/core'
 import type { Booking, CaseSummary, DocumentKind, NextActionSuggestion } from '@mortar/core'
-import { JevTag, RiskChip, StagePill, formatDaysLong, formatRm } from '@/components/case'
+import { JevTag, RiskChip, STAGE_LABELS, formatDaysLong, formatRm } from '@/components/case'
 import { Button } from '@/components/ui/button'
 import { StatusPill } from '@/components/ui/status-pill'
 import { cn } from '@/lib/utils'
@@ -67,20 +67,25 @@ export function ChaseCard({
             {booking.id} · {booking.buyer.name}
           </p>
         </div>
-        <StatusPill tone={urgency.tone} className="shrink-0 whitespace-nowrap">
-          {urgency.label}
-        </StatusPill>
+        {/* Due Today is the queue's norm, so the pill only appears when a card
+            differs: overdue, or scheduled later than today. */}
+        {urgency.score !== 2 ? (
+          <StatusPill tone={urgency.tone} className="shrink-0 whitespace-nowrap">
+            {urgency.label}
+          </StatusPill>
+        ) : null}
       </div>
 
       {/* Blocker */}
       <p className="text-base font-semibold tracking-[-0.01em] text-foreground">{summary.stallReasons.join(' · ')}</p>
 
-      {/* Meta line */}
+      {/* Meta line: the risk chip stays; stage, age, last evidence and price
+          fold into one muted line. */}
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-muted-foreground">
-        <StagePill stage={summary.stage} />
         <RiskChip risk={summary.risk} />
         <span>
-          {formatDaysLong(summary.bookingAgeDays)} Old · Last Evidence {formatDaysLong(summary.daysSinceEvidence)} Ago
+          {STAGE_LABELS[summary.stage]} · {formatDaysLong(summary.bookingAgeDays)} Old · Last Evidence{' '}
+          {formatDaysLong(summary.daysSinceEvidence)} Ago
         </span>
         <span className="tabular-nums">{formatRm(booking.priceRm)}</span>
       </div>

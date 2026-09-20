@@ -14,6 +14,7 @@ import { PageHeaderCard } from '@/components/layout/PageHeaderCard'
 import { StatCard } from '@/components/StatCard'
 import { BookingFilters, type BookingFilter } from '@/components/bookings/BookingFilters'
 import { BookingsTable, type BookingRow } from '@/components/bookings/BookingsTable'
+import { Pagination, usePagination } from '@/components/ui/Pagination'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -89,6 +90,14 @@ export function BookingsPage() {
     [rows]
   )
 
+  const { pageRows, pagination } = usePagination(visible)
+
+  /** A changed filter always returns the table to page one. */
+  const applyFilter = (next: BookingFilter) => {
+    setFilter(next)
+    pagination.onPageChange(1)
+  }
+
   return (
     <PageContainer>
       <PageHeaderCard>
@@ -119,23 +128,23 @@ export function BookingsPage() {
       ) : (
         <>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard label="Live Bookings" value={String(stats.live)} caption="Unresolved, Booked Within 30 Days" />
+            <StatCard label="Live Bookings" value={String(stats.live)} exact="Unresolved, Booked Within 30 Days" />
             <StatCard
               label="Stalled"
               value={String(stats.stalled)}
-              caption="A Stall Reason Is Flagged"
+              exact="A Stall Reason Is Flagged"
               tone={stats.stalled > 0 ? 'alert' : 'default'}
             />
             <StatCard
               label="Unknown"
               value={String(stats.unknown)}
-              caption="No Confirmed Evidence Recently"
+              exact="No Confirmed Evidence Recently"
               tone={stats.unknown > 0 ? 'alert' : 'default'}
             />
-            <StatCard label="SPA Signed" value={String(stats.signed)} caption="Legally Sold" />
+            <StatCard label="SPA Signed" value={String(stats.signed)} exact="Legally Sold" />
           </div>
           <div className="mt-4">
-            <BookingFilters filter={filter} onChange={setFilter} shown={visible.length} total={rows.length} />
+            <BookingFilters filter={filter} onChange={applyFilter} shown={visible.length} total={rows.length} />
           </div>
           <div className="mt-3 overflow-hidden rounded-md border border-border bg-card">
             {visible.length === 0 ? (
@@ -145,7 +154,10 @@ export function BookingsPage() {
                 description="Loosen The Stage, Risk Or Unknown Filters To See More Bookings."
               />
             ) : (
-              <BookingsTable rows={visible} />
+              <>
+                <BookingsTable rows={pageRows} />
+                <Pagination {...pagination} />
+              </>
             )}
           </div>
         </>
