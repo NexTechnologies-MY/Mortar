@@ -38,6 +38,7 @@
     <li><a href="#the-one-rule-that-governs-everything">The One Rule That Governs Everything</a></li>
     <li><a href="#how-it-works">How It Works</a></li>
     <li><a href="#what-is-built">What Is Built</a></li>
+    <li><a href="#screenshots">Screenshots</a></li>
     <li><a href="#architecture">Architecture</a></li>
     <li><a href="#tech-stack">Tech Stack</a></li>
     <li><a href="#getting-started">Getting Started</a></li>
@@ -131,6 +132,7 @@ The app is used as three personas, switched in the header and persisted in
 | `/forecast`     | What will sign, then where bookings died and what was recoverable |
 | `/import`       | Spreadsheet intake                                                |
 | `/faq`          | FAQ                                                               |
+| `/settings`     | Demo dataset controls, reset, and server health                   |
 
 <p align="right"><a href="#readme-top">&uarr;</a></p>
 
@@ -142,16 +144,41 @@ Measured, not estimated.
 
 |                               |        |
 | ----------------------------- | ------ |
-| Live routes                   | **10** |
+| Live routes                   | **11** |
 | Personas                      | **3**  |
 | Funnel stages tracked         | **6**  |
-| Shared packages               | **1**  |
-| Backend services              | **0**  |
+| Shared packages               | **2**  |
+| Backend services              | **1**  |
 | Real buyer records in the app | **0**  |
 
-The shell, routes, and persona switch are built and deployed; the screens walk
-the primary flows on synthetic bookings. The `@mortar/core` domain rules — stage
-tracking, risk flags, chase list, weighted forecast — land in the next stage.
+The shell, routes, and persona switch are built and deployed, and the screens
+walk the primary flows on seeded bookings. The `@mortar/core` domain rules —
+stage tracking, risk flags, chase list, risk-weighted forecast — are in place
+behind a Bun API reading Postgres.
+
+<p align="right"><a href="#readme-top">&uarr;</a></p>
+
+---
+
+## Screenshots
+
+Every shot below is the running app on the seeded demo dataset. The data is
+simulated; the screens are not mockups.
+
+| Landing                                                                  | Chase                                                                                    | Bookings                                                                               |
+| ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| ![The public landing page](assets/screens/landing.webp)                  | ![The chase list of stalled bookings](assets/screens/chase.webp)                         | ![The bookings table](assets/screens/bookings.webp)                                    |
+| The public entry point: the claim, and how the three desks fit together. | Sales Admin's daily list. Stalled bookings first, each with Jev's suggested next action. | Loan Admin's desk. Every booking with age, stage, update freshness and financing risk. |
+
+| Case Page                                                                    | Legal                                                                             | Forecast                                                                             |
+| ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| ![A single booking case page](assets/screens/case.webp)                      | ![The legal queue awaiting SPA execution](assets/screens/legal.webp)              | ![The forecast of projected signings](assets/screens/forecast.webp)                  |
+| One booking end to end: loan and legal tracks, messages, tasks and evidence. | What sits between an approved loan and a signed SPA, with whom, and for how long. | Expected signings inside 30 days, with stage conversion rates and an accuracy check. |
+
+| Import                                                                  | Settings                                                            | Jev Proposal                                                                      |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| ![The spreadsheet import page](assets/screens/import.webp)              | ![The settings and demo data page](assets/screens/settings.webp)    | ![Jev proposing a case update on a banker message](assets/screens/proposal.webp)  |
+| Load existing bookings from a spreadsheet. Parsing is not wired up yet. | The demo dataset: seed, reference date, record counts, and a reset. | Jev reads each message and proposes an update. Staff confirm, dispute or dismiss. |
 
 <p align="right"><a href="#readme-top">&uarr;</a></p>
 
@@ -159,31 +186,34 @@ tracking, risk flags, chase list, weighted forecast — land in the next stage.
 
 ## Architecture
 
-One deployable and one shared library. The prototype runs entirely in the
-browser: imported data never leaves the client, and all domain logic is pure
-TypeScript in `@mortar/core`.
+One deployable and two shared libraries. A single Bun process serves `/api/*`
+and the built frontend, bookings live in Postgres, and the domain rules stay
+pure TypeScript in `@mortar/core`.
 
 ```text
 Booking spreadsheet (the one the team already uses)
         |
         |  /import
         v
-+-------------------------------+
-| @mortar/core (pure TypeScript)|
-| stages, risk flags, chase list|
-| risk-weighted forecast        |
-+---------------+---------------+
-                |
-                v
-React views per persona:
-/chase  /bookings  /bookings/:id  /forecast
++------------------------------------------+
+| Bun server — one process, one image      |
+|   @mortar/core  stages, risk, forecast   |
+|   @mortar/jev   proposals and playbooks  |
++--------+---------------------------+-----+
+         |                           |
+         v                           v
+     Postgres                   frontend/dist
+     bookings, messages,        React views per persona:
+     tasks, Jev answers         /chase /bookings /legal
+                                /forecast /settings
 ```
 
-| Piece       | Runs      | Job                                              |
-| ----------- | --------- | ------------------------------------------------ |
-| `frontend/` | Cloud Run | React 19 + Vite SPA, served by nginx in Docker   |
-| `packages/` | Imported  | `@mortar/core`: shared types and domain rules    |
-| `docs/`     | Repo      | This file, the design spec, sources, agent notes |
+| Piece       | Runs      | Job                                                   |
+| ----------- | --------- | ----------------------------------------------------- |
+| `frontend/` | Built     | React 19 + Vite SPA, built to `frontend/dist`         |
+| `server/`   | Cloud Run | Bun API over Postgres; also serves `frontend/dist`    |
+| `packages/` | Imported  | `@mortar/core` domain rules, `@mortar/jev` AI service |
+| `docs/`     | Repo      | This file, the design spec, sources, agent notes      |
 
 Every push to `main` deploys automatically through GitHub Actions to Cloud Run
 in `asia-southeast1`, with keyless Workload Identity Federation.
@@ -194,17 +224,19 @@ in `asia-southeast1`, with keyless Workload Identity Federation.
 
 ## Tech Stack
 
-| Layer    | Choice                                            |
-| -------- | ------------------------------------------------- |
-| Frontend | React 19, react-router 7, Vite 6, TypeScript      |
-| Tooling  | Bun 1.3.14 workspaces (`frontend`, `packages/*`)  |
-| Styling  | Tailwind CSS 4, shadcn/ui (Radix)                 |
-| Charts   | Recharts 3                                        |
-| State    | React Context + `localStorage`, data stays client |
-| Tests    | Vitest, Testing Library, jsdom                    |
-| Serving  | nginx 1.27 in a multi-stage Docker image          |
-| AI       | Gemini via a small serverless function — planned  |
-| Hosting  | Google Cloud Run (`asia-southeast1`)              |
+| Layer    | Choice                                                     |
+| -------- | ---------------------------------------------------------- |
+| Frontend | React 19, react-router 7, Vite 6, TypeScript               |
+| Backend  | Bun HTTP server, `@mortar/core` and `@mortar/jev`          |
+| Database | Postgres, schema and seed applied on first boot            |
+| Tooling  | Bun 1.3.14 workspaces (`frontend`, `packages/*`, `server`) |
+| Styling  | Tailwind CSS 4, shadcn/ui (Radix)                          |
+| Charts   | Recharts 3                                                 |
+| State    | React Context for persona; case data from `/api`           |
+| Tests    | Vitest, Testing Library, jsdom                             |
+| Serving  | One Bun process serves `/api/*` and `frontend/dist`        |
+| AI       | Jev: TypeSafe AI SDK; precomputed answers without a key    |
+| Hosting  | Google Cloud Run (`asia-southeast1`)                       |
 
 <p align="right"><a href="#readme-top">&uarr;</a></p>
 
@@ -212,22 +244,27 @@ in `asia-southeast1`, with keyless Workload Identity Federation.
 
 ## Getting Started
 
-Everything runs client-side; no API keys or backend services are required.
+The app needs Postgres. Copy `.env.example` to `.env` at the repo root and set
+`DATABASE_URL`; an empty database is fine, because the server applies the schema
+and seeds the canonical dataset on first boot.
 
 ```sh
+docker run -d --name mortar-pg -e POSTGRES_PASSWORD=mortar \
+  -e POSTGRES_DB=mortar -p 5432:5432 postgres:17-alpine
 bun install
-bun run dev        # http://localhost:5173
+bun run dev        # frontend :5173, API :8787
 ```
 
 ```sh
-bun run dev        # Start Vite dev server
+bun run dev        # Start the Bun API and the Vite dev server together
 bun run check      # Lint, typecheck, and test across workspaces
 bun run format     # Prettier formatting across the repository
-bun run build      # tsc -b && vite build → dist/
+bun run build      # tsc -b && vite build → frontend/dist/
+bun run db:reset   # Re-seed the database deterministically
 ```
 
 Prerequisites: [Bun 1.3.14](https://bun.sh/) (pinned by `packageManager` in
-`package.json`) and a modern desktop browser.
+`package.json`), Postgres 17, and a modern desktop browser.
 
 <p align="right"><a href="#readme-top">&uarr;</a></p>
 
@@ -242,8 +279,12 @@ frontend/        The app: React 19 + Vite SPA
   src/components/layout/, ui/ (shadcn), charts/
   src/lib/       Persona context, stores, formatters
 packages/core/   @mortar/core: shared TypeScript domain rules
+packages/jev/    @mortar/jev: proposals, playbooks, answer cache
+server/          Bun API over Postgres; also serves frontend/dist
+  db/            Schema, seed, and row mappers
+  src/           Routes, Jev cache, static handler
 .github/         CI and Cloud Run deploy workflows
-Dockerfile       Bun build → nginx alpine
+Dockerfile       Bun build → Bun alpine runtime
 AGENTS.md        Agent instructions: stack, routes, rules
 ```
 
@@ -273,7 +314,7 @@ AGENTS.md        Agent instructions: stack, routes, rules
 
 Built by **NexTechnologies** (`@AlaskanTuna`, `@Andersonnn7788`).
 
-<a href="https://github.com/NexTechnologies-MY/mortar/graphs/contributors"><img src="https://contrib.rocks/image?repo=NexTechnologies-MY/mortar" alt="Contributors" /></a>
+<a href="https://github.com/NexTechnologies-MY/Mortar/graphs/contributors"><img src="https://contrib.rocks/image?repo=NexTechnologies-MY/Mortar" alt="Contributors" /></a>
 
 ---
 
