@@ -1,226 +1,365 @@
-/* Landing surface. The page runs full width with a 48px gutter rather than the
-   old centred column, so the ledger panel and the desk cards share one grid.
-   Colour here is the single sanctioned exception to the monochrome rule and is
-   scoped to this file; nothing below is used inside the app shell. */
+/* Landing surface: a one-viewport hero — claim beside a real capture of the
+   running app — then three moments on screenshots, then the close. Strictly
+   monochrome; the only colour on the page is the mark's own brand orange in
+   the eyebrow dash. Loaded by LandingPage.tsx, mounted on `/` only. */
 
 .land {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
   background: var(--background);
-}
-
-/* ---------- header row ---------- */
-
-.land-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  height: 64px;
-  padding: 0 24px;
-  border-bottom: 1px solid var(--border);
-}
-
-.land-mark {
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
   color: var(--foreground);
 }
 
-/* The theme switch is the only control in the row: the page's one Primary
-   button lives in the hero, so the header carries no call to action. */
-.land-theme {
-  margin-left: auto;
-}
+/* ---------- the one-viewport hero ---------- */
 
-.land-theme svg {
-  width: 20px;
-  height: 20px;
-}
-
-/* ---------- claim ---------- */
-
+/* Exactly 100dvh, overflow clipped: nothing below the fold may peek into the
+   first screen. The fixed bar overlays the top, so its height is reserved as
+   padding rather than margin. */
 .land-hero {
+  position: relative;
   display: flex;
   flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  padding-top: var(--site-bar-h);
+  overflow: clip;
+}
+
+.land-hero-in {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  align-content: center;
+  gap: 32px;
+  width: 100%;
+  max-width: var(--site-max);
+  margin-inline: auto;
+  padding-inline: 20px;
+  /* The cue strip at the foot of the viewport is its own zone — the centred
+     content never crosses it. */
+  padding-bottom: 84px;
+}
+
+.land-claim {
+  min-width: 0;
+}
+
+.land-eyebrow {
+  display: flex;
   align-items: center;
-  text-align: center;
-  padding: 72px 24px 0;
+  gap: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+/* The one chromatic mark on the page: the brand's orange, as a dash. */
+.land-eyebrow::before {
+  content: '';
+  width: 14px;
+  height: 2px;
+  border-radius: 1px;
+  background: #c2410c;
 }
 
 .land-title {
-  font-size: clamp(2.25rem, 5.4vw, 3.75rem);
+  margin-top: 22px;
+  font-size: clamp(2.5rem, 4.6vw, 3.75rem);
   font-weight: 600;
   line-height: 1.04;
   letter-spacing: -0.035em;
   color: var(--foreground);
 }
 
-/* A lead line written as a full sentence, so it is set in sentence case. */
 .land-lede {
   margin-top: 20px;
-  max-width: 52ch;
+  max-width: 46ch;
   font-size: 17px;
   line-height: 27px;
   color: var(--muted-foreground);
 }
 
-.land-go {
-  margin-top: 28px;
-}
-
-/* ---------- the panel, and the ledger on it ---------- */
-
-.land-panel {
-  margin: 56px 24px 0;
-  padding: 28px;
-  border-radius: var(--radius-3xl);
-  background:
-    radial-gradient(55% 75% at 8% 12%, rgb(var(--land-hue-a) / 0.62), transparent 63%),
-    radial-gradient(50% 68% at 88% 8%, rgb(var(--land-hue-b) / 0.55), transparent 64%),
-    radial-gradient(58% 72% at 80% 94%, rgb(var(--land-hue-c) / 0.5), transparent 63%),
-    radial-gradient(46% 62% at 22% 98%, rgb(var(--land-hue-d) / 0.42), transparent 63%),
-    radial-gradient(70% 60% at 50% 46%, rgb(var(--land-hue-veil) / 0.45), transparent 72%), var(--land-panel-base);
-}
-
-.land-ledger {
-  margin: 0;
-  overflow: hidden;
-  border: 1px solid color-mix(in oklab, var(--color-ink-950) 6%, transparent);
-  border-radius: var(--radius-2xl);
-  background: var(--card);
-}
-
-.land-ledger-cap {
+.land-actions {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
-  padding: 14px 18px;
-  border-bottom: 1px solid var(--border);
-  font-size: 13px;
+  gap: 20px;
+  margin-top: 32px;
 }
 
-.land-ledger-cap b {
-  font-weight: 600;
+.land-sub {
+  padding-bottom: 2px;
+  border-bottom: 1px solid color-mix(in oklab, var(--foreground) 22%, transparent);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  text-decoration: none;
+}
+
+.land-sub:hover {
   color: var(--foreground);
+  border-bottom-color: var(--foreground);
 }
 
-.land-ledger-cap span {
+@media (prefers-reduced-motion: no-preference) {
+  .land-sub {
+    transition:
+      color var(--motion-fast),
+      border-color var(--motion-fast);
+  }
+}
+
+/* ---------- screenshots as evidence ---------- */
+
+.land-shot {
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+  box-shadow:
+    0 1px 2px color-mix(in oklab, var(--color-ink-950) 4%, transparent),
+    0 16px 40px -16px color-mix(in oklab, var(--color-ink-950) 16%, transparent);
+}
+
+.land-shot-frame {
+  position: relative;
+}
+
+/* Theme + viewport swap: the theme lives on <html> as .dark, not in a media
+   query, so all variants ship in the markup and CSS paints the right one. */
+.land-img {
+  display: none;
+  width: 100%;
+  height: auto;
+}
+
+.land-img.d-light {
+  display: block;
+}
+
+.dark .land-img.d-light {
+  display: none;
+}
+
+.dark .land-img.d-dark {
+  display: block;
+}
+
+/* Figures with a phone-width variant (.has-m) swap the desktop capture for it
+   under 720px; without one, the desktop capture simply scales down. */
+@media (max-width: 719px) {
+  .has-m .land-img.d-light,
+  .dark .has-m .land-img.d-dark {
+    display: none;
+  }
+
+  .has-m .land-img.m-light {
+    display: block;
+  }
+
+  .dark .has-m .land-img.m-light {
+    display: none;
+  }
+
+  .dark .has-m .land-img.m-dark {
+    display: block;
+  }
+}
+
+.land-cap {
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  line-height: 18px;
   color: var(--muted-foreground);
 }
 
-.land-table {
-  width: 100%;
-  border-collapse: collapse;
+/* The hero capture crops to a height the viewport can afford rather than
+   shrinking the product to fit; the interesting content is at the top. */
+.land-hero-shot .land-shot-frame {
+  height: clamp(200px, 30vh, 320px);
+  height: clamp(200px, 30dvh, 320px);
 }
 
-.land-table th {
-  padding: 10px 18px;
-  border-bottom: 1px solid var(--border);
+@media (min-width: 900px) {
+  .land-hero-shot .land-shot-frame {
+    height: clamp(260px, 44vh, 520px);
+    height: clamp(260px, 44dvh, 520px);
+  }
+}
+
+.land-hero-shot .land-img {
+  height: 100%;
+  object-fit: cover;
+  object-position: top left;
+}
+
+/* On wide screens the hero shot bleeds part-way to the viewport's right edge —
+   the product pushing past the text column, never off the screen. */
+@media (min-width: 1216px) {
+  .land-hero-shot {
+    margin-right: calc(24px - (100vw - var(--site-max)) / 2);
+  }
+}
+
+/* ---------- the scroll cue ---------- */
+
+.land-cue {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  text-align: left;
   color: var(--muted-foreground);
-  white-space: nowrap;
+  text-decoration: none;
 }
 
-.land-table td {
-  height: 44px;
-  padding: 0 18px;
-  border-bottom: 1px solid var(--border);
-  font-size: 14px;
+.land-cue:hover {
   color: var(--foreground);
-  white-space: nowrap;
 }
 
-.land-table tbody tr:last-child td {
-  border-bottom: 0;
+@media (prefers-reduced-motion: no-preference) {
+  .land-cue {
+    transition: color var(--motion-fast);
+  }
+
+  .land-cue svg {
+    animation: land-cue-bob 2.4s ease-in-out infinite;
+  }
 }
 
-/* The age is the warning on a stalled row, so it carries the danger text tone. */
-.land-stale {
-  color: var(--status-danger-fg);
-  font-weight: 500;
+@keyframes land-cue-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(4px);
+  }
 }
 
-/* ---------- the three desks ---------- */
+/* ---------- the three moments ---------- */
 
-/* Appended directly under the panel: same gutter, same gap, no rule between
-   them, so the block reads as one unit. */
-.land-desks {
+.land-story {
+  max-width: var(--site-max);
+  margin-inline: auto;
+  padding: clamp(88px, 11vw, 144px) 20px 0;
+  scroll-margin-top: calc(var(--site-bar-h) + 16px);
+}
+
+.land-moment {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 16px;
-  margin: 16px 24px 0;
-  padding-bottom: 72px;
+  gap: 24px;
+  align-items: start;
 }
 
-.land-desk {
-  padding: 24px 24px 28px;
-  border: 1px solid color-mix(in oklab, var(--color-ink-950) 5%, transparent);
-  border-radius: var(--radius-2xl);
-  background: var(--card);
-  /* The edge is carried by a shadow with a real offset rather than a tint, so
-     the card lifts off the white ground without adding colour. */
-  box-shadow:
-    0 1px 2px color-mix(in oklab, var(--color-ink-950) 5%, transparent),
-    0 6px 16px -4px color-mix(in oklab, var(--color-ink-950) 8%, transparent);
+.land-moment + .land-moment {
+  margin-top: clamp(88px, 11vw, 144px);
 }
 
-.land-desk h2 {
-  font-size: 16px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  color: var(--foreground);
+.land-moment-copy {
+  min-width: 0;
 }
 
-.land-desk p {
-  margin-top: 10px;
-  font-size: 14px;
-  line-height: 22px;
+.land-kicker {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
   color: var(--muted-foreground);
 }
 
-/* ---------- wider viewports ---------- */
+.land-moment-copy h2 {
+  margin-top: 14px;
+  font-size: clamp(1.5rem, 2.4vw, 2rem);
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--foreground);
+}
 
-@media (min-width: 720px) {
-  .land-head {
-    padding: 0 48px;
+.land-moment-copy > p:last-child {
+  margin-top: 14px;
+  max-width: 46ch;
+  font-size: 15px;
+  line-height: 24px;
+  color: var(--muted-foreground);
+}
+
+@media (min-width: 900px) {
+  .land-moment {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    gap: 64px;
+    align-items: center;
   }
 
-  .land-hero {
-    padding: 96px 48px 0;
+  .land-moment--flip {
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
   }
 
-  .land-panel {
-    margin: 64px 48px 0;
-    padding: 68px;
-  }
-
-  .land-desks {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 24px;
-    margin: 24px 48px 0;
-    padding-bottom: 76px;
-  }
-
-  .land-desk {
-    padding: 28px 28px 32px;
+  .land-moment--flip .land-moment-copy {
+    order: 2;
   }
 }
 
-/* Below the table's natural width the ledger scrolls rather than crushing its
-   columns; the panel keeps its padding so the card still reads as inset. */
-@media (max-width: 900px) {
-  .land-ledger {
-    overflow-x: auto;
+@media (min-width: 720px) {
+  .land-hero-in,
+  .land-story {
+    padding-inline: 32px;
   }
+}
 
-  .land-table {
-    min-width: 860px;
+@media (min-width: 900px) {
+  .land-hero-in {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    align-items: center;
+    gap: 56px;
   }
+}
+
+/* ---------- the close ---------- */
+
+.land-close {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 640px;
+  margin-inline: auto;
+  padding: clamp(96px, 13vw, 168px) 20px clamp(120px, 15vw, 192px);
+  text-align: center;
+}
+
+.land-close .land-eyebrow {
+  justify-content: center;
+}
+
+.land-close h2 {
+  margin-top: 18px;
+  font-size: clamp(1.75rem, 3.2vw, 2.5rem);
+  font-weight: 600;
+  line-height: 1.12;
+  letter-spacing: -0.025em;
+  color: var(--foreground);
+}
+
+.land-close > p:not(.land-eyebrow) {
+  margin-top: 16px;
+  max-width: 44ch;
+  font-size: 16px;
+  line-height: 26px;
+  color: var(--muted-foreground);
+}
+
+.land-close a {
+  margin-top: 32px;
 }

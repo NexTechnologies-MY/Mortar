@@ -1,12 +1,12 @@
 /**
  * Declares the top-level React Router shell for Mortar.
  * `/` is the landing and `/app` redirects to the active persona's home route.
- * Only the public pages sit inside PublicShell, which adds the site footer; the
- * app routes, the 404 and `/sign-in` render without one.
+ * Only the public pages sit inside SiteShell, which adds the fixed bar and the
+ * fold-over footer; the app routes, the 404 and `/sign-in` render without them.
  */
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppShell } from './components/layout/AppShell'
-import { PublicShell } from './components/layout/PublicShell'
+import { SiteShell } from './components/layout/SiteShell'
 import { usePersona } from './lib/persona'
 import { BookingsPage } from './pages/BookingsPage'
 import { BookingDetailPage } from './pages/BookingDetailPage'
@@ -32,7 +32,7 @@ function HomeRedirect() {
 export function App() {
   return (
     <Routes>
-      <Route element={<PublicShell />}>
+      <Route element={<SiteShell />}>
         <Route path="/" element={<LandingPage />} />
         <Route path="/faq" element={<FaqPage />} />
       </Route>

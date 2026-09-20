@@ -1,0 +1,264 @@
+/* Public site chrome: the fixed glass bar and the fold-over footer. Loaded by
+   SiteShell.tsx, which mounts on `/` and `/faq` only — nothing here reaches the
+   app shell. The glass bar is the public pages' one translucent surface, the
+   same exception the sidebar scrim carries inside the app. */
+
+:root {
+  /* The one public measure: the bar, the page columns and the footer share it,
+     so brand edges align down the page. */
+  --site-max: 1152px;
+  --site-bar-h: 56px;
+  /* Footer height is fixed and reserved as the page column's bottom margin;
+     it must hold the compact footer's real content, tuned below. */
+  --footer-h: 216px;
+}
+
+@media (min-width: 720px) {
+  :root {
+    --footer-h: 184px;
+  }
+}
+
+/* ---------- the page column over the fixed footer ---------- */
+
+.site-page {
+  position: relative;
+  z-index: 1;
+  min-height: calc(100vh - var(--footer-h));
+  min-height: calc(100dvh - var(--footer-h));
+  margin-bottom: var(--footer-h);
+  background: var(--background);
+}
+
+/* globals sets smooth scrolling unconditionally; on the public pages, where
+   the cue anchor scrolls, reduced motion must turn it off. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+.site-sentinel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+
+.site-foot {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 0;
+  height: var(--footer-h);
+  border-top: 1px solid var(--border);
+  background: var(--footer);
+}
+
+/* ---------- the fixed bar ---------- */
+
+.site-bar {
+  position: fixed;
+  inset-inline: 0;
+  top: 0;
+  z-index: 40;
+  height: var(--site-bar-h);
+}
+
+/* The surface (fill, blur and hairline) lives on one pseudo-element so the
+   whole chrome fades together on a single opacity transition. */
+.site-bar::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in oklab, var(--background) 72%, transparent);
+  -webkit-backdrop-filter: blur(14px) saturate(1.5);
+  backdrop-filter: blur(14px) saturate(1.5);
+  opacity: 0;
+}
+
+.site-bar--solid::before {
+  opacity: 1;
+}
+
+/* A real opacity transition, collapsed to instant under reduced motion by
+   simply not being declared there. */
+@media (prefers-reduced-motion: no-preference) {
+  .site-bar::before {
+    transition: opacity 240ms ease-out;
+  }
+}
+
+/* Where backdrop-filter does not exist the surface reads opaque instead of
+   translucent; the fade still applies. */
+@supports not (backdrop-filter: blur(1px)) {
+  .site-bar::before {
+    background: var(--background);
+  }
+}
+
+.site-bar-in {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 100%;
+  max-width: var(--site-max);
+  margin-inline: auto;
+  padding-inline: 20px;
+}
+
+.site-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--foreground);
+  text-decoration: none;
+}
+
+.site-wordmark {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.site-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.site-nav-link {
+  padding: 6px 10px;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  text-decoration: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .site-nav-link {
+    transition:
+      color 120ms ease-out,
+      background-color 120ms ease-out;
+  }
+}
+
+.site-nav-link:hover {
+  color: var(--foreground);
+  background: var(--accent);
+}
+
+@media (min-width: 720px) {
+  .site-bar-in {
+    padding-inline: 32px;
+  }
+}
+
+/* ---------- the footer's content ---------- */
+
+.foot-inner {
+  display: grid;
+  align-content: center;
+  gap: 12px;
+  height: 100%;
+  max-width: var(--site-max);
+  margin-inline: auto;
+  padding-inline: 20px;
+}
+
+.foot-main {
+  display: grid;
+  gap: 8px;
+}
+
+@media (min-width: 720px) {
+  .foot-inner {
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+    column-gap: 32px;
+    align-items: start;
+    padding-inline: 32px;
+  }
+}
+
+.foot-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  width: fit-content;
+  color: var(--foreground);
+  text-decoration: none;
+}
+
+.foot-brand span {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.foot-tag {
+  max-width: 40ch;
+  font-size: 14px;
+  line-height: 22px;
+  color: var(--muted-foreground);
+}
+
+.foot-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 22px;
+  align-items: center;
+}
+
+@media (min-width: 720px) {
+  .foot-links {
+    justify-content: flex-end;
+    padding-top: 6px;
+  }
+}
+
+/* A hairline underline at 18% foreground, swapping to full foreground on hover
+   and focus. In CSS because Tailwind has no utility for a partial-alpha border
+   colour. */
+.foot-link {
+  padding-top: 2px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid color-mix(in oklab, var(--foreground) 18%, transparent);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  text-decoration: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .foot-link {
+    transition:
+      color var(--motion-fast),
+      border-color var(--motion-fast);
+  }
+}
+
+.foot-link:hover,
+.foot-link:focus-visible {
+  color: var(--foreground);
+  border-bottom-color: var(--foreground);
+}
+
+.foot-fine {
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--muted-foreground);
+}
+
+@media (min-width: 720px) {
+  .foot-fine {
+    grid-column: 1 / -1;
+    padding-top: 4px;
+    border-top: 1px solid var(--border);
+  }
+}
