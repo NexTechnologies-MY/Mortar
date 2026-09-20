@@ -1,20 +1,20 @@
 import { render, screen, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
-import { PublicShell } from '../PublicShell'
+import { SiteShell } from '../SiteShell'
 
 const FIGMA_URL =
   'https://www.figma.com/design/CTy3FDK15W2QLQmB3h5f1I/Mortar-Design-System?node-id=0-1&t=BmfrHmxUj0uuvRDc-1'
 const GITHUB_URL = 'https://github.com/NexTechnologies-MY/mortar'
 
-// Mirrors App.tsx: only `/` and `/faq` sit inside PublicShell. `/chase` stands
+// Mirrors App.tsx: only `/` and `/faq` sit inside SiteShell. `/chase` stands
 // in for the app desks, and it, `/sign-in` and the catch-all are mounted
 // outside it. Route elements are stubs; the pages are covered by their own tests.
 function renderAt(entry: string) {
   return render(
     <MemoryRouter initialEntries={[entry]}>
       <Routes>
-        <Route element={<PublicShell />}>
+        <Route element={<SiteShell />}>
           <Route path="/" element={<div>Landing page</div>} />
           <Route path="/faq" element={<div>FAQ page</div>} />
         </Route>
@@ -26,26 +26,23 @@ function renderAt(entry: string) {
   )
 }
 
-describe('PublicShell', () => {
-  it('groups the footer links under Product, Company and Code', () => {
+describe('SiteShell', () => {
+  it('pins the site bar with the brand and the way in — no FAQ link', () => {
     renderAt('/')
-    const footer = screen.getByRole('contentinfo')
+    const bar = screen.getByRole('banner')
 
-    const labels = (name: string) =>
-      within(within(footer).getByRole('navigation', { name }))
-        .getAllByRole('link')
-        .map((a) => a.textContent)
-
-    expect(labels('Product')).toEqual(['Chase List', 'Bookings', 'Forecast'])
-    expect(labels('Company')).toEqual(['FAQ', 'Dashboard', 'Design'])
-    expect(labels('Code')).toEqual(['GitHub'])
+    expect(within(bar).getByRole('link', { name: 'Mortar home' }).getAttribute('href')).toBe('/')
+    expect(within(bar).getByRole('link', { name: 'Open Mortar' }).getAttribute('href')).toBe('/sign-in')
+    // The FAQ stays reachable from the footer and the questions section.
+    expect(within(bar).queryByRole('link', { name: 'FAQ' })).toBeNull()
   })
 
-  it('points every footer link at a real destination', () => {
+  it('keeps the footer to labelled columns of real destinations', () => {
     renderAt('/')
     const footer = screen.getByRole('contentinfo')
     const href = (name: string) => within(footer).getByRole('link', { name }).getAttribute('href')
 
+    expect(href('Mortar home')).toBe('/')
     expect(href('Chase List')).toBe('/chase')
     expect(href('Bookings')).toBe('/bookings')
     expect(href('Forecast')).toBe('/forecast')
@@ -53,7 +50,10 @@ describe('PublicShell', () => {
     expect(href('Dashboard')).toBe('/app')
     expect(href('Design')).toBe(FIGMA_URL)
     expect(href('GitHub')).toBe(GITHUB_URL)
-    expect(href('Mortar home')).toBe('/')
+
+    for (const column of ['Product', 'Company', 'Code']) {
+      expect(within(footer).getByRole('navigation', { name: column })).toBeTruthy()
+    }
   })
 
   it('opens the two off-site links in a new tab, safely', () => {
@@ -67,23 +67,37 @@ describe('PublicShell', () => {
     }
   })
 
-  it('closes with the year line and the simulated-data note', () => {
+  it('sets the year line directly under the brand lockup, with no bottom bar', () => {
     renderAt('/')
     const footer = screen.getByRole('contentinfo')
 
-    expect(within(footer).getByText(`© ${new Date().getFullYear()} Mortar`)).toBeTruthy()
-    expect(within(footer).getByText('Internal Tool · Simulated Data')).toBeTruthy()
+    const lockup = within(footer).getByRole('link', { name: 'Mortar home' })
+    const copy = within(footer).getByText(`© ${new Date().getFullYear()} Mortar`)
+    expect(lockup.nextElementSibling).toBe(copy)
+    expect(within(footer).queryByText(/Internal Tool|Simulated Data/)).toBeNull()
   })
 
-  it('renders the footer on /faq', () => {
+  it('lays the fixed footer under the opaque page column', () => {
+    const { container } = renderAt('/')
+    const page = container.querySelector<HTMLElement>('.site-page')
+    const footer = container.querySelector<HTMLElement>('.site-foot')
+
+    expect(page).toBeTruthy()
+    expect(footer?.tagName).toBe('FOOTER')
+    expect(page!.compareDocumentPosition(footer!)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+  })
+
+  it('renders the bar and footer on /faq', () => {
     renderAt('/faq')
+    expect(screen.getByRole('banner')).toBeTruthy()
     expect(screen.getByRole('contentinfo')).toBeTruthy()
   })
 
-  // The footer is for the public pages only. `/chase` is the regression this
-  // locks: it used to sit under the app desks, clipped by the sidebar.
-  it.each(['/chase', '/sign-in', '/nowhere'])('renders no footer on %s', (route) => {
+  // The chrome is for the public pages only. `/chase` is the regression this
+  // locks: the footer used to sit under the app desks, clipped by the sidebar.
+  it.each(['/chase', '/sign-in', '/nowhere'])('renders no footer or bar on %s', (route) => {
     renderAt(route)
     expect(screen.queryByRole('contentinfo')).toBeNull()
+    expect(screen.queryByRole('banner')).toBeNull()
   })
 })

@@ -2,8 +2,10 @@
  * Theme provider + hook for light / dark / system mode.
  *
  * Persists the user's choice in localStorage and syncs the `dark` class on
- * `<html>`. When the user picks `system`, listens to the OS `prefers-color-scheme`
- * media query and switches with the OS.
+ * `<html>`. The sitewide default is light — the OS preference is consulted only
+ * for a stored `system` choice, never for a first-time visitor. When the theme
+ * is `system`, listens to the OS `prefers-color-scheme` media query and
+ * switches with the OS.
  *
  * One non-obvious detail: theme switching disables CSS transitions for one
  * frame to avoid a laggy colour cascade — without this, every component
@@ -44,7 +46,7 @@ function resolveTheme(theme: Theme): 'light' | 'dark' {
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
     const stored = localStorage.getItem('theme') as Theme | null
-    return stored ?? 'system'
+    return stored ?? 'light'
   })
 
   const resolved = resolveTheme(theme)

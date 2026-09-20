@@ -1,71 +1,109 @@
 /**
- * Landing page tests. jsdom lacks matchMedia (the theme hook calls it) and
- * requestAnimationFrame (the theme's class flip), so the hoisted block stubs
- * the browser floor before the imports evaluate — matchMedia answers false, so
- * the resolved theme is light.
+ * Landing page tests. The page's interactive chrome is the FAQ accordion, the
+ * waitlist form and the back-to-top control — the theme switch lives in the
+ * app shell only — so it renders under MemoryRouter alone. jsdom has no
+ * matchMedia, so the pointer-bloom effect simply stands down.
  */
-import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { describe, expect, it } from 'vitest'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { ThemeProvider } from '@/hooks/useTheme'
 import { LandingPage } from '@/pages/LandingPage'
-
-vi.hoisted(() => {
-  window.matchMedia = (query: string) =>
-    ({
-      matches: false,
-      media: query,
-      onchange: null,
-      addListener: () => {},
-      removeListener: () => {},
-      addEventListener: () => {},
-      removeEventListener: () => {},
-      dispatchEvent: () => false
-    }) as unknown as MediaQueryList
-  window.requestAnimationFrame = (callback: FrameRequestCallback) => window.setTimeout(callback, 0)
-})
 
 const renderLanding = () =>
   render(
     <MemoryRouter initialEntries={['/']}>
-      <ThemeProvider>
-        <LandingPage />
-      </ThemeProvider>
+      <LandingPage />
     </MemoryRouter>
   )
 
 describe('landing page', () => {
-  beforeEach(() => {
-    window.localStorage.clear()
-  })
-
-  it('offers the theme switch on the landing page, named for the theme it will set', () => {
+  it('states the claim', () => {
     renderLanding()
-    expect(screen.getByRole('button', { name: 'Switch to the dark theme' })).toBeTruthy()
+    expect(screen.getByRole('heading', { level: 1, name: /Booked Is Not Sold/ })).toBeTruthy()
   })
 
-  it('names the three surfaces as the three features', () => {
+  it('carries no theme switcher — that lives in the app shell only', () => {
+    renderLanding()
+    expect(screen.queryByRole('button', { name: /theme/i })).toBeNull()
+    expect(screen.queryByRole('radio')).toBeNull()
+  })
+
+  it('centres the claim on the ledger plate', () => {
     const { container } = renderLanding()
-    const desks = within(container.querySelector<HTMLElement>('.land-desks')!)
-    expect(desks.getByRole('heading', { name: 'Chase List' })).toBeTruthy()
-    expect(desks.getByRole('heading', { name: 'Bookings' })).toBeTruthy()
-    expect(desks.getByRole('heading', { name: 'Forecast' })).toBeTruthy()
+    const plate = container.querySelector('.land-plate')
+
+    expect(plate).toBeTruthy()
+    expect(plate?.querySelector('figcaption')?.textContent).toMatch(/illustrative/i)
+    expect(screen.getByText('Bookings')).toBeTruthy()
   })
 
-  it('keeps the page to a single primary action, which sits below the claim rather than in the header', () => {
+  it('walks the four moments: the stall, the message, the task, the forecast', () => {
+    renderLanding()
+    expect(screen.getByRole('heading', { name: 'How It Works' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'The Stall Is Named' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'A Message Becomes A Proposal' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'The Task Has An Owner' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'A Number Finance Can Sign Off' })).toBeTruthy()
+  })
+
+  it('anchors each moment to a real screenshot, captioned as simulated data', () => {
     const { container } = renderLanding()
-    const head = within(container.querySelector<HTMLElement>('.land-head')!)
-    expect(head.queryAllByRole('link')).toHaveLength(0)
-    expect(screen.getAllByRole('link')).toHaveLength(1)
+    const shots = [...container.querySelectorAll<HTMLElement>('.land-shot')]
+
+    expect(shots).toHaveLength(4)
+    for (const shot of shots) {
+      // Every capture ships in both themes; CSS paints the active one.
+      expect(shot.querySelectorAll('img').length).toBeGreaterThanOrEqual(2)
+      expect(shot.querySelector('.land-cap')?.textContent).toMatch(/Simulated data/i)
+    }
   })
 
-  it('leads to sign-in as the only way in', () => {
-    renderLanding()
-    expect(screen.getByRole('link', { name: 'Open Mortar' }).getAttribute('href')).toBe('/sign-in')
+  it('keeps the hero to exactly one viewport and gives a deliberate cue past it', () => {
+    const { container } = renderLanding()
+
+    expect(container.querySelector('.land-hero')).toBeTruthy()
+    expect(container.querySelector('#land-how')).toBeTruthy()
+    const cue = screen.getByRole('link', { name: 'Scroll' })
+    expect(cue.getAttribute('href')).toBe('#land-how')
   })
 
-  it('marks the sample ledger as an illustration so its figures are not read as the real book', () => {
+  it('rides Why Use Mortar and Pricing up in a single drawer sheet', () => {
     renderLanding()
-    expect(screen.getByText(/These figures are illustrative/i)).toBeTruthy()
+    const whySheet = screen.getByRole('heading', { name: 'Why Use Mortar' }).closest('.land-sheet')
+    const pricingSheet = screen.getByRole('heading', { name: 'Pricing' }).closest('.land-sheet')
+
+    expect(whySheet).toBeTruthy()
+    expect(whySheet).toBe(pricingSheet)
+    expect(whySheet?.classList.contains('land-pin')).toBe(true)
+  })
+
+  it('sits the questions beside a hidden-from-AT joint sketch', () => {
+    const { container } = renderLanding()
+    const art = container.querySelector('.land-faq-art')
+
+    expect(art?.getAttribute('aria-hidden')).toBe('true')
+    expect(art?.querySelector('svg')).toBeTruthy()
+  })
+
+  it('leads to sign-in as the only call to action', () => {
+    renderLanding()
+    const ctas = screen.getAllByRole('link', { name: 'Open Mortar' })
+
+    expect(ctas).toHaveLength(2)
+    for (const cta of ctas) {
+      expect(cta.getAttribute('href')).toBe('/sign-in')
+    }
+    expect(screen.getByRole('link', { name: 'View All' }).getAttribute('href')).toBe('/faq')
+  })
+
+  it('expands a question on click and collapses it again', () => {
+    renderLanding()
+    const question = screen.getByRole('button', { name: 'What Does Jev Do?' })
+
+    expect(question.getAttribute('aria-expanded')).toBe('false')
+    fireEvent.click(question)
+    expect(question.getAttribute('aria-expanded')).toBe('true')
+    fireEvent.click(question)
+    expect(question.getAttribute('aria-expanded')).toBe('false')
   })
 })
