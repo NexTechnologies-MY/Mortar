@@ -29,7 +29,10 @@ export function SiteShell() {
       <div className="relative z-[1] min-h-[calc(100dvh-var(--footer-h))] bg-background mb-[var(--footer-h)]">
         <Outlet />
       </div>
-      <footer ref={foot} className="fixed inset-x-0 bottom-0 z-0 h-[var(--footer-h)] bg-[var(--footer)]">
+      <footer
+        ref={foot}
+        className="fixed inset-x-0 bottom-0 z-0 h-[var(--footer-h)] border-t border-border bg-[var(--footer)]"
+      >
         <AppFooter />
       </footer>
     </>

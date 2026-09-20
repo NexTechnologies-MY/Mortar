@@ -1,101 +1,35 @@
-/* Landing surface — ported from Perch's Landing.css with Mortar tokens in
-   place of Perch's (docs/research/perch/landing.md). The buttons' look comes
-   from the shadcn Button; only the page's own layout and type live here. */
+/* Landing surface. The page runs full width with a 48px gutter rather than the
+   old centred column, so the ledger panel and the desk cards share one grid.
+   Colour here is the single sanctioned exception to the monochrome rule and is
+   scoped to this file; nothing below is used inside the app shell. */
 
 .land {
   display: flex;
-  min-height: 100dvh;
   flex-direction: column;
-  gap: 16px;
   width: 100%;
-  max-width: 1040px;
-  margin: 0 auto;
-  padding: 24px;
   background: var(--background);
-  /* A stacking context, not a containing block: the z-index -1 film stays
-     positioned against the page column as in Perch, paints above this opaque
-     ground and below the copy. */
-  isolation: isolate;
 }
 
-@media (min-width: 900px) {
-  .land {
-    padding: 32px 48px;
-  }
-}
-
-.land-film {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  overflow: hidden;
-}
-
-/* The clip is a daylight shot. In the dark theme the veil only fades its left and bottom edges, so the frame is
-   dimmed a step as well; otherwise the lit towers glare against the ink ground and the top row loses contrast. */
-.dark .land-film .hero-frame {
-  filter: brightness(0.7);
-}
-
-/* The one place Mortar allows gradients: the veil scrim that fades the hero
-   film into the paper ground so the text column stays legible. */
-.land-veil {
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(
-      to bottom,
-      color-mix(in oklab, var(--background) 92%, transparent) 0%,
-      color-mix(in oklab, var(--background) 82%, transparent) 30%,
-      color-mix(in oklab, var(--background) 58%, transparent) 56%,
-      transparent 76%
-    ),
-    linear-gradient(to top, color-mix(in oklab, var(--background) 92%, transparent) 0%, transparent 34%);
-}
-
-@media (min-width: 720px) {
-  .land-veil {
-    background:
-      linear-gradient(
-        to right,
-        color-mix(in oklab, var(--background) 90%, transparent) 0%,
-        color-mix(in oklab, var(--background) 70%, transparent) 28%,
-        transparent 54%
-      ),
-      linear-gradient(
-        to top,
-        color-mix(in oklab, var(--background) 92%, transparent) 0%,
-        color-mix(in oklab, var(--background) 78%, transparent) 24%,
-        transparent 42%
-      );
-  }
-}
+/* ---------- header row ---------- */
 
 .land-head {
   display: flex;
   align-items: center;
-  gap: 12px;
-}
-
-/* Eyebrow text style — the wordmark, the plate eyebrow and the fact labels. */
-.land-mark,
-.land-eyebrow,
-.land-facts dt {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  gap: 10px;
+  height: 64px;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--border);
 }
 
 .land-mark {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   color: var(--foreground);
 }
 
-.land-eyebrow,
-.land-facts dt {
-  color: var(--muted-foreground);
-}
-
+/* The theme switch is the only control in the row: the page's one Primary
+   button lives in the hero, so the header carries no call to action. */
 .land-theme {
   margin-left: auto;
 }
@@ -105,86 +39,188 @@
   height: 20px;
 }
 
-.land-body {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  justify-content: center;
-  gap: 16px;
-}
+/* ---------- claim ---------- */
 
-.land-plate {
+.land-hero {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  align-self: flex-start;
-  max-width: 100%;
+  align-items: center;
+  text-align: center;
+  padding: 72px 24px 0;
 }
 
 .land-title {
-  max-width: 20ch;
-  font-size: clamp(2.5rem, 6vw, 4.5rem);
+  font-size: clamp(2.25rem, 5.4vw, 3.75rem);
   font-weight: 600;
-  line-height: 1.05;
-  letter-spacing: -0.03em;
+  line-height: 1.04;
+  letter-spacing: -0.035em;
+  color: var(--foreground);
 }
 
-@media (min-width: 720px) {
-  .land-body {
-    gap: 24px;
-  }
-
-  .land-plate {
-    gap: 24px;
-    max-width: 32rem;
-  }
-}
-
-@media (min-width: 900px) {
-  .land-title {
-    max-width: 26ch;
-  }
-}
-
-.land-band {
-  align-self: stretch;
-  max-width: 100%;
-}
-
-.land-facts {
-  display: none;
-  margin: 0;
-}
-
-.land-facts dt {
-  margin-bottom: 8px;
-}
-
-.land-facts dd {
-  margin: 0;
-  max-width: 34ch;
-  font-size: 14px;
-  line-height: 20px;
+/* A lead line written as a full sentence, so it is set in sentence case. */
+.land-lede {
+  margin-top: 20px;
+  max-width: 52ch;
+  font-size: 17px;
+  line-height: 27px;
   color: var(--muted-foreground);
 }
 
+.land-go {
+  margin-top: 28px;
+}
+
+/* ---------- the panel, and the ledger on it ---------- */
+
+.land-panel {
+  margin: 56px 24px 0;
+  padding: 28px;
+  border-radius: var(--radius-3xl);
+  background:
+    radial-gradient(55% 75% at 8% 12%, rgb(var(--land-hue-a) / 0.62), transparent 63%),
+    radial-gradient(50% 68% at 88% 8%, rgb(var(--land-hue-b) / 0.55), transparent 64%),
+    radial-gradient(58% 72% at 80% 94%, rgb(var(--land-hue-c) / 0.5), transparent 63%),
+    radial-gradient(46% 62% at 22% 98%, rgb(var(--land-hue-d) / 0.42), transparent 63%),
+    radial-gradient(70% 60% at 50% 46%, rgb(var(--land-hue-veil) / 0.45), transparent 72%), var(--land-panel-base);
+}
+
+.land-ledger {
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid color-mix(in oklab, var(--color-ink-950) 6%, transparent);
+  border-radius: var(--radius-2xl);
+  background: var(--card);
+}
+
+.land-ledger-cap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.land-ledger-cap b {
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.land-ledger-cap span {
+  color: var(--muted-foreground);
+}
+
+.land-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.land-table th {
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: left;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+}
+
+.land-table td {
+  height: 44px;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+  color: var(--foreground);
+  white-space: nowrap;
+}
+
+.land-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+/* The age is the warning on a stalled row, so it carries the danger text tone. */
+.land-stale {
+  color: var(--status-danger-fg);
+  font-weight: 500;
+}
+
+/* ---------- the three desks ---------- */
+
+/* Appended directly under the panel: same gutter, same gap, no rule between
+   them, so the block reads as one unit. */
+.land-desks {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  margin: 16px 24px 0;
+  padding-bottom: 72px;
+}
+
+.land-desk {
+  padding: 24px 24px 28px;
+  border: 1px solid color-mix(in oklab, var(--color-ink-950) 5%, transparent);
+  border-radius: var(--radius-2xl);
+  background: var(--card);
+  /* The edge is carried by a shadow with a real offset rather than a tint, so
+     the card lifts off the white ground without adding colour. */
+  box-shadow:
+    0 1px 2px color-mix(in oklab, var(--color-ink-950) 5%, transparent),
+    0 6px 16px -4px color-mix(in oklab, var(--color-ink-950) 8%, transparent);
+}
+
+.land-desk h2 {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--foreground);
+}
+
+.land-desk p {
+  margin-top: 10px;
+  font-size: 14px;
+  line-height: 22px;
+  color: var(--muted-foreground);
+}
+
+/* ---------- wider viewports ---------- */
+
 @media (min-width: 720px) {
-  .land-facts {
-    display: grid;
+  .land-head {
+    padding: 0 48px;
+  }
+
+  .land-hero {
+    padding: 96px 48px 0;
+  }
+
+  .land-panel {
+    margin: 64px 48px 0;
+    padding: 68px;
+  }
+
+  .land-desks {
     grid-template-columns: repeat(3, 1fr);
-    gap: 32px;
-    margin-top: auto;
+    gap: 24px;
+    margin: 24px 48px 0;
+    padding-bottom: 76px;
   }
 
-  .land-facts > div:nth-child(1) {
-    justify-self: start;
+  .land-desk {
+    padding: 28px 28px 32px;
+  }
+}
+
+/* Below the table's natural width the ledger scrolls rather than crushing its
+   columns; the panel keeps its padding so the card still reads as inset. */
+@media (max-width: 900px) {
+  .land-ledger {
+    overflow-x: auto;
   }
 
-  .land-facts > div:nth-child(2) {
-    justify-self: center;
-  }
-
-  .land-facts > div:nth-child(3) {
-    justify-self: end;
+  .land-table {
+    min-width: 860px;
   }
 }

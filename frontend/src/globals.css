@@ -34,6 +34,12 @@
   --radius-lg: 6px;
   --radius-xl: 6px;
 
+  /* Public-page radii. The application uses 4px and 6px only; the landing's
+     photographic panel and its feature cards take these larger steps. Do not
+     reach for them inside the app shell. */
+  --radius-2xl: 11.2px;
+  --radius-3xl: 22.4px;
+
   /* Motion easing */
   --ease-out: cubic-bezier(0.2, 0.7, 0.3, 1);
 
@@ -226,6 +232,16 @@
   --scrollbar-thumb: #d8d8d8;
   --scrollbar-thumb-hover: #c9c9c9;
 
+  /* Landing panel — the one chromatic surface in the product, and the only
+     sanctioned gradient. Public pages only: the desks never reference these.
+     Held as space-separated channels so the landing can vary the alpha. */
+  --land-hue-a: 118 106 246;
+  --land-hue-b: 52 184 243;
+  --land-hue-c: 48 208 168;
+  --land-hue-d: 252 182 88;
+  --land-hue-veil: 236 232 255;
+  --land-panel-base: #e4e9f4;
+
   /* Status tones */
   --status-positive: #3e7d5a;
   --status-positive-fg: #1f4d35;
@@ -271,7 +287,6 @@
   --motion-fast: 120ms;
   --motion-base: 200ms;
   --motion-slow: 250ms;
-  --motion-film: 800ms;
 
   /* Scrim — the one sanctioned backdrop blur: sidebar expand + mobile drawer */
   --scrim: color-mix(in oklab, var(--color-ink-950) 14%, transparent);
@@ -315,6 +330,15 @@
   /* Scrollbar */
   --scrollbar-thumb: #262626;
   --scrollbar-thumb-hover: #3a3a3a;
+
+  /* Landing panel, dimmed for the ink ground so it reads as a lit surface
+     rather than a glare. Public pages only. */
+  --land-hue-a: 96 86 200;
+  --land-hue-b: 42 148 196;
+  --land-hue-c: 38 166 134;
+  --land-hue-d: 200 146 70;
+  --land-hue-veil: 40 44 60;
+  --land-panel-base: #12161f;
 
   /* Status tones */
   --status-positive: #5fa57e;
