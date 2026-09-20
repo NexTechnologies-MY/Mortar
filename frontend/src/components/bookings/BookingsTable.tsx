@@ -8,6 +8,12 @@
  * common values and only become a pill at the states worth noticing, so the
  * eye is not asked to scan a hundred near-white rectangles to find the one
  * that matters.
+ *
+ * Buyer is capped at max-w-44 on purpose. Widening it pushes the table past
+ * the 1280px container and clips Value off the right edge; the horizontal
+ * scroll hides the clip rather than fixing it. A truncated name is the better
+ * trade, because the name is recoverable on the case page and the value is
+ * not recoverable from this row at all.
  */
 
 import { useNavigate } from 'react-router-dom'
@@ -114,7 +120,7 @@ export function BookingsTable({
           >
             <TableCell className="font-mono text-[13px] font-medium">{booking.id}</TableCell>
             <TableCell className="font-mono text-[13px] font-medium">{booking.unit}</TableCell>
-            <TableCell className="max-w-56 truncate">{booking.buyer.name}</TableCell>
+            <TableCell className="max-w-44 truncate">{booking.buyer.name}</TableCell>
             <TableCell
               className={cn(
                 'text-right tabular-nums',
