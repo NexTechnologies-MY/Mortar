@@ -7,7 +7,6 @@ import { Link, useLocation, useParams } from 'react-router-dom'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
 import { PersonaSwitch } from '@/components/layout/PersonaSwitch'
-import { SimulationBadge } from '@/components/layout/SimulationBadge'
 import { NotificationPopover } from '@/components/ui/NotificationPopover'
 import { usePersona } from '@/lib/persona'
 import { ChevronRight, Home, Menu } from 'lucide-react'
@@ -105,9 +104,8 @@ export function AppNav({ minimal, onMenuClick }: { minimal?: boolean; onMenuClic
           )}
         </div>
 
-        {/* Right — Simulation Badge + Notifications + Theme + Persona */}
+        {/* Right — Notifications + Theme + Persona */}
         <div className="flex shrink-0 items-center gap-1 sm:gap-2">
-          <SimulationBadge />
           <NotificationPopover />
           <ThemeToggle />
           <PersonaSwitch />

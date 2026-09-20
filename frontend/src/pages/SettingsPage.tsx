@@ -50,7 +50,7 @@ export function SettingsPage() {
   }
 
   return (
-    <PageContainer>
+    <PageContainer flex>
       <PageHeaderCard>
         <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground">Settings</h1>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -68,7 +68,7 @@ export function SettingsPage() {
           <Skeleton className="h-72" />
         </div>
       ) : snapshot ? (
-        <div className="mt-4 grid items-start gap-4 lg:grid-cols-2">
+        <div className="my-auto grid items-start gap-4 py-4 lg:grid-cols-2">
           <DemoDataCard snapshot={snapshot} jevAnswers={health?.jevAnswers ?? null} onReset={onReset} />
           <HealthCard health={health} failed={healthFailed} />
         </div>

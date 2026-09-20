@@ -12,6 +12,7 @@ import { notify } from '@/components/ui/toastConfig'
 import { formatDate } from '@/components/case'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { StatusPill } from '@/components/ui/status-pill'
 import {
   Dialog,
   DialogClose,
@@ -71,7 +72,9 @@ export function DemoDataCard({
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">Demo Data</CardTitle>
+        <CardTitle className="text-base">
+          Demo Data <StatusPill tone="neutral">Simulated Data</StatusPill>
+        </CardTitle>
         <p className="text-[13px] text-muted-foreground">
           The Simulated Dataset Every Screen Reads. Resetting Restores The Original State For The Next Run.
         </p>

@@ -10,6 +10,7 @@ import { STAGE_LABELS, formatPercent } from '@/components/case'
 import { ProbabilityBar } from '@/components/case'
 import { ChartTooltipContent } from '@/components/charts/ChartTooltipContent'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 export function StageRatesCard({ stageRates }: { stageRates: StageRate[] }) {
@@ -25,10 +26,10 @@ export function StageRatesCard({ stageRates }: { stageRates: StageRate[] }) {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">Stage Conversion Rates</CardTitle>
-        <p className="text-[13px] text-muted-foreground">
-          Share Of Resolved Bookings Reaching Each Stage That Signed Within 30 Days Of Booking.
-        </p>
+        <CardTitle className="text-base">
+          Stage Conversion Rates
+          <InfoTooltip text="Share of resolved bookings reaching each stage that signed within 30 days of booking." />
+        </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <div className="h-44" aria-hidden="true">
@@ -63,8 +64,14 @@ export function StageRatesCard({ stageRates }: { stageRates: StageRate[] }) {
             <TableRow className="hover:bg-transparent">
               <TableHead>Stage</TableHead>
               <TableHead className="text-right">Signed / Resolved</TableHead>
-              <TableHead className="w-40">Rate</TableHead>
-              <TableHead className="text-right">95% Interval</TableHead>
+              <TableHead className="w-40">
+                Rate
+                <InfoTooltip text="Approval falls as the debt service ratio rises — by construction, so the risk flag carries signal." />
+              </TableHead>
+              <TableHead className="text-right">
+                95% Interval
+                <InfoTooltip text="Wilson score interval at 95% confidence; wide bands mean few resolved cases." />
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -84,9 +91,6 @@ export function StageRatesCard({ stageRates }: { stageRates: StageRate[] }) {
             ))}
           </TableBody>
         </Table>
-        <p className="text-[13px] text-muted-foreground">
-          Approval Falls As The Debt Service Ratio Rises — By Construction, So The Risk Flag Carries Signal.
-        </p>
       </CardContent>
     </Card>
   )

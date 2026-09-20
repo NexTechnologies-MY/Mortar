@@ -55,4 +55,10 @@ describe('AppNav', () => {
 
     expect(screen.getAllByText('Bookings').length).toBeGreaterThan(0)
   })
+
+  it('does not carry the simulated-data badge; the seed and date live on /settings', () => {
+    renderNav()
+
+    expect(screen.queryByText(/Simulated Data/)).toBeNull()
+  })
 })
