@@ -36,16 +36,23 @@ describe('SiteShell', () => {
     expect(within(bar).getByRole('link', { name: 'Open Mortar' }).getAttribute('href')).toBe('/sign-in')
   })
 
-  it('keeps the footer to one row of real destinations', () => {
+  it('keeps the footer to labelled columns of real destinations', () => {
     renderAt('/')
     const footer = screen.getByRole('contentinfo')
     const href = (name: string) => within(footer).getByRole('link', { name }).getAttribute('href')
 
     expect(href('Mortar home')).toBe('/')
+    expect(href('Chase List')).toBe('/chase')
+    expect(href('Bookings')).toBe('/bookings')
+    expect(href('Forecast')).toBe('/forecast')
     expect(href('FAQ')).toBe('/faq')
     expect(href('Dashboard')).toBe('/app')
     expect(href('Design')).toBe(FIGMA_URL)
     expect(href('GitHub')).toBe(GITHUB_URL)
+
+    for (const column of ['Product', 'Company', 'Code']) {
+      expect(within(footer).getByRole('navigation', { name: column })).toBeTruthy()
+    }
   })
 
   it('opens the two off-site links in a new tab, safely', () => {
@@ -59,12 +66,14 @@ describe('SiteShell', () => {
     }
   })
 
-  it('closes with the year line and the simulated-data note', () => {
+  it('sets the year line directly under the brand lockup, with no bottom bar', () => {
     renderAt('/')
     const footer = screen.getByRole('contentinfo')
 
-    expect(within(footer).getByText(new RegExp(`© ${new Date().getFullYear()} Mortar`))).toBeTruthy()
-    expect(within(footer).getByText(/Simulated Data/)).toBeTruthy()
+    const lockup = within(footer).getByRole('link', { name: 'Mortar home' })
+    const copy = within(footer).getByText(`© ${new Date().getFullYear()} Mortar`)
+    expect(lockup.nextElementSibling).toBe(copy)
+    expect(within(footer).queryByText(/Internal Tool|Simulated Data/)).toBeNull()
   })
 
   it('lays the fixed footer under the opaque page column', () => {
