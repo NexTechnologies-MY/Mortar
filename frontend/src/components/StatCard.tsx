@@ -44,7 +44,12 @@ export function StatCard({ label, value, info, caption, tone = 'default', exact,
     <>
       <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
         {label}
-        {info ? <InfoTooltip text={info} /> : null}
+        {info ? (
+          // In a clickable tile the icon's own press must not also fire the tile's.
+          <span onClick={onClick ? (e) => e.stopPropagation() : undefined}>
+            <InfoTooltip text={info} />
+          </span>
+        ) : null}
       </p>
       {exact ? (
         <TooltipProvider>
@@ -67,14 +72,23 @@ export function StatCard({ label, value, info, caption, tone = 'default', exact,
   const tileClass = cn('flex min-w-60 flex-col gap-1 rounded-md border border-border bg-card p-4', className)
 
   if (onClick) {
+    // A div with button semantics: the info tooltip's trigger is itself a
+    // button, which may not nest inside a <button>.
     return (
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={onClick}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            onClick()
+          }
+        }}
         className={cn(tileClass, 'text-left transition-colors duration-[var(--motion-fast)] hover:bg-accent')}
       >
         {body}
-      </button>
+      </div>
     )
   }
 

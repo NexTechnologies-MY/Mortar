@@ -128,20 +128,20 @@ export function BookingsPage() {
       ) : (
         <>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard label="Live Bookings" value={String(stats.live)} exact="Unresolved, Booked Within 30 Days" />
+            <StatCard label="Live Bookings" value={String(stats.live)} info="Unresolved, booked within 30 days." />
             <StatCard
               label="Stalled"
               value={String(stats.stalled)}
-              exact="A Stall Reason Is Flagged"
+              info="Live bookings with a stall reason."
               tone={stats.stalled > 0 ? 'alert' : 'default'}
             />
             <StatCard
               label="Unknown"
               value={String(stats.unknown)}
-              exact="No Confirmed Evidence Recently"
+              info="No confirmed evidence for 10 or more days."
               tone={stats.unknown > 0 ? 'alert' : 'default'}
             />
-            <StatCard label="SPA Signed" value={String(stats.signed)} exact="Legally Sold" />
+            <StatCard label="SPA Signed" value={String(stats.signed)} info="Reached SPA signing — legally sold." />
           </div>
           <div className="mt-4">
             <BookingFilters filter={filter} onChange={applyFilter} shown={visible.length} total={rows.length} />
