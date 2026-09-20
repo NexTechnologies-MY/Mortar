@@ -190,30 +190,50 @@ One deployable and two shared libraries. A single Bun process serves `/api/*`
 and the built frontend, bookings live in Postgres, and the domain rules stay
 pure TypeScript in `@mortar/core`.
 
+The diagram is the whole stack, including the parts not built yet — **solid is
+shipped today, dashed is planned.**
+
+![Mortar technical stack architecture](assets/architecture.svg)
+
+<details>
+  <summary>Text version</summary>
+
 ```text
-Booking spreadsheet (the one the team already uses)
+Browser — React 19 SPA
+  SnapshotProvider derives every view through @mortar/core
         |
-        |  /import
+        |  GET /api/snapshot  ·  POST /api/* writes
         v
-+------------------------------------------+
-| Bun server — one process, one image      |
-|   @mortar/core  stages, risk, forecast   |
-|   @mortar/jev   proposals and playbooks  |
-+--------+---------------------------+-----+
-         |                           |
-         v                           v
-     Postgres                   frontend/dist
-     bookings, messages,        React views per persona:
-     tasks, Jev answers         /chase /bookings /legal
-                                /forecast /settings
+Google Cloud Run (asia-southeast1)
+        |
+        v
+Bun.serve — one process, server/src/index.ts
+  frontend/dist + SPA fallback  ·  /api/* (12 routes)
+        |
+        |             @mortar/jev ──> TypeSafe Jev (jev-latest)
+        |             key stays server-side, cache-first
+        v
+Neon PostgreSQL — Bun native SQL, pooled
+  bookings · loan_applications · events · messages
+  tasks · playbooks · jev_answers · meta
+
+@mortar/core is imported by the browser and the server alike,
+so a booking has one definition and never two.
 ```
 
-| Piece       | Runs      | Job                                                   |
-| ----------- | --------- | ----------------------------------------------------- |
-| `frontend/` | Built     | React 19 + Vite SPA, built to `frontend/dist`         |
-| `server/`   | Cloud Run | Bun API over Postgres; also serves `frontend/dist`    |
-| `packages/` | Imported  | `@mortar/core` domain rules, `@mortar/jev` AI service |
-| `docs/`     | Repo      | This file, the design spec, sources, agent notes      |
+</details>
+
+Editable source: [`assets/architecture.drawio`](assets/architecture.drawio) —
+open it at [draw.io](https://app.diagrams.net) and re-export the `.svg` and
+`.png` after any change.
+
+| Piece            | Runs                     | Job                                                       |
+| ---------------- | ------------------------ | --------------------------------------------------------- |
+| `frontend/`      | Built to `frontend/dist` | React 19 + Vite SPA, served by the Bun process            |
+| `server/`        | Cloud Run                | `Bun.serve`: static assets, `/api/*`, SQL schema on boot  |
+| `packages/core/` | Browser and server       | `@mortar/core`: contract types, domain rules, forecasting |
+| `packages/jev/`  | Server only              | `@mortar/jev`: TypeSafe Jev client, questions, fallbacks  |
+| `docs/`          | Repo                     | This file, the design spec, sources, agent notes          |
 
 Every push to `main` deploys automatically through GitHub Actions to Cloud Run
 in `asia-southeast1`, with keyless Workload Identity Federation.
