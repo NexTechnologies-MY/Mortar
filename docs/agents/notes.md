@@ -26,8 +26,9 @@ neither shows: conventions, the file map, and the gotchas.
 | Area           | Files                                                                                                                                                                                                                                                                                          |
 | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | App shell      | `frontend/src/App.tsx` (routes), `frontend/src/main.tsx` (providers), `frontend/src/components/layout/` (sidebar, nav, `AppFooter`, `PublicShell` (footer layout route for `/` and `/faq`), `AppShell`, `PageContainer`, `PageHeaderCard`, `AppErrorBoundary`, `ThemeToggle`, `PersonaSwitch`) |
-| Persona        | `frontend/src/lib/persona.tsx` (context, `PERSONAS`, `mortar.persona` localStorage key), `packages/core/src/index.ts` (`Persona` type)                                                                                                                                                         |
-| Pages          | `frontend/src/pages/` — one file per route (`LandingPage` with `components/HeroFilm`, `SignInPage`, `BookingsPage`, `BookingDetailPage`, `ChasePage`, `ForecastPage`, `ImportPage`, `NotFoundPage`)                                                                                            |
+| Ask            | `packages/core/src/brain/` (`askBrain`, `buildAskContext`, the scripted set and its grounding test), `frontend/src/components/brain/` (`AskTrigger` in `AppNav`, `AskPanel` in a Dialog), `frontend/public/ai-mascot*.png`                                                                     |
+| Persona        | `frontend/src/lib/persona.tsx` (context, `PERSONAS`, `mortar.persona` localStorage key, the retired-id migration), `packages/core/src/types.ts` (`Persona` type)                                                                                                                               |
+| Pages          | `frontend/src/pages/` — one file per route (`LandingPage` with `components/HeroFilm`, `SignInPage`, `BookingsPage`, `BookingDetailPage`, `ChasePage`, `LegalPage`, `ForecastPage`, `ImportPage`, `NotFoundPage`)                                                                               |
 | UI primitives  | `frontend/src/components/ui/` (shadcn: button, calendar, card, checkbox, dialog, drawer, DropdownMenu, input, label, popover, radio-group, select, separator, skeleton, table, tabs, tooltip + status-pill, EmptyState, InfoTooltip, LoadingOverlay, NotificationPopover, toastConfig)         |
 | Charts         | `frontend/src/components/charts/ChartTooltipContent.tsx` (recharts tooltip shell), `frontend/src/lib/formatters.ts` (MYR/number Intl formatters)                                                                                                                                               |
 | Hooks / stores | `frontend/src/hooks/useTheme.tsx`, `frontend/src/lib/notificationStore.ts`, `frontend/src/lib/utils.ts` (`cn`)                                                                                                                                                                                 |
@@ -60,9 +61,27 @@ neither shows: conventions, the file map, and the gotchas.
 - **The Sidebar Puts The Persona's Home First.** `AppSidebar` hoists the active
   persona's home route above `NAV_ITEMS`' canonical order; keep new routes in
   canonical order in `NAV_ITEMS`.
-- **There Is No Backend Or Auth.** The Vite dev proxy, TanStack Query, and
-  Better Auth were removed during scaffolding — don't re-add API calls until a
-  later stage defines them.
+- **Both Halves Of `/forecast` Read One Log.** `forecast()` projects forward and
+  `leakage()` counts backward, both from the same confirmed events in
+  `@mortar/core`, so what signed and what died cannot drift apart. Any recovery
+  estimate must carry its Wilson interval and its sample size on screen — the
+  second-bank rate is measured over single-digit resolved cases.
+- **`open` Is Not `live`.** `deriveCase` computes both. `live` adds
+  `ageDays < HORIZON_DAYS` (30) and is what the forecast counts; `open` is just
+  unsigned and not exited. Stall reasons derive from `open`, because gating them
+  on `live` hid every case that had sat longest — the ones most worth chasing.
+  Anything that reads `stallReasons` must filter on `open` (`isOpen` in
+  `brain/helpers.ts`), never `isLive`; `brain.test.ts` pins Ask's stalled set to
+  the chase list's so the two cannot drift apart again.
+- **Ask Answers Without A Model.** `packages/core/src/brain/` matches a typed
+  question to a scripted answer that counts the snapshot. The panel is Jev's —
+  staff ask Jev by name, and its tasks carry `origin: 'jev'` like a chase card's
+  — but no model runs, so nothing in the copy implies Jev wrote the answer.
+  Adding a question means adding an `answer` and the `predicate` that tests it.
+- **Keyword Score Alone Does Not Gate A Question.** "What is the weather"
+  out-scores a correct paraphrase, so `matchQuestion` ranks on how much of the
+  query was covered and treats the score as a floor. Widen `tags` rather than
+  lowering `MIN_COVERAGE`.
 - **localStorage Access Is Always Wrapped In try/catch** (`persona.tsx`,
   `notificationStore.ts`) because private-mode browsers can throw.
 - **`bun run --filter '*' <script>` Is How Root Scripts Fan Out** to workspaces;

@@ -2,8 +2,8 @@
 
 Mortar is an internal operations platform for Malaysian property developers that
 helps property unit bookings reach a verified Sale & Purchase Agreement (SPA).
-It unifies fragmented data across Sales, Loan Administration, Legal, and Finance
-into an evidence-backed case workflow with a daily chase queue, reviewed staff
+It unifies fragmented data across Sales, Loan Administration and Legal into an
+evidence-backed case workflow with a daily chase queue, reviewed staff
 playbooks, and a stage-weighted conversion forecast. All numbers in this
 document derive from industry research, an anonymous practitioner survey (n =
 5), and public regulatory data, evaluated on synthetic bookings.
@@ -105,28 +105,29 @@ and individual case files (`/bookings/:id`).
 - **Document Management:** Monitors outstanding checklists (payslips, EPF
   statements, employment letters, tax forms) to prevent submission delays.
 
-### Finance Operations
+### Legal Operations
 
-Finance executives manage liquidity, working capital projections, and panel
-solicitor performance. Finance Executive Arvind Raj anchors his workflow on the
-Forecast desk (`/forecast`).
+Legal administration owns the stretch from an accepted Letter of Offer to an
+executed agreement, working through a panel of external law firms it does not
+manage directly. Legal Admin Arvind Raj anchors his workflow on the Legal desk
+(`/legal`).
 
-- **Conversion Projections:** Replaces raw booking numbers with expected SPA
-  signings over a rolling 30-day horizon.
-- **Statistical Ranges:** Evaluates expected signings bounded by 10th to 90th
-  percentile Monte Carlo simulation intervals.
-- **Stage Conversion Benchmarks:** Audits stage-specific conversion rates
-  equipped with Wilson 95% confidence intervals and sample sizes.
-- **Model Governance:** Inspects backtest calibration tables and Brier scores,
-  stress-testing assumptions using seed adjustments.
+- **Execution Queue:** Lists every booking with an approved loan and no signed
+  SPA, oldest wait first.
+- **Elapsed Time As The Unit:** Reports days since approval and days since an
+  appointment was recorded, rather than a stage label that stops moving.
+- **Appointment Close-Out:** Separates cases never scheduled from cases
+  scheduled and never signed, because they are chased differently.
+- **Panel Load:** Shows the count, median wait and value sitting with each firm,
+  stated as load rather than as firm performance.
 
 ### Persona Comparison
 
-| Persona     | Representative Staff | Home Route  | Core Responsibility                       | Primary Value Delivered                                     |
-| ----------- | -------------------- | ----------- | ----------------------------------------- | ----------------------------------------------------------- |
-| Sales Admin | Nurul Aina           | `/chase`    | Works daily chase list of stuck bookings  | Surfaces each stall reason with a suggested next action     |
-| Loan Admin  | Tan Mei Ling         | `/bookings` | Oversees multi-bank mortgage applications | Flags applications undecided past the bank guideline window |
-| Finance     | Arvind Raj           | `/forecast` | Audits conversion probabilities and cash  | Produces stage-weighted projections with stated uncertainty |
+| Persona     | Representative Staff | Home Route  | Core Responsibility                       | Primary Value Delivered                                         |
+| ----------- | -------------------- | ----------- | ----------------------------------------- | --------------------------------------------------------------- |
+| Sales Admin | Nurul Aina           | `/chase`    | Works daily chase list of stuck bookings  | Surfaces each stall reason with a suggested next action         |
+| Loan Admin  | Tan Mei Ling         | `/bookings` | Oversees multi-bank mortgage applications | Flags applications undecided past the bank guideline window     |
+| Legal Admin | Arvind Raj           | `/legal`    | Runs the SPA execution queue              | Puts a clock on every case sitting between approval and signing |
 
 ## What Mortar Does
 

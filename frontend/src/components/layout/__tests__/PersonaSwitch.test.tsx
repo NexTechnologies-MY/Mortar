@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { PersonaProvider } from '@/lib/persona'
+import { PERSONA_STORAGE_KEY, PersonaProvider } from '@/lib/persona'
 import { PersonaSwitch } from '../PersonaSwitch'
 
 function renderSwitch() {
@@ -22,8 +22,8 @@ describe('PersonaSwitch', () => {
     const active = screen.getByRole('menuitem', { name: /Sales Admin/ })
     expect(active.querySelector('svg.lucide-check')).toBeTruthy()
 
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Finance' }))
-    expect(window.localStorage.getItem('mortar.persona')).toBe('finance')
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Legal Admin' }))
+    expect(window.localStorage.getItem(PERSONA_STORAGE_KEY)).toBe('legal-admin')
     window.localStorage.clear()
   })
 })

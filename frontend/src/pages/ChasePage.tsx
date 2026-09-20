@@ -139,7 +139,7 @@ export function ChasePage() {
       await postTask({
         bookingId,
         action: suggestion.action.value,
-        title: taskTitle(suggestion, booking, documentFor(bookingId)),
+        title: taskTitle(suggestion.action.value, booking, documentFor(bookingId)),
         ownerRole,
         ownerName: ownerName(ownerRole, booking),
         dueOn: dueOnForUrgency(suggestion.urgency.score, snapshot.meta.referenceDate),

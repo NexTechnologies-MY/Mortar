@@ -58,6 +58,8 @@ const summary = (overrides: Partial<CaseSummary> = {}): CaseSummary => ({
   unknown: false,
   bookingAgeDays: 12,
   daysSinceEvidence: 6,
+  daysSinceLoIssued: null,
+  daysSinceSpaSet: null,
   applications: [{ id: 'LA-1', bank: 'Fictional Bank A', status: 'documents_pending' }],
   outstandingDocuments: ['payslip'],
   risk: {

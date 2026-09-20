@@ -18,10 +18,10 @@ describe('persona context', () => {
 
   it('persists a persona switch to localStorage', () => {
     const { result } = renderHook(() => usePersona(), { wrapper })
-    act(() => result.current.setPersona('finance'))
-    expect(result.current.persona).toBe('finance')
-    expect(result.current.home).toBe('/forecast')
-    expect(window.localStorage.getItem(PERSONA_STORAGE_KEY)).toBe('finance')
+    act(() => result.current.setPersona('legal-admin'))
+    expect(result.current.persona).toBe('legal-admin')
+    expect(result.current.home).toBe('/legal')
+    expect(window.localStorage.getItem(PERSONA_STORAGE_KEY)).toBe('legal-admin')
   })
 
   it('restores a previously stored persona', () => {
@@ -29,6 +29,13 @@ describe('persona context', () => {
     const { result } = renderHook(() => usePersona(), { wrapper })
     expect(result.current.persona).toBe('loan-admin')
     expect(result.current.home).toBe('/bookings')
+  })
+
+  it('migrates the retired finance id to legal-admin', () => {
+    window.localStorage.setItem(PERSONA_STORAGE_KEY, 'finance')
+    const { result } = renderHook(() => usePersona(), { wrapper })
+    expect(result.current.persona).toBe('legal-admin')
+    expect(result.current.home).toBe('/legal')
   })
 
   it('falls back to the default when storage holds an unknown value', () => {

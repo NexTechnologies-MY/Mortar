@@ -8,6 +8,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
 import { PersonaSwitch } from '@/components/layout/PersonaSwitch'
 import { NotificationPopover } from '@/components/ui/NotificationPopover'
+import { AskTrigger } from '@/components/brain/AskTrigger'
 import { usePersona } from '@/lib/persona'
 import { ChevronRight, Home, Menu } from 'lucide-react'
 
@@ -16,6 +17,7 @@ type Crumb = { label: string; to?: string; icon?: React.ReactNode; short?: strin
 const ROUTE_LABELS: Record<string, string> = {
   '/bookings': 'Bookings',
   '/chase': 'Chase List',
+  '/legal': 'Legal',
   '/forecast': 'Forecast',
   '/import': 'Import',
   '/settings': 'Settings'
@@ -104,8 +106,9 @@ export function AppNav({ minimal, onMenuClick }: { minimal?: boolean; onMenuClic
           )}
         </div>
 
-        {/* Right — Notifications + Theme + Persona */}
+        {/* Right — Ask + Notifications + Theme + Persona */}
         <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+          <AskTrigger />
           <NotificationPopover />
           <ThemeToggle />
           <PersonaSwitch />

@@ -1,12 +1,16 @@
 /**
- * Forecast page — the Finance home desk. Expected SPA signings within 30 days
- * of booking, with a range; stage conversion rates with sample sizes and
- * Wilson intervals; the backtest; the assumptions panel; and Try Another
- * Seed, which reruns the simulation in the browser to show the spread.
+ * Forecast page — the shared projection, homed to no one desk. Two halves of
+ * the same question. Forward: expected SPA signings within 30 days of booking,
+ * with a range, stage conversion rates with sample sizes and Wilson intervals,
+ * the backtest, the assumptions panel, and Try Another Seed. Backward: where
+ * bookings died ranked by what they cost, and the recoverable share of it.
+ *
+ * Both halves read the same event log through `@mortar/core`, so the count of
+ * what signed and the count of what did not cannot drift apart.
  */
 import { useMemo, useState } from 'react'
 import { SearchX } from 'lucide-react'
-import { HORIZON_DAYS, backtest, forecast } from '@mortar/core'
+import { HORIZON_DAYS, backtest, forecast, leakage } from '@mortar/core'
 import { useSnapshot } from '@/lib/data'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { PageHeaderCard } from '@/components/layout/PageHeaderCard'
@@ -16,6 +20,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { StageRatesCard } from '@/components/forecast/StageRatesCard'
 import { BacktestCard } from '@/components/forecast/BacktestCard'
 import { AssumptionsCard } from '@/components/forecast/AssumptionsCard'
+import { LeakageCard } from '@/components/forecast/LeakageCard'
+import { RecoveryCard } from '@/components/forecast/RecoveryCard'
 import { SeedSpreadCard, type SeedRun } from '@/components/forecast/SeedSpreadCard'
 import { addDays, altDataset, datasetFor } from '@/components/forecast/forecast'
 
@@ -31,6 +37,7 @@ export function ForecastPage() {
     return {
       asOf,
       forecast: forecast(data, asOf, { seed: snapshot.meta.seed }),
+      leakage: leakage(data, asOf),
       backtest: backtest(data, addDays(asOf, -HORIZON_DAYS))
     }
   }, [snapshot])
@@ -52,7 +59,8 @@ export function ForecastPage() {
       <PageHeaderCard>
         <h1 className="text-[32px] font-semibold leading-[1.16] tracking-[-0.02em] text-foreground">Forecast</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          The SPAs You Can Bank On: Expected Signings Within 30 Days Of Booking, With A Range.
+          The SPAs You Can Bank On, And The Ones You Already Lost: Expected Signings Within 30 Days, Then Where Bookings
+          Died And What Was Recoverable.
         </p>
       </PageHeaderCard>
 
@@ -84,6 +92,11 @@ export function ForecastPage() {
               value={String(result.forecast.liveBookings)}
               info="Unsigned and under 30 days old."
             />
+          </div>
+
+          <div className="mt-4 grid items-start gap-4 xl:grid-cols-2 [&>*]:min-w-0">
+            <LeakageCard leakage={result.leakage} />
+            <RecoveryCard leakage={result.leakage} />
           </div>
 
           <div className="mt-4 grid gap-4 xl:grid-cols-2 [&>*]:min-w-0">

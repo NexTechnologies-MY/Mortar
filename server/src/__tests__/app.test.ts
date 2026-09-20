@@ -13,6 +13,8 @@ const SUMMARY: realCore.CaseSummary = {
   unknown: false,
   bookingAgeDays: 16,
   daysSinceEvidence: 6,
+  daysSinceLoIssued: null,
+  daysSinceSpaSet: null,
   applications: [{ id: 'APP-9001-1', bank: 'Apex Bank', status: 'documents_pending' }],
   outstandingDocuments: ['payslip'],
   risk: {

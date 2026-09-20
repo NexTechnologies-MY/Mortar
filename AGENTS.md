@@ -7,8 +7,8 @@ calls for them.
 ## Project
 
 Mortar is an internal operations tool for a Malaysian property developer. Sales,
-loan, and finance staff track every unit booking until the Sale & Purchase
-Agreement (SPA) is signed.
+loan administration, and legal staff track every unit booking until the Sale &
+Purchase Agreement (SPA) is signed.
 
 The app is used as one of three personas, switched in the header and persisted
 in `localStorage` under `mortar.persona`:
@@ -17,11 +17,12 @@ in `localStorage` under `mortar.persona`:
 | ----------- | ----------- |
 | Sales Admin | `/chase`    |
 | Loan Admin  | `/bookings` |
-| Finance     | `/forecast` |
+| Legal Admin | `/legal`    |
 
 Routes: `/` (landing), `/sign-in` (no real auth), `/app` (redirects to the
 active persona's home), `/bookings` (list), `/bookings/:id` (detail), `/chase`
-(follow-ups), `/forecast` (projected signings), `/import` (spreadsheet intake).
+(follow-ups), `/legal` (SPA execution queue), `/forecast` (projected signings),
+`/import` (spreadsheet intake).
 
 ## Stack
 

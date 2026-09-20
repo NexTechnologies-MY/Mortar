@@ -3,7 +3,7 @@ import type { Persona } from './index'
 
 describe('Persona', () => {
   it('covers the three staff personas', () => {
-    const personas: Persona[] = ['sales-admin', 'loan-admin', 'finance']
+    const personas: Persona[] = ['sales-admin', 'loan-admin', 'legal-admin']
     expect(personas).toHaveLength(3)
   })
 })

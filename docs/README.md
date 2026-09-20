@@ -7,7 +7,7 @@
 
   <p>
     <b>Know which bookings will really become sales.</b><br />
-    One live view of every booking across Sales, Loan Admin and Finance — a
+    One live view of every booking across Sales, Loan Admin and Legal — a
     daily chase list for the stuck ones, and a cash forecast that only counts
     bookings likely to sign.
   </p>
@@ -105,31 +105,32 @@ The funnel runs from booking fee to bank disbursement:
 5. Loan agreement (panel solicitor)
 6. Bank disburses progressively
 
-Sales, Credit/Loan Admin, Legal and Finance each hold one slice of that funnel
-and no existing tool shows the whole. Mortar's input is the booking spreadsheet
-the team already maintains — intake, not migration — and its rules push a daily
+Sales, Credit/Loan Admin and Legal each hold one slice of that funnel and no
+existing tool shows the whole. Mortar's input is the booking spreadsheet the
+team already maintains — intake, not migration — and its rules push a daily
 chase list instead of waiting for somebody to open a report.
 
 The app is used as three personas, switched in the header and persisted in
 `localStorage`:
 
-| Persona     | Home Route  | Job                                            |
-| ----------- | ----------- | ---------------------------------------------- |
-| Sales Admin | `/chase`    | Works the daily chase list of stuck bookings   |
-| Loan Admin  | `/bookings` | Tracks loan and banker status across bookings  |
-| Finance     | `/forecast` | Reads the risk-weighted projection of signings |
+| Persona     | Home Route  | Job                                                        |
+| ----------- | ----------- | ---------------------------------------------------------- |
+| Sales Admin | `/chase`    | Works the daily chase list of stuck bookings               |
+| Loan Admin  | `/bookings` | Tracks loan and banker status across bookings              |
+| Legal Admin | `/legal`    | Works the queue of unsigned SPAs by how long they have sat |
 
-| Route           | Purpose                                                       |
-| --------------- | ------------------------------------------------------------- |
-| `/`             | Public landing page                                           |
-| `/sign-in`      | Persona picker, no real authentication                        |
-| `/app`          | Redirects to the active persona's home                        |
-| `/bookings`     | Every live booking with stage and risk flags                  |
-| `/bookings/:id` | Stage timeline and missing-document checklist for one booking |
-| `/chase`        | Who to chase today, with WhatsApp click-to-chat links         |
-| `/forecast`     | Each booking weighted by its stage's conversion rate          |
-| `/import`       | Spreadsheet intake                                            |
-| `/faq`          | FAQ                                                           |
+| Route           | Purpose                                                           |
+| --------------- | ----------------------------------------------------------------- |
+| `/`             | Public landing page                                               |
+| `/sign-in`      | Persona picker, no real authentication                            |
+| `/app`          | Redirects to the active persona's home                            |
+| `/bookings`     | Every live booking with stage and risk flags                      |
+| `/bookings/:id` | Stage timeline and missing-document checklist for one booking     |
+| `/chase`        | Who to chase today, with WhatsApp click-to-chat links             |
+| `/legal`        | Approved loans with no signed SPA, longest wait first             |
+| `/forecast`     | What will sign, then where bookings died and what was recoverable |
+| `/import`       | Spreadsheet intake                                                |
+| `/faq`          | FAQ                                                               |
 
 <p align="right"><a href="#readme-top">&uarr;</a></p>
 
@@ -139,14 +140,14 @@ The app is used as three personas, switched in the header and persisted in
 
 Measured, not estimated.
 
-|                               |       |
-| ----------------------------- | ----- |
-| Live routes                   | **9** |
-| Personas                      | **3** |
-| Funnel stages tracked         | **6** |
-| Shared packages               | **1** |
-| Backend services              | **0** |
-| Real buyer records in the app | **0** |
+|                               |        |
+| ----------------------------- | ------ |
+| Live routes                   | **10** |
+| Personas                      | **3**  |
+| Funnel stages tracked         | **6**  |
+| Shared packages               | **1**  |
+| Backend services              | **0**  |
+| Real buyer records in the app | **0**  |
 
 The shell, routes, and persona switch are built and deployed; the screens walk
 the primary flows on synthetic bookings. The `@mortar/core` domain rules — stage

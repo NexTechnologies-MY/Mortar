@@ -94,6 +94,10 @@ export interface CaseFacts {
   /** Age in days when the terminal event was confirmed; `null` while running. */
   terminalAge: number | null
   signedOn: IsoDate | null
+  /** First confirmed `loan_approved`: when the case entered the legal waiting room. */
+  loIssuedOn: IsoDate | null
+  /** First confirmed `spa_appointment_set`; `null` while no appointment is on record. */
+  spaAppointmentSetOn: IsoDate | null
   /** Age in days when each funnel rank was first reached; `null` = never. */
   enteredAges: (number | null)[]
   /** Latest confirmed event's recordedAt; `null` when nothing is confirmed. */
@@ -102,6 +106,12 @@ export interface CaseFacts {
   ageDays: number
   exists: boolean
   live: boolean
+  /**
+   * Still in play: booked, not signed, not exited. Unlike `live` there is no
+   * age ceiling, so a case that has sat past the horizon stays visible. Stall
+   * rules read this; the forecast reads `live`.
+   */
+  open: boolean
   resolved: boolean
   signedWithinHorizon: boolean
   applications: ApplicationFacts[]
@@ -184,6 +194,8 @@ export function deriveCase(
   let terminal: 'cancelled' | 'lapsed' | null = null
   let terminalAge: number | null = null
   let signedOn: IsoDate | null = null
+  let loIssuedOn: IsoDate | null = null
+  let spaAppointmentSetOn: IsoDate | null = null
   let lastEvidenceOn: IsoDate | null = null
   for (const e of confirmed) {
     const day = dateOf(e.occurredAt)
@@ -199,6 +211,8 @@ export function deriveCase(
       if (r > rank) rank = r
     }
     if (e.kind === 'spa_signed' && signedOn === null) signedOn = day
+    if (e.kind === 'loan_approved' && loIssuedOn === null) loIssuedOn = day
+    if (e.kind === 'spa_appointment_set' && spaAppointmentSetOn === null) spaAppointmentSetOn = day
     if ((e.kind === 'cancelled' || e.kind === 'lapsed') && terminal === null) {
       terminal = e.kind
       terminalAge = diffDays(booking.bookingDate, day)
@@ -212,7 +226,8 @@ export function deriveCase(
   const withdrawn = terminal !== null || confirmed.some((e) => e.kind === 'buyer_withdrew')
   const daysSinceEvidence = lastEvidenceOn === null ? Math.max(0, ageDays) : diffDays(lastEvidenceOn, asOf)
   const signedWithinHorizon = signedOn !== null && diffDays(booking.bookingDate, signedOn) <= horizonDays
-  const live = exists && signedOn === null && terminal === null && ageDays < horizonDays
+  const open = exists && signedOn === null && terminal === null
+  const live = open && ageDays < horizonDays
   const resolved = exists && !live
   return {
     booking,
@@ -221,12 +236,15 @@ export function deriveCase(
     terminal,
     terminalAge,
     signedOn,
+    loIssuedOn,
+    spaAppointmentSetOn,
     enteredAges,
     lastEvidenceOn,
     daysSinceEvidence,
     ageDays,
     exists,
     live,
+    open,
     resolved,
     signedWithinHorizon,
     applications: applications.map((app) => deriveApplication(app, confirmed, withdrawn)),
@@ -249,11 +267,17 @@ export function summarizeCases(data: CaseDataInput, asOf: IsoDate, assumptions: 
   const staleDays = value('staleEvidenceDays')
   const docStallDays = value('documentStallDays')
   const undecidedWorkDays = value('undecidedStallWorkDays')
+  const spaScheduleDays = value('spaSchedulingStallDays')
+  const spaSignDays = value('spaSigningStallDays')
   const unknownDays = value('unknownAfterDays')
   return data.bookings.map((booking) => {
     const facts = deriveCase(booking, appsByBooking.get(booking.id) ?? [], eventsByBooking.get(booking.id) ?? [], asOf)
+    const daysSinceLoIssued = facts.loIssuedOn === null ? null : diffDays(facts.loIssuedOn, asOf)
+    const daysSinceSpaSet = facts.spaAppointmentSetOn === null ? null : diffDays(facts.spaAppointmentSetOn, asOf)
+    // Stalls read `open`, not `live`: a case that has sat past the horizon is
+    // the one most worth chasing, and gating on `live` hid it entirely.
     const stallReasons: string[] = []
-    if (facts.live) {
+    if (facts.open) {
       if (facts.daysSinceEvidence >= staleDays) {
         stallReasons.push(`No Update For ${facts.daysSinceEvidence} Days`)
       }
@@ -266,6 +290,17 @@ export function summarizeCases(data: CaseDataInput, asOf: IsoDate, assumptions: 
         if (app.pendingSince !== null) {
           const wd = workDaysBetween(app.pendingSince, asOf)
           if (wd >= undecidedWorkDays) stallReasons.push(`Bank Has Not Decided After ${wd} Working Days`)
+        }
+      }
+      // The legal waiting room: approved, unsigned, and either never scheduled
+      // or scheduled and left sitting.
+      if (facts.stage === 'lo_issued') {
+        if (daysSinceSpaSet !== null) {
+          if (daysSinceSpaSet >= spaSignDays) {
+            stallReasons.push(`SPA Set ${daysSinceSpaSet} Days Ago, Still Unsigned`)
+          }
+        } else if (daysSinceLoIssued !== null && daysSinceLoIssued >= spaScheduleDays) {
+          stallReasons.push(`SPA Not Scheduled ${daysSinceLoIssued} Days After LO`)
         }
       }
       if (facts.disputedCount > 0) stallReasons.push('Disputed Evidence Awaits Review')
@@ -290,6 +325,8 @@ export function summarizeCases(data: CaseDataInput, asOf: IsoDate, assumptions: 
       unknown: facts.live && facts.daysSinceEvidence >= unknownDays,
       bookingAgeDays: facts.ageDays,
       daysSinceEvidence: facts.daysSinceEvidence,
+      daysSinceLoIssued,
+      daysSinceSpaSet,
       applications: facts.applications.map((a) => ({ id: a.id, bank: a.bank, status: a.status })),
       outstandingDocuments: facts.outstandingDocuments.map((d) => d.document),
       risk,
