@@ -1,0 +1,54 @@
+# Narration is keyed to beats measured by record.mjs and assemble.sh:
+# beat | offset_ms | text
+#
+# Keep one visible claim per line. manifest.py records the next visual boundary,
+# schedule.py rejects any voice line that crosses it, and subtitles.py derives
+# the on-screen words from the same manifest. Small offsets let the scheduler
+# pack lines 260ms apart; the fit pass in assemble.sh trims picture after the
+# last line of each beat so no gap outlives the voice.
+#
+# Swapping in the final voice: replace $DEMO_DIR/seg/0.wav .. n-1.wav in the
+# order below and re-run `DEMO_SEGMENTS=external bash narrate.sh`, then
+# `bash assemble.sh`. Longer reads may cross a visual beat; schedule.py says so.
+
+s01 | 150 | A launch is called a success the day the bookings are counted.
+s01 | 100 | Months later, some of those units still have not sold, and nobody could say which ones were in trouble while there was still time to act.
+s01 | 100 | This is the gap between a booking and a sale, and it is where the money goes missing.
+s02 | 150 | The unit sits off the market for weeks. The marketing spend is gone.
+s02 | 100 | And the cash the business planned around never arrives.
+s02 | 100 | It looked like demand held. It did not. The booking simply never became a sale.
+s02 | 100 | By the time anyone notices, the unit has been off the market for months.
+s02 | 100 | Every week of that is carrying cost with nothing to show for it.
+s04 | 150 | We asked the people who do this work. Five of five named the buyer's financing as the biggest cause. Four of five said bookings stall at the bank's credit check.
+s04 | 100 | And the same status lives in a CRM, a spreadsheet and an email thread at once.
+s04 | 100 | Ask where a booking stands and the honest answer is: it depends who you ask.
+s04 | 100 | The stall is nobody's fault, so it becomes nobody's job.
+s04 | 100 | Five desks can hold five versions of the truth.
+s05 | 150 | Mortar is one shared record for every booking, from deposit to signed agreement.
+s05 | 100 | It names the blocker, and who must act.
+s05 | 100 | Every message, every document, every signature lands on one timeline.
+s05 | 100 | When a booking stalls, the stall has a name, an owner, and a clock.
+s05 | 100 | From the first deposit to the last signature.
+chase_queue | 150 | The sales desk starts the day on the chase list: every stalled booking, its blocker in plain words, and who to chase today.
+chase_task | 150 | One click turns the suggested action into a task, with an owner and a due date.
+case_overview | 150 | The case file keeps the loan and legal tracks side by side, every update with a name on it: who reported it, and who verified it.
+case_risk | 150 | The financing flag shows its working: debt service, margin, monthly instalment, and the reasons underneath.
+banker_message | 150 | The banker writes half in Malay, half in English. Mortar reads it: a payslip is missing, and sales should chase it.
+doc_pending | 150 | A person confirms, and the missing payslip lands on the case.
+buyer_reply | 150 | Paste the buyer's Malay reply. The answer comes back in under a second: the payslip has arrived.
+case_cleared | 150 | Confirm it, and the case clears.
+playbooks | 150 | The playbook ranks what has worked on this kind of blocker, written by staff who have done it.
+stale_unknown | 150 | A booking whose updates have gone stale reads as unknown, never as progressing or failed.
+legal_persona | 150 | The legal desk sees the same record as a queue of cases waiting on signing.
+forecast | 150 | And the forecast: how many of these bookings sign within thirty days, with a range, checked against what actually happened.
+s10 | 150 | It reads the messages and proposes. A person confirms. And the forecast is arithmetic over what was confirmed.
+s10 | 100 | The system reads, drafts and proposes. The decision stays with the desk.
+s10 | 100 | Confirmed facts flow into the forecast. Nothing else does.
+s10 | 100 | So the number on screen is earned, not estimated.
+s17 | 150 | The one number that matters: the share of bookings that sign a verified agreement within thirty days.
+s17 | 100 | That is the number the pilot is judged on, and the number this record is built to move.
+s17 | 100 | Everything else on screen is a means to that signature.
+s18 | 150 | The pilot: one project, one administrator, twelve weeks, measured.
+s18 | 100 | We count what the record caught early, and what it carried to signing.
+s20 | 150 | Mortar. Every booking, one record, no silent stalls.
+s20 | 100 | Booked is not sold. Signed is.
