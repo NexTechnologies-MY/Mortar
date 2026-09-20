@@ -4,7 +4,10 @@
    so the footer is only uncovered at the document's end. */
 :root {
   --footer-h: 196px;
-  --footer: var(--color-paper-300);
+  /* White, matching the page. The hairline on the footer element is what marks
+     the seam once the page column slides off it; a grey band read as an empty
+     tray under the content. */
+  --footer: var(--color-paper-0);
 }
 
 @media (min-width: 720px) {

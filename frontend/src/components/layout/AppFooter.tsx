@@ -1,7 +1,9 @@
 /**
  * Site footer content — Perch's `.foot-inner`, ported for Mortar.
  * SiteShell emits the fixed <footer> element; this renders the brand lockup,
- * tagline, and the four links inside it. No year line, no top border.
+ * tagline, and the four links inside it, left-aligned to the page gutter.
+ * No year line. The hairline above the footer is set on the element in
+ * SiteShell, since the footer ground is now the same white as the page.
  */
 
 import { Link } from 'react-router-dom'
@@ -20,16 +22,16 @@ const FOOTER_LINKS: { label: string; to: string; external?: boolean }[] = [
 
 const LINK_CLASS = 'foot-link text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground no-underline'
 
-/** Renders the footer's inner grid: brand, tagline, links. Right-aligned from 720px up. */
+/** Renders the footer's inner grid: brand, tagline, links, left-aligned to the page gutter. */
 export function AppFooter() {
   return (
-    <div className="mx-auto grid h-full max-w-[1040px] content-center gap-3 px-6 min-[720px]:justify-items-end min-[720px]:px-12 min-[720px]:text-right">
+    <div className="grid h-full content-center gap-3 px-6 min-[720px]:px-12">
       <Link to="/" aria-label="Mortar home" className="inline-flex items-center gap-2 text-foreground no-underline">
         <MortarMark size={28} />
         <span className="text-base font-semibold">Mortar</span>
       </Link>
       <p className="max-w-[40ch] text-sm text-muted-foreground">A Booking Is A Promise. The Signed SPA Is The Sale.</p>
-      <div className="flex flex-wrap gap-x-6 gap-y-2 min-[720px]:justify-end">
+      <div className="flex flex-wrap gap-x-6 gap-y-2">
         {FOOTER_LINKS.map((l) =>
           l.external ? (
             <a key={l.label} href={l.to} target="_blank" rel="noopener noreferrer" className={LINK_CLASS}>
