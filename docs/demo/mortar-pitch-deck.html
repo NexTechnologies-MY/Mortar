@@ -1355,6 +1355,45 @@
         object-fit: cover;
         display: block;
       }
+      .ty-links {
+        position: absolute;
+        right: 48px;
+        bottom: 48px;
+        left: 48px;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 22px;
+        padding: 24px;
+        background: #141414;
+      }
+      .ty-link {
+        display: grid;
+        justify-items: center;
+        gap: 8px;
+        color: #fafafa;
+        text-align: center;
+        text-decoration: none;
+      }
+      .ty-link img {
+        position: static;
+        width: 200px;
+        height: 200px;
+        background: #ffffff;
+        object-fit: contain;
+      }
+      .ty-link-label {
+        font-size: 24px;
+        font-weight: 600;
+        line-height: 1.2;
+      }
+      .ty-link-url {
+        max-width: 30ch;
+        color: rgba(250, 250, 250, 0.62);
+        font-family: 'Geist Mono', ui-monospace, monospace;
+        font-size: 14px;
+        line-height: 1.35;
+        overflow-wrap: anywhere;
+      }
 
       .foot-line {
         margin-top: auto;
@@ -2457,6 +2496,30 @@
           </div>
           <div class="ty-art">
             <img src="assets/art-close.webp" alt="Closing artwork" />
+            <div class="ty-links" aria-label="Mortar links">
+              <a
+                class="ty-link"
+                href="https://github.com/NexTechnologies-MY/Mortar"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Open the Mortar source code on GitHub"
+              >
+                <img class="ty-link-qr" src="assets/qr-github.svg" alt="QR code for the Mortar GitHub repository" />
+                <span class="ty-link-label">Source Code</span>
+                <span class="ty-link-url">github.com/NexTechnologies-MY/Mortar</span>
+              </a>
+              <a
+                class="ty-link"
+                href="https://mortar-ppdggwxxjq-as.a.run.app"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Open the live Mortar demo"
+              >
+                <img class="ty-link-qr" src="assets/qr-live.svg" alt="QR code for the live Mortar demo" />
+                <span class="ty-link-label">Live Demo</span>
+                <span class="ty-link-url">mortar-ppdggwxxjq-as.a.run.app</span>
+              </a>
+            </div>
           </div>
         </div>
       </section>
