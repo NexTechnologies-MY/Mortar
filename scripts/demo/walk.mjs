@@ -75,7 +75,9 @@ export async function walk({ page, mark: captureMark, beat, filmed, WEB }) {
   await page.addInitScript(() => {
     try {
       window.localStorage.setItem('mortar.persona', 'sales-admin')
-    } catch {}
+    } catch {
+      // Privacy modes may deny localStorage; the walkthrough still tests the current persona.
+    }
   })
 
   // 1. `/chase` as Sales Admin -- the morning queue. BK-9001 leads it because a

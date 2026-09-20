@@ -40,6 +40,15 @@ export default [
       'no-debugger': 'error'
     }
   },
+  {
+    files: ['scripts/demo/motion.mjs', 'scripts/demo/walk.mjs', 'scripts/demo/slides/render.mjs'],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+        ...globals.browser
+      }
+    }
+  },
   ...tseslint.configs.recommended.map((config) => ({
     ...config,
     files: typescriptFiles
