@@ -1,71 +1,66 @@
 /**
- * Landing page tests. jsdom lacks matchMedia (the theme hook calls it) and
- * requestAnimationFrame (the theme's class flip), so the hoisted block stubs
- * the browser floor before the imports evaluate — matchMedia answers false, so
- * the resolved theme is light.
+ * Landing page tests. The page carries no interactive chrome — the theme
+ * switch lives in the app shell only — so it renders under MemoryRouter alone.
  */
-import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { describe, expect, it } from 'vitest'
+import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { ThemeProvider } from '@/hooks/useTheme'
 import { LandingPage } from '@/pages/LandingPage'
-
-vi.hoisted(() => {
-  window.matchMedia = (query: string) =>
-    ({
-      matches: false,
-      media: query,
-      onchange: null,
-      addListener: () => {},
-      removeListener: () => {},
-      addEventListener: () => {},
-      removeEventListener: () => {},
-      dispatchEvent: () => false
-    }) as unknown as MediaQueryList
-  window.requestAnimationFrame = (callback: FrameRequestCallback) => window.setTimeout(callback, 0)
-})
 
 const renderLanding = () =>
   render(
     <MemoryRouter initialEntries={['/']}>
-      <ThemeProvider>
-        <LandingPage />
-      </ThemeProvider>
+      <LandingPage />
     </MemoryRouter>
   )
 
 describe('landing page', () => {
-  beforeEach(() => {
-    window.localStorage.clear()
-  })
-
-  it('offers the theme switch on the landing page, named for the theme it will set', () => {
+  it('states the claim', () => {
     renderLanding()
-    expect(screen.getByRole('button', { name: 'Switch to the dark theme' })).toBeTruthy()
+    expect(screen.getByRole('heading', { level: 1, name: /Booked Is Not Sold/ })).toBeTruthy()
   })
 
-  it('names the three surfaces as the three features', () => {
+  it('carries no buttons — the theme switch lives in the app shell only', () => {
+    renderLanding()
+    expect(screen.queryByRole('button')).toBeNull()
+  })
+
+  it('walks the three moments: the stall, the update, the forecast', () => {
+    renderLanding()
+    expect(screen.getByRole('heading', { name: 'The Stuck Booking, Found' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'A Message Becomes A Confirmed Update' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'A Number Finance Can Sign Off' })).toBeTruthy()
+  })
+
+  it('anchors the hero and each moment to a real screenshot, captioned as simulated data', () => {
     const { container } = renderLanding()
-    const desks = within(container.querySelector<HTMLElement>('.land-desks')!)
-    expect(desks.getByRole('heading', { name: 'Chase List' })).toBeTruthy()
-    expect(desks.getByRole('heading', { name: 'Bookings' })).toBeTruthy()
-    expect(desks.getByRole('heading', { name: 'Forecast' })).toBeTruthy()
+    const shots = [...container.querySelectorAll<HTMLElement>('.land-shot')]
+
+    expect(shots).toHaveLength(4)
+    for (const shot of shots) {
+      // Every capture ships in both themes; CSS paints the active one.
+      expect(shot.querySelectorAll('img').length).toBeGreaterThanOrEqual(2)
+      expect(shot.querySelector('.land-cap')?.textContent).toMatch(/Simulated data/i)
+    }
   })
 
-  it('keeps the page to a single primary action, which sits below the claim rather than in the header', () => {
+  it('keeps the hero to exactly one viewport and gives a deliberate cue past it', () => {
     const { container } = renderLanding()
-    const head = within(container.querySelector<HTMLElement>('.land-head')!)
-    expect(head.queryAllByRole('link')).toHaveLength(0)
-    expect(screen.getAllByRole('link')).toHaveLength(1)
+
+    expect(container.querySelector('.land-hero')).toBeTruthy()
+    expect(container.querySelector('#land-story')).toBeTruthy()
+    const cue = screen.getByRole('link', { name: 'The Work' })
+    expect(cue.getAttribute('href')).toBe('#land-story')
   })
 
-  it('leads to sign-in as the only way in', () => {
+  it('leads to sign-in as the only call to action', () => {
     renderLanding()
-    expect(screen.getByRole('link', { name: 'Open Mortar' }).getAttribute('href')).toBe('/sign-in')
-  })
+    const ctas = screen.getAllByRole('link', { name: 'Open Mortar' })
 
-  it('marks the sample ledger as an illustration so its figures are not read as the real book', () => {
-    renderLanding()
-    expect(screen.getByText(/These figures are illustrative/i)).toBeTruthy()
+    expect(ctas).toHaveLength(2)
+    for (const cta of ctas) {
+      expect(cta.getAttribute('href')).toBe('/sign-in')
+    }
+    expect(screen.getByRole('link', { name: 'Read The FAQ' }).getAttribute('href')).toBe('/faq')
   })
 })

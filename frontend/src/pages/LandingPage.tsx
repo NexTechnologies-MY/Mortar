@@ -1,190 +1,192 @@
 /**
- * The public landing. It leads with the claim, then shows the product rather
- * than describing it: a sample of the Bookings ledger on the one chromatic
- * surface Mortar allows, and the three desks beneath it. The site footer below
- * the desks is owned by PublicShell.
+ * The public landing — product-led, the way Mortar sells itself internally.
+ * The hero is exactly one viewport: the claim on one side, a real capture of
+ * the Chase List on the other, and a deliberate cue to scroll. Below the fold
+ * a short narrative walks the three moments that matter — the stuck booking
+ * found, the message turned into a confirmed update, the forecast Finance can
+ * sign off — each anchored to a screenshot captured from the running app, not
+ * an illustration. It closes on the one measure Mortar is judged by.
  *
- * The ledger below is a fixed illustration, not live data. It is labelled as
- * an example for assistive technology so the figures are never mistaken for a
- * reading of the real book.
+ * Every image is a real screenshot of the prototype on its simulated book.
+ * Because the theme is a class on <html> rather than a media query, each
+ * figure carries a light and a dark copy of the same capture and CSS picks the
+ * one to paint; the dark copy is decorative duplication, so it is hidden from
+ * assistive technology. The hero adds a phone-width capture for small screens.
  */
+import { ArrowDown } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { Moon, Sun } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { StatusPill } from '@/components/ui/status-pill'
-import { MortarMark } from '@/components/brand/MortarMark'
-import { useTheme } from '@/hooks/useTheme'
 import './LandingPage.css'
 
-/** One row of the illustrative ledger. Fixed copy, never fetched. */
-type Row = {
-  id: string
-  unit: string
-  buyer: string
-  age: string
-  /** True when the booking has sat long enough that the age itself is the warning. */
-  stale?: boolean
-  stage: { tone: 'info' | 'signed'; label: string }
-  evidence: { tone: 'warning' | 'positive'; label: string }
-  risk: { tone: 'danger' | 'warning' | 'positive'; label: string }
-  owner: string
+type ShotProps = {
+  /** Basename under /public/landing — the files are `<base>-light.webp` and `<base>-dark.webp`. */
+  base: string
+  /** Phone-width basenames, shown under 720px when the desktop crop would scale to nothing. */
+  mobileBase?: string
+  /** Natural dimensions of the desktop captures, for aspect ratio before load. */
+  width: number
+  height: number
+  /** Natural dimensions of the mobile captures. */
+  mobileWidth?: number
+  mobileHeight?: number
+  alt: string
+  caption: string
+  className?: string
 }
 
-const ROWS: Row[] = [
-  {
-    id: 'BK-0043',
-    unit: 'C-13-03',
-    buyer: 'Ahmad Farid',
-    age: '18 d',
-    stale: true,
-    stage: { tone: 'info', label: 'With Bank' },
-    evidence: { tone: 'warning', label: 'Unknown' },
-    risk: { tone: 'danger', label: 'High Risk' },
-    owner: 'Nurul Aina'
-  },
-  {
-    id: 'BK-9007',
-    unit: 'B-21-03A',
-    buyer: 'Dinesh Kumar a/l Selvam',
-    age: '17 d',
-    stale: true,
-    stage: { tone: 'info', label: 'With Bank' },
-    evidence: { tone: 'warning', label: 'Unknown' },
-    risk: { tone: 'positive', label: 'Low Risk' },
-    owner: 'Nurul Aina'
-  },
-  {
-    id: 'BK-0070',
-    unit: 'A-28-05',
-    buyer: 'Wong Zhi Xuan',
-    age: '14 d',
-    stale: true,
-    stage: { tone: 'info', label: 'With Bank' },
-    evidence: { tone: 'positive', label: 'Fresh' },
-    risk: { tone: 'warning', label: 'Medium Risk' },
-    owner: 'Tan Mei Ling'
-  },
-  {
-    id: 'BK-0023',
-    unit: 'B-24-01',
-    buyer: 'Intan Suraya',
-    age: '10 d',
-    stage: { tone: 'info', label: 'With Bank' },
-    evidence: { tone: 'positive', label: 'Fresh' },
-    risk: { tone: 'positive', label: 'Low Risk' },
-    owner: 'Tan Mei Ling'
-  },
-  {
-    id: 'BK-0112',
-    unit: 'A-09-02',
-    buyer: 'Lim Wei Lun',
-    age: '6 d',
-    stage: { tone: 'signed', label: 'SPA Signed' },
-    evidence: { tone: 'positive', label: 'Fresh' },
-    risk: { tone: 'positive', label: 'Low Risk' },
-    owner: 'Arvind Raj'
-  }
-]
+/** One screenshot figure: the same capture in both themes, captioned as evidence. */
+function Shot({ base, mobileBase, width, height, mobileWidth, mobileHeight, alt, caption, className }: ShotProps) {
+  return (
+    <figure className={`land-shot${mobileBase ? ' has-m' : ''}${className ? ` ${className}` : ''}`}>
+      <div className="land-shot-frame">
+        <img className="land-img d-light" src={`/landing/${base}-light.webp`} width={width} height={height} alt={alt} />
+        <img
+          className="land-img d-dark"
+          src={`/landing/${base}-dark.webp`}
+          width={width}
+          height={height}
+          alt=""
+          aria-hidden="true"
+        />
+        {mobileBase ? (
+          <>
+            <img
+              className="land-img m-light"
+              src={`/landing/${mobileBase}-light.webp`}
+              width={mobileWidth}
+              height={mobileHeight}
+              alt=""
+              aria-hidden="true"
+            />
+            <img
+              className="land-img m-dark"
+              src={`/landing/${mobileBase}-dark.webp`}
+              width={mobileWidth}
+              height={mobileHeight}
+              alt=""
+              aria-hidden="true"
+            />
+          </>
+        ) : null}
+      </div>
+      <figcaption className="land-cap">{caption}</figcaption>
+    </figure>
+  )
+}
 
-const DESKS: { name: string; blurb: string }[] = [
-  { name: 'Chase List', blurb: 'Every stuck booking, the blocker in plain words, and who to chase today.' },
-  { name: 'Bookings', blurb: 'Each unit from booking to SPA, with the days it has sat in every stage.' },
-  { name: 'Forecast', blurb: 'The SPAs you can bank on, not the bookings you hope will convert.' }
-]
-
-/** Renders the landing page: header row, claim, sample ledger, the three desks. */
+/** Renders the landing: the one-viewport hero, three product moments, the close. */
 export function LandingPage() {
-  const { resolved, toggle } = useTheme()
-  const next = resolved === 'light' ? 'dark' : 'light'
-
   return (
     <main className="land">
-      <header className="land-head">
-        <MortarMark size={26} className="text-foreground" />
-        <span className="land-mark">Mortar</span>
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                type="button"
-                variant="secondary"
-                size="icon"
-                className="land-theme"
-                aria-label={`Switch to the ${next} theme`}
-                onClick={toggle}
-              >
-                {resolved === 'light' ? <Moon size={20} strokeWidth={1.75} /> : <Sun size={20} strokeWidth={1.75} />}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Switch Theme</TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      </header>
-
       <section className="land-hero">
-        <h1 className="land-title">
-          Booked Is Not Sold.
-          <br />
-          Signed Is.
-        </h1>
-        <p className="land-lede">The AI operations layer that names the blocker on every stuck booking.</p>
-        <Button asChild className="land-go">
-          <Link to="/sign-in">Open Mortar</Link>
-        </Button>
+        <div className="land-hero-in">
+          <div className="land-claim">
+            <p className="land-eyebrow">Booking-To-SPA Operations</p>
+            <h1 className="land-title">
+              Booked Is Not Sold.
+              <br />
+              Signed Is.
+            </h1>
+            <p className="land-lede">
+              Mortar tracks every booked unit from paid deposit to a signed Sale &amp; Purchase Agreement — naming the
+              blocker, the owner and the evidence on every stall, before the booking quietly leaks.
+            </p>
+            <div className="land-actions">
+              <Button asChild>
+                <Link to="/sign-in">Open Mortar</Link>
+              </Button>
+              <Link to="/faq" className="land-sub">
+                Read The FAQ
+              </Link>
+            </div>
+          </div>
+          <Shot
+            base="chase"
+            mobileBase="chasem"
+            width={2200}
+            height={1375}
+            mobileWidth={780}
+            mobileHeight={1688}
+            alt="The Chase List in the running Mortar prototype: stalled bookings with their blockers and owners."
+            caption="The Chase List, captured from the running prototype. Simulated data."
+            className="land-hero-shot"
+          />
+        </div>
+        <a href="#land-story" className="land-cue">
+          <span>The Work</span>
+          <ArrowDown size={14} strokeWidth={1.75} aria-hidden="true" />
+        </a>
       </section>
 
-      <div className="land-panel">
-        <figure className="land-ledger">
-          <figcaption className="sr-only">An example of the Bookings desk. These figures are illustrative.</figcaption>
-          <div className="land-ledger-cap">
-            <b>Bookings</b>
-            <span>148 live · 19 stalled · 5 signed this month</span>
+      <section id="land-story" className="land-story" aria-label="How Mortar works">
+        <article className="land-moment">
+          <div className="land-moment-copy">
+            <p className="land-kicker">01 · The Stall</p>
+            <h2>The Stuck Booking, Found</h2>
+            <p>
+              Sales Admin opens the Chase List each morning: every stalled booking, its blocker in plain words — no
+              confirmed evidence for seven days, a document five days outstanding, an application past the bank&rsquo;s
+              decision window — and the person to chase today.
+            </p>
           </div>
-          <table className="land-table">
-            <thead>
-              <tr>
-                <th>Booking</th>
-                <th>Unit</th>
-                <th>Buyer</th>
-                <th>Age</th>
-                <th>Stage</th>
-                <th>Evidence</th>
-                <th>Risk</th>
-                <th>Owner</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ROWS.map((r) => (
-                <tr key={r.id}>
-                  <td className="font-mono text-[13px] font-medium">{r.id}</td>
-                  <td className="font-mono text-[13px] font-medium">{r.unit}</td>
-                  <td>{r.buyer}</td>
-                  <td className={r.stale ? 'land-stale' : undefined}>{r.age}</td>
-                  <td>
-                    <StatusPill tone={r.stage.tone}>{r.stage.label}</StatusPill>
-                  </td>
-                  <td>
-                    <StatusPill tone={r.evidence.tone}>{r.evidence.label}</StatusPill>
-                  </td>
-                  <td>
-                    <StatusPill tone={r.risk.tone}>{r.risk.label}</StatusPill>
-                  </td>
-                  <td>{r.owner}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </figure>
-      </div>
+          <Shot
+            base="chasecard"
+            width={1216}
+            height={490}
+            alt="A stalled booking on the Chase List: unit, buyer, blocker and the suggested next action."
+            caption="One stalled booking on the Chase List. Simulated data."
+          />
+        </article>
 
-      <section className="land-desks">
-        {DESKS.map((d) => (
-          <article key={d.name} className="land-desk">
-            <h2>{d.name}</h2>
-            <p>{d.blurb}</p>
-          </article>
-        ))}
+        <article className="land-moment land-moment--flip">
+          <div className="land-moment-copy">
+            <p className="land-kicker">02 · The Update</p>
+            <h2>A Message Becomes A Confirmed Update</h2>
+            <p>
+              Jev reads the buyer&rsquo;s and banker&rsquo;s messages — English, Malay, Chinese or Manglish — and
+              proposes what happened: an event, a document, an owner, with a confidence. A person confirms or disputes
+              every proposal before it touches the case.
+            </p>
+          </div>
+          <Shot
+            base="message"
+            width={1612}
+            height={508}
+            alt="A banker's message on a booking's evidence log, with Jev's proposed reading beside it."
+            caption="A banker&rsquo;s message, read by Jev, awaiting confirmation. Simulated data."
+          />
+        </article>
+
+        <article className="land-moment">
+          <div className="land-moment-copy">
+            <p className="land-kicker">03 · The Forecast</p>
+            <h2>A Number Finance Can Sign Off</h2>
+            <p>
+              The headline counts signed SPAs inside 30 days of booking — each live case weighted by how bookings at its
+              stage actually converted, summed with a range around it, and backtested against the book&rsquo;s own
+              history.
+            </p>
+          </div>
+          <Shot
+            base="forecast"
+            width={2200}
+            height={1375}
+            alt="The Forecast desk: expected SPA signings within 30 days, the range, stage conversion and the backtest."
+            caption="Expected signings within 30 days, with the backtest. Simulated data."
+          />
+        </article>
+      </section>
+
+      <section className="land-close">
+        <p className="land-eyebrow">The Measure</p>
+        <h2>Signed SPAs. Nothing Else Counts.</h2>
+        <p>
+          Every screen in Mortar answers to one number — the signings the book actually produces, not the bookings it
+          hopes will convert.
+        </p>
+        <Button asChild>
+          <Link to="/sign-in">Open Mortar</Link>
+        </Button>
       </section>
     </main>
   )
