@@ -67,6 +67,24 @@ describe('landing page', () => {
     expect(cue.getAttribute('href')).toBe('#land-how')
   })
 
+  it('rides Why Use Mortar and Pricing up in a single drawer sheet', () => {
+    renderLanding()
+    const whySheet = screen.getByRole('heading', { name: 'Why Use Mortar' }).closest('.land-sheet')
+    const pricingSheet = screen.getByRole('heading', { name: 'Pricing' }).closest('.land-sheet')
+
+    expect(whySheet).toBeTruthy()
+    expect(whySheet).toBe(pricingSheet)
+    expect(whySheet?.classList.contains('land-pin')).toBe(true)
+  })
+
+  it('sits the questions beside a hidden-from-AT joint sketch', () => {
+    const { container } = renderLanding()
+    const art = container.querySelector('.land-faq-art')
+
+    expect(art?.getAttribute('aria-hidden')).toBe('true')
+    expect(art?.querySelector('svg')).toBeTruthy()
+  })
+
   it('leads to sign-in as the only call to action', () => {
     renderLanding()
     const ctas = screen.getAllByRole('link', { name: 'Open Mortar' })

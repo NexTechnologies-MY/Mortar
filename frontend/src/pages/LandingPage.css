@@ -1,8 +1,8 @@
 /* The public landing. Loaded by LandingPage.tsx inside the SiteShell page
    column — the shell owns the fixed glass bar and the fold-over footer; this
-   file owns the one-viewport hero (a fine grid with a pointer bloom) and the
-   drawer stack of sheets that slide up over one another after it. Strictly
-   monochrome; the only chromatic mark is the brand's own #c2410c. */
+   file owns the one-viewport hero (dotted sketch paper with a pointer bloom)
+   and the drawer stack of sheets that slide up over one another after it.
+   Strictly monochrome; the only chromatic marks are the brand's own #c2410c. */
 
 .land {
   background: var(--background);
@@ -24,18 +24,23 @@
   height: 100dvh;
   overflow: clip;
   background-color: var(--background);
-  /* The fine grid: faint hairlines always on, brightened by the bloom. */
-  background-image:
-    linear-gradient(color-mix(in oklab, var(--foreground) 7%, transparent) 1px, transparent 1px),
-    linear-gradient(90deg, color-mix(in oklab, var(--foreground) 7%, transparent) 1px, transparent 1px);
-  background-size: 64px 64px;
+  /* Dotted sketch paper: a quiet field of small dots, brightened by the
+     bloom. The lattice is centred so the pattern sits symmetric behind the
+     claim. */
+  background-image: radial-gradient(
+    circle,
+    color-mix(in oklab, var(--foreground) 20%, transparent) 1.2px,
+    transparent 1.6px
+  );
+  background-size: 26px 26px;
   background-position: center;
 }
 
-/* The pointer bloom: a stronger copy of the grid plus a soft wash, masked to
-   a circle that trails the pointer. Coordinates arrive as --land-spot-x/y,
-   written once per animation frame by the page. The layer only exists for
-   fine-pointer users who allow motion — the JS checks the same gates. */
+/* The pointer bloom: a stronger copy of the dot field plus a soft wash,
+   masked to a circle that trails the pointer. Coordinates arrive as
+   --land-spot-x/y, written once per animation frame by the page. The layer
+   only exists for fine-pointer users who allow motion — the JS checks the
+   same gates. */
 @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
   .land-hero::before {
     content: '';
@@ -48,15 +53,12 @@
         color-mix(in oklab, var(--foreground) 8%, transparent),
         transparent 70%
       ),
-      linear-gradient(color-mix(in oklab, var(--foreground) 24%, transparent) 1px, transparent 1px),
-      linear-gradient(90deg, color-mix(in oklab, var(--foreground) 24%, transparent) 1px, transparent 1px);
+      radial-gradient(circle, color-mix(in oklab, var(--foreground) 55%, transparent) 1.3px, transparent 1.7px);
     background-size:
       100% 100%,
-      64px 64px,
-      64px 64px;
+      26px 26px;
     background-position:
       0 0,
-      center,
       center;
     -webkit-mask-image: radial-gradient(
       300px circle at var(--land-spot-x, 50%) var(--land-spot-y, 42%),
@@ -386,6 +388,12 @@
   color: var(--muted-foreground);
 }
 
+/* Why Use Mortar and Pricing ride one sheet as two blocks: the gap between
+   them is the section rhythm, not a rule — the page draws no dividers. */
+.land-block + .land-block {
+  margin-top: clamp(72px, 9vw, 120px);
+}
+
 /* ---------- how it works: rail + cards ---------- */
 
 .land-hiw {
@@ -675,7 +683,68 @@
   }
 }
 
-/* ---------- faq ---------- */
+/* ---------- questions ---------- */
+
+/* The last sheet runs taller than the rest. At desktop widths the cards sit
+   in the left column beside a quiet motif — the kigumi joint drawn as a
+   construction sketch over a vignette of the hero's dot paper. Under 1024px
+   the motif folds away and the cards take the full column. */
+.land-sect-in.land-faq-sect {
+  padding-block: clamp(104px, 14vw, 188px);
+}
+
+@media (min-width: 1024px) {
+  .land-faq-sect {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
+    column-gap: clamp(48px, 6vw, 96px);
+    align-items: center;
+  }
+}
+
+.land-faq-art {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .land-faq-art {
+    position: relative;
+    display: block;
+    color: color-mix(in oklab, var(--foreground) 16%, transparent);
+  }
+
+  /* A fading vignette of the hero's sketch paper under the drawing. */
+  .land-faq-art::before {
+    content: '';
+    position: absolute;
+    inset: -8%;
+    background-image: radial-gradient(
+      circle,
+      color-mix(in oklab, var(--foreground) 13%, transparent) 1px,
+      transparent 1.4px
+    );
+    background-size: 22px 22px;
+    background-position: center;
+    -webkit-mask-image: radial-gradient(closest-side, #000 20%, transparent 78%);
+    mask-image: radial-gradient(closest-side, #000 20%, transparent 78%);
+  }
+
+  .land-faq-art svg {
+    position: relative;
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  .land-art-guide {
+    stroke-opacity: 0.45;
+  }
+
+  .land-art-brand {
+    stroke: #c2410c;
+    stroke-opacity: 0.85;
+  }
+}
 
 .land-faqs {
   display: grid;

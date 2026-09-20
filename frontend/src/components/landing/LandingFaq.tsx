@@ -1,8 +1,10 @@
 /**
- * The landing's FAQ drawer stack — the five questions most worth answering,
- * taken from the FAQ page. Collapsed by default; each row is a button that
- * expands on click, keyboard operable, with a "View All" route to the full
- * list at /faq.
+ * The landing's questions section — the five most worth answering, taken from
+ * the FAQ page. Collapsed by default; each row is a button that expands on
+ * click, keyboard operable, with a "View All" route to the full list at /faq.
+ * The section runs taller than the rest of the stack, and at desktop widths a
+ * quiet motif — the kigumi joint as a construction sketch — sits to the right
+ * of the cards. Under 1024px the motif folds away.
  */
 import { useId, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -46,6 +48,27 @@ const QUESTIONS: { q: string; a: string[] }[] = [
   }
 ]
 
+/**
+ * The kigumi joint as a construction sketch: the mark's paths stroked rather
+ * than filled, inside a dashed bounding frame with midpoint ticks, a compass
+ * arc and a width dimension under it. The wrapper sets the ink; the drawing
+ * is decorative only.
+ */
+function JointSketch() {
+  return (
+    <svg viewBox="0 0 200 200" fill="none" stroke="currentColor" strokeWidth="1">
+      <circle className="land-art-guide" cx="100" cy="100" r="72" strokeDasharray="1.5 5" />
+      <rect className="land-art-guide" x="28" y="28" width="144" height="144" strokeDasharray="1.5 5" />
+      <path className="land-art-guide" d="M100 24v8M100 168v8M24 100h8M168 100h8" />
+      <path className="land-art-guide" d="M48 156v28M152 156v28" />
+      <path className="land-art-guide" d="M48 180v6M152 180v6M48 183H152" />
+      <path d="M48 48H120V84H84V152H48Z" />
+      <rect x="98" y="92" width="16" height="16" />
+      <path className="land-art-brand" d="M152 152H92V116H128V48H152Z" />
+    </svg>
+  )
+}
+
 /** Renders the landing FAQ: five collapsed rows and a route to /faq. */
 export function LandingFaq({ className }: { className?: string }) {
   const baseId = useId()
@@ -53,45 +76,51 @@ export function LandingFaq({ className }: { className?: string }) {
 
   return (
     <section className={cn('land-sheet land-s1', className)} aria-labelledby="land-faq-h">
-      <div className="land-sect-in">
-        <h2 id="land-faq-h" className="land-h2">
-          Questions
-        </h2>
-        <p className="land-sect-lede">The five worth answering first. The full list lives on the FAQ page.</p>
+      <div className="land-sect-in land-faq-sect">
+        <div className="land-faq-main">
+          <h2 id="land-faq-h" className="land-h2">
+            Questions
+          </h2>
+          <p className="land-sect-lede">The five worth answering first. The full list lives on the FAQ page.</p>
 
-        <div className="land-faqs">
-          {QUESTIONS.map((item, i) => {
-            const isOpen = open === i
-            const bodyId = `${baseId}-faq-${i}`
-            return (
-              <div key={item.q} className="land-faq" data-open={isOpen || undefined}>
-                <h3>
-                  <button
-                    type="button"
-                    className="land-faq-q"
-                    aria-expanded={isOpen}
-                    aria-controls={bodyId}
-                    onClick={() => setOpen(isOpen ? null : i)}
-                  >
-                    {item.q}
-                    <ChevronDown aria-hidden="true" />
-                  </button>
-                </h3>
-                <div id={bodyId} className="land-faq-body" role="region">
-                  <div className="land-faq-body-in">
-                    {item.a.map((p) => (
-                      <p key={p}>{p}</p>
-                    ))}
+          <div className="land-faqs">
+            {QUESTIONS.map((item, i) => {
+              const isOpen = open === i
+              const bodyId = `${baseId}-faq-${i}`
+              return (
+                <div key={item.q} className="land-faq" data-open={isOpen || undefined}>
+                  <h3>
+                    <button
+                      type="button"
+                      className="land-faq-q"
+                      aria-expanded={isOpen}
+                      aria-controls={bodyId}
+                      onClick={() => setOpen(isOpen ? null : i)}
+                    >
+                      {item.q}
+                      <ChevronDown aria-hidden="true" />
+                    </button>
+                  </h3>
+                  <div id={bodyId} className="land-faq-body" role="region">
+                    <div className="land-faq-body-in">
+                      {item.a.map((p) => (
+                        <p key={p}>{p}</p>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
-            )
-          })}
+              )
+            })}
+          </div>
+
+          <Link to="/faq" className="land-more">
+            View All
+          </Link>
         </div>
 
-        <Link to="/faq" className="land-more">
-          View All
-        </Link>
+        <div className="land-faq-art" aria-hidden="true">
+          <JointSketch />
+        </div>
       </div>
     </section>
   )

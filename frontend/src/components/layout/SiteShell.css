@@ -135,28 +135,6 @@
   margin-left: auto;
 }
 
-.site-nav-link {
-  padding: 6px 10px;
-  border-radius: var(--radius-md);
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--muted-foreground);
-  text-decoration: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .site-nav-link {
-    transition:
-      color 120ms ease-out,
-      background-color 120ms ease-out;
-  }
-}
-
-.site-nav-link:hover {
-  color: var(--foreground);
-  background: var(--accent);
-}
-
 @media (min-width: 720px) {
   .site-bar-in {
     padding-inline: 32px;

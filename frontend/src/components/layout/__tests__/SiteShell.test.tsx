@@ -27,13 +27,14 @@ function renderAt(entry: string) {
 }
 
 describe('SiteShell', () => {
-  it('pins the site bar with the brand, FAQ and the way in', () => {
+  it('pins the site bar with the brand and the way in — no FAQ link', () => {
     renderAt('/')
     const bar = screen.getByRole('banner')
 
     expect(within(bar).getByRole('link', { name: 'Mortar home' }).getAttribute('href')).toBe('/')
-    expect(within(bar).getByRole('link', { name: 'FAQ' }).getAttribute('href')).toBe('/faq')
     expect(within(bar).getByRole('link', { name: 'Open Mortar' }).getAttribute('href')).toBe('/sign-in')
+    // The FAQ stays reachable from the footer and the questions section.
+    expect(within(bar).queryByRole('link', { name: 'FAQ' })).toBeNull()
   })
 
   it('keeps the footer to labelled columns of real destinations', () => {

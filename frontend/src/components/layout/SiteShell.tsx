@@ -75,9 +75,6 @@ export function SiteShell() {
             <span className="site-wordmark">Mortar</span>
           </Link>
           <nav className="site-nav" aria-label="Site">
-            <Link to="/faq" className="site-nav-link">
-              FAQ
-            </Link>
             <Button asChild variant="secondary" size="sm">
               <Link to="/sign-in">Open Mortar</Link>
             </Button>

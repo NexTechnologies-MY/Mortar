@@ -1,9 +1,10 @@
 /**
  * The public landing. The hero is exactly one viewport: the claim, the ledger
- * plate and a scroll cue, over a fine grid whose bloom trails the pointer. The
- * sections after it are sheets that slide up over one another like drawers —
- * each pins while the next covers it — alternating surfaces, on the model of
- * a ledger being leafed through.
+ * plate and a scroll cue, over a field of sketch-paper dots whose bloom trails
+ * the pointer. The sections after it are sheets that slide up over one another
+ * like drawers — each pins while the next covers it — alternating surfaces, on
+ * the model of a ledger being leafed through. The middle sheet is a pair: Why
+ * Use Mortar and Pricing ride up in a single drawer.
  *
  * Two page-level behaviours live here:
  *
@@ -132,13 +133,13 @@ export function LandingPage() {
           <HowItWorks className="land-pin" />
           <div className="land-rest">
             <div className="land-stack">
-              <WhyMortar className="land-pin" />
-              <div className="land-rest">
-                <div className="land-stack">
-                  <Pricing className="land-pin" />
-                  <LandingFaq />
+              <div className="land-sheet land-s2 land-pin">
+                <div className="land-sect-in">
+                  <WhyMortar />
+                  <Pricing />
                 </div>
               </div>
+              <LandingFaq />
             </div>
           </div>
         </div>
