@@ -1,7 +1,7 @@
 /**
  * Chase page — the Sales Admin home desk. Every stalled live booking as a
  * chase card: its stall reasons, financing-risk chip and Jev's suggested next
- * action (cached first, re-asked live). Below, the open tasks grouped by
+ * action (cached first, re-run live). Below, the open tasks grouped by
  * owner. Filters narrow the queue by risk and by suggested owner.
  */
 import { useMemo, useState, type Dispatch, type SetStateAction } from 'react'
@@ -192,21 +192,24 @@ export function ChasePage() {
             <StatCard
               label="Stalled Bookings"
               value={String(allStalled.length)}
-              exact="Live Bookings With A Stall Reason"
+              info="Live bookings with a stall reason."
+              exact="Click To Clear The Filters"
               onClick={() => applyFilters('all', 'all')}
             />
             <StatCard
               label="High Risk"
               value={String(highRisk)}
+              info="Stalled bookings flagged high financing risk."
               exact={riskFilter === 'high' ? 'Filtered — Click To Clear' : 'Click To Filter The Queue'}
               tone={highRisk > 0 ? 'alert' : 'default'}
               onClick={() => applyFilters(riskFilter === 'high' ? 'all' : 'high', ownerFilter)}
             />
-            <StatCard label="Open Tasks" value={String(openTasks.length)} exact="Across Every Owner Below" />
+            <StatCard label="Open Tasks" value={String(openTasks.length)} info="Open tasks across every owner below." />
             <StatCard
               label="Value At Risk"
               value={formatRmCompact(valueAtRisk)}
-              exact={`Sum Of Stalled Booking Prices · ${formatRm(valueAtRisk)}`}
+              info="Sum of stalled booking prices."
+              exact={formatRm(valueAtRisk)}
             />
           </div>
 

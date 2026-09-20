@@ -22,7 +22,7 @@ export function AppLayout({ children, minimalNav }: AppLayoutProps) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
 
   return (
-    <div className="relative flex min-h-screen flex-col">
+    <div className="relative flex min-h-[calc(100dvh-var(--footer-h))] flex-col">
       <AppSidebar mobileOpen={mobileSidebarOpen} onMobileClose={() => setMobileSidebarOpen(false)} />
       <AppNav minimal={minimalNav} onMenuClick={() => setMobileSidebarOpen(true)} />
       <main className="flex-1 pt-14 lg:ml-16">{children}</main>

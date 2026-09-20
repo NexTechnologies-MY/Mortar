@@ -125,7 +125,7 @@ export function ChaseCard({
       <div className="flex items-center justify-end gap-2">
         {suggestion ? (
           <Button type="button" variant="ghost" size="sm" disabled={suggesting} onClick={onSuggest}>
-            {suggesting ? 'Asking Jev…' : 'Re-Ask Jev'}
+            {suggesting ? 'Re-Running Jev…' : 'Re-Run Jev'}
           </Button>
         ) : null}
         <Button
