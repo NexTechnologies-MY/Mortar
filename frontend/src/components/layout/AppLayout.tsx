@@ -1,7 +1,7 @@
 /**
  * Main authenticated application shell.
  * Wraps dashboard and project routes with sidebar navigation and top nav.
- * The fixed site footer is rendered by SiteShell above this layout, not here.
+ * The app pages carry no site footer; that belongs to the public pages only.
  */
 
 import { useState, type ReactNode } from 'react'
@@ -22,7 +22,7 @@ export function AppLayout({ children, minimalNav }: AppLayoutProps) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
 
   return (
-    <div className="relative flex min-h-[calc(100dvh-var(--footer-h))] flex-col">
+    <div className="relative flex min-h-dvh flex-col">
       <AppSidebar mobileOpen={mobileSidebarOpen} onMobileClose={() => setMobileSidebarOpen(false)} />
       <AppNav minimal={minimalNav} onMenuClick={() => setMobileSidebarOpen(true)} />
       <main className="flex-1 pt-14 lg:ml-16">{children}</main>
