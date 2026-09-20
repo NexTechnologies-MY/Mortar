@@ -1,56 +1,47 @@
-/* Landing surface. The page runs full width with a 48px gutter rather than the
-   old centred column, so the ledger panel and the desk cards share one grid.
-   Colour here is the single sanctioned exception to the monochrome rule and is
-   scoped to this file; nothing below is used inside the app shell. */
+/* Landing surface — "the ledger speaks". One measured column on the page
+   ground, hairlines doing the structural work, and the product's own surface
+   as the hero exhibit. Monochrome except the six status tones; no panel, no
+   card shadow, no gradient anywhere on the page. */
 
 .land {
-  display: flex;
-  flex-direction: column;
   width: 100%;
   background: var(--background);
 }
 
-/* ---------- header row ---------- */
-
-.land-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  height: 64px;
-  padding: 0 24px;
-  border-bottom: 1px solid var(--border);
+/* The shared text measure — every block sits on the same margins, the way a
+   book page holds one column. */
+.land-measure {
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
 }
 
-.land-mark {
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  color: var(--foreground);
-}
-
-/* The theme switch is the only control in the row: the page's one Primary
-   button lives in the hero, so the header carries no call to action. */
-.land-theme {
-  margin-left: auto;
-}
-
-.land-theme svg {
-  width: 20px;
-  height: 20px;
-}
-
-/* ---------- claim ---------- */
+/* ---------- the hero: a page that fills one viewport ---------- */
 
 .land-hero {
+  min-height: 100dvh;
+  padding: 0 24px;
+}
+
+.land-hero-in {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  text-align: center;
-  padding: 72px 24px 0;
+  min-height: 100dvh;
+  padding-bottom: 12px;
+}
+
+/* The opening: the claim on the left, the document slug on the right — the
+   title-page detail that names the book this ledger comes from. */
+.land-opening {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 48px;
+  padding-top: clamp(80px, 12vh, 120px);
 }
 
 .land-title {
-  font-size: clamp(2.25rem, 5.4vw, 3.75rem);
+  font-size: clamp(2.5rem, 4.4vw, 4.25rem);
   font-weight: 600;
   line-height: 1.04;
   letter-spacing: -0.035em;
@@ -59,7 +50,7 @@
 
 /* A lead line written as a full sentence, so it is set in sentence case. */
 .land-lede {
-  margin-top: 20px;
+  margin-top: 18px;
   max-width: 52ch;
   font-size: 17px;
   line-height: 27px;
@@ -67,47 +58,50 @@
 }
 
 .land-go {
-  margin-top: 28px;
+  margin-top: 26px;
 }
 
-/* ---------- the panel, and the ledger on it ---------- */
-
-.land-panel {
-  margin: 56px 24px 0;
-  padding: 28px;
-  border-radius: var(--radius-3xl);
-  background:
-    radial-gradient(55% 75% at 8% 12%, rgb(var(--land-hue-a) / 0.62), transparent 63%),
-    radial-gradient(50% 68% at 88% 8%, rgb(var(--land-hue-b) / 0.55), transparent 64%),
-    radial-gradient(58% 72% at 80% 94%, rgb(var(--land-hue-c) / 0.5), transparent 63%),
-    radial-gradient(46% 62% at 22% 98%, rgb(var(--land-hue-d) / 0.42), transparent 63%),
-    radial-gradient(70% 60% at 50% 46%, rgb(var(--land-hue-veil) / 0.45), transparent 72%), var(--land-panel-base);
+.land-meta {
+  flex-shrink: 0;
+  padding-bottom: 4px;
+  font-size: 13px;
+  line-height: 20px;
+  text-align: right;
+  color: var(--muted-foreground);
 }
 
-.land-ledger {
-  margin: 0;
+/* ---------- the plate: a fragment of the real ledger ---------- */
+
+.land-plate {
+  margin: clamp(36px, 5vh, 56px) 0 0;
   overflow: hidden;
-  border: 1px solid color-mix(in oklab, var(--color-ink-950) 6%, transparent);
-  border-radius: var(--radius-2xl);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
   background: var(--card);
 }
 
-.land-ledger-cap {
+.land-plate-cap {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  padding: 14px 18px;
+  align-items: baseline;
+  gap: 4px 12px;
+  padding: 12px 18px;
   border-bottom: 1px solid var(--border);
   font-size: 13px;
 }
 
-.land-ledger-cap b {
+/* If the ledger still cannot fit the measure, it scrolls inside the plate
+   rather than breaking the page's margins. */
+.land-plate-clip {
+  overflow-x: auto;
+}
+
+.land-plate-cap b {
   font-weight: 600;
   color: var(--foreground);
 }
 
-.land-ledger-cap span {
+.land-plate-cap span {
   color: var(--muted-foreground);
 }
 
@@ -117,8 +111,10 @@
 }
 
 .land-table th {
-  padding: 10px 18px;
+  height: 36px;
+  padding: 0 18px;
   border-bottom: 1px solid var(--border);
+  background: var(--muted);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.08em;
@@ -141,86 +137,437 @@
   border-bottom: 0;
 }
 
-/* The age is the warning on a stalled row, so it carries the danger text tone. */
-.land-stale {
+.land-mono {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.land-buyer {
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.land-c-num,
+.land-age {
+  text-align: right;
+}
+
+.land-age {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The age is the warning on the stalled row, so it carries the danger tone. */
+.land-age-stale {
   color: var(--status-danger-fg);
   font-weight: 500;
 }
 
-/* ---------- the three desks ---------- */
+.land-dagger {
+  margin-left: 3px;
+  font-size: 11px;
+  color: var(--status-danger-fg);
+}
 
-/* Appended directly under the panel: same gutter, same gap, no rule between
-   them, so the block reads as one unit. */
-.land-desks {
+/* The footnote: the short rule and the note, set as a book sets its
+   apparatus — it is what the dagger on the stalled row points at. */
+.land-note {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 18px 16px;
+  border-top: 1px solid var(--border);
+}
+
+.land-note-rule {
+  width: 40px;
+  height: 1px;
+  background: var(--input);
+}
+
+.land-note p {
+  max-width: 72ch;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--muted-foreground);
+}
+
+.land-note b {
+  font-weight: 600;
+  color: var(--status-danger-fg);
+}
+
+/* ---------- the scroll cue ---------- */
+
+.land-cue {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  align-self: center;
+  margin-top: auto;
+  padding: 20px 16px 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.land-cue-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+  transition: color var(--motion-fast) var(--ease-out);
+}
+
+.land-cue:hover .land-cue-label {
+  color: var(--foreground);
+}
+
+/* A hairline that a short stroke travels down — the one moving element on
+   the page, and only there to point past the fold. */
+.land-cue-line {
+  position: relative;
+  width: 1px;
+  height: 36px;
+  overflow: hidden;
+  background: var(--border);
+}
+
+.land-cue-line::after {
+  content: '';
+  position: absolute;
+  top: -12px;
+  left: 0;
+  width: 1px;
+  height: 12px;
+  background: var(--foreground);
+  animation: land-cue-drop 1.8s var(--ease-out) infinite;
+}
+
+@keyframes land-cue-drop {
+  0% {
+    top: -12px;
+  }
+  55% {
+    top: 36px;
+  }
+  100% {
+    top: 36px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .land-cue-line::after {
+    top: 24px;
+    animation: none;
+  }
+}
+
+/* ---------- the reading sections ---------- */
+
+/* Each section opens with a hairline across the text measure — the rule that
+   separates one part of the argument from the next. */
+.land-sect {
+  padding: 0 24px;
+}
+
+.land-sect .land-measure {
+  padding: 72px 0;
+  border-top: 1px solid var(--border);
+}
+
+.land-sect:last-child .land-measure {
+  padding-bottom: 104px;
+}
+
+.land-h2 {
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 28px;
+  letter-spacing: -0.02em;
+  color: var(--foreground);
+}
+
+.land-sect-lede {
+  margin-top: 14px;
+  max-width: 64ch;
+  font-size: 15px;
+  line-height: 24px;
+  color: var(--muted-foreground);
+}
+
+.land-sect-note {
+  margin-top: 28px;
+  max-width: 64ch;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--muted-foreground);
+}
+
+/* The two costs, set as facing columns with a centre rule between them. */
+.land-pair {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 16px;
-  margin: 16px 24px 0;
-  padding-bottom: 72px;
+  gap: 32px;
+  margin-top: 36px;
+}
+
+.land-cell-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+.land-pull {
+  margin-top: 14px;
+  max-width: 30ch;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 28px;
+  letter-spacing: -0.01em;
+  color: var(--foreground);
+}
+
+.land-cell-note {
+  margin-top: 14px;
+  max-width: 56ch;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--muted-foreground);
+}
+
+.land-cell-body {
+  margin-top: 14px;
+  max-width: 56ch;
+  font-size: 14px;
+  line-height: 23px;
+  color: var(--muted-foreground);
+}
+
+/* The stall key: each condition the ledger flags, named and ruled. */
+.land-rules {
+  margin-top: 32px;
+  border-bottom: 1px solid var(--border);
+}
+
+.land-rule {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2px;
+  padding: 15px 0;
+  border-top: 1px solid var(--border);
+}
+
+.land-rule-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.land-rule-text {
+  font-size: 14px;
+  line-height: 22px;
+  color: var(--muted-foreground);
+}
+
+/* The desk index: name, what it answers, and the route as its locator — set
+   like an index, not like cards. */
+.land-desks {
+  margin-top: 32px;
+  border-bottom: 1px solid var(--border);
 }
 
 .land-desk {
-  padding: 24px 24px 28px;
-  border: 1px solid color-mix(in oklab, var(--color-ink-950) 5%, transparent);
-  border-radius: var(--radius-2xl);
-  background: var(--card);
-  /* The edge is carried by a shadow with a real offset rather than a tint, so
-     the card lifts off the white ground without adding colour. */
-  box-shadow:
-    0 1px 2px color-mix(in oklab, var(--color-ink-950) 5%, transparent),
-    0 6px 16px -4px color-mix(in oklab, var(--color-ink-950) 8%, transparent);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 16px;
+  align-items: baseline;
+  padding: 18px 0;
+  border-top: 1px solid var(--border);
 }
 
-.land-desk h2 {
+.land-desk-name {
   font-size: 16px;
   font-weight: 600;
   letter-spacing: -0.01em;
   color: var(--foreground);
 }
 
-.land-desk p {
-  margin-top: 10px;
+.land-desk-blurb {
+  grid-column: 1 / -1;
+  max-width: 62ch;
   font-size: 14px;
   line-height: 22px;
+  color: var(--muted-foreground);
+}
+
+.land-desk-route {
+  font-family: var(--font-mono);
+  font-size: 13px;
   color: var(--muted-foreground);
 }
 
 /* ---------- wider viewports ---------- */
 
 @media (min-width: 720px) {
-  .land-head {
+  .land-hero,
+  .land-sect {
     padding: 0 48px;
   }
 
-  .land-hero {
-    padding: 96px 48px 0;
+  .land-pair {
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
   }
 
-  .land-panel {
-    margin: 64px 48px 0;
-    padding: 68px;
+  .land-cell + .land-cell {
+    padding-left: 48px;
+    border-left: 1px solid var(--border);
   }
 
-  .land-desks {
-    grid-template-columns: repeat(3, 1fr);
+  .land-pair .land-cell:first-child {
+    padding-right: 48px;
+  }
+
+  .land-rule {
+    grid-template-columns: minmax(200px, 260px) 1fr;
     gap: 24px;
-    margin: 24px 48px 0;
-    padding-bottom: 76px;
+    align-items: baseline;
   }
 
   .land-desk {
-    padding: 28px 28px 32px;
+    grid-template-columns: minmax(160px, 220px) 1fr auto;
+    gap: 24px;
+  }
+
+  .land-desk-blurb {
+    grid-column: auto;
   }
 }
 
-/* Below the table's natural width the ledger scrolls rather than crushing its
-   columns; the panel keeps its padding so the card still reads as inset. */
-@media (max-width: 900px) {
-  .land-ledger {
-    overflow-x: auto;
+/* ---------- short and narrow viewports ---------- */
+
+/* The hero must end at the fold, so under height pressure it tightens and
+   sheds rows — the stalled first row and the signed last row are the story's
+   ends and always stay. */
+@media (max-width: 480px), (max-height: 860px) {
+  .land-table tbody tr:nth-child(4) {
+    display: none;
+  }
+}
+
+@media (max-height: 860px) {
+  .land-opening {
+    padding-top: 72px;
   }
 
-  .land-table {
-    min-width: 860px;
+  .land-title {
+    font-size: clamp(2.25rem, 4.4vw, 3.75rem);
+  }
+
+  .land-lede {
+    margin-top: 16px;
+  }
+
+  .land-go {
+    margin-top: 22px;
+  }
+
+  .land-plate {
+    margin-top: 32px;
+  }
+
+  .land-cue {
+    padding-top: 12px;
+  }
+
+  .land-cue-line {
+    height: 28px;
+  }
+
+  .land-cue-line::after {
+    animation-name: land-cue-drop-short;
+  }
+}
+
+@keyframes land-cue-drop-short {
+  0% {
+    top: -12px;
+  }
+  55% {
+    top: 28px;
+  }
+  100% {
+    top: 28px;
+  }
+}
+
+@media (max-height: 860px) and (prefers-reduced-motion: reduce) {
+  .land-cue-line::after {
+    top: 16px;
+  }
+}
+
+@media (max-height: 700px) {
+  .land-opening {
+    padding-top: 56px;
+  }
+
+  .land-plate {
+    margin-top: 28px;
+  }
+
+  .land-table tbody tr:nth-child(3) {
+    display: none;
+  }
+}
+
+/* The document slug moves above the claim, like a stamped header. */
+@media (max-width: 719px) {
+  .land-opening {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 24px;
+    padding-top: 64px;
+  }
+
+  .land-meta {
+    order: -1;
+    padding-bottom: 0;
+    text-align: left;
+  }
+}
+
+/* On narrow measures the ledger sheds columns rather than crushing them. */
+@media (max-width: 720px) {
+  .land-c-unit,
+  .land-c-stage {
+    display: none;
+  }
+}
+
+/* At phone width the ledger keeps three columns — booking, buyer, and the age
+   that carries the warning — so every cell still reads in full. */
+@media (max-width: 480px) {
+  .land-title {
+    font-size: 2rem;
+  }
+
+  .land-c-evid,
+  .land-table th:last-child,
+  .land-table td:last-child {
+    display: none;
+  }
+
+  .land-table th,
+  .land-table td {
+    padding: 0 12px;
   }
 }

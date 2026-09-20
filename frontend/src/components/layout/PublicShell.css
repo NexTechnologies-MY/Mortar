@@ -1,0 +1,93 @@
+/* Public shell chrome — the fixed top bar and the fold-over footer.
+   The bar's surface and hairline are driven by --pbar (0 at the top of the
+   page, 1 once the reader has scrolled 64px), written by the scroll listener
+   in PublicShell.tsx. The page column is an opaque layer above the fixed
+   footer; its bottom margin — set from the footer's measured height — is what
+   the footer is uncovered through. */
+
+/* ---------- fixed top bar ---------- */
+
+.pbar {
+  --pbar: 0;
+
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 50;
+
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 56px;
+  padding: 0 16px;
+
+  background: color-mix(in oklab, var(--background) calc(72% * var(--pbar)), transparent);
+  border-bottom: 1px solid color-mix(in oklab, var(--border) calc(100% * var(--pbar)), transparent);
+
+  /* Lightning CSS emits the prefixed line first; keep that order here too */
+  -webkit-backdrop-filter: blur(calc(14px * var(--pbar)));
+  backdrop-filter: blur(calc(14px * var(--pbar)));
+}
+
+/* Without backdrop-filter the translucent ground would smear the scrolled
+   content; the fallback trades the glass for a nearly opaque page-coloured
+   surface, still fading in on the same driver. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .pbar {
+    background: color-mix(in oklab, var(--background) calc(97% * var(--pbar)), transparent);
+  }
+}
+
+.pbar-word {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--foreground);
+}
+
+.pbar-note {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+  display: none;
+}
+
+@media (min-width: 480px) {
+  .pbar-note {
+    display: block;
+  }
+}
+
+@media (min-width: 720px) {
+  .pbar {
+    padding: 0 24px;
+  }
+}
+
+/* ---------- fold-over footer ---------- */
+
+/* The opaque page column. It must cover a full viewport at minimum so the
+   fixed footer never shows before the document's end; its bottom margin is
+   written by the shell from the footer's measured height. */
+.pcol {
+  position: relative;
+  z-index: 1;
+  min-height: 100dvh;
+  background: var(--background);
+}
+
+/* The footer is pinned to the viewport floor under the page column and is
+   only uncovered once the column has scrolled past — the drawer reveal. */
+.pfoot {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 0;
+  border-top: 1px solid var(--border);
+  background: var(--footer);
+}

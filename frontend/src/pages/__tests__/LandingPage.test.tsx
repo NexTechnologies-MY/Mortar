@@ -1,13 +1,11 @@
 /**
- * Landing page tests. jsdom lacks matchMedia (the theme hook calls it) and
- * requestAnimationFrame (the theme's class flip), so the hoisted block stubs
- * the browser floor before the imports evaluate — matchMedia answers false, so
- * the resolved theme is light.
+ * Landing page tests. jsdom lacks matchMedia, which the scroll cue's click
+ * handler reads for prefers-reduced-motion, so the hoisted block stubs it —
+ * matchMedia answers false, meaning full motion.
  */
-import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { ThemeProvider } from '@/hooks/useTheme'
 import { LandingPage } from '@/pages/LandingPage'
 
 vi.hoisted(() => {
@@ -22,29 +20,24 @@ vi.hoisted(() => {
       removeEventListener: () => {},
       dispatchEvent: () => false
     }) as unknown as MediaQueryList
-  window.requestAnimationFrame = (callback: FrameRequestCallback) => window.setTimeout(callback, 0)
 })
 
 const renderLanding = () =>
   render(
     <MemoryRouter initialEntries={['/']}>
-      <ThemeProvider>
-        <LandingPage />
-      </ThemeProvider>
+      <LandingPage />
     </MemoryRouter>
   )
 
 describe('landing page', () => {
-  beforeEach(() => {
-    window.localStorage.clear()
-  })
-
-  it('offers the theme switch on the landing page, named for the theme it will set', () => {
+  // The theme switch lives in the app shell only; the public pages fix the
+  // reader's theme at the system preference.
+  it('carries no theme switch', () => {
     renderLanding()
-    expect(screen.getByRole('button', { name: 'Switch to the dark theme' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /theme/i })).toBeNull()
   })
 
-  it('names the three surfaces as the three features', () => {
+  it('names the three desks in the desk index', () => {
     const { container } = renderLanding()
     const desks = within(container.querySelector<HTMLElement>('.land-desks')!)
     expect(desks.getByRole('heading', { name: 'Chase List' })).toBeTruthy()
@@ -52,16 +45,19 @@ describe('landing page', () => {
     expect(desks.getByRole('heading', { name: 'Forecast' })).toBeTruthy()
   })
 
-  it('keeps the page to a single primary action, which sits below the claim rather than in the header', () => {
-    const { container } = renderLanding()
-    const head = within(container.querySelector<HTMLElement>('.land-head')!)
-    expect(head.queryAllByRole('link')).toHaveLength(0)
+  it('keeps the page to a single primary action', () => {
+    renderLanding()
     expect(screen.getAllByRole('link')).toHaveLength(1)
   })
 
   it('leads to sign-in as the only way in', () => {
     renderLanding()
     expect(screen.getByRole('link', { name: 'Open Mortar' }).getAttribute('href')).toBe('/sign-in')
+  })
+
+  it('offers a scroll cue past the one-viewport hero', () => {
+    renderLanding()
+    expect(screen.getByRole('button', { name: 'Scroll' })).toBeTruthy()
   })
 
   it('marks the sample ledger as an illustration so its figures are not read as the real book', () => {

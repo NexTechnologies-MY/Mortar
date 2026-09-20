@@ -2,9 +2,10 @@
  * Mortar "Kigumi Joint" brand mark.
  *
  * Inline SVG — no image asset, so it works in both themes and at any size.
- * The interlocking shapes inherit `currentColor`; wrap in `text-foreground`
- * to follow light/dark mode. `role="img"` + `aria-label` keep it accessible
- * without a DOM-level `<img>`.
+ * The first and third shapes inherit `currentColor`; the second keeps the
+ * brand orange (`#c2410c`, the palette before the monochrome swap; `#f97316`
+ * in dark where the deeper tone would sink into the page). `role="img"` +
+ * `aria-label` keep it accessible without a DOM-level `<img>`.
  */
 
 import { cn } from '@/lib/utils'
@@ -32,7 +33,7 @@ export function MortarMark({ size = 28, className, title = 'Mortar' }: MortarMar
       className={cn('shrink-0', className)}
     >
       <path d="M24 24H60V42H42V76H24Z" fill="currentColor" />
-      <path d="M76 76H46V58H64V24H76Z" className="fill-muted-foreground" />
+      <path d="M76 76H46V58H64V24H76Z" className="fill-[#c2410c] dark:fill-[#f97316]" />
       <rect x="49" y="46" width="8" height="8" rx="1" fill="currentColor" />
     </svg>
   )

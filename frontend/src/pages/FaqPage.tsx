@@ -2,12 +2,9 @@
  * FAQ route.
  * Plain answers for staff and reviewers: what Mortar is, who uses it, how the
  * labels, Jev and the forecast behave, and what is still theatre. Sits inside
- * PublicShell so the site footer shows, and outside AppShell like the landing.
+ * PublicShell, which supplies the fixed top bar and the site footer, and
+ * outside AppShell like the landing.
  */
-import { Link } from 'react-router-dom'
-import { MortarMark } from '@/components/brand/MortarMark'
-import { ThemeToggle } from '@/components/layout/ThemeToggle'
-import { Button } from '@/components/ui/button'
 
 const FAQS: { question: string; answer: string[] }[] = [
   {
@@ -72,23 +69,11 @@ const FAQS: { question: string; answer: string[] }[] = [
   }
 ]
 
-/** Renders the FAQ page: brand row, title block, and the question list. */
+/** Renders the FAQ page: the title block and the question list. */
 export function FaqPage() {
   return (
     <main className="min-h-dvh bg-background">
-      <header className="mx-auto flex w-full max-w-[1040px] items-center gap-3 px-6 pt-6 min-[900px]:px-12 min-[900px]:pt-8">
-        <Link to="/" aria-label="Mortar home" className="inline-flex items-center gap-3 text-foreground no-underline">
-          <MortarMark size={36} />
-          <span className="text-[11px] font-semibold uppercase tracking-[0.08em]">Mortar</span>
-        </Link>
-        <div className="ml-auto flex items-center gap-1">
-          <ThemeToggle />
-          <Button asChild>
-            <Link to="/sign-in">Open Mortar</Link>
-          </Button>
-        </div>
-      </header>
-      <div className="mx-auto flex w-full max-w-[720px] flex-col px-6 pt-16 pb-16 min-[900px]:pt-24">
+      <div className="mx-auto flex w-full max-w-[720px] flex-col px-6 pt-24 pb-16 min-[900px]:pt-32">
         <div className="flex flex-col gap-4 text-center">
           <p className="text-[11px] leading-[14px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
             FAQ
