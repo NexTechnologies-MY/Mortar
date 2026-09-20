@@ -1,9 +1,11 @@
 /**
- * Landing page tests. The page carries no interactive chrome — the theme
- * switch lives in the app shell only — so it renders under MemoryRouter alone.
+ * Landing page tests. The page's interactive chrome is the FAQ accordion, the
+ * waitlist form and the back-to-top control — the theme switch lives in the
+ * app shell only — so it renders under MemoryRouter alone. jsdom has no
+ * matchMedia, so the pointer-bloom effect simply stands down.
  */
 import { describe, expect, it } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { LandingPage } from '@/pages/LandingPage'
 
@@ -20,19 +22,31 @@ describe('landing page', () => {
     expect(screen.getByRole('heading', { level: 1, name: /Booked Is Not Sold/ })).toBeTruthy()
   })
 
-  it('carries no buttons — the theme switch lives in the app shell only', () => {
+  it('carries no theme switcher — that lives in the app shell only', () => {
     renderLanding()
-    expect(screen.queryByRole('button')).toBeNull()
+    expect(screen.queryByRole('button', { name: /theme/i })).toBeNull()
+    expect(screen.queryByRole('radio')).toBeNull()
   })
 
-  it('walks the three moments: the stall, the update, the forecast', () => {
+  it('centres the claim on the ledger plate', () => {
+    const { container } = renderLanding()
+    const plate = container.querySelector('.land-plate')
+
+    expect(plate).toBeTruthy()
+    expect(plate?.querySelector('figcaption')?.textContent).toMatch(/illustrative/i)
+    expect(screen.getByText('Bookings')).toBeTruthy()
+  })
+
+  it('walks the four moments: the stall, the message, the task, the forecast', () => {
     renderLanding()
-    expect(screen.getByRole('heading', { name: 'The Stuck Booking, Found' })).toBeTruthy()
-    expect(screen.getByRole('heading', { name: 'A Message Becomes A Confirmed Update' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'How It Works' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'The Stall Is Named' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'A Message Becomes A Proposal' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'The Task Has An Owner' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'A Number Finance Can Sign Off' })).toBeTruthy()
   })
 
-  it('anchors the hero and each moment to a real screenshot, captioned as simulated data', () => {
+  it('anchors each moment to a real screenshot, captioned as simulated data', () => {
     const { container } = renderLanding()
     const shots = [...container.querySelectorAll<HTMLElement>('.land-shot')]
 
@@ -48,9 +62,9 @@ describe('landing page', () => {
     const { container } = renderLanding()
 
     expect(container.querySelector('.land-hero')).toBeTruthy()
-    expect(container.querySelector('#land-story')).toBeTruthy()
-    const cue = screen.getByRole('link', { name: 'The Work' })
-    expect(cue.getAttribute('href')).toBe('#land-story')
+    expect(container.querySelector('#land-how')).toBeTruthy()
+    const cue = screen.getByRole('link', { name: 'Scroll' })
+    expect(cue.getAttribute('href')).toBe('#land-how')
   })
 
   it('leads to sign-in as the only call to action', () => {
@@ -61,6 +75,17 @@ describe('landing page', () => {
     for (const cta of ctas) {
       expect(cta.getAttribute('href')).toBe('/sign-in')
     }
-    expect(screen.getByRole('link', { name: 'Read The FAQ' }).getAttribute('href')).toBe('/faq')
+    expect(screen.getByRole('link', { name: 'View All' }).getAttribute('href')).toBe('/faq')
+  })
+
+  it('expands a question on click and collapses it again', () => {
+    renderLanding()
+    const question = screen.getByRole('button', { name: 'What Does Jev Do?' })
+
+    expect(question.getAttribute('aria-expanded')).toBe('false')
+    fireEvent.click(question)
+    expect(question.getAttribute('aria-expanded')).toBe('true')
+    fireEvent.click(question)
+    expect(question.getAttribute('aria-expanded')).toBe('false')
   })
 })
