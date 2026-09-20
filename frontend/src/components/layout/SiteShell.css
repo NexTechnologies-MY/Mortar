@@ -8,14 +8,15 @@
      so brand edges align down the page. */
   --site-max: 1152px;
   --site-bar-h: 56px;
-  /* Footer height is fixed and reserved as the page column's bottom margin;
-     it must hold the compact footer's real content, tuned below. */
-  --footer-h: 216px;
+  /* Fallback only: SiteShell measures the footer and writes the real height
+     here; these keep the layout near-right before the first measurement and
+     where ResizeObserver is absent. */
+  --footer-h: 340px;
 }
 
 @media (min-width: 720px) {
   :root {
-    --footer-h: 184px;
+    --footer-h: 220px;
   }
 }
 
@@ -30,10 +31,12 @@
   background: var(--background);
 }
 
-/* globals sets smooth scrolling unconditionally; on the public pages, where
-   the cue anchor scrolls, reduced motion must turn it off. */
+/* globals sets smooth scrolling unconditionally and imports after this file,
+   so a bare `html` selector here would lose the cascade. `:has(.site)` both
+   outranks it and scopes the override to the public pages — the only pages
+   with a scroll cue anchor — under reduced motion. */
 @media (prefers-reduced-motion: reduce) {
-  html {
+  html:has(.site) {
     scroll-behavior: auto;
   }
 }
@@ -52,8 +55,8 @@
   inset-inline: 0;
   bottom: 0;
   z-index: 0;
-  height: var(--footer-h);
-  border-top: 1px solid var(--border);
+  max-height: 100dvh;
+  overflow-y: auto;
   background: var(--footer);
 }
 
@@ -162,31 +165,45 @@
 
 /* ---------- the footer's content ---------- */
 
+/* Brand cell, then the Product / Company / Code columns. Below 720px the
+   brand runs full width and the three columns share one row — the drawer is
+   fixed to the viewport floor, so a stacked single column would make it
+   deeper than a phone screen. No divider lines anywhere: the fold-over seam
+   is the reveal itself. */
 .foot-inner {
   display: grid;
-  align-content: center;
-  gap: 12px;
-  height: 100%;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: 20px;
+  row-gap: 28px;
   max-width: var(--site-max);
   margin-inline: auto;
-  padding-inline: 20px;
-}
-
-.foot-main {
-  display: grid;
-  gap: 8px;
+  padding: 36px 20px;
 }
 
 @media (min-width: 720px) {
   .foot-inner {
-    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1.5fr) repeat(3, minmax(0, 1fr));
     column-gap: 32px;
-    align-items: start;
-    padding-inline: 32px;
+    padding: 44px 32px;
   }
 }
 
 .foot-brand {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
+@media (min-width: 720px) {
+  .foot-brand {
+    grid-column: auto;
+  }
+}
+
+.foot-lockup {
   display: inline-flex;
   align-items: center;
   gap: 9px;
@@ -195,10 +212,16 @@
   text-decoration: none;
 }
 
-.foot-brand span {
-  font-size: 15px;
+.foot-lockup span {
+  font-size: 16px;
   font-weight: 600;
   letter-spacing: -0.01em;
+}
+
+.foot-copy {
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--muted-foreground);
 }
 
 .foot-tag {
@@ -208,57 +231,50 @@
   color: var(--muted-foreground);
 }
 
-.foot-links {
+.foot-col {
   display: flex;
-  flex-wrap: wrap;
-  gap: 10px 22px;
-  align-items: center;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
 }
 
-@media (min-width: 720px) {
-  .foot-links {
-    justify-content: flex-end;
-    padding-top: 6px;
-  }
+/* The column title is 14px SemiBold prose, not an Eyebrow — uppercase is
+   reserved for that one style — and not a heading element, so the columns
+   never inject "Product" or "Company" into the FAQ's question outline. */
+.foot-head {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  color: var(--foreground);
 }
 
-/* A hairline underline at 18% foreground, swapping to full foreground on hover
-   and focus. In CSS because Tailwind has no utility for a partial-alpha border
-   colour. */
+.foot-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* 24px row: the WCAG 2.5.8 target height. */
 .foot-link {
-  padding-top: 2px;
-  padding-bottom: 4px;
-  border-bottom: 1px solid color-mix(in oklab, var(--foreground) 18%, transparent);
-  font-size: 13px;
-  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  font-size: 14px;
+  line-height: 20px;
   color: var(--muted-foreground);
   text-decoration: none;
 }
 
 @media (prefers-reduced-motion: no-preference) {
   .foot-link {
-    transition:
-      color var(--motion-fast),
-      border-color var(--motion-fast);
+    transition: color var(--motion-fast);
   }
 }
 
 .foot-link:hover,
 .foot-link:focus-visible {
   color: var(--foreground);
-  border-bottom-color: var(--foreground);
-}
-
-.foot-fine {
-  font-size: 13px;
-  line-height: 18px;
-  color: var(--muted-foreground);
-}
-
-@media (min-width: 720px) {
-  .foot-fine {
-    grid-column: 1 / -1;
-    padding-top: 4px;
-    border-top: 1px solid var(--border);
-  }
 }
