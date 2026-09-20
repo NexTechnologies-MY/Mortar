@@ -6,3 +6,6 @@ tsconfig.tsbuildinfo
 *.tsbuildinfo
 bun.lock
 docs/demo/**/*.html
+
+.impeccable/
+.codex/
