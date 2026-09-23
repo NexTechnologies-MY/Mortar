@@ -61,6 +61,15 @@ describe('cell readers', () => {
     expect(readIc('050101-10-0001', '2026-09-18').birthDate).toBe('2005-01-01')
     expect(readIc('a1234567', '2026-09-18')).toEqual({ ic: 'A1234567', birthDate: null })
   })
+
+  // Issue #M13: Excel stores a MyKad column as a number, which drops the
+  // leading zero a birth year in the 2000s carries.
+  it('pads an 11-digit numeric IC cell back to a MyKad, but leaves 11-digit text alone', () => {
+    expect(readIc(50101145678, '2026-09-18')).toEqual({ ic: '050101-14-5678', birthDate: '2005-01-01' })
+    // A text cell that happens to carry 11 digits was written that way on
+    // purpose (e.g. a foreign passport), so it is kept as written, not guessed at.
+    expect(readIc('50101145678', '2026-09-18')).toEqual({ ic: '50101145678', birthDate: null })
+  })
 })
 
 describe('readBookingSheet', () => {
@@ -177,6 +186,18 @@ describe('readBookingSheet', () => {
       legalFirm: 'Khor & Co',
       buyer: { propertiesOwned: 2, monthlyCommitmentsRm: 0 }
     })
+  })
+
+  // Issue #M13: the XLSX reader hands a number-formatted IC column back as a
+  // JS number, which has already dropped the leading zero by the time it
+  // reaches the sheet — the row must still read as the right MyKad.
+  it('reads a numeric IC cell missing its leading zero as the MyKad it is', () => {
+    const reading = readBookingSheet(
+      [HEADER, ['A-1', 'Lee', 50101145678, '012', '600000', '1/9/2026', '5000']],
+      OPTIONS
+    )
+    expect(reading.rows[0].errors).toEqual([])
+    expect(reading.rows[0].draft?.buyer).toMatchObject({ ic: '050101-14-5678', age: 21 })
   })
 
   it('produces drafts the server check accepts', () => {
