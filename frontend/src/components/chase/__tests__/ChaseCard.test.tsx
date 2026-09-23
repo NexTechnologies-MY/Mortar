@@ -31,6 +31,7 @@ function summary(overrides: Partial<CaseSummary> = {}): CaseSummary {
   return {
     bookingId: 'BK-9001',
     stage: 'loan_applied',
+    spaSigned: false,
     unknown: false,
     bookingAgeDays: 16,
     daysSinceEvidence: 6,

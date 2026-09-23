@@ -19,7 +19,7 @@ import {
 } from '@mortar/core'
 import { useCases, useSnapshot } from '@/lib/data'
 import { usePersona } from '@/lib/persona'
-import { importBookings } from '@/lib/api'
+import { ApiError, importBookings } from '@/lib/api'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { PageHeaderCard } from '@/components/layout/PageHeaderCard'
 import { DropZone } from '@/components/import/DropZone'
@@ -132,9 +132,11 @@ export function ImportPage() {
       )
       await refresh()
     } catch (e) {
+      // The server's own words for a refusal it wants read (4xx); a plain sentence
+      // for anything else, never a raw status or technical wording (DESIGN.md).
       notify.error(
-        e instanceof Error
-          ? `Could not import the bookings: ${e.message}.`
+        e instanceof ApiError
+          ? `Could not import the bookings: ${e.message}`
           : 'Could not import the bookings. Try again.'
       )
     } finally {

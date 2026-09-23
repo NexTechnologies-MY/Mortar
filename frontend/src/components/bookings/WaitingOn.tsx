@@ -13,7 +13,7 @@
 
 import { useState } from 'react'
 import type { KeyboardEvent, MouseEvent } from 'react'
-import { ListPlus } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { ballInCourt, type BallInCourt, type Booking, type CaseSummary, type EventKind } from '@mortar/core'
 import { BALL_HOLDER_ICONS, BALL_HOLDER_LABELS, MOVE_OWNER } from '@/components/case/ball'
 import { OwnerBadge } from '@/components/case/OwnerBadge'
@@ -165,7 +165,11 @@ export function WaitingOnPanel({
   const ball = ballInCourt(summary)
   const task = waitingOnTask(booking, summary, referenceDate)
   const [adding, setAdding] = useState(false)
-  const [added, setAdded] = useState(false)
+  // Keyed on the task itself, not a plain flag: the panel is keyed by booking
+  // id, so recording an update that changes the next move must re-enable Add
+  // Task rather than leaving it stuck on "Task Added" for a task that no
+  // longer matches what is on screen.
+  const [addedTaskKey, setAddedTaskKey] = useState<string | null>(null)
 
   if (ball.holder === null || ball.nextMove === null || task === null) {
     return (
@@ -181,12 +185,14 @@ export function WaitingOnPanel({
   const move = ball.nextMove
   const ownerRole = task.ownerRole
   const owner = task.ownerName
+  const taskKey = `${task.action}:${task.title}`
+  const added = addedTaskKey === taskKey
 
   const addTask = async () => {
     setAdding(true)
     try {
       await postTask(task)
-      setAdded(true)
+      setAddedTaskKey(taskKey)
       notify.success(`Task added for ${owner}.`)
       await onChanged()
     } catch {
@@ -239,7 +245,7 @@ export function WaitingOnPanel({
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <Button type="button" size="sm" onClick={() => void addTask()} disabled={adding || added}>
-            <ListPlus aria-hidden="true" />
+            <Plus aria-hidden="true" />
             {added ? 'Task Added' : adding ? 'Adding…' : 'Add Task'}
           </Button>
           {summary.openTasks > 0 && !added ? (

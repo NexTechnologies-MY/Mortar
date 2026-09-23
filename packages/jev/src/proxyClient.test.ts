@@ -262,6 +262,7 @@ class MemoryCache implements JevCache {
 const summary = (overrides: Partial<CaseSummary> = {}): CaseSummary => ({
   bookingId: 'BK-9001',
   stage: 'loan_applied',
+  spaSigned: false,
   unknown: false,
   bookingAgeDays: 12,
   daysSinceEvidence: 6,

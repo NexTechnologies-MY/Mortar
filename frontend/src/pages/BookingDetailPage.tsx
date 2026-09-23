@@ -30,6 +30,7 @@ import { CaseJourney, WaitingOnPanel } from '@/components/bookings/WaitingOn'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { RefreshErrorBanner } from '@/components/ui/RefreshErrorBanner'
 import { Skeleton } from '@/components/ui/skeleton'
 
 export function BookingDetailPage() {
@@ -43,6 +44,10 @@ export function BookingDetailPage() {
 
   const [refreshKey, setRefreshKey] = useState(0)
   const [fetchedSignals, setFetchedSignals] = useState<BuyerSignals | null>(null)
+  /** The booking id the last signals read settled for (success or failure); `loading` is
+   * derived by comparing this to the current booking rather than set synchronously in the
+   * effect below, so switching bookings without a remount still reads as loading. */
+  const [signalsLoadedFor, setSignalsLoadedFor] = useState<string | null>(null)
 
   /** Mutations toast then re-fetch the snapshot; the bump re-runs cache-first reads. */
   const onChanged = useCallback(async () => {
@@ -61,6 +66,9 @@ export function BookingDetailPage() {
         if (live) setFetchedSignals(signals)
       })
       .catch(() => {})
+      .finally(() => {
+        if (live) setSignalsLoadedFor(id)
+      })
     return () => {
       live = false
     }
@@ -123,6 +131,9 @@ export function BookingDetailPage() {
         </div>
       ) : (
         <>
+          {/* The save that just landed is real; only the follow-up read failed, so the
+              case stays on screen with a way to retry rather than vanishing behind it. */}
+          {error ? <RefreshErrorBanner onRetry={() => void refresh()} /> : null}
           <CaseHeader booking={data.booking} summary={data.summary} />
           <Card className="mt-4">
             <CardContent className="flex flex-col gap-4 p-4">
@@ -188,6 +199,7 @@ export function BookingDetailPage() {
               <SignalsPanel
                 signals={data.signals}
                 hasBuyerMessages={data.messages.some((m) => m.senderRole === 'buyer')}
+                loading={signalsLoadedFor !== data.booking.id}
               />
               <TasksPanel tasks={data.tasks} onChanged={onChanged} />
             </div>
