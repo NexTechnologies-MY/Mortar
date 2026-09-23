@@ -8,7 +8,7 @@ import type { Task } from '@mortar/core'
 import { OwnerBadge } from '@/components/case/OwnerBadge'
 import { formatDate } from '@/components/case/format'
 import { NEXT_ACTION_LABELS } from './labels'
-import { updateTask } from '@/lib/api'
+import { ApiError, updateTask } from '@/lib/api'
 import { notify } from '@/components/ui/toastConfig'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -29,7 +29,9 @@ export function TasksPanel({ tasks, onChanged }: { tasks: Task[]; onChanged: () 
       notify.success('Task completed.')
       await onChanged()
     } catch (e) {
-      notify.error(e instanceof Error ? e.message : 'The task could not be updated.')
+      // The server's own words for a refusal it wants read (4xx); a plain sentence
+      // for anything else, never a raw status or technical wording (DESIGN.md).
+      notify.error(e instanceof ApiError ? e.message : 'The Task Could Not Be Updated. Try Again.')
     } finally {
       setPendingId(null)
     }
