@@ -120,19 +120,19 @@ The app is used as three personas, switched in the header and persisted in
 | Loan Admin  | `/bookings` | Tracks loan and banker status across bookings              |
 | Legal Admin | `/legal`    | Works the queue of unsigned SPAs by how long they have sat |
 
-| Route           | Purpose                                                              |
-| --------------- | -------------------------------------------------------------------- |
-| `/`             | Public landing page                                                  |
-| `/sign-in`      | Persona picker, no real authentication                               |
-| `/app`          | Redirects to the active persona's home                               |
-| `/bookings`     | Every live booking with stage, risk flags, and Waiting On            |
-| `/bookings/:id` | Stage timeline, missing-document checklist, and Waiting On next move |
-| `/chase`        | Who to chase today, with WhatsApp click-to-chat links                |
-| `/legal`        | Approved loans with no signed SPA, longest wait first                |
-| `/forecast`     | What will sign, then where bookings died and what was recoverable    |
-| `/import`       | Spreadsheet intake with row-by-row review before import              |
-| `/faq`          | FAQ                                                                  |
-| `/settings`     | Demo dataset controls, reset, and server health                      |
+| Route           | Purpose                                                                                                                         |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `/`             | Public landing page                                                                                                             |
+| `/sign-in`      | Persona picker, no real authentication                                                                                          |
+| `/app`          | Redirects to the active persona's home                                                                                          |
+| `/bookings`     | Every booking, Active and Closed, with stage, risk flags, and Waiting On; hand-entry Add Booking and a Closed-case Excel export |
+| `/bookings/:id` | Stage timeline, missing-document checklist, Waiting On next move, and Record An Update for hand-entered progress                |
+| `/chase`        | Who to chase today, with WhatsApp click-to-chat links                                                                           |
+| `/legal`        | Approved loans with no signed SPA, longest wait first                                                                           |
+| `/forecast`     | What will sign, then where bookings died and what was recoverable                                                               |
+| `/import`       | Spreadsheet intake with row-by-row review before import                                                                         |
+| `/faq`          | FAQ                                                                                                                             |
+| `/settings`     | Demo dataset controls, reset, and server health                                                                                 |
 
 <p align="right"><a href="#readme-top">&uarr;</a></p>
 
@@ -285,6 +285,23 @@ bun run db:reset   # Re-seed the database deterministically
 
 Prerequisites: [Bun 1.3.14](https://bun.sh/) (pinned by `packageManager` in
 `package.json`), Postgres 17, and a modern desktop browser.
+
+### Run Jev Locally
+
+Without `TYPESAFE_API_KEY` set, Jev serves only precomputed answers. Setting
+`JEV_PROXY_URL` (with `TYPESAFE_API_KEY` still unset) points Jev at a local
+Anthropic-Messages-compatible model proxy, such as CLIProxyAPI, instead, so
+Jev's live path can be exercised without a TypeSafe key.
+
+```sh
+JEV_PROXY_URL=http://127.0.0.1:PORT     # base URL, no trailing /v1/messages
+JEV_PROXY_KEY=                          # the proxy's x-api-key
+JEV_PROXY_MODEL=gemini-3.5-flash-lite   # model to route to (default shown)
+```
+
+**Warning:** case data is sent as a prompt to whatever model sits behind the
+proxy. Use this only with made-up demo data, never with real buyer or booking
+information.
 
 <p align="right"><a href="#readme-top">&uarr;</a></p>
 
