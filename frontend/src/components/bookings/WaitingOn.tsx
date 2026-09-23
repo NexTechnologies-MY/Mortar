@@ -98,7 +98,8 @@ export function CaseJourney({
               aria-hidden="true"
               className={cn(
                 'h-1 rounded-full',
-                done ? 'bg-inverse' : current ? (stalled ? 'bg-status-danger' : 'bg-ring') : 'bg-input'
+                // The next step is info-blue, so it never reads as one more done step.
+                done ? 'bg-inverse' : current ? (stalled ? 'bg-status-danger' : 'bg-status-info') : 'bg-input'
               )}
             />
             <span
@@ -109,7 +110,7 @@ export function CaseJourney({
                   : current
                     ? stalled
                       ? 'text-status-danger-fg'
-                      : 'text-foreground'
+                      : 'text-status-info-fg'
                     : 'text-muted-foreground'
               )}
             >

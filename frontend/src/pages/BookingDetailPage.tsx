@@ -79,7 +79,12 @@ export function BookingDetailPage() {
       messages: snapshot.messages.filter((m) => m.bookingId === id),
       tasks: snapshot.tasks.filter((t) => t.bookingId === id),
       extractions: new Map(snapshot.extractions.map((e) => [e.messageId, e])),
-      signals: snapshot.signals.find((s) => s.bookingId === id) ?? fetchedSignals,
+      // The fetched read wins: it runs after each change, while the snapshot's
+      // copy can predate the message that just arrived.
+      signals:
+        (fetchedSignals?.bookingId === id ? fetchedSignals : null) ??
+        snapshot.signals.find((s) => s.bookingId === id) ??
+        null,
       playbooks: snapshot.playbooks
     }
   }, [snapshot, cases, id, fetchedSignals])
