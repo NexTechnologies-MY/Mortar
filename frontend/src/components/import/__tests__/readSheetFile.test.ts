@@ -41,7 +41,9 @@ const DEFAULTS = {
   legalFirm: 'Unassigned'
 }
 
-describe('readSheetFile', () => {
+// The first XLSX read loads read-excel-file cold; under a full parallel run that
+// alone can pass the default 5 s, so the whole file gets more room.
+describe('readSheetFile', { timeout: 30_000 }, () => {
   beforeAll(() => {
     process.env.TZ = 'Asia/Kuala_Lumpur'
   })

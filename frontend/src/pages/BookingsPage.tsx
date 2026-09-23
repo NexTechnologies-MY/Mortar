@@ -15,7 +15,7 @@
  * same way an imported sheet row is.
  */
 
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { AlertTriangle, ClipboardList, FileSignature, HelpCircle, Plus } from 'lucide-react'
 import {
   ballInCourt,
@@ -42,6 +42,7 @@ import { Pagination, usePagination } from '@/components/ui/Pagination'
 import { nextSort } from '@/components/ui/SortHeader'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { RefreshErrorBanner } from '@/components/ui/RefreshErrorBanner'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { notify } from '@/components/ui/toastConfig'
@@ -96,6 +97,9 @@ export function BookingsPage() {
   const [view, setView] = useState<View>('active')
   const [addOpen, setAddOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
+  // Passed to AddBookingDialog so it can put focus back here once Escape, the
+  // X or Cancel close it (issue #M12) — a successful add navigates away instead.
+  const addButtonRef = useRef<HTMLButtonElement>(null)
 
   const confirmedKinds = useMemo(() => {
     const map = new Map<string, Set<EventKind>>()
@@ -257,6 +261,13 @@ export function BookingsPage() {
     [snapshot]
   )
 
+  // Every project already in the ledger, for Add Booking's Project select
+  // (issue #H6) — `defaults.project` (the biggest one) is always among them.
+  const projects = useMemo(
+    () => (snapshot ? [...new Set(snapshot.bookings.map((b) => b.project))].sort((a, b) => a.localeCompare(b)) : []),
+    [snapshot]
+  )
+
   // A unit is free again once its booking was cancelled or lapsed — the same
   // rule ImportPage applies, so a hand-entered booking is checked against
   // exactly the units an import would refuse.
@@ -276,7 +287,13 @@ export function BookingsPage() {
               Every Unit Booking, From Reservation Through To SPA Signing.
             </p>
           </div>
-          <Button type="button" className="shrink-0" disabled={!snapshot} onClick={() => setAddOpen(true)}>
+          <Button
+            ref={addButtonRef}
+            type="button"
+            className="shrink-0"
+            disabled={!snapshot}
+            onClick={() => setAddOpen(true)}
+          >
             <Plus aria-hidden="true" />
             Add Booking
           </Button>
@@ -291,11 +308,13 @@ export function BookingsPage() {
         held={held}
         persona={persona}
         onImported={refresh}
+        projects={projects}
+        triggerRef={addButtonRef}
       />
 
       {loading && !snapshot ? (
         <div className="mt-4 flex flex-col gap-3">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {[0, 1, 2, 3].map((i) => (
               <Skeleton key={i} className="h-24 rounded-md" />
             ))}
@@ -313,7 +332,10 @@ export function BookingsPage() {
         </div>
       ) : (
         <>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {/* A mutation's own save can succeed while the refresh after it fails; the
+              table stays on screen with a way to retry rather than vanishing behind it. */}
+          {error ? <RefreshErrorBanner onRetry={() => void refresh()} /> : null}
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
               label="Live Bookings"
               icon={ClipboardList}

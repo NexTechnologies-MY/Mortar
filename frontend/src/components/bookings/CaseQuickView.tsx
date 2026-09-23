@@ -6,7 +6,7 @@
  */
 
 import { Link } from 'react-router-dom'
-import { ArrowRight } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import { ballInCourt } from '@mortar/core'
 import { RiskChip } from '@/components/case/RiskChip'
 import { StagePill } from '@/components/case/StagePill'
@@ -71,7 +71,7 @@ export function CaseQuickView({
             <Button variant="secondary" size="sm" asChild>
               <Link to={`/bookings/${row.booking.id}`}>
                 Open Full Case
-                <ArrowRight aria-hidden="true" />
+                <ChevronRight aria-hidden="true" />
               </Link>
             </Button>
           </SheetFooter>

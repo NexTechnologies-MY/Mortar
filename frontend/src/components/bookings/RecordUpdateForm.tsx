@@ -11,7 +11,9 @@
  * - A bank's decision names the application it decides, so the right bank
  *   shows approved or rejected.
  * - SPA Appointment Set writes its note as `Appointment On YYYY-MM-DD`, the
- *   form the Legal desk reads the appointment date from.
+ *   form the Legal desk and the SPA stall rule read the appointment date from.
+ * - Loan Agreement Signed and Disbursed are offered only once the SPA is
+ *   signed; neither can come before it.
  * - Closing the case (Cancelled, Lapsed) or recording a withdrawal asks first
  *   in a dialog, Cancel focused.
  */
@@ -102,6 +104,8 @@ const LABEL_OF = Object.fromEntries(GROUPS.flatMap((g) => g.kinds)) as Record<Up
 const BANK_REQUIRED: ReadonlySet<UpdateKind> = new Set(['loan_approved', 'loan_rejected', 'valuation_shortfall'])
 /** Updates that may say which bank: a document can be asked for before any submission. */
 const BANK_OPTIONAL: ReadonlySet<UpdateKind> = new Set(['documents_requested', 'documents_received'])
+/** Updates that stand on a signed SPA: offered only once one is on the case, and refused by the server before. */
+const AFTER_SPA: ReadonlySet<UpdateKind> = new Set(['loan_agreement_signed', 'disbursed'])
 /** A bank decides an application once; a second decision on it would change nothing. */
 const DECISIONS: ReadonlySet<UpdateKind> = new Set(['loan_approved', 'loan_rejected'])
 const DECIDED: ReadonlySet<ApplicationStatus> = new Set(['approved', 'rejected'])
@@ -176,6 +180,7 @@ export function RecordUpdateForm({
   const takesDocument = bankOptional
   const decision = kind !== '' && DECISIONS.has(kind)
   const confirmation = kind === '' ? undefined : CONFIRM[kind]
+  const offered = (value: UpdateKind) => summary.spaSigned || !AFTER_SPA.has(value)
 
   const choose = (next: UpdateKind) => {
     setKind(next)
@@ -277,11 +282,13 @@ export function RecordUpdateForm({
                 <SelectGroup key={group.track}>
                   {i > 0 && <SelectSeparator />}
                   <SelectLabel>{group.label}</SelectLabel>
-                  {group.kinds.map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
-                      {label}
-                    </SelectItem>
-                  ))}
+                  {group.kinds
+                    .filter(([value]) => offered(value))
+                    .map(([value, label]) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
+                    ))}
                 </SelectGroup>
               ))}
             </SelectContent>

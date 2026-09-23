@@ -7,7 +7,7 @@
 
 import { useState } from 'react'
 import type { Snapshot } from '@mortar/core'
-import { resetDemo } from '@/lib/api'
+import { ApiError, resetDemo } from '@/lib/api'
 import { notify } from '@/components/ui/toastConfig'
 import { formatDate } from '@/components/case'
 import { Button } from '@/components/ui/button'
@@ -63,7 +63,7 @@ export function DemoDataCard({
       setOpen(false)
       await onReset()
     } catch (e) {
-      notify.error(e instanceof Error ? e.message : 'Could not reset the demo data')
+      notify.error(e instanceof ApiError ? e.message : 'Could Not Reset The Demo Data. Try Again.')
     } finally {
       setResetting(false)
     }

@@ -88,6 +88,8 @@ function buildFreshDisbursedSnapshot(): Snapshot {
     events: [
       ...base.events,
       freshEvent('booked', '2026-09-10T09:00:00+08:00'),
+      // A disbursement only counts once the SPA is signed (issue H2).
+      freshEvent('spa_signed', '2026-09-11T09:00:00+08:00'),
       freshEvent('disbursed', '2026-09-12T09:00:00+08:00')
     ]
   }

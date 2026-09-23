@@ -14,7 +14,7 @@ import { simNow, type Booking, type CaseEvent, type Extraction, type Message, ty
 import { JevTag } from '@/components/case/JevTag'
 import { DOCUMENT_LABELS, EXTRACTED_EVENT_LABELS, SENDER_ROLE_LABELS } from './labels'
 import { DateField } from './DateField'
-import { postMessage } from '@/lib/api'
+import { ApiError, postMessage } from '@/lib/api'
 import { notify } from '@/components/ui/toastConfig'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -110,7 +110,9 @@ export function AddMessageForm({
       notify.success(ms != null ? `Message added — Jev answered live in ${ms.toLocaleString()} ms.` : 'Message added.')
       await onAdded()
     } catch (e) {
-      notify.error(e instanceof Error ? e.message : 'The message could not be added.')
+      // The server's own words for a refusal it wants read (4xx); a plain sentence
+      // for anything else, never a raw status or technical wording (DESIGN.md).
+      notify.error(e instanceof ApiError ? e.message : 'The Message Could Not Be Added. Try Again.')
     } finally {
       setPending(false)
     }
@@ -119,7 +121,7 @@ export function AddMessageForm({
   return (
     <div className="flex flex-col gap-3 border-t border-border pt-4">
       <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Add Message</h3>
-      <div className="grid gap-3 sm:grid-cols-[180px_1fr]">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[180px_1fr]">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="add-message-role">Sender Role</Label>
           <Select
@@ -147,7 +149,7 @@ export function AddMessageForm({
           <Input id="add-message-name" value={name} onChange={(e) => setName(e.target.value)} />
         </div>
       </div>
-      <div className="grid gap-3 sm:grid-cols-[180px_120px]">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[180px_120px]">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="add-message-sent-on">Sent At</Label>
           <DateField

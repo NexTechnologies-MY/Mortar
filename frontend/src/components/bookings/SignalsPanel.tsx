@@ -37,11 +37,14 @@ function HeadingNote({ text, label }: { text: string; label: string }) {
 
 export function SignalsPanel({
   signals,
-  hasBuyerMessages
+  hasBuyerMessages,
+  loading = false
 }: {
   signals: BuyerSignals | null
   /** `false` when the buyer has never messaged — Jev is never asked, so there is no read to show. */
   hasBuyerMessages: boolean
+  /** The read is in flight and has not landed (or come from the snapshot) yet. */
+  loading?: boolean
 }) {
   const needsReview =
     signals !== null &&
@@ -66,7 +69,11 @@ export function SignalsPanel({
           <SignalChips signals={signals} />
         ) : (
           <p className="text-sm text-muted-foreground">
-            {hasBuyerMessages ? 'No Signal Read Yet.' : 'No Buyer Messages Have Arrived Yet.'}
+            {!hasBuyerMessages
+              ? 'No Buyer Messages Have Arrived Yet.'
+              : loading
+                ? 'Reading Buyer Messages…'
+                : 'No Signal Read Yet.'}
           </p>
         )}
       </CardContent>

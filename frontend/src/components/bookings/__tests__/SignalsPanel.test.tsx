@@ -56,6 +56,20 @@ describe('SignalsPanel', () => {
     expect(screen.queryByLabelText('Buyer signal confidences')).toBeNull()
   })
 
+  it('shows a loading state while the read is in flight instead of claiming none was read', () => {
+    render(<SignalsPanel signals={null} hasBuyerMessages={true} loading={true} />)
+
+    expect(screen.getByText('Reading Buyer Messages…')).toBeTruthy()
+    expect(screen.queryByText('No Signal Read Yet.')).toBeNull()
+  })
+
+  it('prefers real signals over the loading state once the read lands', () => {
+    render(<SignalsPanel signals={SIGNALS} hasBuyerMessages={true} loading={true} />)
+
+    expect(screen.queryByText('Reading Buyer Messages…')).toBeNull()
+    expect(screen.getByText('Prompt Replies')).toBeTruthy()
+  })
+
   it('says no buyer messages have arrived instead of faking a signal read', () => {
     render(<SignalsPanel signals={null} hasBuyerMessages={false} />)
 

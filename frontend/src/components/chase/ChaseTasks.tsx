@@ -46,7 +46,7 @@ export function ChaseTasks({
   const groups = groupTasks(tasks)
 
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
       {[...groups.entries()].map(([key, list]) => {
         const [role, name] = key.split('|') as [Task['ownerRole'], string]
         return (
