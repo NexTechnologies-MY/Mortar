@@ -60,7 +60,7 @@ export function TrackTimelines({ events }: { events: CaseEvent[] }) {
     events.filter((e) => e.track === track).sort((a, b) => a.occurredAt.localeCompare(b.occurredAt))
   return (
     <Card>
-      <CardContent className="grid gap-6 p-4 sm:grid-cols-2">
+      <CardContent className="grid grid-cols-1 gap-6 p-4 sm:grid-cols-2">
         <TrackColumn title="Loan Track" events={byTrack('loan')} />
         <TrackColumn title="Legal Track" events={byTrack('legal')} />
         <div className="sm:col-span-2">

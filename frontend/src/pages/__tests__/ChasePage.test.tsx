@@ -4,6 +4,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { CaseSummary, Snapshot, Task } from '@mortar/core'
 import { booking, nextAction, snapshot, stalledCase } from './mockSnapshot'
 
+// Radix Select scrolls the highlighted item into view on open; jsdom has no layout engine.
+Element.prototype.scrollIntoView = vi.fn()
+
 function task(bookingId: string, overrides: Partial<Task> = {}): Task {
   return {
     id: `TASK-${bookingId}`,
@@ -187,6 +190,38 @@ describe('ChasePage', () => {
     fireEvent.click(screen.getByText('High Risk'))
     expect(screen.getByText('Nothing To Chase')).toBeTruthy()
     expect(screen.getByText('No Stalled Booking Matches These Filters.')).toBeTruthy()
+  })
+
+  it('keeps the queue grid to one column below sm so cards cannot force sideways scroll (issue H5)', () => {
+    renderPage()
+    const grid = screen.getByTestId('chase-card-BK-9001').parentElement!
+    expect(grid.className).toContain('grid-cols-1')
+  })
+
+  it('includes a stalled case with no cached suggestion under its Waiting-On owner (issue H7)', () => {
+    SNAP = snapshot({
+      bookings: [...SNAP.bookings, booking('BK-LEGAL')],
+      events: SNAP.events,
+      nextActions: SNAP.nextActions
+    })
+    CASES = [
+      ...CASES,
+      // lo_issued + a days-since-SPA-set clock means Waiting On's next move is
+      // escalate_legal (MOVE_OWNER: legal) — but nobody has asked Jev yet, so
+      // there is no cached suggestion to read an owner from.
+      stalledCase('BK-LEGAL', {
+        stage: 'lo_issued',
+        daysSinceLoIssued: 67,
+        daysSinceSpaSet: 63,
+        stallReasons: ['SPA Set 63 Days Ago, Still Unsigned']
+      })
+    ]
+    renderPage()
+
+    fireEvent.click(screen.getByRole('combobox', { name: 'Filter by owner' }))
+    fireEvent.click(screen.getByRole('option', { name: 'Legal' }))
+
+    expect(screen.getByTestId('chase-card-BK-LEGAL')).toBeTruthy()
   })
 
   describe('Suggested Next', () => {

@@ -80,7 +80,7 @@ export function DemoDataCard({
         </p>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        <dl className="grid gap-x-8 gap-y-2 sm:grid-cols-2">
+        <dl className="grid grid-cols-1 gap-x-8 gap-y-2 sm:grid-cols-2">
           <div className="flex items-baseline justify-between gap-4 border-b border-border py-1.5">
             <dt className="text-[13px] text-muted-foreground">Seed</dt>
             <dd className="font-mono text-[13px] tabular-nums">{snapshot.meta.seed}</dd>

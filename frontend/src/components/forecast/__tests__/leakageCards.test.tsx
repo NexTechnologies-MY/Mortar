@@ -69,6 +69,13 @@ describe('LeakageCard', () => {
     renderIn(<LeakageCard leakage={LEAKAGE} />)
     expect(screen.getByText(/counted against the rejection/)).toBeTruthy()
   })
+
+  it('prints each cause’s share once, not twice (issue L9)', () => {
+    renderIn(<LeakageCard leakage={LEAKAGE} />)
+    // Loan Rejected's share is 8,988,000 / 13,632,000 ≈ 66%.
+    const row = screen.getAllByRole('row')[1]
+    expect(within(row).getAllByText('66%')).toHaveLength(1)
+  })
 })
 
 describe('RecoveryCard', () => {

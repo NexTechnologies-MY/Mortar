@@ -19,6 +19,7 @@ import {
   SlidersHorizontal,
   Users
 } from 'lucide-react'
+import { ballInCourt } from '@mortar/core'
 import type { CaseSummary, NextActionSuggestion, OwnerRole, RiskLevel, Task } from '@mortar/core'
 import { useCases, useSnapshot } from '@/lib/data'
 import { fetchNextAction, postTask, updateTask } from '@/lib/api'
@@ -34,7 +35,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ChaseCard } from '@/components/chase/ChaseCard'
 import { ChaseTasks } from '@/components/chase/ChaseTasks'
 import { NEXT_ACTION_LABELS, dueOnForUrgency, ownerName, taskTitle, urgencyFor } from '@/components/chase/chase'
-import { formatRm, formatRmCompact } from '@/components/case'
+import { formatRm, formatRmCompact, MOVE_OWNER } from '@/components/case'
 import type { DocumentKind } from '@mortar/core'
 
 const RISK_OPTIONS: { value: 'all' | RiskLevel; label: string }[] = [
@@ -99,10 +100,17 @@ export function ChasePage() {
       const urgency = urgencyFor(suggestions.get(c.bookingId), c.daysSinceEvidence)
       return { pending: !pending.has(c.bookingId), tone: toneOrder[urgency.tone], score: urgency.score }
     }
+    // The owner filter's match for a case: Jev's cached suggestion when there
+    // is one, else the desk that would make Waiting On's next move — so a
+    // stalled case nobody has asked Jev about yet still shows under its
+    // rightful owner instead of disappearing from every specific filter
+    // (issue H7).
+    const ownerFor = (c: CaseSummary): OwnerRole =>
+      suggestions.get(c.bookingId)?.owner.value ?? MOVE_OWNER[ballInCourt(c).nextMove ?? 'wait']
     return cases
       .filter((c) => c.stallReasons.length > 0)
       .filter((c) => riskFilter === 'all' || c.risk.level === riskFilter)
-      .filter((c) => ownerFilter === 'all' || suggestions.get(c.bookingId)?.owner.value === ownerFilter)
+      .filter((c) => ownerFilter === 'all' || ownerFor(c) === ownerFilter)
       .sort((a, b) => {
         const ra = rank(a)
         const rb = rank(b)
@@ -208,7 +216,7 @@ export function ChasePage() {
           <EmptyState icon={SearchX} title="Could Not Load Your Bookings" description={error} />
         </div>
       ) : loading && !snapshot ? (
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
+        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-3">
           {[0, 1, 2].map((i) => (
             <Skeleton key={i} className="h-48" />
           ))}
@@ -347,7 +355,7 @@ export function ChasePage() {
                 Action Today
                 <InfoTooltip text="Stalled Bookings, Ranked By Urgency." />
               </h2>
-              <div className="mt-3 grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
+              <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-3">
                 {(queueExpanded ? stalled : stalled.slice(0, QUEUE_PREVIEW)).map((summary) => {
                   const booking = bookings.get(summary.bookingId)
                   if (!booking) return null

@@ -48,7 +48,7 @@ export function LegalPage() {
           <EmptyState icon={SearchX} title="Could Not Load Your Bookings" description={error} />
         </div>
       ) : loading && !snapshot ? (
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
+        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-3">
           {[0, 1, 2].map((i) => (
             <Skeleton key={i} className="h-48" />
           ))}

@@ -102,7 +102,8 @@ export async function downloadClosedExport(rows: readonly ClosedExportRow[], ref
         header: header('Closed On'),
         width: 14,
         cell: (r: ClosedExportRow) =>
-          r.closedOn ? { value: isoToDate(r.closedOn), type: Date, format: 'dd/mm/yyyy' } : ''
+          // House date format (DESIGN.md Data Formats): `31 May 2026`, not `31/05/2026` (issue L11).
+          r.closedOn ? { value: isoToDate(r.closedOn), type: Date, format: 'd mmm yyyy' } : ''
       },
       {
         header: header('Value (RM)'),

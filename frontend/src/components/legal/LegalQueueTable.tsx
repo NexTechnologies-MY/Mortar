@@ -15,7 +15,7 @@
 
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { formatRm } from '@/components/case'
+import { formatDate, formatRm } from '@/components/case'
 import { SortHeader, nextSort, type SortState } from '@/components/ui/SortHeader'
 import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
@@ -23,6 +23,15 @@ import { LEGAL_FIRST_DIR, isLegalStall, sortLegalRows, type LegalRow, type Legal
 
 /** Column widths in px, cell padding included; Buyer takes what is left. */
 const WIDTHS = { booking: 96, unit: 100, firm: 210, days: 140, appointment: 230, value: 130 } as const
+
+/** The note's raw `YYYY-MM-DD` reads as the house date format, e.g. `Appointment
+ * On 2026-07-29` becomes `Appointment On 29 Jul 2026`; a note with no date, or
+ * none at all, reads as-is (or "Not Set"). */
+function displayAppointmentNote(note: string | null): string {
+  if (!note) return 'Not Set'
+  const isoDate = /\d{4}-\d{2}-\d{2}/.exec(note)?.[0]
+  return isoDate ? note.replace(isoDate, formatDate(isoDate)) : note
+}
 
 const COLUMNS: { key: LegalSortKey; label: string; className?: string }[] = [
   { key: 'booking', label: 'Booking' },
@@ -90,7 +99,9 @@ export function LegalQueueTable({ rows }: { rows: LegalRow[] }) {
               >
                 {summary.daysSinceLoIssued ?? '—'}
               </TableCell>
-              <TableCell className="truncate text-muted-foreground">{appointmentNote ?? 'Not Set'}</TableCell>
+              <TableCell className="truncate text-muted-foreground">
+                {displayAppointmentNote(appointmentNote)}
+              </TableCell>
               <TableCell className="text-right tabular-nums">{formatRm(booking.priceRm)}</TableCell>
             </TableRow>
           )

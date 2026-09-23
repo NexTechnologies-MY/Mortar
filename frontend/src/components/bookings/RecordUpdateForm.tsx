@@ -265,7 +265,7 @@ export function RecordUpdateForm({
       <h2 id="record-update-heading" className={EYEBROW}>
         Record An Update
       </h2>
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="record-update-kind">What Happened</Label>
           <Select value={kind} onValueChange={(next) => choose(next as UpdateKind)}>
@@ -302,7 +302,7 @@ export function RecordUpdateForm({
       </div>
 
       {kind === 'loan_submitted' && (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="record-update-bank-name">Bank</Label>
             <Input
@@ -327,7 +327,7 @@ export function RecordUpdateForm({
       )}
 
       {(bankRequired || (bankOptional && applications.length > 0) || takesDocument) && (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {bankRequired && applications.length === 0 ? (
             <div className="flex flex-col gap-1.5">
               <span className="text-xs font-medium leading-none">Which Bank</span>
@@ -376,7 +376,7 @@ export function RecordUpdateForm({
       )}
 
       {kind === 'spa_appointment_set' && (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="record-update-appointment">Appointment Date</Label>
             <DateField
