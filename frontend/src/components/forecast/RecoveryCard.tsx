@@ -12,7 +12,7 @@
  */
 
 import { Link } from 'react-router-dom'
-import { ArrowRight } from 'lucide-react'
+import { ChevronRight } from 'lucide-react'
 import type { Leakage } from '@mortar/core'
 import { formatRm, formatRmCompact, formatPercent } from '@/components/case'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -97,7 +97,7 @@ export function RecoveryCard({ leakage }: { leakage: Leakage }) {
                     className="inline-flex items-center gap-1 rounded-sm border border-input px-2 py-1 text-[13px] font-medium text-foreground transition-colors duration-[120ms] hover:bg-accent"
                   >
                     {id}
-                    <ArrowRight aria-hidden="true" className="size-3 shrink-0" />
+                    <ChevronRight aria-hidden="true" className="size-3 shrink-0" />
                   </Link>
                 </li>
               ))}

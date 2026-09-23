@@ -2,10 +2,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { CaseEvent, Extraction, Message } from '@mortar/core'
 import { MessagesPanel } from '@/components/bookings/MessagesPanel'
-import { reviewEvent } from '@/lib/api'
+import { ApiError, reviewEvent } from '@/lib/api'
 import { notify } from '@/components/ui/toastConfig'
 
-vi.mock('@/lib/api', () => ({
+// Keep the real ApiError: the panel shows the server's words only for an ApiError (a 4xx refusal).
+vi.mock('@/lib/api', async (importOriginal) => ({
+  ApiError: (await importOriginal<typeof import('@/lib/api')>()).ApiError,
   extractMessage: vi.fn(async () => ({})),
   reviewEvent: vi.fn(async () => ({}))
 }))
@@ -85,7 +87,7 @@ describe('MessagesPanel review', () => {
   })
 
   it('shows why a review was refused and re-reads the case, so a stale proposal is replaced', async () => {
-    vi.mocked(reviewEvent).mockRejectedValue(new Error('This update was already reviewed and confirmed.'))
+    vi.mocked(reviewEvent).mockRejectedValue(new ApiError('This update was already reviewed and confirmed.', 409))
     const onChanged = renderPanel()
 
     fireEvent.click(screen.getByText('Dismiss'))

@@ -19,7 +19,7 @@ import { EvidencePill } from '@/components/case/EvidencePill'
 import { formatPercent } from '@/components/case/format'
 import { DOCUMENT_LABELS, EXTRACTED_EVENT_LABELS, SENDER_ROLE_LABELS, formatDateTime } from './labels'
 import { OWNER_ROLE_LABELS } from '@/components/case/OwnerBadge'
-import { extractMessage, reviewEvent } from '@/lib/api'
+import { ApiError, extractMessage, reviewEvent } from '@/lib/api'
 import { notify } from '@/components/ui/toastConfig'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -142,21 +142,32 @@ function MessageItem({
   reviewer: string
   onChanged: () => Promise<void>
 }) {
-  const [pending, setPending] = useState(false)
+  // Which action is running, not just whether one is: Confirm/Dispute/Dismiss
+  // share this busy state with Ask Jev so only one can run on a message at
+  // once, but the Ask Jev label must say so only when it is the one running.
+  const [pendingAction, setPendingAction] = useState<'jev' | 'review' | null>(null)
+  const pending = pendingAction !== null
 
-  const run = async (work: () => Promise<unknown>, toast: string, refreshOnFailure = false) => {
-    setPending(true)
+  const run = async (
+    action: 'jev' | 'review',
+    work: () => Promise<unknown>,
+    toast: string,
+    refreshOnFailure = false
+  ) => {
+    setPendingAction(action)
     try {
       await work()
       notify.success(toast)
       await onChanged()
     } catch (e) {
-      notify.error(e instanceof Error ? e.message : 'The request failed.')
+      // The server's own words for a refusal it wants read (4xx); a plain sentence
+      // for anything else, never a raw status or technical wording (DESIGN.md).
+      notify.error(e instanceof ApiError ? e.message : 'Something Went Wrong. Try Again.')
       // A refused review means someone moved the proposal first ("This update
       // was already reviewed…"): re-read, so the panel shows where it stands.
       if (refreshOnFailure) await onChanged().catch(() => {})
     } finally {
-      setPending(false)
+      setPendingAction(null)
     }
   }
 
@@ -171,9 +182,9 @@ function MessageItem({
           variant="ghost"
           className="ml-auto h-7 px-2 text-xs text-muted-foreground transition-opacity duration-[var(--motion-fast)] group-focus-within:opacity-100 group-hover:opacity-100 sm:opacity-0"
           disabled={pending}
-          onClick={() => void run(() => extractMessage(message.id), 'Jev re-ran on this message.')}
+          onClick={() => void run('jev', () => extractMessage(message.id), 'Jev re-ran on this message.')}
         >
-          {extraction ? 'Ask Jev Again' : 'Ask Jev'}
+          {pendingAction === 'jev' ? 'Asking Jev…' : extraction ? 'Ask Jev Again' : 'Ask Jev'}
         </Button>
       </div>
       <p className="mt-1.5 max-w-3xl text-sm">{message.body}</p>
@@ -183,7 +194,7 @@ function MessageItem({
           proposal={proposal}
           pending={pending}
           onReview={(eventId, decision) =>
-            void run(() => reviewEvent(eventId, { decision, reviewer }), DECISION_TOASTS[decision], true)
+            void run('review', () => reviewEvent(eventId, { decision, reviewer }), DECISION_TOASTS[decision], true)
           }
         />
       ) : (
