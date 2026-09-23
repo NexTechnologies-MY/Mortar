@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { unitKey, type SheetDefaults } from '@mortar/core'
@@ -22,6 +23,22 @@ vi.mock('react-router-dom', () => ({
   useNavigate: () => navigateMock
 }))
 
+// Radix places the select menu with floating-ui, which needs observers,
+// pointer capture and scrolling that jsdom lacks (same stubs as RecordUpdateForm.test.tsx).
+for (const observer of ['ResizeObserver', 'IntersectionObserver'] as const) {
+  vi.stubGlobal(
+    observer,
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+  )
+}
+Element.prototype.scrollIntoView = () => {}
+Element.prototype.hasPointerCapture = () => false
+Element.prototype.releasePointerCapture = () => {}
+
 const REFERENCE_DATE = '2026-09-18'
 
 const DEFAULTS: SheetDefaults = {
@@ -30,6 +47,8 @@ const DEFAULTS: SheetDefaults = {
   loanOwner: 'Aiman Rizal',
   legalFirm: 'Unassigned'
 }
+
+const PROJECTS = [DEFAULTS.project, 'Aster Heights']
 
 function renderDialog(props: Partial<React.ComponentProps<typeof AddBookingDialog>> = {}) {
   const onOpenChange = vi.fn()
@@ -43,6 +62,7 @@ function renderDialog(props: Partial<React.ComponentProps<typeof AddBookingDialo
       held={new Map()}
       persona="loan-admin"
       onImported={onImported}
+      projects={PROJECTS}
       {...props}
     />
   )
@@ -72,6 +92,34 @@ const pickBookingDate = () => {
   fireEvent.click(screen.getByLabelText(label('Booking Date')))
   const day9 = screen.getAllByText('9').find((el) => el.tagName === 'BUTTON')!
   fireEvent.click(day9)
+}
+
+/** Opens a Mortar Select by its field label and picks the named option. */
+async function choose(labelText: string, option: string | RegExp) {
+  fireEvent.click(screen.getByRole('combobox', { name: label(labelText) }))
+  fireEvent.click(await screen.findByRole('option', { name: option }))
+}
+
+/** A real "Add Booking" button outside the dialog, standing in for BookingsPage's, wired the same way (issue #M12). */
+function TriggerAndDialog() {
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const [open, setOpen] = useState(true)
+  return (
+    <>
+      <button ref={triggerRef}>Open Add Booking</button>
+      <AddBookingDialog
+        open={open}
+        onOpenChange={setOpen}
+        referenceDate={REFERENCE_DATE}
+        defaults={DEFAULTS}
+        held={new Map()}
+        persona="loan-admin"
+        onImported={vi.fn(async () => {})}
+        projects={PROJECTS}
+        triggerRef={triggerRef}
+      />
+    </>
+  )
 }
 
 describe('AddBookingDialog', () => {
@@ -208,4 +256,65 @@ describe('AddBookingDialog', () => {
     expect((screen.getByLabelText(label('Unit')) as HTMLInputElement).value).toBe('D-05-01')
     expect((screen.getByLabelText(label('Buyer Name')) as HTMLInputElement).value).toBe('Siti Hajar Binti Omar')
   }, 90_000)
+
+  // Issue #H6: a hand-entered booking used to have no Project field at all,
+  // so every one silently joined the ledger's biggest project.
+  it('defaults Project to the desk main project, and checks the held unit against whichever project is chosen', async () => {
+    const held = new Map([[unitKey('Aster Heights', 'D-05-01'), 'BK-0042']])
+    renderDialog({ held })
+    fillRequiredFields()
+    fireEvent.blur(screen.getByLabelText(label('Unit')))
+    // D-05-01 is free in the default project (Kiara Residences).
+    expect(screen.queryByText('Unit Already Held By BK-0042')).toBeNull()
+
+    await choose('Project', 'Aster Heights')
+    expect(screen.getByText('Unit Already Held By BK-0042')).toBeTruthy()
+  }, 20_000)
+
+  it('lets a project not yet in the ledger be typed via "Other Project…", and requires a name first', async () => {
+    vi.mocked(importBookings).mockResolvedValue({ importId: 'IMP-2', bookings: [] })
+    renderDialog()
+    fillRequiredFields()
+    pickBookingDate()
+
+    await choose('Project', 'Other Project…')
+    const projectOther = screen.getByLabelText(label('New Project Name'))
+    fireEvent.blur(projectOther)
+    expect(screen.getByText('Project Name Missing')).toBeTruthy()
+
+    fireEvent.change(projectOther, { target: { value: 'Bukit Damai' } })
+    expect(screen.queryByText('Project Name Missing')).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add Booking' }))
+    await waitFor(() => expect(importBookings).toHaveBeenCalledTimes(1))
+    expect(vi.mocked(importBookings).mock.calls[0][0].bookings[0]).toMatchObject({ project: 'Bukit Damai' })
+  }, 90_000)
+
+  // Issue #M13: the IC only yields an age for a 12-digit MyKad; a passport
+  // buyer needs somewhere to type it.
+  it('shows Age only once the IC is not a 12-digit MyKad, and requires it then', () => {
+    renderDialog()
+    expect(screen.queryByLabelText(label('Age'))).toBeNull()
+
+    fireEvent.change(screen.getByLabelText(label('IC')), { target: { value: 'P1234567' } })
+    const age = screen.getByLabelText(label('Age'))
+    fireEvent.blur(age)
+    expect(screen.getByText('Age Missing, And The IC Is Not A MyKad Number')).toBeTruthy()
+
+    fireEvent.change(age, { target: { value: '40' } })
+    expect(screen.queryByText('Age Missing, And The IC Is Not A MyKad Number')).toBeNull()
+
+    fireEvent.change(screen.getByLabelText(label('IC')), { target: { value: '920311-00-0001' } })
+    expect(screen.queryByLabelText(label('Age'))).toBeNull()
+  })
+
+  // Issue #M12: the dialog is fully controlled with its trigger button outside
+  // it, so Radix has no trigger of its own to return focus to on close.
+  it('returns focus to the button that opened it once Escape closes the dialog', async () => {
+    render(<TriggerAndDialog />)
+
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
+
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Open Add Booking' })))
+  })
 })

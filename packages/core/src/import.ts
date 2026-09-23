@@ -232,11 +232,17 @@ export function detectDateOrder(cells: SheetCell[]): {
 /**
  * A MyKad number in the house `YYMMDD-PB-NNNN` form, with the birth date it
  * encodes; any other identity number (a passport) is kept as written, with no
- * birth date.
+ * birth date. `raw` takes the cell as the reader handed it over, not
+ * pre-stringified: a MyKad born 2000 or later starts with `0`, which Excel
+ * drops when the column is a number rather than text (`050101145678` reads
+ * back as `50101145678`), so an 11-digit value is padded back to 12 only when
+ * the cell was actually numeric — an 11-digit *text* value is left alone,
+ * since that is what was actually written.
  */
-export function readIc(raw: string, referenceDate: IsoDate): { ic: string; birthDate: IsoDate | null } {
-  const digits = raw.replace(/[\s-]/g, '')
-  if (!/^\d{12}$/.test(digits)) return { ic: raw.trim().toUpperCase(), birthDate: null }
+export function readIc(raw: SheetCell, referenceDate: IsoDate): { ic: string; birthDate: IsoDate | null } {
+  let digits = text(raw).replace(/[\s-]/g, '')
+  if (typeof raw === 'number' && /^\d{11}$/.test(digits)) digits = `0${digits}`
+  if (!/^\d{12}$/.test(digits)) return { ic: text(raw).toUpperCase(), birthDate: null }
   const ic = `${digits.slice(0, 6)}-${digits.slice(6, 8)}-${digits.slice(8)}`
   const yy = Number(digits.slice(0, 2))
   const century = 2000 + yy > Number(referenceDate.slice(0, 4)) ? 1900 : 2000
@@ -319,7 +325,7 @@ export function readBookingSheet(cells: SheetCell[][], options: ReadSheetOptions
     if (!phone) errors.push('Phone Missing')
 
     const icRaw = text(cell('ic'))
-    const { ic, birthDate } = readIc(icRaw, referenceDate)
+    const { ic, birthDate } = readIc(cell('ic'), referenceDate)
     if (!icRaw) errors.push('IC Number Missing')
 
     const price = parseAmount(cell('priceRm'))

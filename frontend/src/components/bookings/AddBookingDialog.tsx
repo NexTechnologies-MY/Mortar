@@ -7,9 +7,15 @@
  * already held included — is refused here too, with the same messages.
  * Submits through the same `importBookings` endpoint as a one-row batch, so
  * the server's own check runs a second time before anything is stored.
+ *
+ * Project (issue #H6) is its own field rather than an always-blank column:
+ * left blank, every hand-entered booking would silently join the ledger's
+ * biggest project, with no way to book a unit into a smaller one. Age (issue
+ * #M13) only appears once the IC is not a 12-digit MyKad, the one case the
+ * sheet reader cannot derive an age from the IC itself.
  */
 
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode, type RefObject } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CalendarIcon } from 'lucide-react'
 import {
@@ -37,15 +43,18 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { notify } from '@/components/ui/toastConfig'
 import { cn } from '@/lib/utils'
 
-/** The sheet fields the form captures, in the order they become sheet columns. Project and Age are left out: Project takes the desk default, Age comes from the IC. */
+/** The sheet fields the form captures, in the order they become sheet columns. */
 const FORM_FIELDS: readonly SheetField[] = [
+  'project',
   'unit',
   'buyerName',
   'ic',
   'phone',
+  'age',
   'priceRm',
   'bookingDate',
   'grossMonthlyIncomeRm',
@@ -55,11 +64,20 @@ const FORM_FIELDS: readonly SheetField[] = [
   'legalFirm'
 ] as const
 
+/** Project select value that reveals the free-text input, rather than one of the ledger's own project names. */
+const OTHER_PROJECT = '__other__'
+
 interface FormState {
+  /** One of `projects`, `OTHER_PROJECT`, or blank to take the desk's main project. */
+  project: string
+  /** The typed name, used only while `project` is `OTHER_PROJECT`. */
+  projectOther: string
   unit: string
   buyerName: string
   ic: string
   phone: string
+  /** Only read when the IC is not a 12-digit MyKad; the IC is the better source. */
+  age: string
   priceRm: string
   bookingDate: Date | undefined
   grossMonthlyIncomeRm: string
@@ -70,10 +88,13 @@ interface FormState {
 }
 
 const EMPTY_FORM: FormState = {
+  project: '',
+  projectOther: '',
   unit: '',
   buyerName: '',
   ic: '',
   phone: '',
+  age: '',
   priceRm: '',
   bookingDate: undefined,
   grossMonthlyIncomeRm: '',
@@ -119,7 +140,9 @@ export function AddBookingDialog({
   defaults,
   held,
   persona,
-  onImported
+  onImported,
+  projects,
+  triggerRef
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -131,6 +154,10 @@ export function AddBookingDialog({
   persona: Persona
   /** Runs after a successful add: refresh the snapshot, then this dialog navigates to the new case. */
   onImported: () => Promise<void>
+  /** The ledger's own project names, for the Project select; the desk's main project (`defaults.project`) is always one of them. */
+  projects: readonly string[]
+  /** The Add Booking button that opened this dialog; focus returns to it once Escape, the X or Cancel close the dialog. */
+  triggerRef?: RefObject<HTMLButtonElement | null>
 }) {
   const navigate = useNavigate()
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
@@ -149,6 +176,19 @@ export function AddBookingDialog({
 
   const bookingDateIso = form.bookingDate ? localIsoDate(form.bookingDate) : null
 
+  // Falls back to the desk's main project until the reader picks one, rather
+  // than needing an effect to seed it once `defaults` arrives.
+  const projectSelectValue = form.project || defaults?.project || ''
+  const projectValue = form.project === OTHER_PROJECT ? form.projectOther.trim() : projectSelectValue
+  // Blank once "Other Project…" is chosen isn't a sheet error — a blank
+  // project column just takes the desk default — so it is caught here instead.
+  const projectOtherMissing = form.project === OTHER_PROJECT && !form.projectOther.trim()
+
+  // The sheet only reads the Age column when the IC cannot supply a birth
+  // date itself, so the field only appears when it would actually be used.
+  const icIsMyKad = /^\d{12}$/.test(form.ic.replace(/[\s-]/g, ''))
+  const showAge = form.ic.trim() !== '' && !icIsMyKad
+
   // The picker opens on the desks' today, not the browser's, and never lets a
   // future-relative-to-the-desk date be picked — the same limit `readBookingSheet` enforces.
   const referenceDateObj = useMemo(
@@ -159,31 +199,32 @@ export function AddBookingDialog({
   const cells = useMemo<SheetCell[][]>(() => {
     const header = FORM_FIELDS.map((f) => SHEET_FIELD_LABELS[f])
     const values: Record<SheetField, SheetCell> = {
+      project: projectValue,
       unit: form.unit,
       buyerName: form.buyerName,
       ic: form.ic,
       phone: form.phone,
+      age: form.age,
       priceRm: form.priceRm,
       bookingDate: bookingDateIso ?? '',
       grossMonthlyIncomeRm: form.grossMonthlyIncomeRm,
       monthlyCommitmentsRm: form.monthlyCommitmentsRm,
       propertiesOwned: form.propertiesOwned,
-      age: '',
-      project: '',
       salesOwner: form.salesOwner,
       legalFirm: form.legalFirm
     }
     return [header, FORM_FIELDS.map((f) => values[f])]
-  }, [form, bookingDateIso])
+  }, [form, bookingDateIso, projectValue])
 
   const sheet = useMemo(
     () => (defaults ? readBookingSheet(cells, { referenceDate, defaults, held }) : null),
     [cells, defaults, referenceDate, held]
   )
   const row = sheet?.rows[0] ?? null
-  const errors = row?.errors ?? []
+  const errors = projectOtherMissing ? [...(row?.errors ?? []), 'Project Name Missing'] : (row?.errors ?? [])
   const warnings = row?.warnings ?? []
-  const ready = row?.draft ?? null
+  const notes = sheet?.notes ?? []
+  const ready = projectOtherMissing ? null : (row?.draft ?? null)
 
   const reset = () => {
     setForm(EMPTY_FORM)
@@ -227,7 +268,17 @@ export function AddBookingDialog({
         onOpenChange(next)
       }}
     >
-      <DialogContent className="max-w-2xl">
+      <DialogContent
+        className="max-w-2xl"
+        onCloseAutoFocus={(e) => {
+          // Escape, the X and Cancel all close through here; a successful
+          // submit navigates away instead, so there is nothing to refocus.
+          if (triggerRef?.current) {
+            e.preventDefault()
+            triggerRef.current.focus()
+          }
+        }}
+      >
         <DialogHeader>
           <DialogTitle>Add Booking</DialogTitle>
           <DialogDescription>
@@ -235,6 +286,27 @@ export function AddBookingDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-3 sm:grid-cols-2">
+          <Field id="add-booking-project" label="Project" required>
+            <Select
+              value={projectSelectValue}
+              onValueChange={(next) => {
+                set('project', next)
+                touch()
+              }}
+            >
+              <SelectTrigger id="add-booking-project" className="w-full">
+                <SelectValue placeholder="Choose The Project" />
+              </SelectTrigger>
+              <SelectContent>
+                {projects.map((p) => (
+                  <SelectItem key={p} value={p}>
+                    {p}
+                  </SelectItem>
+                ))}
+                <SelectItem value={OTHER_PROJECT}>Other Project…</SelectItem>
+              </SelectContent>
+            </Select>
+          </Field>
           <Field id="add-booking-unit" label="Unit" required>
             <Input
               id="add-booking-unit"
@@ -348,6 +420,33 @@ export function AddBookingDialog({
           </Field>
         </div>
 
+        {form.project === OTHER_PROJECT ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field id="add-booking-project-other" label="New Project Name" required>
+              <Input
+                id="add-booking-project-other"
+                value={form.projectOther}
+                onChange={(e) => set('projectOther', e.target.value)}
+                onBlur={touch}
+              />
+            </Field>
+          </div>
+        ) : null}
+
+        {showAge ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field id="add-booking-age" label="Age" required>
+              <Input
+                id="add-booking-age"
+                inputMode="numeric"
+                value={form.age}
+                onChange={(e) => set('age', e.target.value)}
+                onBlur={touch}
+              />
+            </Field>
+          </div>
+        ) : null}
+
         {serverError ? <p className="text-[13px] text-status-danger-fg">{serverError}</p> : null}
 
         {touched && errors.length > 0 ? (
@@ -364,6 +463,15 @@ export function AddBookingDialog({
             {warnings.map((w) => (
               <li key={w} className="text-[13px] text-muted-foreground">
                 {w}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        {touched && notes.length > 0 ? (
+          <ul className="flex flex-col gap-1">
+            {notes.map((n) => (
+              <li key={n} className="text-[13px] text-muted-foreground">
+                {n}
               </li>
             ))}
           </ul>
