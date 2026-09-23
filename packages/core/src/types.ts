@@ -91,6 +91,11 @@ export interface CaseEvent {
   messageId: string | null
   document: DocumentKind | null
   note: string | null
+  /**
+   * The order the database stored the row in; breaks ties between events at
+   * the same `occurredAt`. Absent on generated and fixture events.
+   */
+  seq?: number
 }
 
 export type SenderRole = 'buyer' | 'banker' | 'solicitor' | 'sales_agent'
