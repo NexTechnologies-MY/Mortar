@@ -8,6 +8,7 @@ function summary(overrides: Partial<CaseSummary> = {}): CaseSummary {
   return {
     bookingId: 'BK-0001',
     stage: 'booked',
+    spaSigned: false,
     unknown: false,
     bookingAgeDays: 4,
     daysSinceEvidence: 1,
@@ -106,13 +107,35 @@ describe('ballInCourt', () => {
   })
 
   it('names nobody once the SPA is signed or the booking has closed', () => {
-    for (const stage of ['spa_signed', 'disbursed', 'cancelled', 'lapsed'] as const) {
-      expect(ballInCourt(summary({ stage, stallReasons: ['No Update For 30 Days'] }))).toMatchObject({
+    for (const [stage, spaSigned] of [
+      ['spa_signed', true],
+      ['disbursed', true],
+      ['cancelled', false],
+      ['lapsed', false]
+    ] as const) {
+      expect(ballInCourt(summary({ stage, spaSigned, stallReasons: ['No Update For 30 Days'] }))).toMatchObject({
         holder: null,
         nextMove: null,
         stalled: false
       })
     }
+  })
+
+  it('reads the signed SPA itself, never a stage label past it', () => {
+    const ball = ballInCourt(summary({ stage: 'disbursed', spaSigned: false, stallReasons: ['No Update For 9 Days'] }))
+    expect(ball.waitingFor).not.toBe('Nothing, The SPA Is Signed')
+    expect(ball).toMatchObject({ holder: 'developer', stalled: true })
+  })
+
+  it('leaves a case with no letter of offer with its bank, whatever its stage says', () => {
+    const ball = ballInCourt(
+      summary({
+        stage: 'lo_issued',
+        applications: [{ id: 'A', bank: 'Apex Bank', status: 'submitted' }],
+        daysSinceSpaSet: 3
+      })
+    )
+    expect(ball).toMatchObject({ holder: 'bank', waitingFor: 'Apex Bank To Decide On The Loan' })
   })
 
   it('names a holder for every open case in the seeded dataset', () => {

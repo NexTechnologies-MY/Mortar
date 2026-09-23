@@ -38,8 +38,14 @@ export const STAGE_RANK: Record<Stage, number> = {
 }
 
 const EXIT_RANK = 6
+const SIGNED_RANK = STAGE_RANK.spa_signed
 
-/** Stage rank each event kind advances the case to; `null` never moves the case. */
+/**
+ * Stage rank each event kind advances the case to; `null` never moves the case.
+ * Only a loan approval enters `lo_issued`: an SPA appointment can be set while
+ * a bank is still deciding, and moving the case on it would hide that bank.
+ * Ranks past `spa_signed` count only once a signed SPA is confirmed (`deriveCase`).
+ */
 const KIND_RANK: Record<EventKind, number | null> = {
   booked: 0,
   buyer_contacted: null,
@@ -55,8 +61,15 @@ const KIND_RANK: Record<EventKind, number | null> = {
   loan_rejected: null,
   loan_agreement_signed: 4,
   disbursed: 5,
-  spa_appointment_set: 2,
+  spa_appointment_set: null,
   spa_signed: 3
+}
+
+/** The day an appointment is for, as its note carries it: `Appointment On 2026-09-25`. */
+const APPOINTMENT_ON = /Appointment On (\d{4}-\d{2}-\d{2})/
+
+function appointmentDay(note: string | null): IsoDate | null {
+  return APPOINTMENT_ON.exec(note ?? '')?.[1] ?? null
 }
 
 export const DOCUMENT_LABELS: Record<DocumentKind, string> = {
@@ -103,11 +116,17 @@ export interface CaseFacts {
   terminal: 'cancelled' | 'lapsed' | null
   /** Age in days when the terminal event was confirmed; `null` while running. */
   terminalAge: number | null
+  /** First confirmed `spa_signed`; `null` while no signed SPA is on the log. */
   signedOn: IsoDate | null
   /** First confirmed `loan_approved`: when the case entered the legal waiting room. */
   loIssuedOn: IsoDate | null
-  /** First confirmed `spa_appointment_set`; `null` while no appointment is on record. */
+  /**
+   * Latest confirmed `spa_appointment_set`: a reschedule replaces the one
+   * before it. `null` while no appointment is on record.
+   */
   spaAppointmentSetOn: IsoDate | null
+  /** The day that latest appointment is for, read from its note; `null` when the note names none. */
+  spaAppointmentOn: IsoDate | null
   /** Age in days when each funnel rank was first reached; `null` = never. */
   enteredAges: (number | null)[]
   /** Latest confirmed event's recordedAt; `null` when nothing is confirmed. */
@@ -205,26 +224,35 @@ export function deriveCase(
   let funnelRank = -1
   let terminal: 'cancelled' | 'lapsed' | null = null
   let terminalAge: number | null = null
-  let signedOn: IsoDate | null = null
+  // A loan agreement or a disbursement stands on a signed SPA. Without a
+  // confirmed `spa_signed` they move nothing, so the case keeps waiting on the
+  // SPA instead of reading as past a signing that is not on the log.
+  const signing = confirmed.find((e) => e.kind === 'spa_signed')
+  const signedOn: IsoDate | null = signing ? dateOf(signing.occurredAt) : null
   let loIssuedOn: IsoDate | null = null
   let spaAppointmentSetOn: IsoDate | null = null
+  let spaAppointmentOn: IsoDate | null = null
   let lastEvidenceOn: IsoDate | null = null
   for (const e of confirmed) {
     const day = dateOf(e.occurredAt)
     const r = KIND_RANK[e.kind]
-    if (r !== null) {
+    if (r !== null && (r <= SIGNED_RANK || r === EXIT_RANK || signedOn !== null)) {
       if (r < EXIT_RANK) {
         // A lower-rank event can sort after a higher one taken on the same day
         // (booked at 20:00 after loan_submitted at 10:00); the rank was still
-        // reached, so record its entry age independently of the advance.
-        if (enteredAges[r] === null) enteredAges[r] = diffDays(booking.bookingDate, day)
+        // reached, so record its entry age independently of the advance. Past
+        // the SPA, a rank is entered no earlier than the signing.
+        const entered = r > SIGNED_RANK && signedOn !== null && day < signedOn ? signedOn : day
+        if (enteredAges[r] === null) enteredAges[r] = diffDays(booking.bookingDate, entered)
         if (r > funnelRank) funnelRank = r
       }
       if (r > rank) rank = r
     }
-    if (e.kind === 'spa_signed' && signedOn === null) signedOn = day
     if (e.kind === 'loan_approved' && loIssuedOn === null) loIssuedOn = day
-    if (e.kind === 'spa_appointment_set' && spaAppointmentSetOn === null) spaAppointmentSetOn = day
+    if (e.kind === 'spa_appointment_set') {
+      spaAppointmentSetOn = day
+      spaAppointmentOn = appointmentDay(e.note)
+    }
     if ((e.kind === 'cancelled' || e.kind === 'lapsed') && terminal === null) {
       terminal = e.kind
       terminalAge = diffDays(booking.bookingDate, day)
@@ -251,6 +279,7 @@ export function deriveCase(
     signedOn,
     loIssuedOn,
     spaAppointmentSetOn,
+    spaAppointmentOn,
     enteredAges,
     lastEvidenceOn,
     daysSinceEvidence,
@@ -307,10 +336,13 @@ export function summarizeCases(data: CaseDataInput, asOf: IsoDate, assumptions: 
         }
       }
       // The legal waiting room: approved, unsigned, and either never scheduled
-      // or scheduled and left sitting.
+      // or scheduled and left sitting. The latest appointment counts, and not
+      // before its own day: a reschedule restarts the wait, and one booked
+      // weeks ahead is not late until that day has passed.
       if (facts.stage === 'lo_issued') {
         if (daysSinceSpaSet !== null) {
-          if (daysSinceSpaSet >= spaSignDays) {
+          const passed = facts.spaAppointmentOn === null || facts.spaAppointmentOn < asOf
+          if (passed && daysSinceSpaSet >= spaSignDays) {
             stallReasons.push(`SPA Set ${daysSinceSpaSet} Days Ago, Still Unsigned`)
           }
         } else if (daysSinceLoIssued !== null && daysSinceLoIssued >= spaScheduleDays) {
@@ -336,6 +368,7 @@ export function summarizeCases(data: CaseDataInput, asOf: IsoDate, assumptions: 
     return {
       bookingId: booking.id,
       stage: facts.stage,
+      spaSigned: facts.signedOn !== null,
       unknown: facts.live && facts.daysSinceEvidence >= unknownDays,
       bookingAgeDays: facts.ageDays,
       daysSinceEvidence: facts.daysSinceEvidence,

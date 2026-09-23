@@ -18,6 +18,7 @@ afterEach(() => {
 const SUMMARY: realCore.CaseSummary = {
   bookingId: 'BK-9001',
   stage: 'loan_applied',
+  spaSigned: false,
   unknown: false,
   bookingAgeDays: 16,
   daysSinceEvidence: 6,
@@ -878,6 +879,29 @@ describe('createApp', () => {
       expect(await errorOf(res)).toContain('/api/applications')
       expect(db.events).toHaveLength(0)
     })
+
+    test.each(['loan_agreement_signed', 'disbursed'])(
+      'refuses %s until a confirmed SPA signing is on the case',
+      async (kind) => {
+        const db = new FakeDb()
+        // A signing Jev only proposed does not count.
+        db.events.push({ ...PROVISIONAL, id: 'EV-9001-10', track: 'legal', kind: 'spa_signed', document: null })
+        const refused = await call(makeApp(db), '/api/events', post({ ...valid, kind }))
+        expect(refused?.status).toBe(400)
+        expect(await errorOf(refused)).toContain('record spa_signed on BK-9001 first')
+        expect(db.events).toHaveLength(1)
+
+        const signed = await call(makeApp(db), '/api/events', post({ ...valid, track: 'legal', kind: 'spa_signed' }))
+        expect(signed?.status).toBe(200)
+        const accepted = await call(makeApp(db), '/api/events', post({ ...valid, kind }))
+        expect(accepted?.status).toBe(200)
+        expect(db.events.map((e) => [e.kind, e.status])).toEqual([
+          ['spa_signed', 'provisional'],
+          ['spa_signed', 'confirmed'],
+          [kind, 'confirmed']
+        ])
+      }
+    )
 
     test.each([
       [{ applicationId: 'APP-0000' }, 'applicationId APP-0000'],

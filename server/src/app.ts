@@ -415,6 +415,15 @@ export function createApp(options: AppOptions): App {
         if (!summary) return error(500, `no case summary for ${booking.id}`)
         const refused = caseRuleProblem(summary, b.kind, applicationId)
         if (refused) return error(409, refused)
+        // A loan agreement or a disbursement stands on a signed SPA; recorded
+        // before one, the case would read as past a signing that is not on the log.
+        if (b.kind === 'loan_agreement_signed' || b.kind === 'disbursed') {
+          const { events } = await db.caseData()
+          const signed = events.some(
+            (e) => e.bookingId === booking.id && e.kind === 'spa_signed' && e.status === 'confirmed'
+          )
+          if (!signed) return error(400, `${b.kind} needs a signed SPA: record spa_signed on ${booking.id} first`)
+        }
         const now = simNow(REFERENCE_DATE)
         const occurredAt = occurredAtFor(occurredOn, now, await db.eventsForBooking(booking.id))
         const event: CaseEvent = {

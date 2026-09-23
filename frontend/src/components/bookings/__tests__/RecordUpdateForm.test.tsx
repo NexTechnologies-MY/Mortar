@@ -51,10 +51,11 @@ const BOOKING: Booking = {
 const MALAYAN: LoanApplication = { id: 'APP-1', bookingId: 'BK-9001', bank: 'Malayan Trust Bank', banker: 'Siti' }
 const CREST: LoanApplication = { id: 'APP-2', bookingId: 'BK-9001', bank: 'Crestline Bank', banker: 'Aida' }
 
-function summary(applications: CaseSummary['applications']): CaseSummary {
+function summary(applications: CaseSummary['applications'], over: Partial<CaseSummary> = {}): CaseSummary {
   return {
     bookingId: 'BK-9001',
     stage: applications.length ? 'loan_applied' : 'booked',
+    spaSigned: false,
     unknown: false,
     bookingAgeDays: 16,
     daysSinceEvidence: 2,
@@ -65,17 +66,22 @@ function summary(applications: CaseSummary['applications']): CaseSummary {
     buyerWithdrew: false,
     risk: { level: 'low', loanRm: 0, instalmentRm: 0, debtServiceRatio: 0.2, marginOfFinancing: 0.9, reasons: [] },
     stallReasons: [],
-    openTasks: 0
+    openTasks: 0,
+    ...over
   }
 }
 
-function renderForm(applications: LoanApplication[], statuses: CaseSummary['applications']) {
+function renderForm(
+  applications: LoanApplication[],
+  statuses: CaseSummary['applications'],
+  over: Partial<CaseSummary> = {}
+) {
   const onRecorded = vi.fn(async () => {})
   render(
     <RecordUpdateForm
       booking={BOOKING}
       applications={applications}
-      summary={summary(statuses)}
+      summary={summary(statuses, over)}
       referenceDate="2026-09-18"
       reportedBy="Tan Mei Ling"
       onRecorded={onRecorded}
@@ -151,6 +157,19 @@ describe('RecordUpdateForm', () => {
         expect.objectContaining({ kind: 'loan_approved', applicationId: 'APP-2' })
       )
     )
+  })
+
+  it.each([
+    ['holds back', 'before the SPA is signed', { stage: 'lo_issued', daysSinceLoIssued: 2 }, false],
+    ['offers', 'once the SPA is signed', { stage: 'spa_signed', spaSigned: true }, true]
+  ] as const)('%s Loan Agreement Signed and Disbursed %s', async (_, __, over, offered) => {
+    renderForm([MALAYAN], [{ id: 'APP-1', bank: 'Malayan Trust Bank', status: 'approved' }], over)
+
+    fireEvent.click(screen.getByRole('combobox', { name: 'What Happened' }))
+    expect(await screen.findByRole('option', { name: 'SPA Signed' })).toBeTruthy()
+    for (const label of ['Loan Agreement Signed', 'Disbursed']) {
+      expect(screen.queryByRole('option', { name: label }) !== null).toBe(offered)
+    }
   })
 
   it('picks the day an update happened from the calendar, never after today', async () => {
