@@ -70,6 +70,18 @@ describe('legalQueue', () => {
   it('drops a summary with no matching booking rather than rendering a ghost row', () => {
     expect(legalQueue([], [stalledCase('BK-missing', { stage: 'lo_issued' })], [])).toEqual([])
   })
+
+  // Waiting On gives a withdrawn buyer's case to the developer to release, so
+  // the solicitor's queue must not list it; a buyer back in stays listed.
+  it('leaves out a case whose buyer withdrew and has not come back', () => {
+    const back = waiting('BK-1', 12, 'Alpha')
+    const gone = {
+      booking: booking('BK-2'),
+      summary: stalledCase('BK-2', { stage: 'lo_issued', daysSinceLoIssued: 30, buyerWithdrew: true })
+    }
+    const queue = legalQueue([back.booking, gone.booking], [back.summary, gone.summary], [])
+    expect(queue.map((r) => r.booking.id)).toEqual(['BK-1'])
+  })
 })
 
 describe('firmLoad', () => {

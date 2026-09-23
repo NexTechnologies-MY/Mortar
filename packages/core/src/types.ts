@@ -177,7 +177,10 @@ export interface CaseSummary {
   daysSinceSpaSet: number | null
   applications: { id: string; bank: string; status: ApplicationStatus }[]
   outstandingDocuments: DocumentKind[]
-  /** A confirmed `buyer_withdrew` is on the log, whatever the banks decided. */
+  /**
+   * The buyer's last word is a withdrawal: a confirmed `buyer_withdrew`, whatever
+   * the banks decided, with no bank submitted on a later day.
+   */
   buyerWithdrew: boolean
   risk: FinancingRisk
   /** Why the stall rule flagged this booking; empty when it is not stalled. */

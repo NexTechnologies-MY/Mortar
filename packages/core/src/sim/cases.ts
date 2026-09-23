@@ -77,9 +77,9 @@ export interface ApplicationFacts {
   bank: string
   status: ApplicationStatus
   /**
-   * When the bank's clock started: the latest documents_received, or the
-   * submission when no documents are pending. `null` while the bank cannot act
-   * (documents pending) or once decided.
+   * When the bank's clock started: the submission or the latest documents that
+   * reached the bank, whichever is later. `null` while the bank cannot act
+   * (documents pending), once decided, or once withdrawn.
    */
   pendingSince: IsoDate | null
 }
@@ -106,7 +106,11 @@ export interface CaseFacts {
   ageDays: number
   exists: boolean
   live: boolean
-  /** A confirmed `buyer_withdrew` is on the log, whatever the banks decided. */
+  /**
+   * The buyer's last word is a withdrawal: a confirmed `buyer_withdrew`, whatever
+   * the banks decided, with no bank submitted on a later day. A later submission
+   * means the buyer is back in.
+   */
   buyerWithdrew: boolean
   /**
    * Still in play: booked, not signed, not exited. Unlike `live` there is no
@@ -121,62 +125,123 @@ export interface CaseFacts {
   disputedCount: number
 }
 
+/** An open documents_requested: the bank that asked (`null`: not for one bank) and what for (`null`: unnamed). */
+interface OpenRequest {
+  applicationId: string | null
+  document: DocumentKind | null
+  since: IsoDate
+}
+
+interface DocumentLedger {
+  open: OpenRequest[]
+  /** The last day documents reached each application. */
+  receivedOn: Map<string, IsoDate>
+}
+
 /**
- * Pair documents_requested/received per document kind, in order. A received
- * with no `document` clears everything outstanding.
+ * The case's one document ledger, keyed by (application or none, document), so
+ * each bank's status and the case's outstanding list read the same entries. A
+ * request opens its key once. A receipt clears, by its scope:
+ * - one bank, one document: that bank's request for it and a request for it not for one bank;
+ * - one bank, all outstanding: every request that bank made, and nothing else;
+ * - not for one bank, one document: that document on every bank and on none;
+ * - not for one bank, all outstanding: everything.
+ * A named receipt never clears an unnamed request. Documents reach a bank with
+ * any receipt for it, or a receipt not for one bank that cleared one of its requests.
  */
-function outstandingDocs(events: CaseEvent[], asOf: IsoDate): { document: DocumentKind; sinceDays: number }[] {
-  const open = new Map<DocumentKind, IsoDate>()
+function documentLedger(events: CaseEvent[]): DocumentLedger {
+  const open = new Map<string, OpenRequest>()
+  const receivedOn = new Map<string, IsoDate>()
   for (const e of events) {
+    const day = dateOf(e.occurredAt)
     if (e.kind === 'documents_requested') {
-      if (e.document !== null && !open.has(e.document)) open.set(e.document, dateOf(e.occurredAt))
+      const key = `${e.applicationId ?? ''}|${e.document ?? ''}`
+      if (!open.has(key)) open.set(key, { applicationId: e.applicationId, document: e.document, since: day })
     } else if (e.kind === 'documents_received') {
-      if (e.document === null) open.clear()
-      else open.delete(e.document)
+      if (e.applicationId !== null) receivedOn.set(e.applicationId, day)
+      for (const [key, r] of open) {
+        const sameDocument = e.document === null || r.document === e.document
+        const sameBank =
+          e.applicationId === null ||
+          r.applicationId === e.applicationId ||
+          (r.applicationId === null && e.document !== null)
+        if (!sameDocument || !sameBank) continue
+        open.delete(key)
+        if (e.applicationId === null && r.applicationId !== null) receivedOn.set(r.applicationId, day)
+      }
     }
   }
-  return [...open.entries()]
-    .map(([document, since]) => ({ document, sinceDays: diffDays(since, asOf) }))
+  return { open: [...open.values()], receivedOn }
+}
+
+function deriveApplication(
+  app: LoanApplication,
+  events: CaseEvent[],
+  ledger: DocumentLedger,
+  closed: boolean,
+  withdrewOn: IsoDate | null
+): ApplicationFacts {
+  let submittedOn: IsoDate | null = null
+  let decidedKind: 'approved' | 'rejected' | null = null
+  for (const e of events) {
+    if (e.applicationId !== app.id) continue
+    if (e.kind === 'loan_submitted' && submittedOn === null) submittedOn = dateOf(e.occurredAt)
+    else if (e.kind === 'loan_approved' && decidedKind === null) decidedKind = 'approved'
+    else if (e.kind === 'loan_rejected' && decidedKind === null) decidedKind = 'rejected'
+  }
+  // The latest withdrawal covers every application submitted on or before its
+  // day; one submitted later is the buyer coming back.
+  const withdrawn = closed || (withdrewOn !== null && (submittedOn === null || submittedOn <= withdrewOn))
+  let status: ApplicationStatus
+  if (decidedKind !== null) status = decidedKind
+  else if (withdrawn) status = 'withdrawn'
+  else if (ledger.open.some((r) => r.applicationId === app.id)) status = 'documents_pending'
+  else status = 'submitted'
+  // A receipt back-dated before the submission cannot start the clock early.
+  const receivedOn = ledger.receivedOn.get(app.id) ?? null
+  const since = submittedOn === null || (receivedOn !== null && receivedOn > submittedOn) ? receivedOn : submittedOn
+  return { id: app.id, bank: app.bank, status, pendingSince: status === 'submitted' ? since : null }
+}
+
+/**
+ * The documents holding the case up, oldest request first: those asked for not
+ * for one bank, and those of a bank still in play. Before any approval that is
+ * every bank not declined or withdrawn; once a loan is approved, only the
+ * approving bank, so a declined, withdrawn or other bank's request stops
+ * driving Waiting On and the stalls. An unnamed request shows on its bank's
+ * status only.
+ */
+function outstandingDocs(
+  ledger: DocumentLedger,
+  applications: ApplicationFacts[],
+  approved: boolean,
+  asOf: IsoDate
+): { document: DocumentKind; sinceDays: number }[] {
+  const statusOf = new Map(applications.map((a) => [a.id, a.status]))
+  const inPlay = (applicationId: string | null) => {
+    if (applicationId === null) return true
+    const status = statusOf.get(applicationId)
+    return approved ? status === 'approved' : status !== 'rejected' && status !== 'withdrawn'
+  }
+  const since = new Map<DocumentKind, IsoDate>()
+  for (const r of ledger.open) {
+    if (r.document === null || !inPlay(r.applicationId)) continue
+    const first = since.get(r.document)
+    if (first === undefined || r.since < first) since.set(r.document, r.since)
+  }
+  return [...since.entries()]
+    .map(([document, day]) => ({ document, sinceDays: diffDays(day, asOf) }))
     .sort((a, b) => b.sinceDays - a.sinceDays)
 }
 
-function deriveApplication(app: LoanApplication, events: CaseEvent[], withdrawn: boolean): ApplicationFacts {
-  const own = events.filter((e) => e.applicationId === app.id)
-  let submittedOn: IsoDate | null = null
-  let decided = false
-  let decidedKind: 'approved' | 'rejected' | null = null
-  let lastReceivedOn: IsoDate | null = null
-  const open = new Set<DocumentKind>()
-  let openAny = false
-  for (const e of own) {
+/** Day of the latest confirmed event of `kind`; `null` when there is none. */
+function lastDayOf(events: CaseEvent[], kind: EventKind): IsoDate | null {
+  let last: IsoDate | null = null
+  for (const e of events) {
     const day = dateOf(e.occurredAt)
-    if (e.kind === 'loan_submitted' && submittedOn === null) submittedOn = day
-    else if (e.kind === 'loan_approved' && !decided) {
-      decided = true
-      decidedKind = 'approved'
-    } else if (e.kind === 'loan_rejected' && !decided) {
-      decided = true
-      decidedKind = 'rejected'
-    } else if (e.kind === 'documents_requested') {
-      if (e.document === null) openAny = true
-      else open.add(e.document)
-    } else if (e.kind === 'documents_received') {
-      lastReceivedOn = day
-      if (e.document === null) {
-        open.clear()
-        openAny = false
-      } else open.delete(e.document)
-    }
+    if (e.kind === kind && (last === null || day > last)) last = day
   }
-  const pending = open.size + (openAny ? 1 : 0)
-  let status: ApplicationStatus
-  if (decidedKind === 'approved') status = 'approved'
-  else if (decidedKind === 'rejected') status = 'rejected'
-  else if (withdrawn) status = 'withdrawn'
-  else if (pending > 0) status = 'documents_pending'
-  else status = 'submitted'
-  const pendingSince = decided || pending > 0 ? null : (lastReceivedOn ?? submittedOn)
-  return { id: app.id, bank: app.bank, status, pendingSince }
+  return last
 }
 
 /** Derive a booking's case state at `asOf` from its events. Confirmed events only move a case. */
@@ -225,8 +290,13 @@ export function deriveCase(
   const ageDays = diffDays(booking.bookingDate, asOf)
   const exists = ageDays >= 0
   const stage: Stage = rank === EXIT_RANK ? (terminal ?? 'cancelled') : FUNNEL_STAGES[Math.max(0, funnelRank)]
-  const buyerWithdrew = confirmed.some((e) => e.kind === 'buyer_withdrew')
-  const withdrawn = terminal !== null || buyerWithdrew
+  const withdrewOn = lastDayOf(confirmed, 'buyer_withdrew')
+  const lastSubmittedOn = lastDayOf(confirmed, 'loan_submitted')
+  const buyerWithdrew = withdrewOn !== null && (lastSubmittedOn === null || lastSubmittedOn <= withdrewOn)
+  const ledger = documentLedger(confirmed)
+  const applicationFacts = applications.map((app) =>
+    deriveApplication(app, confirmed, ledger, terminal !== null, withdrewOn)
+  )
   const daysSinceEvidence = lastEvidenceOn === null ? Math.max(0, ageDays) : diffDays(lastEvidenceOn, asOf)
   const signedWithinHorizon = signedOn !== null && diffDays(booking.bookingDate, signedOn) <= horizonDays
   const open = exists && signedOn === null && terminal === null
@@ -251,8 +321,8 @@ export function deriveCase(
     open,
     resolved,
     signedWithinHorizon,
-    applications: applications.map((app) => deriveApplication(app, confirmed, withdrawn)),
-    outstandingDocuments: outstandingDocs(confirmed, asOf),
+    applications: applicationFacts,
+    outstandingDocuments: outstandingDocs(ledger, applicationFacts, loIssuedOn !== null, asOf),
     disputedCount: events.filter((e) => e.status === 'disputed' && dateOf(e.recordedAt) <= asOf).length
   }
 }
@@ -290,7 +360,8 @@ export function summarizeCases(data: CaseDataInput, asOf: IsoDate, assumptions: 
           stallReasons.push(`${DOCUMENT_LABELS[d.document]} Still Outstanding After ${d.sinceDays} Days`)
         }
       }
-      for (const app of facts.applications) {
+      // Once a loan is approved the case waits on the solicitor, not on the other banks.
+      for (const app of facts.loIssuedOn === null ? facts.applications : []) {
         if (app.pendingSince !== null) {
           const wd = workDaysBetween(app.pendingSince, asOf)
           if (wd >= undecidedWorkDays) stallReasons.push(`Bank Has Not Decided After ${wd} Working Days`)
