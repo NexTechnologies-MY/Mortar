@@ -494,6 +494,12 @@ AI service is unavailable.
   `server/fixtures/jev-cache.json` during reset.
 - **AC-12.4:** The application must function completely without an API key
   configured.
+- **AC-12.5:** `GET /api/snapshot` must mark `next_action` and `signals` answers
+  stale by a second, separate check: it always returns the latest saved answer
+  for the subject with `source: 'cache'`, then sets `stale: true` if recomputing
+  today's input hash for the subject's current case state no longer matches the
+  hash the answer was saved under. `extract` answers, keyed to an immutable
+  message, must never be marked stale.
 
 ### FR-13: Spreadsheet Intake And Validation
 

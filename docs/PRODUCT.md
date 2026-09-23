@@ -288,7 +288,11 @@ interactions follow a multi-tier fallback hierarchy:
     case milestones manually without interruption.
 
 Page navigation never waits on live AI processing. GET endpoints are
-cache-first, keeping page transitions responsive across the application.
+cache-first, keeping page transitions responsive across the application. The
+snapshot that loads the workspace (`GET /api/snapshot`) never calls Jev live at
+all, and does not walk this ladder: it re-checks each saved `next_action` and
+`signals` answer against the case's current state and marks it `stale: true`
+itself when the case has moved on since Jev answered.
 
 ## Evidence From Research And Industry
 
