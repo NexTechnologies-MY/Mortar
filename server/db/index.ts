@@ -39,6 +39,8 @@ export interface Database {
   ping(): Promise<void>
   /** Simulation parameters, or `null` while the `seed` row is absent (pre-reset). */
   meta(): Promise<SimulationMeta | null>
+  /** Whether `bookings` has any row at all; boot uses it to tell an empty database from one whose `meta` row went missing. */
+  hasBookings(): Promise<boolean>
   /** The case-derivation input: bookings, applications, events and tasks. */
   caseData(): Promise<CaseData>
   /**
@@ -96,13 +98,15 @@ export interface Database {
   /**
    * Removes an import's bookings, and everything cascading from them, as long
    * as none has moved on since: no update besides its booked event, no message,
-   * no task, no bank application. `null` when there is no such import; throws
-   * `ImportMovedOnError` naming the bookings that have moved on.
-   */
-  /**
-   * Removes an import's bookings and stamps the import as undone by `undoneBy`
-   * at `undoneAt`; the import row itself stays. `null` when the import does not
-   * exist or was already undone.
+   * no task, no bank application. Locks the bookings before that check, so a
+   * staff update racing the undo either lands first (and is seen as "moved
+   * on") or is blocked until this transaction ends and then fails its own
+   * foreign key check, rather than being cascade-deleted after its own 200.
+   * Stamps the import as undone by `undoneBy` at `undoneAt` and records a
+   * `removed` snapshot of each booking (id, unit, project, buyer name, price —
+   * no IC or phone); the import row itself stays. `null` when the import does
+   * not exist or was already undone; throws `ImportMovedOnError` naming the
+   * bookings that have moved on.
    */
   undoImport(id: string, undoneBy: string, undoneAt: IsoDateTime): Promise<{ removed: string[] } | null>
   updateTaskStatus(id: string, status: Task['status'], completedAt: IsoDateTime | null): Promise<Task | null>
@@ -235,6 +239,11 @@ export function createDatabase(sql: SQL): Database {
   return {
     async ping() {
       await sql`select 1`
+    },
+
+    async hasBookings() {
+      const rows = await sql`select exists(select 1 from bookings) as any`
+      return Boolean(rows[0]?.any)
     },
 
     meta,
@@ -417,8 +426,18 @@ export function createDatabase(sql: SQL): Database {
           order by b.id limit 1`
         if (held.length > 0) throw new UnitHeldError(String(held[0].unit), String(held[0].id))
 
-        const rows = await tx`select coalesce(max(substring(id from 4)::int), 0)::int as n
-          from bookings where id ~ '^BK-[0-8][0-9]{3}$'`
+        // Never reuse a number: an undo deletes the bookings, so `bookings`
+        // alone would let a later import land on the same `BK-nnnn` an undone
+        // one already used, pointing the old import's `booking_ids` (and its
+        // `removed` snapshot) at a different buyer. `imports.booking_ids`
+        // keeps every id an import ever assigned, undone or not (it is never
+        // deleted — see `imports` in schema.sql), so the floor is the higher
+        // of the two.
+        const rows = await tx`select greatest(
+            coalesce((select max(substring(b.id from 4)::int) from bookings b where b.id ~ '^BK-[0-8][0-9]{3}$'), 0),
+            coalesce((select max(substring(x from 4)::int) from imports i, unnest(i.booking_ids) x
+              where x ~ '^BK-[0-8][0-9]{3}$'), 0)
+          )::int as n`
         const last = (rows[0]?.n as number | undefined) ?? 0
         if (last + drafts.length > LAST_IMPORT_NUMBER) throw new Error('no booking numbers left below BK-9000')
         const bookings: Booking[] = drafts.map((draft, i) => ({
@@ -473,6 +492,16 @@ export function createDatabase(sql: SQL): Database {
         const rows = await tx`select booking_ids from imports where id = ${id} and undone_at is null for update`
         if (rows.length === 0) return null
         const ids = rows[0].booking_ids as string[]
+        // Locks the bookings *before* checking whether any has moved on. A
+        // staff update that references one of these ids either finishes and
+        // commits first (this select then blocks until it does, and sees it
+        // in the check below) or starts after this lock and blocks on its own
+        // foreign key check until this transaction ends — at which point the
+        // booking is gone and that insert fails with a foreign key violation
+        // instead of the row being cascade-deleted out from under a request
+        // that already got a 200 (the catch-all in app.ts turns that failure
+        // into a 409).
+        await tx`select id from bookings where id in ${tx(ids)} for update`
         // The import wrote one booked event per booking; any other event,
         // a second booked one included, is activity since.
         const moved = await tx`select b.id from bookings b where b.id in ${tx(ids)} and (
@@ -483,11 +512,25 @@ export function createDatabase(sql: SQL): Database {
             or exists (select 1 from loan_applications a where a.booking_id = b.id)
           ) order by b.id`
         if (moved.length > 0) throw new ImportMovedOnError(moved.map((r: Record<string, unknown>) => String(r.id)))
+        // A retention snapshot of what is being removed (docs/RETENTION.md):
+        // kept on the import row forever, with no IC or phone, so the trace
+        // an undo leaves behind still names a real booking and buyer even
+        // after the row itself, and its `BK-nnnn` number, are gone for good.
+        const removedRows = await tx`select id, unit, project, price_rm, buyer ->> 'name' as buyer_name
+          from bookings where id in ${tx(ids)} order by id`
+        const removed = removedRows.map((r: Record<string, unknown>) => ({
+          id: String(r.id),
+          unit: String(r.unit),
+          project: String(r.project),
+          buyerName: String(r.buyer_name),
+          priceRm: Number(r.price_rm)
+        }))
         // Events cascade from bookings; cached Jev answers are keyed by booking id
         // and would otherwise greet the next booking to reuse the number.
         await tx`delete from jev_answers where subject_id in ${tx(ids)}`
         await tx`delete from bookings where id in ${tx(ids)}`
-        await tx`update imports set undone_at = ${undoneAt}, undone_by = ${undoneBy} where id = ${id}`
+        await tx`update imports set undone_at = ${undoneAt}, undone_by = ${undoneBy},
+          removed = ${JSON.stringify(removed)}::jsonb where id = ${id}`
         return { removed: ids }
       })
     },
