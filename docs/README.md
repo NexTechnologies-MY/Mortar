@@ -144,7 +144,8 @@ Measured, not estimated.
 
 |                               |        |
 | ----------------------------- | ------ |
-| Live routes                   | **11** |
+| App pages                     | **11** |
+| API routes                    | **15** |
 | Personas                      | **3**  |
 | Funnel stages tracked         | **6**  |
 | Shared packages               | **2**  |
@@ -208,7 +209,7 @@ Google Cloud Run (asia-southeast1)
         |
         v
 Bun.serve — one process, server/src/index.ts
-  frontend/dist + SPA fallback  ·  /api/* (12 routes)
+  frontend/dist + SPA fallback  ·  /api/* (15 routes)
         |
         |             @mortar/jev ──> TypeSafe Jev (jev-latest)
         |             key stays server-side, cache-first
