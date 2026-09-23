@@ -160,6 +160,8 @@ export function rowToTask(row: Row): Task {
 export interface JevAnswerRow {
   kind: JevKind
   subjectId: string
+  /** The hash the answer was stored under; the snapshot compares it to the subject's current state hash. */
+  inputHash: string
   answer: unknown
 }
 
@@ -167,6 +169,7 @@ export function rowToJevAnswer(row: Row): JevAnswerRow {
   return {
     kind: row.kind as JevKind,
     subjectId: String(row.subject_id),
+    inputHash: String(row.input_hash),
     answer: jsonb(row.answer)
   }
 }

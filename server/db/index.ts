@@ -5,12 +5,13 @@
  * `mappers.ts` — handlers never see snake_case.
  */
 import { SQL } from 'bun'
-import { unitKey } from '@mortar/core'
+import { REFERENCE_DATE, summarizeCases, unitKey } from '@mortar/core'
 import type {
   Booking,
   BookingDraft,
   CaseData,
   CaseEvent,
+  CaseSummary,
   EvidenceStatus,
   IsoDateTime,
   JevMeta,
@@ -21,6 +22,7 @@ import type {
   Snapshot,
   Task
 } from '@mortar/core'
+import { QUESTION_VERSION, jevInputHash, nextActionJob, signalsJob } from '@mortar/jev'
 import {
   rowToApplication,
   rowToBooking,
@@ -161,10 +163,13 @@ function eventRow(event: CaseEvent) {
   }
 }
 
-/** Marks a snapshot answer as served from the store rather than a fresh Jev call. */
-function cached<T extends { meta?: JevMeta }>(answer: unknown): T {
+/**
+ * Marks a snapshot answer as served from the store, fresh or stale against the
+ * subject's current state (the caller has already worked that out).
+ */
+function cached<T extends { meta?: JevMeta }>(answer: unknown, stale: boolean): T {
   const parsed = answer as T
-  return { ...parsed, meta: { source: 'cache', stale: false, latencyMs: parsed.meta?.latencyMs ?? null } }
+  return { ...parsed, meta: { source: 'cache', stale, latencyMs: parsed.meta?.latencyMs ?? null } }
 }
 
 export function createDatabase(sql: SQL): Database {
@@ -186,7 +191,7 @@ export function createDatabase(sql: SQL): Database {
   }
 
   const latestJevAnswers = async () => {
-    const rows = await sql`select distinct on (kind, subject_id) kind, subject_id, answer
+    const rows = await sql`select distinct on (kind, subject_id) kind, subject_id, input_hash, answer
       from jev_answers
       where kind in ('extract', 'next_action', 'signals')
       order by kind, subject_id, created_at desc`
@@ -208,7 +213,7 @@ export function createDatabase(sql: SQL): Database {
     },
 
     async snapshot() {
-      const [metaRow, data, messages, playbooks, answers] = await Promise.all([
+      const [metaRow, data, messageRows, playbooks, answers] = await Promise.all([
         meta(),
         caseData(),
         sql`select * from messages order by sent_at, id`,
@@ -216,19 +221,54 @@ export function createDatabase(sql: SQL): Database {
         latestJevAnswers()
       ])
       if (!metaRow) throw new Error('database is not seeded')
+      const messages = messageRows.map(rowToMessage)
+
+      // One summarizeCases pass for the whole snapshot, then compare each
+      // next_action/signals answer's stored hash against the hash of the
+      // subject's current state — the same job state builders and question
+      // version the live jobs.ts path hashes, so a match here means the cached
+      // answer is still what Jev would say today. extract is keyed by an
+      // immutable message, so a cached extraction can never go stale.
+      const summaries = new Map<string, CaseSummary>(summarizeCases(data, REFERENCE_DATE).map((s) => [s.bookingId, s]))
+      const messagesByBooking = new Map<string, Message[]>()
+      for (const message of messages) {
+        const forBooking = messagesByBooking.get(message.bookingId)
+        if (forBooking) forBooking.push(message)
+        else messagesByBooking.set(message.bookingId, [message])
+      }
+
       const extractions: Snapshot['extractions'] = []
       const signals: Snapshot['signals'] = []
       const nextActions: Snapshot['nextActions'] = []
       for (const row of answers) {
-        if (row.kind === 'extract') extractions.push(cached(row.answer))
-        else if (row.kind === 'signals') signals.push(cached(row.answer))
-        else if (row.kind === 'next_action') nextActions.push(cached(row.answer))
+        if (row.kind === 'extract') {
+          extractions.push(cached(row.answer, false))
+        } else if (row.kind === 'next_action') {
+          const summary = summaries.get(row.subjectId)
+          const recentMessages = messagesByBooking.get(row.subjectId) ?? []
+          const currentHash = summary
+            ? jevInputHash(
+                'next_action',
+                nextActionJob({ summary, recentMessages }).state,
+                QUESTION_VERSION.next_action
+              )
+            : null
+          nextActions.push(cached(row.answer, currentHash !== row.inputHash))
+        } else if (row.kind === 'signals') {
+          const bookingMessages = messagesByBooking.get(row.subjectId) ?? []
+          const currentHash = jevInputHash(
+            'signals',
+            signalsJob({ bookingId: row.subjectId, messages: bookingMessages }).state,
+            QUESTION_VERSION.signals
+          )
+          signals.push(cached(row.answer, currentHash !== row.inputHash))
+        }
       }
       return {
         ...data,
         bookings: data.bookings.map(withMaskedContact),
         meta: metaRow,
-        messages: messages.map(rowToMessage),
+        messages,
         playbooks: playbooks.map(rowToPlaybook),
         extractions,
         signals,
@@ -414,11 +454,11 @@ export function createDatabase(sql: SQL): Database {
     },
 
     async jevGet(kind, subjectId, inputHash) {
-      const exact = await sql`select answer, subject_id, kind from jev_answers
+      const exact = await sql`select answer, subject_id, kind, input_hash from jev_answers
         where kind = ${kind} and subject_id = ${subjectId} and input_hash = ${inputHash}
         order by created_at desc limit 1`
       if (exact.length) return { answer: rowToJevAnswer(exact[0]).answer, stale: false }
-      const latest = await sql`select answer, subject_id, kind from jev_answers
+      const latest = await sql`select answer, subject_id, kind, input_hash from jev_answers
         where kind = ${kind} and subject_id = ${subjectId}
         order by created_at desc limit 1`
       return latest.length ? { answer: rowToJevAnswer(latest[0]).answer, stale: true } : null

@@ -9,7 +9,9 @@
  */
 import { afterAll, describe, expect, test } from 'bun:test'
 import { SQL } from 'bun'
-import type { Booking, BookingDraft, CaseEvent } from '@mortar/core'
+import { REFERENCE_DATE, summarizeCases } from '@mortar/core'
+import type { Booking, BookingDraft, CaseEvent, Message } from '@mortar/core'
+import { QUESTION_VERSION, jevInputHash, nextActionJob, signalsJob } from '@mortar/jev'
 import { ImportMovedOnError, UnitHeldError, createDatabase } from '../index'
 import { applySchema } from '../reset'
 
@@ -135,6 +137,153 @@ describe.skipIf(!DATABASE_URL)('database integration', () => {
     expect(await db.jevGet('signals', 'W2TEST-NONE', 'h1')).toBeNull()
     const latest = await db.latestJevAnswers()
     expect(latest.find((r) => r.subjectId === 'W2TEST-BK')?.answer).toEqual({ v: 2 })
+  })
+
+  describe('snapshot staleness (H4)', () => {
+    // A booking of its own, so its case state (no applications, no events) is
+    // known exactly: the same fixture is fed to `summarizeCases` below to
+    // compute the hash the real subject's current state should carry.
+    const bookingId = 'JEVSTALE-BK'
+    const messageId = 'JEVSTALE-MSG'
+    const booking: Booking = {
+      id: bookingId,
+      project: 'JEVSTALE Project',
+      unit: 'J-01-01',
+      priceRm: 500000,
+      bookingDate: '2026-09-01',
+      buyer: {
+        name: 'Stale Test Buyer',
+        ic: '900514-00-0002',
+        phone: '+60 00-000 0002',
+        age: 32,
+        grossMonthlyIncomeRm: 6000,
+        monthlyCommitmentsRm: 0,
+        propertiesOwned: 0
+      },
+      salesOwner: 'Sales',
+      loanOwner: 'Loan',
+      legalFirm: 'Firm'
+    }
+
+    afterAll(async () => {
+      await sql`delete from jev_answers where subject_id = ${bookingId}`
+      await sql`delete from messages where booking_id = ${bookingId}`
+      await sql`delete from bookings where id = ${bookingId}`
+    })
+
+    test('next_action/signals answers are fresh only when their hash matches the subject; extract always reads fresh', async () => {
+      await sql`insert into bookings (id, project, unit, price_rm, booking_date, buyer, sales_owner, loan_owner, legal_firm)
+        values (${booking.id}, ${booking.project}, ${booking.unit}, ${booking.priceRm}, ${booking.bookingDate},
+          ${booking.buyer}, ${booking.salesOwner}, ${booking.loanOwner}, ${booking.legalFirm})`
+      await db.insertMessage({
+        id: messageId,
+        bookingId,
+        senderRole: 'buyer',
+        senderName: booking.buyer.name,
+        language: 'en',
+        sentAt: '2026-09-17T21:05:00+08:00',
+        body: 'Any update on my loan?',
+        origin: 'live'
+      })
+
+      // This booking carries no applications, events or other messages, so this
+      // is exactly the state `db.snapshot()` derives for it from the database.
+      const summary = summarizeCases(
+        { bookings: [booking], applications: [], events: [], tasks: [] },
+        REFERENCE_DATE
+      )[0]
+      const message = (await db.getMessage(messageId)) as Message
+      const currentNextActionHash = jevInputHash(
+        'next_action',
+        nextActionJob({ summary, recentMessages: [message] }).state,
+        QUESTION_VERSION.next_action
+      )
+      const currentSignalsHash = jevInputHash(
+        'signals',
+        signalsJob({ bookingId, messages: [message] }).state,
+        QUESTION_VERSION.signals
+      )
+
+      // Fresh: next_action stored under the hash of the subject's current state.
+      await db.jevPut({
+        kind: 'next_action',
+        subjectId: bookingId,
+        inputHash: currentNextActionHash,
+        answer: {
+          bookingId,
+          action: { value: 'wait', probabilities: {}, confidence: 0 },
+          owner: { value: 'sales_admin', probabilities: {}, confidence: 0 },
+          urgency: { score: 0, confidence: 0 }
+        },
+        source: 'precomputed',
+        latencyMs: 10
+      })
+      // Stale: signals stored under a hash the case has since moved on from
+      // (a made-up hash can never match the freshly computed one).
+      await db.jevPut({
+        kind: 'signals',
+        subjectId: bookingId,
+        inputHash: 'no-longer-the-current-state',
+        answer: {
+          bookingId,
+          responsiveness: { score: 1, confidence: 0 },
+          hesitation: { score: 1, confidence: 0 }
+        },
+        source: 'precomputed',
+        latencyMs: 10
+      })
+      // extract is keyed by an immutable message, so it stays fresh even under a hash that cannot match.
+      await db.jevPut({
+        kind: 'extract',
+        subjectId: messageId,
+        inputHash: 'not-the-hash-jobs-ts-would-compute',
+        answer: {
+          messageId,
+          event: { value: 'no_update', probabilities: {}, confidence: 0 },
+          document: { value: 'none', probabilities: {}, confidence: 0 },
+          owner: { value: 'none', probabilities: {}, confidence: 0 },
+          withdrawalRisk: 0,
+          needsAction: 0
+        },
+        source: 'precomputed',
+        latencyMs: 10
+      })
+
+      const snapshot = await db.snapshot()
+      const nextAction = snapshot.nextActions.find((n) => n.bookingId === bookingId)
+      const signals = snapshot.signals.find((s) => s.bookingId === bookingId)
+      const extraction = snapshot.extractions.find((e) => e.messageId === messageId)
+      expect(nextAction?.meta.stale).toBe(false)
+      expect(signals?.meta.stale).toBe(true)
+      expect(extraction?.meta.stale).toBe(false)
+
+      // And the reverse pairing also holds: freshness tracks the hash, not the kind.
+      await sql`delete from jev_answers where subject_id = ${bookingId}`
+      await db.jevPut({
+        kind: 'signals',
+        subjectId: bookingId,
+        inputHash: currentSignalsHash,
+        answer: { bookingId, responsiveness: { score: 1, confidence: 0 }, hesitation: { score: 1, confidence: 0 } },
+        source: 'precomputed',
+        latencyMs: 10
+      })
+      await db.jevPut({
+        kind: 'next_action',
+        subjectId: bookingId,
+        inputHash: 'no-longer-the-current-state',
+        answer: {
+          bookingId,
+          action: { value: 'wait', probabilities: {}, confidence: 0 },
+          owner: { value: 'sales_admin', probabilities: {}, confidence: 0 },
+          urgency: { score: 0, confidence: 0 }
+        },
+        source: 'precomputed',
+        latencyMs: 10
+      })
+      const secondSnapshot = await db.snapshot()
+      expect(secondSnapshot.signals.find((s) => s.bookingId === bookingId)?.meta.stale).toBe(false)
+      expect(secondSnapshot.nextActions.find((n) => n.bookingId === bookingId)?.meta.stale).toBe(true)
+    })
   })
 
   describe('insertApplication', () => {
