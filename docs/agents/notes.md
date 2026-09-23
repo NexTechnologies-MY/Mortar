@@ -29,6 +29,11 @@ neither shows: conventions, the file map, and the gotchas.
 | Ask            | `packages/core/src/brain/` (`askBrain`, `buildAskContext`, the scripted set and its grounding test), `frontend/src/components/brain/` (`AskTrigger` in `AppNav`, `AskPanel` in a Dialog), `frontend/public/ai-mascot*.png`                                                                                                                                                  |
 | Import         | `packages/core/src/import.ts` (`parseCsv`, `readBookingSheet`, `checkBookingDraft`), `frontend/src/components/import/` (`DropZone`, `readSheetFile`, `SheetReview`), `frontend/src/pages/ImportPage.tsx`, `POST /api/bookings/import` in `server/src/app.ts`, `frontend/public/booking-sheet-template.xlsx` (written by `frontend/scripts/booking-template.mjs`) and `.csv` |
 | Waiting On     | `packages/core/src/ball.ts` (`ballInCourt`: who holds a case and the next move), `frontend/src/components/case/ball.ts` (labels, icons, move owners), `frontend/src/components/bookings/WaitingOn.tsx` (cell, journey, panel), `CaseQuickView.tsx` (side sheet from the ledger)                                                                                             |
+| Record Update  | `frontend/src/components/bookings/RecordUpdateForm.tsx` (case-page hand entry of booking events, grouped by track, with date, note, and bank/document where relevant; posts `POST /api/applications` for a bank submission, `POST /api/events` for everything else)                                                                                                         |
+| Date Picker    | `frontend/src/components/bookings/DateField.tsx` (the shared Mortar date field: trigger plus a Calendar in a Popover, `YYYY-MM-DD` strings, `min`/`max` bounds, a `today` marker separate from the wall clock; used by `RecordUpdateForm.tsx` and `AddMessageForm.tsx`)                                                                                                     |
+| Add Booking    | `frontend/src/components/bookings/AddBookingDialog.tsx` (hand entry of one booking from `BookingsPage.tsx`; validates through the same `readBookingSheet`, defaults, and held-unit map as the sheet import, submits as a one-row batch to `POST /api/bookings/import`)                                                                                                      |
+| Closed Export  | `frontend/src/components/bookings/closedExport.ts` (`buildClosedExportRows`, pure and DOM/network-free; `downloadClosedExport` lazy-loads `write-excel-file/browser` so the writer stays out of every other page's bundle; never includes IC or phone)                                                                                                                      |
+| Jev Proxy      | `packages/jev/src/proxyClient.ts` (`createProxySystemOne`: adapts a local Anthropic-Messages-compatible proxy such as CLIProxyAPI to the `systemOne` surface `createJevService` expects, so Jev runs without a TypeSafe key; wired in `server/src/index.ts` when `TYPESAFE_API_KEY` is unset and `JEV_PROXY_URL` is set)                                                    |
 | Persona        | `frontend/src/lib/persona.tsx` (context, `PERSONAS`, `mortar.persona` localStorage key, the retired-id migration), `packages/core/src/types.ts` (`Persona` type)                                                                                                                                                                                                            |
 | Pages          | `frontend/src/pages/` — one file per route (`LandingPage` with `components/HeroFilm`, `SignInPage`, `BookingsPage`, `BookingDetailPage`, `ChasePage`, `LegalPage`, `ForecastPage`, `ImportPage`, `NotFoundPage`)                                                                                                                                                            |
 | UI primitives  | `frontend/src/components/ui/` (shadcn: button, calendar, card, checkbox, dialog, drawer, sheet, DropdownMenu, input, label, popover, radio-group, select, separator, skeleton, table, tabs, tooltip + status-pill, EmptyState, InfoTooltip, LoadingOverlay, NotificationPopover, toastConfig)                                                                               |
@@ -95,6 +100,20 @@ neither shows: conventions, the file map, and the gotchas.
   `CaseQuickView` focuses the sheet itself in `onOpenAutoFocus`.
 - **localStorage Access Is Always Wrapped In try/catch** (`persona.tsx`,
   `notificationStore.ts`) because private-mode browsers can throw.
+- **Radix Popover Stalls jsdom.** Radix positions popover content with
+  floating-ui, whose measuring stalls jsdom's event loop for many seconds on
+  every open — a bare popover holding one button held a `setTimeout(0)` back 14
+  to 24s (3s even with collision handling off). Tests that render a date field
+  mock `@/components/ui/popover` with
+  `vi.mock('@/components/ui/popover', () => import('.../inlinePopover'))`,
+  pointing at `frontend/src/components/bookings/__tests__/inlinePopover.tsx`,
+  which keeps open, close, and show-content behaviour and drops the positioning;
+  the `Calendar` inside stays real.
+- **`JEV_PROXY_MODEL` Falls Back On `||`, Not `??`.** `.env.example` ships the
+  variable empty rather than commented out, and an empty string is falsy, so
+  `server/src/index.ts` reads it with
+  `process.env.JEV_PROXY_MODEL || DEFAULT_JEV_PROXY_MODEL` — `??` would let the
+  empty string through and send it to the proxy as the model name.
 - **`bun run --filter '*' <script>` Is How Root Scripts Fan Out** to workspaces;
   add the script name to a new package's `package.json` to join `check`.
 
