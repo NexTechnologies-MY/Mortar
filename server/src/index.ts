@@ -55,7 +55,8 @@ if (typesafeKey) {
   jevAvailable = true
   console.log('jev: TypeSafe API mode')
 } else if (jevProxyUrl) {
-  const jevProxyModel = process.env.JEV_PROXY_MODEL ?? DEFAULT_JEV_PROXY_MODEL
+  // `||`, not `??`: .env.example ships the variable empty.
+  const jevProxyModel = process.env.JEV_PROXY_MODEL || DEFAULT_JEV_PROXY_MODEL
   const client = createProxySystemOne({
     url: jevProxyUrl,
     apiKey: process.env.JEV_PROXY_KEY ?? '',
