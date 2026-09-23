@@ -55,3 +55,4 @@ flat config at the root, Prettier, husky + lint-staged.
 | Choosing or installing an agent skill                           | [Skills](docs/agents/skills.md)                                 |
 | Writing or formatting Markdown                                  | [Markdown Style Guide](docs/markdown-style.md)                  |
 | Reviewing proposed product features and UX enhancements         | [Product Suggestions](docs/SUGGESTIONS.md)                      |
+| Deleting data, or deploying with real buyer data                | [Data Retention](docs/RETENTION.md)                             |

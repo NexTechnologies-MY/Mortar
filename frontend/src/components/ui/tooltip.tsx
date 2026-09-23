@@ -18,9 +18,10 @@ const TooltipContent = React.forwardRef<
   <TooltipPrimitive.Portal>
     <TooltipPrimitive.Content
       ref={ref}
+      data-slot="tooltip-content"
       sideOffset={sideOffset}
       className={cn(
-        'z-[100] max-w-60 overflow-hidden rounded-sm bg-inverse px-2 py-1 text-[13px] leading-[18px] text-inverse-foreground animate-in fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0',
+        'z-[100] max-w-60 overflow-hidden rounded-sm bg-inverse px-2 py-1 text-[13px] leading-[18px] text-inverse-foreground animate-in fade-in-0 [animation-duration:var(--motion-base)] data-[state=closed]:animate-out data-[state=closed]:fade-out-0',
         className
       )}
       {...props}

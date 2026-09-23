@@ -9,7 +9,7 @@
 
 import { useMemo, useState } from 'react'
 import { AlertTriangle, ClipboardList, FileSignature, HelpCircle } from 'lucide-react'
-import { ballInCourt, type EventKind } from '@mortar/core'
+import { ballInCourt, type EventKind, type Task } from '@mortar/core'
 import { useCases, useSnapshot } from '@/lib/data'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { PageHeaderCard } from '@/components/layout/PageHeaderCard'
@@ -18,6 +18,7 @@ import { BookingFilters, type BookingFilter } from '@/components/bookings/Bookin
 import { BookingsTable, type BookingRow, type Sort, type SortKey } from '@/components/bookings/BookingsTable'
 import { CaseQuickView } from '@/components/bookings/CaseQuickView'
 import { Pagination, usePagination } from '@/components/ui/Pagination'
+import { nextSort } from '@/components/ui/SortHeader'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -50,6 +51,17 @@ export function BookingsPage() {
 
   const signalsByBooking = useMemo(() => new Map((snapshot?.signals ?? []).map((s) => [s.bookingId, s])), [snapshot])
 
+  /** Each booking's open task due soonest, for the Task column. */
+  const openTaskByBooking = useMemo(() => {
+    const map = new Map<string, Task>()
+    for (const task of snapshot?.tasks ?? []) {
+      if (task.status !== 'open') continue
+      const held = map.get(task.bookingId)
+      if (!held || task.dueOn < held.dueOn) map.set(task.bookingId, task)
+    }
+    return map
+  }, [snapshot])
+
   const rows = useMemo<Row[]>(() => {
     if (!snapshot) return []
     const bookingsById = new Map(snapshot.bookings.map((b) => [b.id, b]))
@@ -64,6 +76,7 @@ export function BookingsPage() {
           summary,
           signals: signalsByBooking.get(booking.id) ?? null,
           confirmedKinds: confirmedKinds.get(booking.id) ?? new Set<EventKind>(),
+          openTask: openTaskByBooking.get(booking.id) ?? null,
           stalled,
           live
         }
@@ -76,7 +89,7 @@ export function BookingsPage() {
           b.summary.daysSinceEvidence - a.summary.daysSinceEvidence ||
           a.booking.id.localeCompare(b.booking.id)
       )
-  }, [snapshot, cases, confirmedKinds, signalsByBooking])
+  }, [snapshot, cases, confirmedKinds, signalsByBooking, openTaskByBooking])
 
   const [sort, setSort] = useState<Sort>(null)
 
@@ -122,9 +135,7 @@ export function BookingsPage() {
 
   /** A re-sort returns to page one, for the same reason a filter change does. */
   const toggleSort = (key: SortKey) => {
-    setSort((current) =>
-      current?.key !== key ? { key, dir: 'desc' } : current.dir === 'desc' ? { key, dir: 'asc' } : null
-    )
+    setSort((current) => nextSort(current, key))
     pagination.onPageChange(1)
   }
 
@@ -203,7 +214,14 @@ export function BookingsPage() {
               />
             ) : (
               <>
-                <BookingsTable rows={pageRows} sort={sort} onSort={toggleSort} onInspect={setInspecting} />
+                <BookingsTable
+                  rows={pageRows}
+                  sort={sort}
+                  onSort={toggleSort}
+                  onInspect={setInspecting}
+                  referenceDate={snapshot?.meta.referenceDate ?? ''}
+                  onChanged={refresh}
+                />
                 <Pagination {...pagination} />
               </>
             )}

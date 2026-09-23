@@ -87,14 +87,19 @@ create table if not exists tasks (
 );
 
 -- One row per spreadsheet import, so a batch can be undone as a whole while
--- none of its bookings has moved on.
+-- none of its bookings has moved on. An undo keeps the row, stamped with who
+-- undid it and when, so every removal leaves a trace (docs/RETENTION.md).
 create table if not exists imports (
   id text primary key,
   source text,
   reported_by text not null,
   created_at timestamptz not null,
-  booking_ids text[] not null
+  booking_ids text[] not null,
+  undone_at timestamptz,
+  undone_by text
 );
+alter table imports add column if not exists undone_at timestamptz;
+alter table imports add column if not exists undone_by text;
 
 -- Every Jev answer, live or precomputed. The latest row per key serves as the cache.
 create table if not exists jev_answers (

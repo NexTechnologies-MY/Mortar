@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
 import type { CaseEvent, CaseSummary, Snapshot } from '@mortar/core'
@@ -119,5 +119,30 @@ describe('LegalPage', () => {
       ['Lim Yap & Associates', '1', '4 d', 'RM 430.0k']
     ])
     expect(screen.getByText(/Load, not performance/)).toBeTruthy()
+  })
+
+  it('sorts queue by firm ascending, descending, and back to default across clicks', () => {
+    renderPage()
+    const queueTable = screen.getByRole('columnheader', { name: 'Booking' }).closest('table')!
+    const firmHeader = within(queueTable).getByRole('columnheader', { name: 'Firm' })
+    const firmButton = within(firmHeader).getByRole('button', { name: 'Firm' })
+
+    const queueRows = () => screen.getAllByRole('row', { name: /Open Booking/ })
+    const rowIds = () => queueRows().map((r) => within(r).getAllByRole('cell')[0].textContent)
+    const firmCells = () => queueRows().map((r) => within(r).getAllByRole('cell')[3].textContent)
+
+    fireEvent.click(firmButton)
+    expect(firmHeader.getAttribute('aria-sort')).toBe('ascending')
+    expect(firmCells()).toEqual(['Kuan & Teh Advocates', 'Kuan & Teh Advocates', 'Lim Yap & Associates'])
+    expect(rowIds()).toEqual(['BK-0024', 'BK-0113', 'BK-0500'])
+
+    fireEvent.click(firmButton)
+    expect(firmHeader.getAttribute('aria-sort')).toBe('descending')
+    expect(firmCells()).toEqual(['Lim Yap & Associates', 'Kuan & Teh Advocates', 'Kuan & Teh Advocates'])
+    expect(rowIds()).toEqual(['BK-0500', 'BK-0024', 'BK-0113'])
+
+    fireEvent.click(firmButton)
+    expect(firmHeader.getAttribute('aria-sort')).toBe('none')
+    expect(rowIds()).toEqual(['BK-0024', 'BK-0113', 'BK-0500'])
   })
 })

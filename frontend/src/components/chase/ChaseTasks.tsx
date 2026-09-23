@@ -1,7 +1,8 @@
 /**
- * Open tasks grouped by owner for the chase page. Each row links to its
- * booking and completes via `PATCH /api/tasks/:id`. Groups sort by owner role,
- * tasks by due date then title.
+ * Open tasks grouped by owner for the chase page. A click anywhere on a row
+ * opens its booking's case page (the title link stretches over the row);
+ * Complete sits above that link and closes the task via `PATCH /api/tasks/:id`.
+ * Groups sort by owner role, tasks by due date then title.
  */
 
 import { Link } from 'react-router-dom'
@@ -56,14 +57,18 @@ export function ChaseTasks({
                 {list.map((task) => (
                   <li
                     key={task.id}
-                    className="flex items-center justify-between gap-3 border-t border-border py-2.5 first:border-t-0"
+                    className="relative -mx-2 flex items-center justify-between gap-3 rounded-sm border-t border-border px-2 py-2.5 transition-colors duration-[var(--motion-fast)] first:border-t-0 hover:bg-accent"
                   >
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-foreground">{task.title}</p>
+                      <Link
+                        to={`/bookings/${task.bookingId}`}
+                        className="block truncate text-sm font-medium text-foreground after:absolute after:inset-0 after:content-['']"
+                      >
+                        {task.title}
+                        <span className="sr-only">, Open {task.bookingId}</span>
+                      </Link>
                       <p className="text-[13px] text-muted-foreground">
-                        <Link to={`/bookings/${task.bookingId}`} className="font-mono text-xs hover:underline">
-                          {task.bookingId}
-                        </Link>
+                        <span className="font-mono text-xs">{task.bookingId}</span>
                         {' · Due '}
                         {formatDate(task.dueOn)}
                         {task.origin === 'jev' ? ' · Jev' : ''}
@@ -73,6 +78,7 @@ export function ChaseTasks({
                       type="button"
                       variant="secondary"
                       size="sm"
+                      className="relative z-10"
                       disabled={completing.has(task.id)}
                       onClick={() => onComplete(task)}
                     >

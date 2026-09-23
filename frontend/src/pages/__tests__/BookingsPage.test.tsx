@@ -144,6 +144,40 @@ describe('BookingsPage', () => {
     expect(container.className).toContain('overflow-x-auto')
     expect(container.parentElement!.className).toContain('overflow-hidden')
     const table = document.querySelector('[data-slot="table"]')!
-    expect(table.className).toContain('[&_td]:px-3')
+    expect(table.className).toContain('[&_td]:px-2')
+  })
+
+  it('fixes the column widths, so a filter never slides the headers (issue #12)', async () => {
+    renderBookings()
+    await screen.findByText('BK-9001')
+
+    const table = document.querySelector('[data-slot="table"]')!
+    expect(table.className).toContain('table-fixed')
+    expect(table.className).toMatch(/min-w-\[\d+px\]/)
+    const cols = [...table.querySelectorAll('colgroup col')] as HTMLElement[]
+    expect(cols).toHaveLength(document.querySelectorAll('thead th').length)
+    // Buyer alone takes the leftover width; every other column is set.
+    expect(cols.filter((col) => !col.style.width)).toHaveLength(1)
+  })
+
+  it('says Task Open on a booking someone is chasing, and adds a task from the row without leaving the table', async () => {
+    renderBookings()
+    await screen.findByText('BK-9001')
+
+    const chased = screen.getByLabelText(/^Task Open: Request Latest Three Months Payslips From Buyer/)
+    expect(chased.closest('tr')!.textContent).toContain('BK-9001')
+    expect(screen.queryByLabelText(/^Add Task For BK-9001/)).toBeNull()
+
+    vi.mocked(postTask).mockClear()
+    const add = screen.getAllByLabelText(/^Add Task For BK-/)[0]
+    const bookingId = /Add Task For (BK-\d+)/.exec(add.getAttribute('aria-label')!)![1]
+    await act(async () => {
+      fireEvent.click(add)
+    })
+
+    expect(postTask).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(postTask).mock.calls[0][0]).toMatchObject({ bookingId, origin: 'staff' })
+    // The row opens the case page; the button must not.
+    expect(screen.queryByTestId('location')).toBeNull()
   })
 })

@@ -76,7 +76,12 @@ export interface Database {
    * no task, no bank application. `null` when there is no such import; throws
    * `ImportMovedOnError` naming the bookings that have moved on.
    */
-  undoImport(id: string): Promise<{ removed: string[] } | null>
+  /**
+   * Removes an import's bookings and stamps the import as undone by `undoneBy`
+   * at `undoneAt`; the import row itself stays. `null` when the import does not
+   * exist or was already undone.
+   */
+  undoImport(id: string, undoneBy: string, undoneAt: IsoDateTime): Promise<{ removed: string[] } | null>
   updateTaskStatus(id: string, status: Task['status'], completedAt: IsoDateTime | null): Promise<Task | null>
   /** Latest `jev_answers` rows for `extract`, `next_action` and `signals`, for the snapshot. */
   latestJevAnswers(): Promise<JevAnswerRow[]>
@@ -352,9 +357,9 @@ export function createDatabase(sql: SQL): Database {
       })
     },
 
-    async undoImport(id) {
+    async undoImport(id, undoneBy, undoneAt) {
       return sql.begin(async (tx) => {
-        const rows = await tx`select booking_ids from imports where id = ${id} for update`
+        const rows = await tx`select booking_ids from imports where id = ${id} and undone_at is null for update`
         if (rows.length === 0) return null
         const ids = rows[0].booking_ids as string[]
         const moved = await tx`select b.id from bookings b where b.id in ${tx(ids)} and (
@@ -368,7 +373,7 @@ export function createDatabase(sql: SQL): Database {
         // and would otherwise greet the next booking to reuse the number.
         await tx`delete from jev_answers where subject_id in ${tx(ids)}`
         await tx`delete from bookings where id in ${tx(ids)}`
-        await tx`delete from imports where id = ${id}`
+        await tx`update imports set undone_at = ${undoneAt}, undone_by = ${undoneBy} where id = ${id}`
         return { removed: ids }
       })
     },

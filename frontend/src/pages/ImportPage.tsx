@@ -206,14 +206,25 @@ export function ImportPage() {
                 From The IC.
               </li>
             </ul>
-            <div>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
               <Button variant="secondary" size="sm" asChild>
-                <a href="/booking-sheet-template.csv" download>
+                <a href="/booking-sheet-template.xlsx" download>
                   <Download aria-hidden="true" />
-                  Download A Template
+                  Download The Excel Template
                 </a>
               </Button>
+              <a
+                href="/booking-sheet-template.csv"
+                download
+                className="text-[13px] text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+              >
+                Or The CSV Version
+              </a>
             </div>
+            <p className="text-[13px] text-muted-foreground">
+              The Excel Template Opens In Excel And In Google Sheets (File, Import). Its Second Sheet Explains Every
+              Column.
+            </p>
           </CardContent>
         </Card>
       </div>

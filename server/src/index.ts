@@ -2,7 +2,8 @@
  * The one process: applies the schema, seeds the database when `meta` has no
  * `seed` row, then serves `/api/*` plus `frontend/dist` on `PORT` (8787
  * locally, 8080 on Cloud Run). `DATABASE_URL` is required; `TYPESAFE_API_KEY`
- * reaches the Jev service only — never the browser.
+ * reaches the Jev service only — never the browser. `MORTAR_DEMO_RESET=off`
+ * turns off the demo reset route, as any server holding real data must.
  */
 import { SQL } from 'bun'
 import path from 'node:path'
@@ -43,7 +44,8 @@ const app = createApp({
   db,
   jev,
   reset: () => resetDatabase(sql),
-  jevAvailable: Boolean(process.env.TYPESAFE_API_KEY)
+  jevAvailable: Boolean(process.env.TYPESAFE_API_KEY),
+  resetEnabled: process.env.MORTAR_DEMO_RESET?.toLowerCase() !== 'off'
 })
 const serveStatic = staticHandler(path.resolve(import.meta.dir, '../../frontend/dist'))
 

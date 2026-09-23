@@ -1,11 +1,24 @@
 /**
  * Chase page — the Sales Admin home desk. Every stalled live booking as a
  * chase card: its stall reasons, financing-risk chip and Jev's suggested next
- * action (cached first, re-run live). Below, the open tasks grouped by
- * owner. Filters narrow the queue by risk and by suggested owner.
+ * action (cached first, re-run live). Above the queue, Suggested Next names
+ * the most urgent stalled booking nobody is chasing yet; cards that already
+ * have an open task say so. Below, the open tasks grouped by owner. Filters
+ * narrow the queue by risk and by suggested owner.
  */
 import { useMemo, useState, type Dispatch, type SetStateAction } from 'react'
-import { AlertTriangle, Banknote, BellRing, Flame, ListChecks, SearchX, SlidersHorizontal, Users } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import {
+  AlertTriangle,
+  Banknote,
+  BellRing,
+  Flame,
+  ListChecks,
+  Plus,
+  SearchX,
+  SlidersHorizontal,
+  Users
+} from 'lucide-react'
 import type { CaseSummary, NextActionSuggestion, OwnerRole, RiskLevel, Task } from '@mortar/core'
 import { useCases, useSnapshot } from '@/lib/data'
 import { fetchNextAction, postTask, updateTask } from '@/lib/api'
@@ -105,6 +118,20 @@ export function ChasePage() {
 
   const allStalled = useMemo(() => cases.filter((c) => c.stallReasons.length > 0), [cases])
   const openTasks = useMemo(() => (snapshot?.tasks ?? []).filter((t) => t.status === 'open'), [snapshot])
+
+  /** Each booking's open task due soonest. */
+  const openTaskByBooking = useMemo(() => {
+    const map = new Map<string, Task>()
+    for (const task of openTasks) {
+      const held = map.get(task.bookingId)
+      if (!held || task.dueOn < held.dueOn) map.set(task.bookingId, task)
+    }
+    return map
+  }, [openTasks])
+
+  /** The most urgent stalled booking in the filtered queue that nobody is chasing yet. */
+  const suggestedNext = stalled.find((c) => !openTaskByBooking.has(c.bookingId))
+  const suggestedBooking = suggestedNext ? bookings.get(suggestedNext.bookingId) : undefined
   const valueAtRisk = allStalled.reduce((sum, c) => sum + (bookings.get(c.bookingId)?.priceRm ?? 0), 0)
   const highRisk = allStalled.filter((c) => c.risk.level === 'high').length
 
@@ -264,6 +291,58 @@ export function ChasePage() {
             </div>
           ) : (
             <section className="mt-6">
+              {suggestedNext && suggestedBooking ? (
+                <div
+                  aria-label="Suggested Next"
+                  className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border border-card-border bg-card px-4 py-3 shadow-card"
+                >
+                  <span className="flex items-center text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                    Suggested Next
+                    <InfoTooltip text="The Most Urgent Stalled Booking Below That Has No Open Task Yet." />
+                  </span>
+                  <span className="flex min-w-0 flex-wrap items-baseline gap-x-2">
+                    <Link
+                      to={`/bookings/${suggestedBooking.id}`}
+                      className="font-mono text-[13px] font-medium text-foreground hover:underline"
+                    >
+                      {suggestedBooking.unit}
+                    </Link>
+                    <span className="text-[13px] text-muted-foreground">
+                      {suggestedBooking.id} · {suggestedBooking.buyer.name}
+                    </span>
+                    <span className="text-sm font-medium text-foreground">
+                      {suggestedNext.stallReasons.join(' · ')}
+                    </span>
+                  </span>
+                  {suggestions.has(suggestedBooking.id) ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="ml-auto"
+                      disabled={creating.has(suggestedBooking.id)}
+                      onClick={() => void createTask(suggestedBooking.id)}
+                    >
+                      <Plus aria-hidden="true" />
+                      {creating.has(suggestedBooking.id) ? 'Creating…' : 'Create Task'}
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      className="ml-auto"
+                      disabled={suggesting.has(suggestedBooking.id)}
+                      onClick={() => void suggest(suggestedBooking.id)}
+                    >
+                      {suggesting.has(suggestedBooking.id) ? 'Asking Jev…' : 'Suggest Next Action'}
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <p className="mb-4 text-sm text-muted-foreground">
+                  Every Stalled Booking Here Already Has An Open Task.
+                </p>
+              )}
               <h2 className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                 Action Today
                 <InfoTooltip text="Stalled Bookings, Ranked By Urgency." />
@@ -279,6 +358,7 @@ export function ChasePage() {
                       summary={summary}
                       suggestion={suggestions.get(summary.bookingId)}
                       document={documentFor(summary.bookingId)}
+                      openTask={openTaskByBooking.get(summary.bookingId) ?? null}
                       suggesting={suggesting.has(summary.bookingId)}
                       creating={creating.has(summary.bookingId)}
                       onSuggest={() => void suggest(summary.bookingId)}

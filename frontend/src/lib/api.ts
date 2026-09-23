@@ -98,7 +98,11 @@ export const updateTask = (taskId: string, status: Task['status']) =>
 export const importBookings = (input: { bookings: BookingDraft[]; reportedBy: string; source?: string }) =>
   post<{ importId: string; bookings: Booking[] }>('/api/bookings/import', input)
 
-/** Removes an import's bookings; refused (409) once any of them has had an update, message or task. */
-export const undoImport = (importId: string) => post<{ removed: string[] }>(`/api/imports/${importId}/undo`)
+/**
+ * Removes an import's bookings; refused (409) once any of them has had an update, message or task. The import
+ * itself stays on record, stamped with `reportedBy` and the time.
+ */
+export const undoImport = (importId: string, reportedBy: string) =>
+  post<{ removed: string[] }>(`/api/imports/${importId}/undo`, { reportedBy })
 
 export const resetDemo = () => post<SimulationMeta>('/api/admin/reset')

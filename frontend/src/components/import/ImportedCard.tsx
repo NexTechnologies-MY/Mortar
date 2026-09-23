@@ -3,14 +3,16 @@
  * link to each, and Undo This Import behind a confirming Dialog (DESIGN.md
  * Dialog: destructive, Cancel focused first). Undo removes exactly this batch,
  * and the server refuses it once any booking in it has had an update, a
- * message or a task, so work done on a booking is never thrown away.
+ * message or a task, so work done on a booking is never thrown away. The
+ * import itself stays on record, stamped with who undid it and when.
  */
 
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CheckCircle2 } from 'lucide-react'
-import type { Booking } from '@mortar/core'
+import { PERSONA_STAFF, type Booking } from '@mortar/core'
 import { undoImport } from '@/lib/api'
+import { usePersona } from '@/lib/persona'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import {
@@ -40,6 +42,7 @@ export function ImportedCard({
   /** Called after a successful undo, to drop the card and reload the desks. */
   onUndone: () => Promise<void>
 }) {
+  const { persona } = usePersona()
   const [open, setOpen] = useState(false)
   const [undoing, setUndoing] = useState(false)
   const first = bookings[0]?.id
@@ -49,7 +52,7 @@ export function ImportedCard({
   const runUndo = async () => {
     setUndoing(true)
     try {
-      const { removed } = await undoImport(importId)
+      const { removed } = await undoImport(importId, PERSONA_STAFF[persona].name)
       notify.success(
         `Import undone: ${removed.length.toLocaleString()} ${removed.length === 1 ? 'booking' : 'bookings'} removed.`
       )

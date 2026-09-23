@@ -197,9 +197,14 @@ describe.skipIf(!DATABASE_URL)('database integration', () => {
         await sql`select booking_id, kind, status from events where booking_id in ${sql(bookings.map((b) => b.id))}`
       expect(events).toHaveLength(2)
 
-      expect(await db.undoImport('W2TEST-A')).toEqual({ removed: bookings.map((b) => b.id) })
+      const undoneAt = '2026-09-18T10:00:00+08:00'
+      expect(await db.undoImport('W2TEST-A', 'Tan Mei Ling', undoneAt)).toEqual({ removed: bookings.map((b) => b.id) })
       expect(await db.getBooking(bookings[0].id)).toBeNull()
-      expect(await db.undoImport('W2TEST-A')).toBeNull()
+      // The import row stays as the record of the undo.
+      const [record] = await sql`select undone_by, undone_at from imports where id = 'W2TEST-A'`
+      expect(record.undone_by).toBe('Tan Mei Ling')
+      expect(new Date(record.undone_at as string).toISOString()).toBe(new Date(undoneAt).toISOString())
+      expect(await db.undoImport('W2TEST-A', 'Tan Mei Ling', undoneAt)).toBeNull()
     })
 
     test('refuses a held unit, even when two imports race for it', async () => {
@@ -231,7 +236,7 @@ describe.skipIf(!DATABASE_URL)('database integration', () => {
       })
       // Settled by hand: `await expect(...).rejects` on this promise hangs Bun's
       // test runner (1.3.14) until the test times out, though the call returns.
-      const outcome = await db.undoImport('W2TEST-D').then(
+      const outcome = await db.undoImport('W2TEST-D', 'Tan Mei Ling', '2026-09-18T10:00:00+08:00').then(
         () => 'resolved',
         (e: unknown) => (e instanceof ImportMovedOnError ? 'moved-on' : `other: ${String(e)}`)
       )

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import type { CaseEvent } from '@mortar/core'
+import type { Booking, CaseEvent } from '@mortar/core'
 import { booking, stalledCase } from '@/pages/__tests__/mockSnapshot'
-import { firmLoad, isLegalStall, legalQueue } from '../legal'
+import { firmLoad, isLegalStall, legalQueue, sortLegalRows, type LegalRow } from '../legal'
 
 const appointment = (bookingId: string, note: string | null, status: CaseEvent['status'] = 'confirmed'): CaseEvent => ({
   id: `EV-${bookingId}`,
@@ -103,5 +103,82 @@ describe('firmLoad', () => {
       )
     )
     expect(load[0].medianDays).toBe(16)
+  })
+})
+
+const row = (
+  id: string,
+  overrides: Partial<Booking> = {},
+  appointmentNote: string | null = null,
+  summaryOverrides: Record<string, unknown> = {}
+): LegalRow => ({
+  booking: booking(id, overrides),
+  summary: stalledCase(id, { stage: 'lo_issued', stallReasons: [], ...summaryOverrides }),
+  appointmentNote
+})
+
+describe('sortLegalRows', () => {
+  it('sorts by firm A-Z', () => {
+    const r1 = row('BK-1', { legalFirm: 'Gamma' })
+    const r2 = row('BK-2', { legalFirm: 'Alpha' })
+    const r3 = row('BK-3', { legalFirm: 'Beta' })
+    const result = sortLegalRows([r1, r2, r3], { key: 'firm', dir: 'asc' })
+    expect(result.map((r) => r.booking.legalFirm)).toEqual(['Alpha', 'Beta', 'Gamma'])
+  })
+
+  it('sorts by firm Z-A', () => {
+    const r1 = row('BK-1', { legalFirm: 'Beta' })
+    const r2 = row('BK-2', { legalFirm: 'Alpha' })
+    const r3 = row('BK-3', { legalFirm: 'Gamma' })
+    const result = sortLegalRows([r1, r2, r3], { key: 'firm', dir: 'desc' })
+    expect(result.map((r) => r.booking.legalFirm)).toEqual(['Gamma', 'Beta', 'Alpha'])
+  })
+
+  it('sorts by days descending with largest daysSinceLoIssued first', () => {
+    const r1 = row('BK-1', {}, null, { daysSinceLoIssued: 10 })
+    const r2 = row('BK-2', {}, null, { daysSinceLoIssued: 45 })
+    const r3 = row('BK-3', {}, null, { daysSinceLoIssued: 25 })
+    const result = sortLegalRows([r1, r2, r3], { key: 'days', dir: 'desc' })
+    expect(result.map((r) => r.booking.id)).toEqual(['BK-2', 'BK-3', 'BK-1'])
+  })
+
+  it('orders rows by value both descending and ascending', () => {
+    const r1 = row('BK-1', { priceRm: 300000 })
+    const r2 = row('BK-2', { priceRm: 800000 })
+    const r3 = row('BK-3', { priceRm: 500000 })
+
+    const desc = sortLegalRows([r1, r2, r3], { key: 'value', dir: 'desc' })
+    expect(desc.map((r) => r.booking.id)).toEqual(['BK-2', 'BK-3', 'BK-1'])
+
+    const asc = sortLegalRows([r1, r2, r3], { key: 'value', dir: 'asc' })
+    expect(asc.map((r) => r.booking.id)).toEqual(['BK-1', 'BK-3', 'BK-2'])
+  })
+
+  it('sorts by appointment ascending with no appointment note first then chronologically', () => {
+    const rNoAppt = row('BK-1', {}, null)
+    const rLater = row('BK-2', {}, 'Appointment On 2026-09-15')
+    const rEarlier = row('BK-3', {}, 'Appointment On 2026-09-04')
+    const result = sortLegalRows([rLater, rNoAppt, rEarlier], { key: 'appointment', dir: 'asc' })
+    expect(result.map((r) => r.booking.id)).toEqual(['BK-1', 'BK-3', 'BK-2'])
+  })
+
+  it('preserves incoming order when there are ties', () => {
+    const r1 = row('BK-1', { legalFirm: 'Alpha' })
+    const r2 = row('BK-2', { legalFirm: 'Alpha' })
+    const r3 = row('BK-3', { legalFirm: 'Beta' })
+
+    const forward = sortLegalRows([r1, r2, r3], { key: 'firm', dir: 'asc' })
+    expect(forward.map((r) => r.booking.id)).toEqual(['BK-1', 'BK-2', 'BK-3'])
+
+    const reversed = sortLegalRows([r2, r1, r3], { key: 'firm', dir: 'asc' })
+    expect(reversed.map((r) => r.booking.id)).toEqual(['BK-2', 'BK-1', 'BK-3'])
+  })
+
+  it('returns exact input order unchanged when sort is null', () => {
+    const r1 = row('BK-3', { legalFirm: 'Zulu', priceRm: 900000 })
+    const r2 = row('BK-1', { legalFirm: 'Alpha', priceRm: 300000 })
+    const r3 = row('BK-2', { legalFirm: 'Beta', priceRm: 600000 })
+    const result = sortLegalRows([r1, r2, r3], null)
+    expect(result.map((r) => r.booking.id)).toEqual(['BK-3', 'BK-1', 'BK-2'])
   })
 })

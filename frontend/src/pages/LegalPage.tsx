@@ -97,7 +97,7 @@ export function LegalPage() {
               <section className="mt-6">
                 <h2 className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                   Sitting With The Lawyers
-                  <InfoTooltip text="Longest Wait First. Rows Open The Case File." />
+                  <InfoTooltip text="Longest Wait First Until You Sort A Column. Rows Open The Case File." />
                 </h2>
                 <p className="mt-1 text-sm text-muted-foreground">
                   {unscheduled > 0

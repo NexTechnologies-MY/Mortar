@@ -42,6 +42,12 @@ export interface AppOptions {
   reset: () => Promise<SimulationMeta>
   /** What `/api/health` reports for Jev: whether a live service is wired. */
   jevAvailable?: boolean
+  /**
+   * Whether `POST /api/admin/reset` may wipe the database. On for the public
+   * demo; a server holding real data sets `MORTAR_DEMO_RESET=off`, and the
+   * route then refuses with 403 (docs/RETENTION.md).
+   */
+  resetEnabled?: boolean
 }
 
 export interface App {
@@ -357,10 +363,13 @@ export function createApp(options: AppOptions): App {
     [
       'POST',
       '/api/imports/:id/undo',
-      async ({ params }) => {
+      async ({ req, params }) => {
+        const b = await body(req)
+        if (!b) return error(400, 'expected a JSON object body')
+        if (!isString(b.reportedBy)) return error(400, 'reportedBy is required')
         try {
-          const result = await db.undoImport(params.id)
-          if (!result) return error(404, `import ${params.id} not found`)
+          const result = await db.undoImport(params.id, b.reportedBy.trim(), simNow(REFERENCE_DATE))
+          if (!result) return error(404, `import ${params.id} not found or already undone`)
           return json(result)
         } catch (e) {
           if (e instanceof ImportMovedOnError) return error(409, e.message)
@@ -416,6 +425,9 @@ export function createApp(options: AppOptions): App {
       'POST',
       '/api/admin/reset',
       async () => {
+        if (options.resetEnabled === false) {
+          return error(403, 'demo reset is turned off on this server (MORTAR_DEMO_RESET=off)')
+        }
         const meta = await db.meta()
         // `meta.resetAt` is sim time (the reference date plus the real time of
         // day), so the cooldown measures it against `simNow`, not `Date.now`.

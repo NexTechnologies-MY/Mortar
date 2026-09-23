@@ -1,8 +1,25 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { CaseSummary, Snapshot } from '@mortar/core'
+import type { CaseSummary, Snapshot, Task } from '@mortar/core'
 import { booking, nextAction, snapshot, stalledCase } from './mockSnapshot'
+
+function task(bookingId: string, overrides: Partial<Task> = {}): Task {
+  return {
+    id: `TASK-${bookingId}`,
+    bookingId,
+    action: 'request_document',
+    title: `Request Documents For ${bookingId}`,
+    ownerRole: 'sales',
+    ownerName: 'Nurul Aina',
+    dueOn: '2026-09-20',
+    status: 'open',
+    origin: 'jev',
+    createdAt: '2026-09-16T00:00:00+08:00',
+    completedAt: null,
+    ...overrides
+  }
+}
 
 const mocks = vi.hoisted(() => ({
   refresh: vi.fn(),
@@ -170,5 +187,40 @@ describe('ChasePage', () => {
     fireEvent.click(screen.getByText('High Risk'))
     expect(screen.getByText('Nothing To Chase')).toBeTruthy()
     expect(screen.getByText('No Stalled Booking Matches These Filters.')).toBeTruthy()
+  })
+
+  describe('Suggested Next', () => {
+    beforeEach(() => {
+      // BK-9001 already has an open task, so Suggested Next should skip it
+      // and name BK-0040, the next most urgent stalled booking without one.
+      SNAP = snapshot({ events: SNAP.events, nextActions: SNAP.nextActions, tasks: [task('BK-9001')] })
+    })
+
+    it('names the most urgent stalled booking that has no open task', () => {
+      renderPage()
+
+      const strip = screen.getByLabelText('Suggested Next')
+      expect(strip.textContent).toContain('BK-0040')
+      expect(strip.textContent).not.toContain('BK-9001')
+    })
+
+    it('creates a task from Suggested Next for that booking when Jev has a suggestion', async () => {
+      mocks.postTask.mockResolvedValue({})
+      renderPage()
+
+      const strip = screen.getByLabelText('Suggested Next')
+      fireEvent.click(within(strip).getByRole('button', { name: 'Create Task' }))
+
+      await waitFor(() => expect(mocks.postTask).toHaveBeenCalledTimes(1))
+      expect(mocks.postTask).toHaveBeenCalledWith(expect.objectContaining({ bookingId: 'BK-0040' }))
+    })
+
+    it('shows Task Open and no Create Task on the queue card for the booking with an open task', () => {
+      renderPage()
+
+      const card = screen.getByTestId('chase-card-BK-9001')
+      expect(within(card).getByText('Task Open')).toBeTruthy()
+      expect(within(card).queryByRole('button', { name: 'Create Task' })).toBeNull()
+    })
   })
 })

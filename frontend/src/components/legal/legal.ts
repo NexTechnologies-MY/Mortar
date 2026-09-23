@@ -8,6 +8,7 @@
  */
 
 import type { Booking, CaseEvent, CaseSummary } from '@mortar/core'
+import type { SortDir, SortState } from '@/components/ui/SortHeader'
 
 export interface LegalRow {
   booking: Booking
@@ -42,6 +43,65 @@ export function legalQueue(bookings: Booking[], cases: CaseSummary[], events: Ca
       (a, b) =>
         (b.summary.daysSinceLoIssued ?? 0) - (a.summary.daysSinceLoIssued ?? 0) || b.booking.priceRm - a.booking.priceRm
     )
+}
+
+/** Columns the legal queue sorts by. */
+export type LegalSortKey = 'booking' | 'unit' | 'buyer' | 'firm' | 'days' | 'appointment' | 'value'
+
+/** The direction a column sorts in first: names A to Z, waits and values largest first, unset appointments first. */
+export const LEGAL_FIRST_DIR: Record<LegalSortKey, SortDir> = {
+  booking: 'asc',
+  unit: 'asc',
+  buyer: 'asc',
+  firm: 'asc',
+  days: 'desc',
+  appointment: 'asc',
+  value: 'desc'
+}
+
+/** The appointment's date as written in its note, `''` when none is set, so unset ones sort first. */
+function appointmentDate(row: LegalRow): string {
+  return /\d{4}-\d{2}-\d{2}/.exec(row.appointmentNote ?? '')?.[0] ?? ''
+}
+
+function sortValue(row: LegalRow, key: LegalSortKey): string | number {
+  switch (key) {
+    case 'booking':
+      return row.booking.id
+    case 'unit':
+      return row.booking.unit
+    case 'buyer':
+      return row.booking.buyer.name
+    case 'firm':
+      return row.booking.legalFirm
+    case 'days':
+      return row.summary.daysSinceLoIssued ?? 0
+    case 'appointment':
+      return appointmentDate(row)
+    case 'value':
+      return row.booking.priceRm
+  }
+}
+
+/**
+ * The queue in the reader's chosen order; `null` keeps `legalQueue`'s longest
+ * wait first. Ties keep that default order, so a firm's cases still read
+ * longest wait first.
+ */
+export function sortLegalRows(rows: LegalRow[], sort: SortState<LegalSortKey>): LegalRow[] {
+  if (!sort) return rows
+  const dir = sort.dir === 'asc' ? 1 : -1
+  const collator = new Intl.Collator('en', { numeric: true, sensitivity: 'base' })
+  return rows
+    .map((row, index) => ({ row, index }))
+    .sort((a, b) => {
+      const va = sortValue(a.row, sort.key)
+      const vb = sortValue(b.row, sort.key)
+      const order =
+        typeof va === 'number' && typeof vb === 'number' ? va - vb : collator.compare(String(va), String(vb))
+      return order * dir || a.index - b.index
+    })
+    .map(({ row }) => row)
 }
 
 export interface FirmLoad {

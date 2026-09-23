@@ -184,7 +184,7 @@ class FakeDb implements Database {
   async insertTask(task: Task) {
     this.tasks.push(task)
   }
-  imports = new Map<string, string[]>()
+  imports = new Map<string, { ids: string[]; undoneBy: string | null; undoneAt: string | null }>()
   /** Mirrors the SQL: an open booking (no confirmed cancelled or lapsed) holds its unit. */
   async importBookings(batch: ImportBatch, drafts: BookingDraft[], bookedEvent: (booking: Booking) => CaseEvent) {
     const closed = new Set(
@@ -200,15 +200,13 @@ class FakeDb implements Database {
     const imported = drafts.map((draft, i) => ({ id: `BK-${String(141 + i).padStart(4, '0')}`, ...draft }))
     this.bookings.push(...imported)
     this.events.push(...imported.map(bookedEvent))
-    this.imports.set(
-      batch.id,
-      imported.map((b) => b.id)
-    )
+    this.imports.set(batch.id, { ids: imported.map((b) => b.id), undoneBy: null, undoneAt: null })
     return imported
   }
-  async undoImport(id: string) {
-    const ids = this.imports.get(id)
-    if (!ids) return null
+  async undoImport(id: string, undoneBy: string, undoneAt: string) {
+    const record = this.imports.get(id)
+    if (!record || record.undoneAt) return null
+    const ids = record.ids
     const moved = ids.filter(
       (bookingId) =>
         this.events.some((e) => e.bookingId === bookingId && e.kind !== 'booked') ||
@@ -218,7 +216,7 @@ class FakeDb implements Database {
     if (moved.length > 0) throw new ImportMovedOnError(moved)
     this.bookings = this.bookings.filter((b) => !ids.includes(b.id))
     this.events = this.events.filter((e) => !ids.includes(e.bookingId))
-    this.imports.delete(id)
+    this.imports.set(id, { ...record, undoneBy, undoneAt })
     return { removed: ids }
   }
   async updateTaskStatus(id: string, status: Task['status'], completedAt: string | null) {
@@ -645,12 +643,17 @@ describe('createApp', () => {
     test('undo removes the batch while nothing has moved on, and refuses once it has', async () => {
       const db = new FakeDb()
       const app = makeApp(db)
+      const undoBy = post({ reportedBy: 'Farah Idris' })
       const first = (await (await call(app, '/api/bookings/import', post(valid)))?.json()) as { importId: string }
-      const undone = await call(app, `/api/imports/${first.importId}/undo`, post())
+      const undone = await call(app, `/api/imports/${first.importId}/undo`, undoBy)
       expect(undone?.status).toBe(200)
       expect(await undone?.json()).toEqual({ removed: ['BK-0141'] })
       expect(db.bookings.some((b) => b.id === 'BK-0141')).toBe(false)
       expect(db.events.some((e) => e.bookingId === 'BK-0141')).toBe(false)
+      // The import itself stays on record, stamped with who undid it.
+      expect(db.imports.get(first.importId)).toMatchObject({ ids: ['BK-0141'], undoneBy: 'Farah Idris' })
+      expect(db.imports.get(first.importId)?.undoneAt).toBeTruthy()
+      expect((await call(app, `/api/imports/${first.importId}/undo`, undoBy))?.status).toBe(404)
 
       const second = (await (await call(app, '/api/bookings/import', post(valid)))?.json()) as { importId: string }
       db.tasks.push({
@@ -666,12 +669,22 @@ describe('createApp', () => {
         createdAt: '2026-09-18T12:00:00+08:00',
         completedAt: null
       })
-      const refused = await call(app, `/api/imports/${second.importId}/undo`, post())
+      const refused = await call(app, `/api/imports/${second.importId}/undo`, undoBy)
       expect(refused?.status).toBe(409)
       expect(await errorOf(refused)).toContain('BK-0141')
       expect(db.bookings.some((b) => b.id === 'BK-0141')).toBe(true)
 
-      expect((await call(app, '/api/imports/IMP-nope/undo', post()))?.status).toBe(404)
+      expect((await call(app, '/api/imports/IMP-nope/undo', undoBy))?.status).toBe(404)
+    })
+
+    test('undo needs to know who is undoing', async () => {
+      const app = makeApp()
+      const { importId } = (await (await call(app, '/api/bookings/import', post(valid)))?.json()) as {
+        importId: string
+      }
+      const res = await call(app, `/api/imports/${importId}/undo`, post({}))
+      expect(res?.status).toBe(400)
+      expect(await errorOf(res)).toContain('reportedBy')
     })
 
     test('stores only the contract fields of a draft', async () => {
@@ -748,6 +761,23 @@ describe('createApp', () => {
   })
 
   describe('POST /api/admin/reset', () => {
+    test('is refused while the reset is switched off, and runs nothing', async () => {
+      let ran = false
+      const app = createApp({
+        db: new FakeDb(),
+        jev: fakeJev(),
+        reset: async () => {
+          ran = true
+          return { seed: 20260918, referenceDate: '2026-09-18', resetAt: '2026-09-18T12:00:00+08:00' }
+        },
+        resetEnabled: false
+      })
+      const res = await call(app, '/api/admin/reset', post())
+      expect(res?.status).toBe(403)
+      expect(await errorOf(res)).toContain('MORTAR_DEMO_RESET=off')
+      expect(ran).toBe(false)
+    })
+
     test('runs the reset and returns SimulationMeta', async () => {
       const res = await call(makeApp(), '/api/admin/reset', post())
       expect(res?.status).toBe(200)

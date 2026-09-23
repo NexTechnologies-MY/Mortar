@@ -104,7 +104,7 @@ describe('ImportPage', () => {
     expect(undoImport).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: 'Remove 1 Booking' }))
 
-    await waitFor(() => expect(undoImport).toHaveBeenCalledWith('IMP-1'))
+    await waitFor(() => expect(undoImport).toHaveBeenCalledWith('IMP-1', expect.any(String)))
     await waitFor(() => expect(screen.queryByText('1 Booking Imported')).toBeNull())
   })
 

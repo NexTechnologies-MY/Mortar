@@ -123,6 +123,27 @@ export function CaseJourney({
   )
 }
 
+/**
+ * The task Waiting On proposes: its next move, owned by whoever on the
+ * developer's side makes it, due today once the case is stuck and in two days
+ * otherwise. `null` when the case waits on nobody. The panel and the bookings
+ * table's Add Task both raise exactly this task.
+ */
+export function waitingOnTask(booking: Booking, summary: CaseSummary, referenceDate: string) {
+  const ball = ballInCourt(summary)
+  if (ball.holder === null || ball.nextMove === null) return null
+  const ownerRole = MOVE_OWNER[ball.nextMove]
+  return {
+    bookingId: booking.id,
+    action: ball.nextMove,
+    title: taskTitle(ball.nextMove, booking, summary.outstandingDocuments[0]),
+    ownerRole,
+    ownerName: ownerName(ownerRole, booking),
+    dueOn: addDays(referenceDate, ball.stalled ? 0 : 2),
+    origin: 'staff' as const
+  }
+}
+
 export function WaitingOnPanel({
   booking,
   summary,
@@ -141,10 +162,11 @@ export function WaitingOnPanel({
   className?: string
 }) {
   const ball = ballInCourt(summary)
+  const task = waitingOnTask(booking, summary, referenceDate)
   const [adding, setAdding] = useState(false)
   const [added, setAdded] = useState(false)
 
-  if (ball.holder === null || ball.nextMove === null) {
+  if (ball.holder === null || ball.nextMove === null || task === null) {
     return (
       <div className={cn('flex flex-col gap-1', className)}>
         <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Waiting On</h2>
@@ -156,21 +178,13 @@ export function WaitingOnPanel({
   const HolderIcon = BALL_HOLDER_ICONS[ball.holder]
   const MoveIcon = NEXT_ACTION_ICONS[ball.nextMove]
   const move = ball.nextMove
-  const ownerRole = MOVE_OWNER[move]
-  const owner = ownerName(ownerRole, booking)
+  const ownerRole = task.ownerRole
+  const owner = task.ownerName
 
   const addTask = async () => {
     setAdding(true)
     try {
-      await postTask({
-        bookingId: booking.id,
-        action: move,
-        title: taskTitle(move, booking, summary.outstandingDocuments[0]),
-        ownerRole,
-        ownerName: owner,
-        dueOn: addDays(referenceDate, ball.stalled ? 0 : 2),
-        origin: 'staff'
-      })
+      await postTask(task)
       setAdded(true)
       notify.success(`Task added for ${owner}.`)
       await onChanged()
