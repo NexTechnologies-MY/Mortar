@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { configure, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { PersonaProvider } from '@/lib/persona'
 import { SnapshotProvider } from '@/lib/data'
@@ -58,6 +58,12 @@ function drop(content: string, name = 'september.csv') {
 }
 
 describe('ImportPage', () => {
+  // Reading a dropped sheet is async; under a full parallel run it can outlast
+  // the default 1 s wait, which made this file flaky.
+  beforeAll(() => {
+    configure({ asyncUtilTimeout: 5000 })
+  })
+
   beforeEach(() => {
     window.localStorage.clear()
     vi.mocked(importBookings).mockClear()

@@ -4,6 +4,10 @@ import { unitKey, type SheetDefaults } from '@mortar/core'
 import { importBookings } from '@/lib/api'
 import { AddBookingDialog } from '../AddBookingDialog'
 
+// Radix's popover positioning stalls jsdom for many seconds per open; the
+// inline stand-in keeps open, close and content, and the Calendar stays real.
+vi.mock('@/components/ui/popover', () => import('./inlinePopover'))
+
 vi.mock('@/lib/api', () => ({
   importBookings: vi.fn()
 }))
@@ -128,7 +132,7 @@ describe('AddBookingDialog', () => {
   // the click triggers keeps re-rendering the 42-cell Calendar underneath.
   // Longer per-test timeouts absorb it rather than fighting jsdom's default
   // one; nothing here is asserting on time.
-  it.only('submits the ready draft to importBookings, toasts, refreshes and navigates to the new case', async () => {
+  it('submits the ready draft to importBookings, toasts, refreshes and navigates to the new case', async () => {
     vi.mocked(importBookings).mockResolvedValue({
       importId: 'IMP-1',
       bookings: [
