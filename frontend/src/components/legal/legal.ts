@@ -26,6 +26,9 @@ export function isLegalStall(reason: string): boolean {
 /**
  * Cases in the legal waiting room, longest wait first. Ties break on value, so
  * two cases that have sat the same number of days rank by what they hold up.
+ * A buyer who withdrew and has not come back is the developer's to release,
+ * not the solicitor's to schedule, so the case leaves the queue as Waiting On
+ * leaves the solicitor.
  */
 export function legalQueue(bookings: Booking[], cases: CaseSummary[], events: CaseEvent[]): LegalRow[] {
   const byId = new Map(bookings.map((b) => [b.id, b]))
@@ -39,6 +42,7 @@ export function legalQueue(bookings: Booking[], cases: CaseSummary[], events: Ca
   // A real letter of offer: the waiting room's clock starts at one.
   return cases
     .filter((c) => c.stage === 'lo_issued' && c.daysSinceLoIssued !== null)
+    .filter((c) => !c.buyerWithdrew)
     .flatMap((summary) => {
       const booking = byId.get(summary.bookingId)
       if (!booking) return []

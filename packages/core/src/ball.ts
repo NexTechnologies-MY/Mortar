@@ -27,11 +27,11 @@ function listOf(items: string[]): string {
 }
 
 /**
- * First match wins, in the order a desk would unblock the case: documents the
- * buyer owes stop a bank from acting, a bank holding an application owes a
- * decision, an approved loan waits on the solicitor for the SPA, and anything
- * else (a withdrawn buyer, no bank yet, every bank declined) is the
- * developer's own move.
+ * First match wins, in the order a desk would unblock the case: an approved
+ * loan waits on the solicitor for the SPA, whatever another bank still wants;
+ * before that, documents the buyer owes stop a bank from acting, and a bank
+ * holding an application owes a decision; anything else (a withdrawn buyer,
+ * no bank yet, every bank declined) is the developer's own move.
  */
 export function ballInCourt(summary: CaseSummary): BallInCourt {
   const stalled = summary.stallReasons.length > 0
@@ -47,10 +47,20 @@ export function ballInCourt(summary: CaseSummary): BallInCourt {
   // A buyer who has walked away outranks everything else: documents they still
   // owe and a bank's decision, approval included, no longer matter, and the unit
   // is the developer's to release. Read the summary's flag, not the applications:
-  // an application the bank already decided is never marked withdrawn.
+  // an application the bank already decided is never marked withdrawn, and the
+  // flag clears once a bank is submitted after the withdrawal (the buyer is back).
   if (summary.buyerWithdrew) {
     return { holder: 'developer', waitingFor: 'A Decision To Release The Unit', nextMove: 'review_release', stalled }
   }
+
+  // A real letter of offer, not an SPA appointment alone: an appointment set
+  // while a bank is still deciding leaves the case with that bank.
+  if (summary.stage === 'lo_issued' && summary.daysSinceLoIssued !== null) {
+    return summary.daysSinceSpaSet !== null
+      ? { holder: 'solicitor', waitingFor: 'The Solicitor To Get The SPA Signed', nextMove: 'escalate_legal', stalled }
+      : { holder: 'solicitor', waitingFor: 'The Solicitor To Schedule The SPA', nextMove: 'schedule_spa', stalled }
+  }
+
   if (summary.outstandingDocuments.length > 0) {
     const documents = listOf(summary.outstandingDocuments.map((d) => DOCUMENT_LABELS[d]))
     return { holder: 'buyer', waitingFor: `${documents} From The Buyer`, nextMove: 'request_document', stalled }
@@ -63,14 +73,6 @@ export function ballInCourt(summary: CaseSummary): BallInCourt {
       nextMove: 'request_document',
       stalled
     }
-  }
-
-  // A real letter of offer, not an SPA appointment alone: an appointment set
-  // while a bank is still deciding leaves the case with that bank.
-  if (summary.stage === 'lo_issued' && summary.daysSinceLoIssued !== null) {
-    return summary.daysSinceSpaSet !== null
-      ? { holder: 'solicitor', waitingFor: 'The Solicitor To Get The SPA Signed', nextMove: 'escalate_legal', stalled }
-      : { holder: 'solicitor', waitingFor: 'The Solicitor To Schedule The SPA', nextMove: 'schedule_spa', stalled }
   }
 
   const withBank = summary.applications.filter((a) => a.status === 'submitted')
