@@ -56,6 +56,20 @@ create table if not exists events (
 );
 create index if not exists events_booking_idx on events (booking_id, occurred_at);
 
+-- Every staff review of a Jev proposal (confirm, dispute, dismiss), append-only:
+-- who moved which update from what to what, and when. No foreign key, so the
+-- trail outlives the event and a reset from an older build can still truncate
+-- `events`.
+create table if not exists event_reviews (
+  id bigint generated always as identity primary key,
+  event_id text not null,
+  from_status text not null,
+  to_status text not null,
+  reviewer text not null,
+  at timestamptz not null
+);
+create index if not exists event_reviews_event_idx on event_reviews (event_id, at);
+
 create table if not exists playbooks (
   id text primary key,
   title text not null,

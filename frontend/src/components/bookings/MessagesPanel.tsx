@@ -5,7 +5,8 @@
  * and Confirm, Dispute and Dismiss actions on the pending proposal event.
  * A `no_update` read collapses to one muted line; the full panel is reserved
  * for proposals that need a decision. Ask Jev Again re-reads any message
- * live and supersedes the old proposal.
+ * live and supersedes the old proposal. A review the server refuses, because
+ * someone settled the proposal first, shows its reason and re-reads the case.
  */
 
 import { useState, type ReactNode } from 'react'
@@ -143,7 +144,7 @@ function MessageItem({
 }) {
   const [pending, setPending] = useState(false)
 
-  const run = async (work: () => Promise<unknown>, toast: string) => {
+  const run = async (work: () => Promise<unknown>, toast: string, refreshOnFailure = false) => {
     setPending(true)
     try {
       await work()
@@ -151,6 +152,9 @@ function MessageItem({
       await onChanged()
     } catch (e) {
       notify.error(e instanceof Error ? e.message : 'The request failed.')
+      // A refused review means someone moved the proposal first ("This update
+      // was already reviewed…"): re-read, so the panel shows where it stands.
+      if (refreshOnFailure) await onChanged().catch(() => {})
     } finally {
       setPending(false)
     }
@@ -179,7 +183,7 @@ function MessageItem({
           proposal={proposal}
           pending={pending}
           onReview={(eventId, decision) =>
-            void run(() => reviewEvent(eventId, { decision, reviewer }), DECISION_TOASTS[decision])
+            void run(() => reviewEvent(eventId, { decision, reviewer }), DECISION_TOASTS[decision], true)
           }
         />
       ) : (

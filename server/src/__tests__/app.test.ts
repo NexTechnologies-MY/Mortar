@@ -4,7 +4,7 @@
  * file mocks `@mortar/core` with fakes for the same signatures; when the real
  * implementations land the routes exercise them unchanged.
  */
-import { describe, expect, mock, test } from 'bun:test'
+import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
 import * as realCore from '../../../packages/core/src/index'
 
 const SUMMARY: realCore.CaseSummary = {
@@ -30,10 +30,18 @@ const SUMMARY: realCore.CaseSummary = {
   openTasks: 1
 }
 
+/**
+ * Off, every booking reads as `SUMMARY`. The case-rule tests turn it on, so the
+ * route derives the case from the fake's own rows as the server does.
+ */
+let deriveCases = false
+// Held before `mock.module`, which rewrites the namespace's bindings in place.
+const deriveSummaries = realCore.summarizeCases
+
 mock.module('@mortar/core', () => ({
   ...realCore,
   simNow: () => '2026-09-18T12:00:00+08:00',
-  summarizeCases: () => [SUMMARY],
+  summarizeCases: (data: realCore.CaseData, asOf: string) => (deriveCases ? deriveSummaries(data, asOf) : [SUMMARY]),
   searchPlaybooks: (playbooks: realCore.Playbook[]) =>
     playbooks.map((playbook, i) => ({ playbook, keywordScore: 10 - i })),
   proposalFromExtraction: (extraction: realCore.Extraction, message: realCore.Message) =>
@@ -56,7 +64,14 @@ mock.module('@mortar/core', () => ({
 }))
 
 import { createApp, type App } from '../app'
-import { ImportMovedOnError, UnitHeldError, type Database, type ImportBatch } from '../../db/index'
+import {
+  EventSettledError,
+  ImportMovedOnError,
+  OpenApplicationError,
+  UnitHeldError,
+  type Database,
+  type ImportBatch
+} from '../../db/index'
 import type { JevAnswerRow } from '../../db/mappers'
 import type {
   Booking,
@@ -170,6 +185,9 @@ class FakeDb implements Database {
   async getMessage(id: string) {
     return this.messages.find((m) => m.id === id) ?? null
   }
+  async getEvent(id: string) {
+    return this.events.find((e) => e.id === id) ?? null
+  }
   async messagesForBooking(bookingId: string) {
     return this.messages.filter((m) => m.bookingId === bookingId)
   }
@@ -185,23 +203,49 @@ class FakeDb implements Database {
   async insertEvent(event: CaseEvent) {
     this.events.push(event)
   }
-  /** Mirrors the SQL transaction: both rows land, or neither does. */
+  /**
+   * Mirrors the SQL transaction: both rows land, or neither does, and never
+   * beside an application the same bank has not decided.
+   */
   async insertApplication(application: LoanApplication, submitted: CaseEvent) {
     if (this.events.some((e) => e.id === submitted.id)) throw new Error(`duplicate event ${submitted.id}`)
+    const confirmed = this.events.filter((e) => e.status === 'confirmed')
+    const withdrew = confirmed.some((e) => e.bookingId === application.bookingId && e.kind === 'buyer_withdrew')
+    const bankKey = (bank: string) => bank.trim().toLowerCase()
+    const open = this.applications.find(
+      (a) =>
+        a.bookingId === application.bookingId &&
+        bankKey(a.bank) === bankKey(application.bank) &&
+        !withdrew &&
+        !confirmed.some((e) => e.applicationId === a.id && (e.kind === 'loan_approved' || e.kind === 'loan_rejected'))
+    )
+    if (open) throw new OpenApplicationError(open.bank, open.id)
     this.applications.push(application)
     this.events.push(submitted)
   }
-  async reviewEvent(id: string, status: EvidenceStatus, reviewer: string) {
+  reviews: { eventId: string; fromStatus: EvidenceStatus; toStatus: EvidenceStatus; reviewer: string; at: string }[] =
+    []
+  /** Mirrors the SQL: only a Jev proposal still waiting changes, and each change is kept. */
+  async reviewEvent(id: string, status: EvidenceStatus, reviewer: string, at: string) {
     const event = this.events.find((e) => e.id === id)
     if (!event) return null
-    return { ...event, status, verifiedBy: reviewer }
+    const pending = event.source === 'jev' && (event.status === 'provisional' || event.status === 'disputed')
+    if (!pending || event.status === status) throw new EventSettledError(event)
+    const reviewed = { ...event, status, verifiedBy: reviewer }
+    this.events = this.events.map((e) => (e.id === id ? reviewed : e))
+    this.reviews.push({ eventId: id, fromStatus: event.status, toStatus: status, reviewer, at })
+    return reviewed
   }
-  async supersedePendingProposals(messageId: string) {
+  /** Mirrors the SQL transaction: no await between the supersede and the insert. */
+  async replaceProposal(messageId: string, proposal: CaseEvent | null) {
     this.events = this.events.map((e) =>
       e.messageId === messageId && (e.status === 'provisional' || e.status === 'disputed')
         ? { ...e, status: 'superseded' as const }
         : e
     )
+    if (!proposal || this.events.some((e) => e.messageId === messageId && e.status === 'confirmed')) return null
+    this.events.push(proposal)
+    return proposal
   }
   async insertTask(task: Task) {
     this.tasks.push(task)
@@ -231,6 +275,7 @@ class FakeDb implements Database {
     const ids = record.ids
     const moved = ids.filter(
       (bookingId) =>
+        this.events.filter((e) => e.bookingId === bookingId).length > 1 ||
         this.events.some((e) => e.bookingId === bookingId && e.kind !== 'booked') ||
         this.tasks.some((t) => t.bookingId === bookingId) ||
         this.messages.some((m) => m.bookingId === bookingId)
@@ -306,6 +351,34 @@ const makeApp = (db = new FakeDb(), jev = fakeJev(), reset?: () => Promise<Simul
 const call = (app: App, path: string, init?: RequestInit) => app.fetch(new Request(`http://test${path}`, init))
 const post = (body?: unknown) => ({ method: 'POST', body: body === undefined ? undefined : JSON.stringify(body) })
 const errorOf = async (res: Response | null) => ((await res?.json()) as { error?: string } | undefined)?.error
+
+/** A confirmed staff update on BK-9001, for the case-rule tests to build a case from. */
+const staffEvent = (id: string, kind: CaseEvent['kind'], applicationId: string | null = null): CaseEvent => ({
+  id,
+  bookingId: 'BK-9001',
+  applicationId,
+  track: kind === 'cancelled' || kind === 'lapsed' ? 'sales' : 'loan',
+  kind,
+  occurredAt: '2026-09-10T12:00:00+08:00',
+  recordedAt: '2026-09-10T12:00:00+08:00',
+  reportedBy: 'Tan Mei Ling',
+  verifiedBy: 'Tan Mei Ling',
+  status: 'confirmed',
+  source: 'staff',
+  messageId: null,
+  document: null,
+  note: null
+})
+
+/** Case-rule tests derive the case from the fake's rows; see `deriveCases`. */
+const derivingCases = () => {
+  beforeEach(() => {
+    deriveCases = true
+  })
+  afterEach(() => {
+    deriveCases = false
+  })
+}
 
 describe('createApp', () => {
   test('non-api paths return null so static can handle them', async () => {
@@ -389,6 +462,21 @@ describe('createApp', () => {
       expect(res?.status).toBe(404)
     })
 
+    describe('on a closed booking', () => {
+      derivingCases()
+
+      test('keeps the message but proposes no update', async () => {
+        const db = new FakeDb()
+        db.events.push(staffEvent('EV-CANCEL', 'cancelled'))
+        const res = await call(makeApp(db), '/api/messages', post(valid))
+        expect(res?.status).toBe(200)
+        const body = (await res?.json()) as { message: Message; event: CaseEvent | null }
+        expect(body.event).toBeNull()
+        expect(db.messages.some((m) => m.id === body.message.id)).toBe(true)
+        expect(db.events).toHaveLength(1)
+      })
+    })
+
     describe('sentAt', () => {
       const send = async (sentAt: unknown, db = new FakeDb()) => {
         const res = await call(makeApp(db), '/api/messages', post({ ...valid, sentAt }))
@@ -467,6 +555,33 @@ describe('createApp', () => {
     test('unknown message is a 404', async () => {
       const res = await call(makeApp(), '/api/messages/MSG-0000/extract', post())
       expect(res?.status).toBe(404)
+    })
+
+    test('two re-reads at once leave one proposal standing', async () => {
+      const db = new FakeDb()
+      db.events.push({ ...PROVISIONAL })
+      const app = makeApp(db)
+      const results = await Promise.all([
+        call(app, '/api/messages/MSG-9001-9/extract', post()),
+        call(app, '/api/messages/MSG-9001-9/extract', post())
+      ])
+      expect(results.map((r) => r?.status)).toEqual([200, 200])
+      const standing = db.events.filter((e) => e.messageId === 'MSG-9001-9' && e.status === 'provisional')
+      expect(standing).toHaveLength(1)
+    })
+
+    describe('on a closed booking', () => {
+      derivingCases()
+
+      test('withdraws the waiting proposal and proposes nothing new', async () => {
+        const db = new FakeDb()
+        db.events.push(staffEvent('EV-LAPSE', 'lapsed'), { ...PROVISIONAL })
+        const res = await call(makeApp(db), '/api/messages/MSG-9001-9/extract', post())
+        expect(res?.status).toBe(200)
+        expect(((await res?.json()) as { event: CaseEvent | null }).event).toBeNull()
+        expect(db.events.find((e) => e.id === 'EV-9001-9')?.status).toBe('superseded')
+        expect(db.events).toHaveLength(2)
+      })
     })
   })
 
@@ -572,6 +687,89 @@ describe('createApp', () => {
       expect(await errorOf(res)).toContain(message)
       expect(db.events).toHaveLength(0)
     })
+
+    test('refuses a booked update: the import writes the one a booking carries', async () => {
+      const db = new FakeDb()
+      const res = await call(makeApp(db), '/api/events', post({ ...valid, track: 'sales', kind: 'booked' }))
+      expect(res?.status).toBe(400)
+      expect(await errorOf(res)).toContain('importing')
+      expect(db.events).toHaveLength(0)
+    })
+
+    test.each(['loan_approved', 'loan_rejected', 'valuation_shortfall'])(
+      'refuses %s without the bank application it is for',
+      async (kind) => {
+        const db = new FakeDb()
+        const res = await call(makeApp(db), '/api/events', post({ ...valid, kind }))
+        expect(res?.status).toBe(400)
+        expect(await errorOf(res)).toContain('which bank application')
+        expect(db.events).toHaveLength(0)
+      }
+    )
+
+    describe('case rules', () => {
+      derivingCases()
+
+      test.each(['cancelled', 'lapsed'] as const)('refuses any update once the booking is %s', async (closing) => {
+        for (const update of [
+          valid,
+          { ...valid, kind: 'spa_signed', track: 'legal' },
+          { ...valid, kind: 'cancelled', track: 'sales' },
+          { ...valid, kind: 'loan_approved', applicationId: 'APP-9001-1' }
+        ]) {
+          const db = new FakeDb()
+          db.events.push(staffEvent('EV-CLOSE', closing))
+          const res = await call(makeApp(db), '/api/events', post(update))
+          expect(res?.status).toBe(409)
+          expect(await errorOf(res)).toBe(`This booking is ${closing}, so it takes no more updates.`)
+          expect(db.events).toHaveLength(1)
+        }
+      })
+
+      test.each([
+        ['loan_approved', 'approved'],
+        ['loan_rejected', 'rejected']
+      ] as const)('refuses a second decision on an application already %s', async (first, word) => {
+        for (const second of ['loan_approved', 'loan_rejected']) {
+          const db = new FakeDb()
+          db.events.push(
+            staffEvent('EV-SUB', 'loan_submitted', 'APP-9001-1'),
+            staffEvent('EV-DEC', first, 'APP-9001-1')
+          )
+          const res = await call(
+            makeApp(db),
+            '/api/events',
+            post({ ...valid, kind: second, applicationId: 'APP-9001-1' })
+          )
+          expect(res?.status).toBe(409)
+          expect(await errorOf(res)).toBe(`Apex Bank has already ${word} this application.`)
+          expect(db.events).toHaveLength(2)
+        }
+      })
+
+      test('takes a decision on another bank still deciding, and other updates on a decided one', async () => {
+        const db = new FakeDb()
+        db.applications.push({ id: 'APP-9001-2', bookingId: 'BK-9001', bank: 'Crestline Bank', banker: 'Aida Rahman' })
+        db.events.push(
+          staffEvent('EV-SUB-1', 'loan_submitted', 'APP-9001-1'),
+          staffEvent('EV-REJ', 'loan_rejected', 'APP-9001-1'),
+          staffEvent('EV-SUB-2', 'loan_submitted', 'APP-9001-2')
+        )
+        const app = makeApp(db)
+        const decision = await call(
+          app,
+          '/api/events',
+          post({ ...valid, kind: 'loan_approved', applicationId: 'APP-9001-2' })
+        )
+        expect(decision?.status).toBe(200)
+        const documents = await call(
+          app,
+          '/api/events',
+          post({ ...valid, kind: 'documents_received', applicationId: 'APP-9001-1', document: 'payslip' })
+        )
+        expect(documents?.status).toBe(200)
+      })
+    })
   })
 
   describe('POST /api/applications', () => {
@@ -639,6 +837,46 @@ describe('createApp', () => {
       expect(db.applications).toHaveLength(1)
       expect(db.events).toHaveLength(0)
     })
+
+    test('a retried submission to a bank still deciding is refused, whatever its spacing or case', async () => {
+      const db = new FakeDb()
+      const app = makeApp(db)
+      expect((await call(app, '/api/applications', post(valid)))?.status).toBe(200)
+      for (const bank of ['Harbour Bank', ' harbour BANK ']) {
+        const retry = await call(app, '/api/applications', post({ ...valid, bank }))
+        expect(retry?.status).toBe(409)
+        expect(await errorOf(retry)).toBe('Harbour Bank already has an application waiting on this booking.')
+      }
+      // The seeded Apex Bank application has no decision either.
+      expect((await call(app, '/api/applications', post({ ...valid, bank: 'apex bank' })))?.status).toBe(409)
+      expect(db.applications).toHaveLength(2)
+      expect(db.events).toHaveLength(1)
+    })
+
+    test('a bank that rejected can be sent the case again', async () => {
+      const db = new FakeDb()
+      db.events.push(
+        staffEvent('EV-SUB', 'loan_submitted', 'APP-9001-1'),
+        staffEvent('EV-REJ', 'loan_rejected', 'APP-9001-1')
+      )
+      const res = await call(makeApp(db), '/api/applications', post({ ...valid, bank: 'Apex Bank' }))
+      expect(res?.status).toBe(200)
+      expect(db.applications.filter((a) => a.bank === 'Apex Bank')).toHaveLength(2)
+    })
+
+    describe('case rules', () => {
+      derivingCases()
+
+      test('refuses a submission once the booking is cancelled', async () => {
+        const db = new FakeDb()
+        db.events.push(staffEvent('EV-CANCEL', 'cancelled'))
+        const res = await call(makeApp(db), '/api/applications', post(valid))
+        expect(res?.status).toBe(409)
+        expect(await errorOf(res)).toBe('This booking is cancelled, so it takes no more updates.')
+        expect(db.applications).toHaveLength(1)
+        expect(db.events).toHaveLength(1)
+      })
+    })
   })
 
   describe('POST /api/events/:id/review', () => {
@@ -664,6 +902,111 @@ describe('createApp', () => {
     test('unknown event is a 404', async () => {
       const res = await call(makeApp(), '/api/events/EV-0000/review', post({ decision: 'confirm', reviewer: 'x' }))
       expect(res?.status).toBe(404)
+    })
+
+    test('keeps who moved the proposal, from what to what, and when', async () => {
+      const db = new FakeDb()
+      db.events.push({ ...PROVISIONAL })
+      await call(makeApp(db), '/api/events/EV-9001-9/review', post({ decision: 'confirm', reviewer: ' Tan Mei Ling ' }))
+      expect(db.events[0]).toMatchObject({ status: 'confirmed', verifiedBy: 'Tan Mei Ling' })
+      expect(db.reviews).toEqual([
+        {
+          eventId: 'EV-9001-9',
+          fromStatus: 'provisional',
+          toStatus: 'confirmed',
+          reviewer: 'Tan Mei Ling',
+          at: '2026-09-18T12:00:00+08:00'
+        }
+      ])
+    })
+
+    test('a stale screen cannot dismiss a proposal someone already confirmed', async () => {
+      const db = new FakeDb()
+      db.events.push({ ...PROVISIONAL })
+      const app = makeApp(db)
+      const review = (decision: string, reviewer: string) =>
+        call(app, '/api/events/EV-9001-9/review', post({ decision, reviewer }))
+      expect((await review('confirm', 'Tan Mei Ling'))?.status).toBe(200)
+      const stale = await review('dismiss', 'Nurul Aina')
+      expect(stale?.status).toBe(409)
+      expect(await errorOf(stale)).toBe('This update was already reviewed and confirmed.')
+      expect(db.events[0]).toMatchObject({ status: 'confirmed', verifiedBy: 'Tan Mei Ling' })
+      expect(db.reviews).toHaveLength(1)
+    })
+
+    test.each([
+      ['a staff cancellation', staffEvent('EV-9001-9', 'cancelled'), 'dismiss', 'already on record'],
+      [
+        'a staff update, even to confirm it',
+        staffEvent('EV-9001-9', 'buyer_contacted'),
+        'confirm',
+        'already on record'
+      ],
+      ['a dismissed proposal', { ...PROVISIONAL, status: 'superseded' as const }, 'confirm', 'already dismissed'],
+      ['a disputed proposal, disputed again', { ...PROVISIONAL, status: 'disputed' as const }, 'dispute', 'disputed']
+    ])('refuses to review %s', async (_label, event, decision, message) => {
+      const db = new FakeDb()
+      db.events.push(event)
+      const res = await call(makeApp(db), '/api/events/EV-9001-9/review', post({ decision, reviewer: 'Nurul Aina' }))
+      expect(res?.status).toBe(409)
+      expect(await errorOf(res)).toContain(message)
+      expect(db.events[0]).toEqual(event)
+      expect(db.reviews).toHaveLength(0)
+    })
+
+    test('a disputed proposal can still be confirmed or dismissed', async () => {
+      for (const decision of ['confirm', 'dismiss']) {
+        const db = new FakeDb()
+        db.events.push({ ...PROVISIONAL, status: 'disputed' })
+        const res = await call(makeApp(db), '/api/events/EV-9001-9/review', post({ decision, reviewer: 'Nurul Aina' }))
+        expect(res?.status).toBe(200)
+        expect(db.reviews[0]?.fromStatus).toBe('disputed')
+      }
+    })
+
+    test('confirming a bank decision Jev could not tie to a bank is refused', async () => {
+      const db = new FakeDb()
+      db.events.push({ ...PROVISIONAL, kind: 'loan_approved', applicationId: null, document: null })
+      const res = await call(makeApp(db), '/api/events/EV-9001-9/review', post({ decision: 'confirm', reviewer: 'x' }))
+      expect(res?.status).toBe(409)
+      expect(await errorOf(res)).toContain('which bank')
+      expect(db.events[0].status).toBe('provisional')
+    })
+
+    describe('case rules', () => {
+      derivingCases()
+
+      test('a proposal on a closed booking can be dismissed but not confirmed', async () => {
+        const db = new FakeDb()
+        db.events.push(staffEvent('EV-CANCEL', 'cancelled'), { ...PROVISIONAL })
+        const app = makeApp(db)
+        const confirm = await call(app, '/api/events/EV-9001-9/review', post({ decision: 'confirm', reviewer: 'x' }))
+        expect(confirm?.status).toBe(409)
+        expect(await errorOf(confirm)).toBe('This booking is cancelled, so it takes no more updates.')
+        const dismiss = await call(app, '/api/events/EV-9001-9/review', post({ decision: 'dismiss', reviewer: 'x' }))
+        expect(dismiss?.status).toBe(200)
+        expect(db.events.find((e) => e.id === 'EV-9001-9')?.status).toBe('superseded')
+      })
+
+      test('confirming a second decision on a decided application is refused', async () => {
+        const db = new FakeDb()
+        db.events.push(
+          staffEvent('EV-SUB', 'loan_submitted', 'APP-9001-1'),
+          staffEvent('EV-APP', 'loan_approved', 'APP-9001-1'),
+          {
+            ...PROVISIONAL,
+            kind: 'loan_rejected',
+            document: null
+          }
+        )
+        const res = await call(
+          makeApp(db),
+          '/api/events/EV-9001-9/review',
+          post({ decision: 'confirm', reviewer: 'x' })
+        )
+        expect(res?.status).toBe(409)
+        expect(await errorOf(res)).toBe('Apex Bank has already approved this application.')
+      })
     })
   })
 
