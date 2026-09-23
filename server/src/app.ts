@@ -16,13 +16,17 @@ import {
 } from '@mortar/core'
 import { defaultPlaybookQuery } from '@mortar/jev'
 import type {
+  Booking,
   BookingDraft,
   CaseEvent,
   CaseSummary,
   DocumentKind,
   EventKind,
   Extraction,
+  IsoDate,
+  IsoDateTime,
   JevService,
+  LoanApplication,
   Message,
   NextAction,
   OwnerRole,
@@ -32,8 +36,8 @@ import type {
   Track
 } from '@mortar/core'
 import { ImportMovedOnError, UnitHeldError, type Database } from '../db/index'
-import { withMaskedContact } from '../db/mappers'
-import { body, detectLanguage, error, isIsoDate, isOneOf, isString, json, match, newId } from './util'
+import { isoDateTime, withMaskedContact } from '../db/mappers'
+import { body, detectLanguage, error, isIsoDate, isIsoDateTime, isOneOf, isString, json, match, newId } from './util'
 
 export interface AppOptions {
   db: Database
@@ -99,6 +103,27 @@ const REVIEW_DECISIONS = { confirm: 'confirmed', dispute: 'disputed', dismiss: '
 const RESET_COOLDOWN_MS = 30_000
 /** Rows one import may carry; a launch sheet is a few hundred units. */
 const MAX_IMPORT_ROWS = 1000
+/**
+ * How far past `simNow` a posted `sentAt` may run before it is refused, so a
+ * browser clock a few seconds ahead of the server's is not turned away. The
+ * stored time is clamped to `simNow`, so no message is ever stamped later
+ * than the moment it was logged.
+ */
+const CLOCK_SKEW_MS = 60_000
+
+/** Why `occurredOn` cannot date an update on this booking, or `null` when it can. */
+function occurredOnProblem(occurredOn: IsoDate, booking: Booking): string | null {
+  if (occurredOn > REFERENCE_DATE) return `occurredOn cannot be after today (${REFERENCE_DATE})`
+  if (occurredOn < booking.bookingDate) {
+    return `occurredOn cannot be before the booking date (${booking.bookingDate})`
+  }
+  return null
+}
+
+/** A back-dated update lands at noon Malaysia time on its day; an undated one at `now`. */
+function occurredAtFor(occurredOn: IsoDate | null, now: IsoDateTime): IsoDateTime {
+  return occurredOn === null ? now : `${occurredOn}T12:00:00+08:00`
+}
 
 /**
  * Copies only the contract's fields, so extra keys in a posted draft never
@@ -179,8 +204,23 @@ export function createApp(options: AppOptions): App {
           return error(400, `senderRole must be one of: ${SENDER_ROLES.join(', ')}`)
         if (!isString(b.senderName)) return error(400, 'senderName is required')
         if (!isString(b.body)) return error(400, 'body is required')
+        if (b.sentAt != null && !isIsoDateTime(b.sentAt))
+          return error(400, 'sentAt must be a date-time with an offset, e.g. 2026-09-17T21:05:00+08:00')
         const booking = await db.getBooking(b.bookingId)
         if (!booking) return error(404, `booking ${b.bookingId} not found`)
+        // When the message was sent, not when it was pasted in: Jev reads reply
+        // speed from the gaps between messages. Stored in +08:00 like the rest.
+        const now = simNow(REFERENCE_DATE)
+        let sentAt = now
+        if (b.sentAt != null) {
+          const sent = Date.parse(b.sentAt as string)
+          if (sent > Date.parse(now) + CLOCK_SKEW_MS)
+            return error(400, `sentAt cannot be in the future (now is ${now})`)
+          if (sent < Date.parse(`${booking.bookingDate}T00:00:00+08:00`)) {
+            return error(400, `sentAt cannot be before the booking date (${booking.bookingDate})`)
+          }
+          sentAt = sent > Date.parse(now) ? now : isoDateTime(new Date(sent))
+        }
         const summary = await summaryFor(booking.id)
         if (!summary) return error(500, `no case summary for ${booking.id}`)
         const message: Message = {
@@ -189,7 +229,7 @@ export function createApp(options: AppOptions): App {
           senderRole: b.senderRole,
           senderName: b.senderName.trim(),
           language: detectLanguage(b.body),
-          sentAt: simNow(REFERENCE_DATE),
+          sentAt,
           body: b.body.trim(),
           origin: 'live'
         }
@@ -223,19 +263,35 @@ export function createApp(options: AppOptions): App {
         if (!isString(b.bookingId)) return error(400, 'bookingId is required')
         if (!isOneOf(b.track, TRACKS)) return error(400, `track must be one of: ${TRACKS.join(', ')}`)
         if (!isOneOf(b.kind, EVENT_KINDS)) return error(400, `kind must be one of: ${EVENT_KINDS.join(', ')}`)
+        // A submission needs its application row; that route writes both together.
+        if (b.kind === 'loan_submitted')
+          return error(400, 'loan_submitted is recorded through POST /api/applications, which creates the application')
         if (b.document != null && !isOneOf(b.document, DOCUMENT_KINDS))
           return error(400, `document must be one of: ${DOCUMENT_KINDS.join(', ')}`)
         if (b.note != null && typeof b.note !== 'string') return error(400, 'note must be a string')
+        if (b.applicationId != null && !isString(b.applicationId))
+          return error(400, 'applicationId must be a non-empty string')
+        if (b.occurredOn != null && !isIsoDate(b.occurredOn)) return error(400, 'occurredOn must be a YYYY-MM-DD date')
         if (!isString(b.reportedBy)) return error(400, 'reportedBy is required')
-        if (!(await db.getBooking(b.bookingId))) return error(404, `booking ${b.bookingId} not found`)
+        const booking = await db.getBooking(b.bookingId)
+        if (!booking) return error(404, `booking ${b.bookingId} not found`)
+        const applicationId = (b.applicationId as string | undefined) ?? null
+        if (applicationId !== null) {
+          const application = await db.getApplication(applicationId)
+          if (!application || application.bookingId !== booking.id)
+            return error(400, `applicationId ${applicationId} is not a loan application on ${booking.id}`)
+        }
+        const occurredOn = (b.occurredOn as IsoDate | undefined) ?? null
+        const problem = occurredOn === null ? null : occurredOnProblem(occurredOn, booking)
+        if (problem) return error(400, problem)
         const now = simNow(REFERENCE_DATE)
         const event: CaseEvent = {
           id: newId('EV'),
-          bookingId: b.bookingId,
-          applicationId: null,
+          bookingId: booking.id,
+          applicationId,
           track: b.track,
           kind: b.kind,
-          occurredAt: now,
+          occurredAt: occurredAtFor(occurredOn, now),
           recordedAt: now,
           reportedBy: b.reportedBy.trim(),
           verifiedBy: b.reportedBy.trim(),
@@ -247,6 +303,51 @@ export function createApp(options: AppOptions): App {
         }
         await db.insertEvent(event)
         return json(event)
+      }
+    ],
+    [
+      'POST',
+      '/api/applications',
+      async ({ req }) => {
+        const b = await body(req)
+        if (!b) return error(400, 'expected a JSON object body')
+        if (!isString(b.bookingId)) return error(400, 'bookingId is required')
+        if (!isString(b.bank)) return error(400, 'bank is required')
+        if (!isString(b.banker)) return error(400, 'banker is required')
+        if (b.note != null && typeof b.note !== 'string') return error(400, 'note must be a string')
+        if (b.occurredOn != null && !isIsoDate(b.occurredOn)) return error(400, 'occurredOn must be a YYYY-MM-DD date')
+        if (!isString(b.reportedBy)) return error(400, 'reportedBy is required')
+        const booking = await db.getBooking(b.bookingId)
+        if (!booking) return error(404, `booking ${b.bookingId} not found`)
+        const occurredOn = (b.occurredOn as IsoDate | undefined) ?? null
+        const problem = occurredOn === null ? null : occurredOnProblem(occurredOn, booking)
+        if (problem) return error(400, problem)
+        const now = simNow(REFERENCE_DATE)
+        const reportedBy = b.reportedBy.trim()
+        const application: LoanApplication = {
+          id: newId('APP'),
+          bookingId: booking.id,
+          bank: b.bank.trim(),
+          banker: b.banker.trim()
+        }
+        const event: CaseEvent = {
+          id: newId('EV'),
+          bookingId: booking.id,
+          applicationId: application.id,
+          track: 'loan',
+          kind: 'loan_submitted',
+          occurredAt: occurredAtFor(occurredOn, now),
+          recordedAt: now,
+          reportedBy,
+          verifiedBy: reportedBy,
+          status: 'confirmed',
+          source: 'staff',
+          messageId: null,
+          document: null,
+          note: (b.note as string | undefined)?.trim() || null
+        }
+        await db.insertApplication(application, event)
+        return json({ application, event })
       }
     ],
     [

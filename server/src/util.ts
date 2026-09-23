@@ -53,8 +53,19 @@ export function isOneOf<T extends string>(value: unknown, options: readonly T[])
 }
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
+/** A real calendar day as `YYYY-MM-DD`; `2026-02-30` fails, where `Date.parse` alone would roll it over. */
 export function isIsoDate(value: unknown): value is string {
-  return typeof value === 'string' && ISO_DATE.test(value) && !Number.isNaN(Date.parse(value))
+  if (typeof value !== 'string' || !ISO_DATE.test(value)) return false
+  const time = Date.parse(`${value}T00:00:00Z`)
+  return !Number.isNaN(time) && new Date(time).toISOString().slice(0, 10) === value
+}
+
+const ISO_DATE_TIME = /^(\d{4}-\d{2}-\d{2})T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})$/
+/** A timestamp with an explicit offset, `2026-09-17T21:05:00+08:00` or `…Z`; a bare local time is ambiguous. */
+export function isIsoDateTime(value: unknown): value is string {
+  if (typeof value !== 'string') return false
+  const match = ISO_DATE_TIME.exec(value)
+  return match !== null && isIsoDate(match[1]) && !Number.isNaN(Date.parse(value))
 }
 
 const CJK = /[぀-ヿ㐀-䶿一-鿿豈-﫿]/
