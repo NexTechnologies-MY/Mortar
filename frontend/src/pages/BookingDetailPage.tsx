@@ -1,7 +1,8 @@
 /**
  * Booking detail route — the case page for one unit booking.
  * Header with stage, risk and owners; a banner naming who the case is waiting
- * on, the milestone it is stuck at and the next move; loan and legal timelines
+ * on, the milestone it is stuck at and the next move, with the Record An
+ * Update form beneath it while the case is open; loan and legal timelines
  * plus sales events; applications with derived status; the message log with
  * Jev proposals and review actions; the Add Message form; playbooks ranked by
  * Jev fit; buyer signals; tasks; and the full evidence log.
@@ -21,6 +22,7 @@ import { CaseHeader } from '@/components/bookings/CaseHeader'
 import { EvidenceLog } from '@/components/bookings/EvidenceLog'
 import { MessagesPanel } from '@/components/bookings/MessagesPanel'
 import { PlaybooksPanel } from '@/components/bookings/PlaybooksPanel'
+import { RecordUpdateForm } from '@/components/bookings/RecordUpdateForm'
 import { SignalsPanel } from '@/components/bookings/SignalsPanel'
 import { TasksPanel } from '@/components/bookings/TasksPanel'
 import { TrackTimelines } from '@/components/bookings/TrackTimelines'
@@ -36,6 +38,8 @@ export function BookingDetailPage() {
   const cases = useCases()
   const { persona } = usePersona()
   const reviewer = PERSONA_STAFF[persona].name
+  /** The desks' today, which every new update and message is dated against. */
+  const referenceDate = snapshot?.meta.referenceDate ?? ''
 
   const [refreshKey, setRefreshKey] = useState(0)
   const [fetchedSignals, setFetchedSignals] = useState<BuyerSignals | null>(null)
@@ -128,10 +132,22 @@ export function BookingDetailPage() {
                 key={data.booking.id}
                 booking={data.booking}
                 summary={data.summary}
-                referenceDate={snapshot?.meta.referenceDate ?? ''}
+                referenceDate={referenceDate}
                 onChanged={onChanged}
                 wide
               />
+              {/* A closed case takes no more updates. */}
+              {data.summary.stage !== 'cancelled' && data.summary.stage !== 'lapsed' && (
+                <RecordUpdateForm
+                  key={`record-${data.booking.id}`}
+                  booking={data.booking}
+                  applications={data.applications}
+                  summary={data.summary}
+                  referenceDate={referenceDate}
+                  reportedBy={reviewer}
+                  onRecorded={onChanged}
+                />
+              )}
             </CardContent>
           </Card>
           <div className="mt-4">
@@ -147,8 +163,10 @@ export function BookingDetailPage() {
                 onChanged={onChanged}
                 footer={
                   <AddMessageForm
+                    key={data.booking.id}
                     booking={data.booking}
                     banker={data.applications[data.applications.length - 1]?.banker}
+                    referenceDate={referenceDate}
                     onAdded={onChanged}
                   />
                 }

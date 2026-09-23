@@ -65,6 +65,7 @@ import type {
   CaseEvent,
   EvidenceStatus,
   JevService,
+  LoanApplication,
   Message,
   SimulationMeta,
   Snapshot,
@@ -119,8 +120,20 @@ const PROVISIONAL: CaseEvent = {
   note: '88% Probability'
 }
 
+const APPLICATION: LoanApplication = { id: 'APP-9001-1', bookingId: 'BK-9001', bank: 'Apex Bank', banker: 'Kelvin Teo' }
+
+/** A second booking with a bank application of its own; tests add it to prove ids are checked against the case. */
+const OTHER_BOOKING: Booking = { ...BOOKING, id: 'BK-9002', unit: 'B-08-05', bookingDate: '2026-09-01' }
+const OTHER_APPLICATION: LoanApplication = {
+  id: 'APP-9002-1',
+  bookingId: 'BK-9002',
+  bank: 'Crestline Bank',
+  banker: 'Aida Rahman'
+}
+
 class FakeDb implements Database {
   bookings = [BOOKING]
+  applications: LoanApplication[] = [APPLICATION]
   messages = [FIXTURE_MESSAGE]
   events: CaseEvent[] = []
   tasks: Task[] = []
@@ -132,13 +145,13 @@ class FakeDb implements Database {
     return { seed: 20260918, referenceDate: '2026-09-18', resetAt: this.resetAt }
   }
   async caseData(): Promise<CaseData> {
-    return { bookings: this.bookings, applications: [], events: this.events, tasks: this.tasks }
+    return { bookings: this.bookings, applications: this.applications, events: this.events, tasks: this.tasks }
   }
   async snapshot(): Promise<Snapshot> {
     return {
       meta: (await this.meta())!,
       bookings: this.bookings,
-      applications: [],
+      applications: this.applications,
       events: this.events,
       tasks: this.tasks,
       messages: this.messages,
@@ -150,6 +163,9 @@ class FakeDb implements Database {
   }
   async getBooking(id: string) {
     return this.bookings.find((b) => b.id === id) ?? null
+  }
+  async getApplication(id: string) {
+    return this.applications.find((a) => a.id === id) ?? null
   }
   async getMessage(id: string) {
     return this.messages.find((m) => m.id === id) ?? null
@@ -168,6 +184,12 @@ class FakeDb implements Database {
   }
   async insertEvent(event: CaseEvent) {
     this.events.push(event)
+  }
+  /** Mirrors the SQL transaction: both rows land, or neither does. */
+  async insertApplication(application: LoanApplication, submitted: CaseEvent) {
+    if (this.events.some((e) => e.id === submitted.id)) throw new Error(`duplicate event ${submitted.id}`)
+    this.applications.push(application)
+    this.events.push(submitted)
   }
   async reviewEvent(id: string, status: EvidenceStatus, reviewer: string) {
     const event = this.events.find((e) => e.id === id)
@@ -366,6 +388,59 @@ describe('createApp', () => {
       const res = await call(makeApp(), '/api/messages', post({ ...valid, bookingId: 'BK-0000' }))
       expect(res?.status).toBe(404)
     })
+
+    describe('sentAt', () => {
+      const send = async (sentAt: unknown, db = new FakeDb()) => {
+        const res = await call(makeApp(db), '/api/messages', post({ ...valid, sentAt }))
+        return { res, db }
+      }
+
+      test('without one the message is stamped now', async () => {
+        const res = await call(makeApp(), '/api/messages', post(valid))
+        expect(((await res?.json()) as { message: Message }).message.sentAt).toBe('2026-09-18T12:00:00+08:00')
+      })
+
+      test('stores the time the message was sent, and Jev dates its proposal from it', async () => {
+        const { res, db } = await send('2026-09-16T15:30:00+08:00')
+        expect(res?.status).toBe(200)
+        const body = (await res?.json()) as { message: Message; event: CaseEvent }
+        expect(body.message.sentAt).toBe('2026-09-16T15:30:00+08:00')
+        expect(db.messages[db.messages.length - 1]?.sentAt).toBe('2026-09-16T15:30:00+08:00')
+        expect(body.event.occurredAt).toBe('2026-09-16T15:30:00+08:00')
+      })
+
+      test('stores another offset in Malaysia time', async () => {
+        const { res } = await send('2026-09-16T07:30:00Z')
+        expect(((await res?.json()) as { message: Message }).message.sentAt).toBe('2026-09-16T15:30:00+08:00')
+      })
+
+      test('accepts the booking day itself and the minute just past', async () => {
+        expect((await send('2026-09-02T00:00:00+08:00')).res?.status).toBe(200)
+        expect((await send('2026-09-18T11:59:00+08:00')).res?.status).toBe(200)
+      })
+
+      test('clamps a browser clock a few seconds ahead to now', async () => {
+        const { res } = await send('2026-09-18T12:00:30+08:00')
+        expect(res?.status).toBe(200)
+        expect(((await res?.json()) as { message: Message }).message.sentAt).toBe('2026-09-18T12:00:00+08:00')
+      })
+
+      test.each([
+        ['a later time today', '2026-09-18T12:05:00+08:00', 'future'],
+        ['tomorrow', '2026-09-19T09:00:00+08:00', 'future'],
+        ['before the booking date', '2026-09-01T23:59:00+08:00', 'booking date'],
+        ['a date with no time', '2026-09-17', 'sentAt'],
+        ['a time with no offset', '2026-09-17T10:00:00', 'sentAt'],
+        ['an impossible day', '2026-02-30T10:00:00+08:00', 'sentAt'],
+        ['a word', 'yesterday', 'sentAt'],
+        ['a number', 1726560000000, 'sentAt']
+      ])('refuses %s', async (_label, sentAt, message) => {
+        const { res, db } = await send(sentAt)
+        expect(res?.status).toBe(400)
+        expect(await errorOf(res)).toContain(message)
+        expect(db.messages).toHaveLength(1)
+      })
+    })
   })
 
   describe('POST /api/messages/:id/extract', () => {
@@ -425,6 +500,144 @@ describe('createApp', () => {
     test('unknown booking is a 404', async () => {
       const res = await call(makeApp(), '/api/events', post({ ...valid, bookingId: 'BK-0000' }))
       expect(res?.status).toBe(404)
+    })
+
+    test('records a bank decision against its application, on the day it happened', async () => {
+      const db = new FakeDb()
+      const res = await call(
+        makeApp(db),
+        '/api/events',
+        post({
+          ...valid,
+          kind: 'loan_approved',
+          applicationId: 'APP-9001-1',
+          occurredOn: '2026-09-16',
+          note: 'LO received'
+        })
+      )
+      expect(res?.status).toBe(200)
+      const event = (await res?.json()) as CaseEvent
+      expect(event).toMatchObject({
+        bookingId: 'BK-9001',
+        applicationId: 'APP-9001-1',
+        kind: 'loan_approved',
+        occurredAt: '2026-09-16T12:00:00+08:00',
+        recordedAt: '2026-09-18T12:00:00+08:00',
+        status: 'confirmed',
+        source: 'staff',
+        note: 'LO received'
+      })
+      expect(db.events).toEqual([event])
+    })
+
+    test('accepts the booking day and today as the day it happened', async () => {
+      for (const occurredOn of ['2026-09-02', '2026-09-18']) {
+        const res = await call(makeApp(), '/api/events', post({ ...valid, occurredOn }))
+        expect(res?.status).toBe(200)
+        expect(((await res?.json()) as CaseEvent).occurredAt).toBe(`${occurredOn}T12:00:00+08:00`)
+      }
+    })
+
+    test('refuses an application that belongs to another booking', async () => {
+      const db = new FakeDb()
+      db.bookings.push(OTHER_BOOKING)
+      db.applications.push(OTHER_APPLICATION)
+      const res = await call(makeApp(db), '/api/events', post({ ...valid, applicationId: 'APP-9002-1' }))
+      expect(res?.status).toBe(400)
+      expect(await errorOf(res)).toContain('applicationId APP-9002-1')
+      expect(db.events).toHaveLength(0)
+    })
+
+    test('sends a submission to the applications route', async () => {
+      const db = new FakeDb()
+      const res = await call(makeApp(db), '/api/events', post({ ...valid, kind: 'loan_submitted' }))
+      expect(res?.status).toBe(400)
+      expect(await errorOf(res)).toContain('/api/applications')
+      expect(db.events).toHaveLength(0)
+    })
+
+    test.each([
+      [{ applicationId: 'APP-0000' }, 'applicationId APP-0000'],
+      [{ applicationId: '' }, 'applicationId'],
+      [{ applicationId: 42 }, 'applicationId'],
+      [{ occurredOn: '2026-09-19' }, 'after today'],
+      [{ occurredOn: '2026-09-01' }, 'before the booking date'],
+      [{ occurredOn: '2026-02-30' }, 'occurredOn'],
+      [{ occurredOn: '16 Sep 2026' }, 'occurredOn'],
+      [{ occurredOn: '2026-09-16T10:00:00+08:00' }, 'occurredOn']
+    ])('refuses %o mentioning %s', async (extra, message) => {
+      const db = new FakeDb()
+      const res = await call(makeApp(db), '/api/events', post({ ...valid, ...extra }))
+      expect(res?.status).toBe(400)
+      expect(await errorOf(res)).toContain(message)
+      expect(db.events).toHaveLength(0)
+    })
+  })
+
+  describe('POST /api/applications', () => {
+    const valid = {
+      bookingId: 'BK-9001',
+      bank: ' Harbour Bank ',
+      banker: 'Lim Wei Jie',
+      reportedBy: 'Tan Mei Ling'
+    }
+
+    test('creates the application and its confirmed submission together', async () => {
+      const db = new FakeDb()
+      const res = await call(makeApp(db), '/api/applications', post({ ...valid, occurredOn: '2026-09-15' }))
+      expect(res?.status).toBe(200)
+      const { application, event } = (await res?.json()) as { application: LoanApplication; event: CaseEvent }
+      expect(application).toMatchObject({ bookingId: 'BK-9001', bank: 'Harbour Bank', banker: 'Lim Wei Jie' })
+      expect(application.id).toMatch(/^APP-/)
+      expect(event).toMatchObject({
+        bookingId: 'BK-9001',
+        applicationId: application.id,
+        track: 'loan',
+        kind: 'loan_submitted',
+        occurredAt: '2026-09-15T12:00:00+08:00',
+        recordedAt: '2026-09-18T12:00:00+08:00',
+        reportedBy: 'Tan Mei Ling',
+        verifiedBy: 'Tan Mei Ling',
+        status: 'confirmed',
+        source: 'staff',
+        note: null
+      })
+      expect(db.applications).toContainEqual(application)
+      expect(db.events).toEqual([event])
+    })
+
+    test('without a day it is dated now, and a note rides on the submission', async () => {
+      const db = new FakeDb()
+      const res = await call(makeApp(db), '/api/applications', post({ ...valid, note: ' Full set of documents ' }))
+      const { event } = (await res?.json()) as { event: CaseEvent }
+      expect(event.occurredAt).toBe('2026-09-18T12:00:00+08:00')
+      expect(event.note).toBe('Full set of documents')
+    })
+
+    test('unknown booking is a 404 and stores nothing', async () => {
+      const db = new FakeDb()
+      const res = await call(makeApp(db), '/api/applications', post({ ...valid, bookingId: 'BK-0000' }))
+      expect(res?.status).toBe(404)
+      expect(db.applications).toHaveLength(1)
+      expect(db.events).toHaveLength(0)
+    })
+
+    test.each([
+      [{ bookingId: undefined }, 'bookingId'],
+      [{ bank: ' ' }, 'bank'],
+      [{ banker: undefined }, 'banker'],
+      [{ reportedBy: '' }, 'reportedBy'],
+      [{ note: 7 }, 'note'],
+      [{ occurredOn: 'yesterday' }, 'occurredOn'],
+      [{ occurredOn: '2026-09-19' }, 'after today'],
+      [{ occurredOn: '2026-08-30' }, 'before the booking date']
+    ])('refuses %o mentioning %s', async (extra, message) => {
+      const db = new FakeDb()
+      const res = await call(makeApp(db), '/api/applications', post({ ...valid, ...extra }))
+      expect(res?.status).toBe(400)
+      expect(await errorOf(res)).toContain(message)
+      expect(db.applications).toHaveLength(1)
+      expect(db.events).toHaveLength(0)
     })
   })
 

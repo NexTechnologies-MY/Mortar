@@ -14,6 +14,7 @@ import type {
   EvidenceStatus,
   IsoDateTime,
   JevMeta,
+  LoanApplication,
   Message,
   Playbook,
   SimulationMeta,
@@ -46,12 +47,18 @@ export interface Database {
    */
   snapshot(): Promise<Snapshot>
   getBooking(id: string): Promise<Booking | null>
+  getApplication(id: string): Promise<LoanApplication | null>
   getMessage(id: string): Promise<Message | null>
   messagesForBooking(bookingId: string): Promise<Message[]>
   eventsForMessage(messageId: string): Promise<CaseEvent[]>
   listPlaybooks(): Promise<Playbook[]>
   insertMessage(message: Message): Promise<void>
   insertEvent(event: CaseEvent): Promise<void>
+  /**
+   * Stores a new bank application and the confirmed `loan_submitted` event that
+   * carries its id, in one transaction: neither lands without the other.
+   */
+  insertApplication(application: LoanApplication, submitted: CaseEvent): Promise<void>
   /** Staff review: sets the status and records `reviewer` as `verifiedBy`. */
   reviewEvent(id: string, status: EvidenceStatus, reviewer: string): Promise<CaseEvent | null>
   /** Supersedes still-open proposals (`provisional` or `disputed`) carrying `messageId`. */
@@ -134,6 +141,26 @@ const IMPORT_LOCK = 20_260_918
 /** Highest imported booking number; the story fixtures start at `BK-9001`. */
 const LAST_IMPORT_NUMBER = 8999
 
+/** An event as an `events` row. */
+function eventRow(event: CaseEvent) {
+  return {
+    id: event.id,
+    booking_id: event.bookingId,
+    application_id: event.applicationId,
+    track: event.track,
+    kind: event.kind,
+    occurred_at: event.occurredAt,
+    recorded_at: event.recordedAt,
+    reported_by: event.reportedBy,
+    verified_by: event.verifiedBy,
+    status: event.status,
+    source: event.source,
+    message_id: event.messageId,
+    document: event.document,
+    note: event.note
+  }
+}
+
 /** Marks a snapshot answer as served from the store rather than a fresh Jev call. */
 function cached<T extends { meta?: JevMeta }>(answer: unknown): T {
   const parsed = answer as T
@@ -214,6 +241,11 @@ export function createDatabase(sql: SQL): Database {
       return rows.length ? rowToBooking(rows[0]) : null
     },
 
+    async getApplication(id) {
+      const rows = await sql`select * from loan_applications where id = ${id}`
+      return rows.length ? rowToApplication(rows[0]) : null
+    },
+
     async getMessage(id) {
       const rows = await sql`select * from messages where id = ${id}`
       return rows.length ? rowToMessage(rows[0]) : null
@@ -248,22 +280,19 @@ export function createDatabase(sql: SQL): Database {
     },
 
     async insertEvent(event) {
-      await sql`insert into events ${sql({
-        id: event.id,
-        booking_id: event.bookingId,
-        application_id: event.applicationId,
-        track: event.track,
-        kind: event.kind,
-        occurred_at: event.occurredAt,
-        recorded_at: event.recordedAt,
-        reported_by: event.reportedBy,
-        verified_by: event.verifiedBy,
-        status: event.status,
-        source: event.source,
-        message_id: event.messageId,
-        document: event.document,
-        note: event.note
-      })}`
+      await sql`insert into events ${sql(eventRow(event))}`
+    },
+
+    async insertApplication(application, submitted) {
+      await sql.begin(async (tx) => {
+        await tx`insert into loan_applications ${tx({
+          id: application.id,
+          booking_id: application.bookingId,
+          bank: application.bank,
+          banker: application.banker
+        })}`
+        await tx`insert into events ${tx(eventRow(submitted))}`
+      })
     },
 
     async reviewEvent(id, status, reviewer) {

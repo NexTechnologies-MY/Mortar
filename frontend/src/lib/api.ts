@@ -9,6 +9,7 @@ import type {
   BuyerSignals,
   CaseEvent,
   Extraction,
+  LoanApplication,
   Message,
   NextActionSuggestion,
   OwnerRole,
@@ -50,20 +51,46 @@ export const fetchHealth = () => request<Health>('/api/health')
 
 export const fetchSnapshot = () => request<Snapshot>('/api/snapshot')
 
-export const postMessage = (input: { bookingId: string; senderRole: SenderRole; senderName: string; body: string }) =>
-  post<{ message: Message; extraction: Extraction; event: CaseEvent | null }>('/api/messages', input)
+/**
+ * Logs a pasted message and has Jev read it. `sentAt` is when it was sent (`2026-09-17T21:05:00+08:00`), never
+ * later than now nor before the booking date; left out, the server stamps it now.
+ */
+export const postMessage = (input: {
+  bookingId: string
+  senderRole: SenderRole
+  senderName: string
+  body: string
+  sentAt?: string
+}) => post<{ message: Message; extraction: Extraction; event: CaseEvent | null }>('/api/messages', input)
 
 export const extractMessage = (messageId: string) =>
   post<{ extraction: Extraction; event: CaseEvent | null }>(`/api/messages/${messageId}/extract`)
 
+/**
+ * Records a confirmed staff update. `applicationId` must be one of the booking's bank applications; `occurredOn`
+ * (`YYYY-MM-DD`, between the booking date and today) dates it, else it is dated now. A submission to a bank goes
+ * through `postApplication` instead.
+ */
 export const postEvent = (input: {
   bookingId: string
   track: CaseEvent['track']
-  kind: CaseEvent['kind']
+  kind: Exclude<CaseEvent['kind'], 'loan_submitted'>
+  applicationId?: string
   document?: CaseEvent['document']
+  occurredOn?: string
   note?: string
   reportedBy: string
 }) => post<CaseEvent>('/api/events', input)
+
+/** Records a submission to a bank: the new application and its confirmed `loan_submitted` update, together. */
+export const postApplication = (input: {
+  bookingId: string
+  bank: string
+  banker: string
+  occurredOn?: string
+  note?: string
+  reportedBy: string
+}) => post<{ application: LoanApplication; event: CaseEvent }>('/api/applications', input)
 
 export const reviewEvent = (
   eventId: string,

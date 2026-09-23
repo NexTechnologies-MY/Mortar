@@ -1,13 +1,19 @@
 /**
  * Add Message form — paste a new message onto the case (sender role, name,
- * body). Posting runs Jev live-first; the reply panel shows the extraction,
- * its source tag and latency before the snapshot refreshes.
+ * when it was sent, body). Posting runs Jev live-first; the reply panel shows
+ * the extraction, its source tag and latency before the snapshot refreshes.
+ *
+ * Sent At is when the message was sent, not when it was pasted in: Jev reads
+ * the buyer's reply speed from the gaps between messages, and a proposal it
+ * makes is dated from it. It defaults to now (the desks' today, at the current
+ * Malaysia time); left untouched, it is read afresh when the message is added.
  */
 
 import { useState } from 'react'
-import type { Booking, CaseEvent, Extraction, Message, SenderRole } from '@mortar/core'
+import { simNow, type Booking, type CaseEvent, type Extraction, type Message, type SenderRole } from '@mortar/core'
 import { JevTag } from '@/components/case/JevTag'
 import { DOCUMENT_LABELS, EXTRACTED_EVENT_LABELS, SENDER_ROLE_LABELS } from './labels'
+import { DateField } from './DateField'
 import { postMessage } from '@/lib/api'
 import { notify } from '@/components/ui/toastConfig'
 import { Button } from '@/components/ui/button'
@@ -17,6 +23,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 
 const ROLES: SenderRole[] = ['buyer', 'banker', 'solicitor', 'sales_agent']
 
+/** `9:05` or `09:05`, on the 24-hour clock. */
+const TIME = /^([01]?\d|2[0-3]):([0-5]\d)$/
+
 function defaultName(role: SenderRole, booking: Booking, banker?: string): string {
   if (role === 'buyer') return booking.buyer.name
   if (role === 'banker') return banker ?? ''
@@ -24,31 +33,79 @@ function defaultName(role: SenderRole, booking: Booking, banker?: string): strin
   return booking.salesOwner
 }
 
+/** The current Malaysia time as `HH:MM`, on the desks' today. */
+function timeNow(referenceDate: string): string {
+  return simNow(referenceDate).slice(11, 16)
+}
+
+/** `9:05` → `09:05`; `null` when the text is not a time. */
+function normalTime(text: string): string | null {
+  const match = TIME.exec(text.trim())
+  return match ? `${match[1].padStart(2, '0')}:${match[2]}` : null
+}
+
 export function AddMessageForm({
   booking,
   banker,
+  referenceDate,
   onAdded
 }: {
   booking: Booking
   /** The latest application's banker, used to prefill the sender name. */
   banker?: string
+  /** The desks' today: Sent At defaults to it and cannot run past it. */
+  referenceDate: string
   onAdded: () => Promise<void>
 }) {
   const [role, setRole] = useState<SenderRole>('buyer')
   const [name, setName] = useState(() => booking.buyer.name)
   const [body, setBody] = useState('')
+  const [sentOn, setSentOn] = useState(referenceDate)
+  const [sentTime, setSentTime] = useState(() => timeNow(referenceDate))
+  /** Whether the reader changed Sent At; until then it follows the clock. */
+  const [sentAtChosen, setSentAtChosen] = useState(false)
+  const [timeError, setTimeError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
   const [result, setResult] = useState<{ message: Message; extraction: Extraction; event: CaseEvent | null } | null>(
     null
   )
 
+  const time = normalTime(sentTime)
+
   const submit = async () => {
     if (!name.trim() || !body.trim()) return
+    let day = sentOn
+    let at = time
+    if (!sentAtChosen) {
+      // Untouched, Sent At means now: read the clock at the moment of adding.
+      day = referenceDate
+      at = timeNow(referenceDate)
+      setSentOn(day)
+      setSentTime(at)
+    }
+    if (at === null) {
+      setTimeError('Enter The Time As HH:MM, For Example 09:30.')
+      return
+    }
+    if (day === referenceDate && at > timeNow(referenceDate)) {
+      setTimeError('That Time Has Not Come Yet Today.')
+      return
+    }
+    setTimeError(null)
     setPending(true)
     try {
-      const posted = await postMessage({ bookingId: booking.id, senderRole: role, senderName: name, body })
+      const posted = await postMessage({
+        bookingId: booking.id,
+        senderRole: role,
+        senderName: name,
+        body,
+        sentAt: `${day}T${at}:00+08:00`
+      })
       setResult(posted)
       setBody('')
+      setSentOn(referenceDate)
+      setSentTime(timeNow(referenceDate))
+      setSentAtChosen(false)
       const ms = posted.extraction.meta.latencyMs
       notify.success(ms != null ? `Message added — Jev answered live in ${ms.toLocaleString()} ms.` : 'Message added.')
       await onAdded()
@@ -89,6 +146,48 @@ export function AddMessageForm({
           <Label htmlFor="add-message-name">Sender Name</Label>
           <Input id="add-message-name" value={name} onChange={(e) => setName(e.target.value)} />
         </div>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-[180px_120px]">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="add-message-sent-on">Sent At</Label>
+          <DateField
+            id="add-message-sent-on"
+            label="Sent At"
+            value={sentOn}
+            onChange={(next) => {
+              setSentOn(next)
+              setSentAtChosen(true)
+              setTimeError(null)
+            }}
+            min={booking.bookingDate}
+            max={referenceDate}
+            today={referenceDate}
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="add-message-sent-time">Time</Label>
+          <Input
+            id="add-message-sent-time"
+            value={sentTime}
+            onChange={(e) => {
+              setSentTime(e.target.value)
+              setSentAtChosen(true)
+              setTimeError(null)
+            }}
+            inputMode="numeric"
+            autoComplete="off"
+            maxLength={5}
+            placeholder="HH:MM"
+            aria-invalid={timeError !== null || (sentAtChosen && time === null) || undefined}
+            aria-describedby={timeError ? 'add-message-sent-error' : undefined}
+            className="tabular-nums"
+          />
+        </div>
+        {timeError && (
+          <p id="add-message-sent-error" className="text-[13px] text-status-danger-fg sm:col-span-2">
+            {timeError}
+          </p>
+        )}
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="add-message-body">Message</Label>

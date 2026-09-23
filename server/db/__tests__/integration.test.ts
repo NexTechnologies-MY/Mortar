@@ -3,7 +3,8 @@
  * `DATABASE_URL` is absent (CI has none). Covers `applySchema` and the
  * round-trip of every writable path in `db/index.ts`; test rows carry
  * `W2TEST-` ids (imported bookings, which take real `BK-nnnn` numbers, carry
- * the `W2TEST Project`) and are deleted afterwards. The full `resetDatabase`
+ * the `W2TEST Project`; the bank application tests use `CITEST-` ids) and are
+ * deleted afterwards. The full `resetDatabase`
  * path needs lane W1's generator and is verified end to end once it lands.
  */
 import { afterAll, describe, expect, test } from 'bun:test'
@@ -134,6 +135,62 @@ describe.skipIf(!DATABASE_URL)('database integration', () => {
     expect(await db.jevGet('signals', 'W2TEST-NONE', 'h1')).toBeNull()
     const latest = await db.latestJevAnswers()
     expect(latest.find((r) => r.subjectId === 'W2TEST-BK')?.answer).toEqual({ v: 2 })
+  })
+
+  describe('insertApplication', () => {
+    // Rows of its own under `CITEST-`, so other work sharing the database is never touched.
+    const bookingId = 'CITEST-BK'
+    const submitted = (id: string, applicationId: string): CaseEvent => ({
+      id,
+      bookingId,
+      applicationId,
+      track: 'loan',
+      kind: 'loan_submitted',
+      occurredAt: '2026-09-15T12:00:00+08:00',
+      recordedAt: '2026-09-18T09:30:00+08:00',
+      reportedBy: 'Tan Mei Ling',
+      verifiedBy: 'Tan Mei Ling',
+      status: 'confirmed',
+      source: 'staff',
+      messageId: null,
+      document: null,
+      note: 'Full set of documents'
+    })
+
+    afterAll(async () => {
+      await sql`delete from events where booking_id = ${bookingId}`
+      await sql`delete from loan_applications where booking_id = ${bookingId}`
+      await sql`delete from bookings where id = ${bookingId}`
+    })
+
+    test('stores the application and its submission, read back through the contract', async () => {
+      await sql`insert into bookings (id, project, unit, price_rm, booking_date, buyer, sales_owner, loan_owner, legal_firm)
+        values (${bookingId}, 'CITEST Project', 'CI-01-01', 500000, '2026-09-01',
+          ${{ name: 'Test Buyer', ic: 'x', phone: 'x', age: 30, grossMonthlyIncomeRm: 5000, monthlyCommitmentsRm: 100, propertiesOwned: 0 }},
+          'Sales', 'Loan', 'Firm')`
+      const application = { id: 'CITEST-APP-1', bookingId, bank: 'Harbour Bank', banker: 'Lim Wei Jie' }
+      await db.insertApplication(application, submitted('CITEST-EV-1', application.id))
+
+      expect(await db.getApplication('CITEST-APP-1')).toEqual(application)
+      expect(await db.getApplication('CITEST-APP-NONE')).toBeNull()
+      const [event] = await sql`select * from events where id = 'CITEST-EV-1'`
+      expect(event.application_id).toBe('CITEST-APP-1')
+      expect(event.kind).toBe('loan_submitted')
+      expect(event.status).toBe('confirmed')
+      expect(new Date(event.occurred_at as string).toISOString()).toBe('2026-09-15T04:00:00.000Z')
+    })
+
+    test('stores neither row when the submission cannot be written', async () => {
+      // The event id is already taken, so its insert fails inside the transaction.
+      const application = { id: 'CITEST-APP-2', bookingId, bank: 'Crestline Bank', banker: 'Aida Rahman' }
+      // Settled by hand, like the undo test below: `expect(...).rejects` hangs Bun 1.3.14's runner.
+      const outcome = await db.insertApplication(application, submitted('CITEST-EV-1', application.id)).then(
+        () => 'stored',
+        () => 'refused'
+      )
+      expect(outcome).toBe('refused')
+      expect(await db.getApplication('CITEST-APP-2')).toBeNull()
+    })
   })
 
   describe('importBookings and undoImport', () => {
