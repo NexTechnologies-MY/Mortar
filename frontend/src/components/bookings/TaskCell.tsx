@@ -45,7 +45,13 @@ export function TaskCell({
       <TooltipProvider delayDuration={300}>
         <Tooltip>
           <TooltipTrigger asChild>
-            <button type="button" aria-label={`Task Open: ${detail}`} className="inline-flex cursor-default rounded-sm">
+            {/* The pill itself stays 22px (DESIGN.md Status Pill anatomy); padding
+                on the trigger, not the pill, gets the tap target to 24px+ (issue L10). */}
+            <button
+              type="button"
+              aria-label={`Task Open: ${detail}`}
+              className="inline-flex cursor-default rounded-sm p-0.5"
+            >
               <StatusPill tone="info">Task Open</StatusPill>
             </button>
           </TooltipTrigger>

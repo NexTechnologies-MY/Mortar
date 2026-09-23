@@ -203,7 +203,7 @@ export function WaitingOnPanel({
   }
 
   return (
-    <div className={cn(wide ? 'grid gap-4 lg:grid-cols-2' : 'flex flex-col gap-3', className)}>
+    <div className={cn(wide ? 'grid grid-cols-1 gap-4 lg:grid-cols-2' : 'flex flex-col gap-3', className)}>
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-1">
           <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Waiting On</h2>

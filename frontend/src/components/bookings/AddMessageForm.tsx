@@ -121,7 +121,7 @@ export function AddMessageForm({
   return (
     <div className="flex flex-col gap-3 border-t border-border pt-4">
       <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Add Message</h3>
-      <div className="grid gap-3 sm:grid-cols-[180px_1fr]">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[180px_1fr]">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="add-message-role">Sender Role</Label>
           <Select
@@ -149,7 +149,7 @@ export function AddMessageForm({
           <Input id="add-message-name" value={name} onChange={(e) => setName(e.target.value)} />
         </div>
       </div>
-      <div className="grid gap-3 sm:grid-cols-[180px_120px]">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[180px_120px]">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="add-message-sent-on">Sent At</Label>
           <DateField

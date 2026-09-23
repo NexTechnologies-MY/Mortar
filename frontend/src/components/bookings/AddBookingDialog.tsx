@@ -285,7 +285,7 @@ export function AddBookingDialog({
             Enter One Booking By Hand. It Is Checked The Same Way A Row On The Import Sheet Is.
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field id="add-booking-project" label="Project" required>
             <Select
               value={projectSelectValue}
@@ -421,7 +421,7 @@ export function AddBookingDialog({
         </div>
 
         {form.project === OTHER_PROJECT ? (
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field id="add-booking-project-other" label="New Project Name" required>
               <Input
                 id="add-booking-project-other"
@@ -434,7 +434,7 @@ export function AddBookingDialog({
         ) : null}
 
         {showAge ? (
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field id="add-booking-age" label="Age" required>
               <Input
                 id="add-booking-age"

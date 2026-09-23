@@ -1,11 +1,23 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
-import { DEFAULT_SEED, PLAYBOOKS, REFERENCE_DATE, generate, type Snapshot } from '@mortar/core'
+import {
+  DEFAULT_SEED,
+  PLAYBOOKS,
+  REFERENCE_DATE,
+  generate,
+  summarizeCases,
+  type CaseEvent,
+  type Booking,
+  type Snapshot
+} from '@mortar/core'
 import { PersonaProvider } from '@/lib/persona'
 import { SnapshotProvider } from '@/lib/data'
 import { fetchSnapshot, importBookings, postTask } from '@/lib/api'
 import { BookingsPage } from '@/pages/BookingsPage'
+
+// Radix Select scrolls the highlighted item into view on open; jsdom has no layout engine.
+Element.prototype.scrollIntoView = vi.fn()
 
 vi.mock('@/lib/api', async () => {
   const fixture = await import('@/components/bookings/__tests__/snapshotFixture')
@@ -42,6 +54,44 @@ function buildLargeSnapshot(): Snapshot {
     signals: [],
     nextActions: [],
     meta: { seed: DEFAULT_SEED, referenceDate: REFERENCE_DATE, resetAt: null }
+  }
+}
+
+/**
+ * `buildLargeSnapshot()` plus one booking booked 8 days ago and disbursed
+ * immediately after: young enough to be "Live" by age, but disbursed is a
+ * Closed-tab stage. A regression fixture for issue L13, where `RESOLVED_STAGES`
+ * used to omit `disbursed` and so double-counted a booking like this as both.
+ */
+function buildFreshDisbursedSnapshot(): Snapshot {
+  const base = buildLargeSnapshot()
+  const freshBooking: Booking = { ...base.bookings[0], id: 'BK-FRESH', unit: 'Z-99-09', bookingDate: '2026-09-10' }
+  const freshEvent = (kind: CaseEvent['kind'], occurredAt: string): CaseEvent => ({
+    id: `EV-FRESH-${kind}`,
+    bookingId: freshBooking.id,
+    applicationId: null,
+    track: 'loan',
+    kind,
+    occurredAt,
+    recordedAt: occurredAt,
+    reportedBy: 'Staff',
+    verifiedBy: null,
+    status: 'confirmed',
+    source: 'staff',
+    messageId: null,
+    document: null,
+    note: null
+  })
+  return {
+    ...base,
+    bookings: [...base.bookings, freshBooking],
+    events: [
+      ...base.events,
+      freshEvent('booked', '2026-09-10T09:00:00+08:00'),
+      // A disbursement only counts once the SPA is signed (issue H2).
+      freshEvent('spa_signed', '2026-09-11T09:00:00+08:00'),
+      freshEvent('disbursed', '2026-09-12T09:00:00+08:00')
+    ]
   }
 }
 
@@ -153,6 +203,45 @@ describe('BookingsPage', () => {
 
     clickTab(screen.getByRole('tab', { name: 'Active (27)' }))
     expect(screen.getByText('Showing 1 To 25 Of 27')).toBeTruthy()
+  })
+
+  it('offers only the current tab’s stages, and resets Stage to All when switching tabs (issue M10)', async () => {
+    vi.mocked(fetchSnapshot).mockResolvedValueOnce(buildLargeSnapshot())
+    renderBookings()
+    await screen.findByRole('tab', { name: 'Active (27)' })
+
+    // Active: Booked is a real Active-tab stage — filtering by it narrows, not empties.
+    fireEvent.click(screen.getByLabelText('Filter By Stage'))
+    fireEvent.click(screen.getByRole('option', { name: 'Booked' }))
+    expect(await screen.findByText('1 Of 27 Bookings')).toBeTruthy()
+
+    // Switching to Closed must not carry Booked over — it would show "0 Of 18",
+    // same shape as the reported bug, since no closed booking is ever Booked.
+    clickTab(screen.getByRole('tab', { name: 'Closed (18)' }))
+    expect(await screen.findByText('18 Bookings')).toBeTruthy()
+    expect(screen.getByLabelText('Filter By Stage').textContent).toContain('All Stages')
+
+    // And Closed's own Stage options never include an Active-only stage.
+    fireEvent.click(screen.getByLabelText('Filter By Stage'))
+    expect(screen.queryByRole('option', { name: 'Booked' })).toBeNull()
+    expect(screen.getByRole('option', { name: 'Disbursed' })).toBeTruthy()
+  })
+
+  it('does not count a booking disbursed within 30 days as both Live and Closed (issue L13)', async () => {
+    const augmented = buildFreshDisbursedSnapshot()
+    // The ground truth: disbursed is resolved regardless of age, same as spa_signed/cancelled/lapsed.
+    const trulyResolved = new Set(['spa_signed', 'disbursed', 'cancelled', 'lapsed'])
+    const expectedLive = summarizeCases(
+      { bookings: augmented.bookings, applications: augmented.applications, events: augmented.events, tasks: [] },
+      augmented.meta.referenceDate
+    ).filter((c) => !trulyResolved.has(c.stage) && c.bookingAgeDays < 30).length
+
+    vi.mocked(fetchSnapshot).mockResolvedValueOnce(augmented)
+    renderBookings()
+    await screen.findByRole('tab', { name: 'Closed (19)' })
+
+    const liveFigure = screen.getByText('Live Bookings').closest('div')!.querySelector('p.text-3xl')!.textContent
+    expect(liveFigure).toBe(String(expectedLive))
   })
 
   it('opens Add Booking and checks a typed unit against the real held units (issue #24)', async () => {

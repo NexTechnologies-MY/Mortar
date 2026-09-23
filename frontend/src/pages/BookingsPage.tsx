@@ -29,6 +29,7 @@ import {
 } from '@mortar/core'
 import { useCases, useSnapshot } from '@/lib/data'
 import { usePersona } from '@/lib/persona'
+import { STAGE_LABELS } from '@/components/case/StagePill'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { PageHeaderCard } from '@/components/layout/PageHeaderCard'
 import { StatCard } from '@/components/StatCard'
@@ -46,12 +47,24 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { notify } from '@/components/ui/toastConfig'
 
-const RESOLVED_STAGES = new Set(['spa_signed', 'cancelled', 'lapsed'])
+type View = 'active' | 'closed'
 
 /** Closed means the booking will never move again; `spa_signed` still has a legal file to close, so it stays Active. */
 const CLOSED_STAGES = new Set<Stage>(['disbursed', 'cancelled', 'lapsed'])
 
-type View = 'active' | 'closed'
+/** Resolved for the "live" count: every closed stage plus `spa_signed`, which
+ * stays on the Active tab but no longer counts as live. Derived from
+ * `CLOSED_STAGES` so the two sets cannot drift apart (issue L13). */
+const RESOLVED_STAGES = new Set<Stage>(['spa_signed', ...CLOSED_STAGES])
+
+const ALL_STAGES = Object.keys(STAGE_LABELS) as Stage[]
+
+/** The stages each tab can actually show, so the Stage filter never offers one
+ * the current tab has zero of (issue M10). */
+const STAGES_BY_VIEW: Record<View, Stage[]> = {
+  active: ALL_STAGES.filter((s) => !CLOSED_STAGES.has(s)),
+  closed: ALL_STAGES.filter((s) => CLOSED_STAGES.has(s))
+}
 
 type Row = BookingRow & { stalled: boolean; live: boolean; closed: boolean }
 
@@ -208,9 +221,12 @@ export function BookingsPage() {
     pagination.onPageChange(1)
   }
 
-  /** Switching Active/Closed always returns the table to page one, same as a filter change. */
+  /** Switching Active/Closed always returns the table to page one, same as a
+   * filter change; the Stage filter resets too, since a stage from the other
+   * tab would just show a confusing "0 Of N" (issue M10). */
   const changeView = (next: View) => {
     setView(next)
+    setFilter((prev) => (prev.stage === 'all' ? prev : { ...prev, stage: 'all' }))
     pagination.onPageChange(1)
   }
 
@@ -298,7 +314,7 @@ export function BookingsPage() {
 
       {loading && !snapshot ? (
         <div className="mt-4 flex flex-col gap-3">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {[0, 1, 2, 3].map((i) => (
               <Skeleton key={i} className="h-24 rounded-md" />
             ))}
@@ -319,7 +335,7 @@ export function BookingsPage() {
           {/* A mutation's own save can succeed while the refresh after it fails; the
               table stays on screen with a way to retry rather than vanishing behind it. */}
           {error ? <RefreshErrorBanner onRetry={() => void refresh()} /> : null}
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
               label="Live Bookings"
               icon={ClipboardList}
@@ -369,7 +385,13 @@ export function BookingsPage() {
           </div>
 
           <div className="mt-3">
-            <BookingFilters filter={filter} onChange={applyFilter} shown={visible.length} total={viewRows.length} />
+            <BookingFilters
+              filter={filter}
+              onChange={applyFilter}
+              shown={visible.length}
+              total={viewRows.length}
+              stages={STAGES_BY_VIEW[view]}
+            />
           </div>
           <div className="mt-3 overflow-hidden rounded-md border border-border bg-card">
             {visible.length === 0 ? (

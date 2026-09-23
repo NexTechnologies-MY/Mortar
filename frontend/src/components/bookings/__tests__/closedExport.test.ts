@@ -1,6 +1,10 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { Booking, CaseEvent, CaseSummary } from '@mortar/core'
 import { buildClosedExportRows } from '../closedExport'
+
+vi.mock('write-excel-file/browser', () => ({
+  default: vi.fn(() => ({ toFile: vi.fn().mockResolvedValue(undefined) }))
+}))
 
 const RISK: CaseSummary['risk'] = {
   level: 'low',
@@ -191,5 +195,26 @@ describe('buildClosedExportRows', () => {
       []
     )
     expect(rows.map((r) => r.booking)).toEqual(['BK-0002', 'BK-0001'])
+  })
+})
+
+describe('downloadClosedExport', () => {
+  it('formats Closed On as "d mmm yyyy" to match the house date format, not 31/05/2026 (issue L11)', async () => {
+    const { downloadClosedExport } = await import('../closedExport')
+    const { default: writeXlsxFile } = await import('write-excel-file/browser')
+    const rows = buildClosedExportRows(
+      [{ booking: booking(), summary: summary() }],
+      [event({ status: 'confirmed', occurredAt: '2026-05-31T09:00:00+08:00' })]
+    )
+    expect(rows[0].closedOn).toBe('2026-05-31')
+
+    await downloadClosedExport(rows, '2026-09-18')
+
+    const options = vi.mocked(writeXlsxFile).mock.calls[0][1] as {
+      columns: { header: { value: string }; cell: (r: (typeof rows)[number]) => { format?: string } }[]
+    }
+    const closedOnColumn = options.columns.find((c) => c.header.value === 'Closed On')!
+    const cell = closedOnColumn.cell(rows[0])
+    expect(cell.format).toBe('d mmm yyyy')
   })
 })

@@ -90,10 +90,11 @@ describe('LegalPage', () => {
     expect(ids).not.toContain('BK-0900')
   })
 
-  it('shows the appointment note when there is one and says so when there is not', () => {
+  it('shows the appointment note in the house date format, and says so when there is not one (issue M11)', () => {
     renderPage()
     const row = screen.getByRole('row', { name: /BK-0024/ })
-    expect(within(row).getByText('Appointment On 2026-07-29')).toBeTruthy()
+    expect(within(row).getByText('Appointment On 29 Jul 2026')).toBeTruthy()
+    expect(within(row).queryByText(/2026-07-29/)).toBeNull()
     expect(within(screen.getByRole('row', { name: /BK-0113/ })).getByText('Not Set')).toBeTruthy()
   })
 
