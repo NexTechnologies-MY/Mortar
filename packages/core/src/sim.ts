@@ -22,6 +22,7 @@ import { financingRiskFor } from './sim/risk'
 
 export { DEFAULT_SEED, REFERENCE_DATE, HORIZON_DAYS, PERSONA_STAFF } from './sim/constants'
 export { leakage } from './sim/leakage'
+export { byOccurred } from './sim/cases'
 export type { Leakage, LeakageCause, RecoveryEstimate } from './sim/leakage'
 export { DEFAULT_ASSUMPTIONS }
 
@@ -41,7 +42,11 @@ export function generate(options: GeneratorOptions): Dataset {
   return generateDataset(options)
 }
 
-/** The reference date with the current wall-clock time, in +08:00. Live writes use this. */
+/**
+ * The reference date with the current wall-clock time, in +08:00. Live writes
+ * use this. The date never moves, so at midnight Malaysia time the result
+ * falls back to 00:00: never time a duration by it, or order rows by it alone.
+ */
 export function simNow(referenceDate: IsoDate, clock: Date = new Date()): IsoDateTime {
   const shifted = new Date(clock.getTime() + 8 * 3_600_000)
   return `${referenceDate}T${shifted.toISOString().slice(11, 19)}+08:00`

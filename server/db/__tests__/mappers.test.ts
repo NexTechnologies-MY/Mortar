@@ -101,6 +101,28 @@ test('rowToEvent keeps nulls as nulls', () => {
   expect(event.applicationId).toBeNull()
   expect(event.verifiedBy).toBeNull()
   expect(event.messageId).toBe('MSG-1')
+  expect('seq' in event).toBe(false)
+})
+
+test('rowToEvent carries the storage order, which bigint may send as text', () => {
+  const row = {
+    id: 'EV-1',
+    booking_id: 'BK-9001',
+    application_id: null,
+    track: 'loan',
+    kind: 'documents_requested',
+    occurred_at: '2026-09-12T11:00:00+08:00',
+    recorded_at: '2026-09-12T11:05:00+08:00',
+    reported_by: 'Tan',
+    verified_by: 'Tan',
+    status: 'confirmed',
+    source: 'staff',
+    message_id: null,
+    document: 'payslip',
+    note: null
+  }
+  expect(rowToEvent({ ...row, seq: '42' }).seq).toBe(42)
+  expect(rowToEvent({ ...row, seq: 42n }).seq).toBe(42)
 })
 
 test('rowToPlaybook maps the tags array and reviewed_on date', () => {
@@ -153,20 +175,27 @@ describe('rowsToMeta', () => {
     expect(rowsToMeta([{ key: 'referenceDate', value: '"2026-09-18"' }])).toBeNull()
   })
 
-  test('assembles SimulationMeta from jsonb values', () => {
+  test('assembles SimulationMeta from jsonb values, with the real clock time of the reset', () => {
     const meta = rowsToMeta([
       { key: 'seed', value: '20260918' },
       { key: 'referenceDate', value: '"2026-09-18"' },
-      { key: 'resetAt', value: '"2026-09-18T12:00:00+08:00"' }
+      { key: 'resetAt', value: '"2026-09-18T12:00:00+08:00"' },
+      { key: 'resetAtWall', value: '"2026-09-23T04:00:00.000Z"' }
     ])
-    expect(meta).toEqual({ seed: 20260918, referenceDate: '2026-09-18', resetAt: '2026-09-18T12:00:00+08:00' })
+    expect(meta).toEqual({
+      seed: 20260918,
+      referenceDate: '2026-09-18',
+      resetAt: '2026-09-18T12:00:00+08:00',
+      resetAtWall: '2026-09-23T04:00:00.000Z'
+    })
   })
 
-  test('a missing resetAt stays null', () => {
+  test('a missing resetAt or resetAtWall stays null', () => {
     const meta = rowsToMeta([
       { key: 'seed', value: 20260918 },
       { key: 'referenceDate', value: '2026-09-18' }
     ])
     expect(meta?.resetAt).toBeNull()
+    expect(meta?.resetAtWall).toBeNull()
   })
 })

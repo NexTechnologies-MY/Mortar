@@ -41,6 +41,7 @@ import { Pagination, usePagination } from '@/components/ui/Pagination'
 import { nextSort } from '@/components/ui/SortHeader'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { RefreshErrorBanner } from '@/components/ui/RefreshErrorBanner'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { notify } from '@/components/ui/toastConfig'
@@ -315,6 +316,9 @@ export function BookingsPage() {
         </div>
       ) : (
         <>
+          {/* A mutation's own save can succeed while the refresh after it fails; the
+              table stays on screen with a way to retry rather than vanishing behind it. */}
+          {error ? <RefreshErrorBanner onRetry={() => void refresh()} /> : null}
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
               label="Live Bookings"

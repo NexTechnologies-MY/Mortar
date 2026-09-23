@@ -17,7 +17,6 @@ import type {
   LoanApplication,
   Message,
   Playbook,
-  SimulationMeta,
   Snapshot,
   Task
 } from '@mortar/core'
@@ -31,14 +30,17 @@ import {
   rowToTask,
   rowsToMeta,
   withMaskedContact,
-  type JevAnswerRow
+  type JevAnswerRow,
+  type StoredMeta
 } from './mappers'
 
 export interface Database {
   /** `select 1`; throws when the connection is down. */
   ping(): Promise<void>
   /** Simulation parameters, or `null` while the `seed` row is absent (pre-reset). */
-  meta(): Promise<SimulationMeta | null>
+  meta(): Promise<StoredMeta | null>
+  /** Whether `bookings` has any row at all; boot uses it to tell an empty database from one whose `meta` row went missing. */
+  hasBookings(): Promise<boolean>
   /** The case-derivation input: bookings, applications, events and tasks. */
   caseData(): Promise<CaseData>
   /**
@@ -49,20 +51,38 @@ export interface Database {
   getBooking(id: string): Promise<Booking | null>
   getApplication(id: string): Promise<LoanApplication | null>
   getMessage(id: string): Promise<Message | null>
+  getEvent(id: string): Promise<CaseEvent | null>
   messagesForBooking(bookingId: string): Promise<Message[]>
   eventsForMessage(messageId: string): Promise<CaseEvent[]>
+  /** A booking's events in case order: by `occurredAt`, equal times in the order they were stored. */
+  eventsForBooking(bookingId: string): Promise<CaseEvent[]>
   listPlaybooks(): Promise<Playbook[]>
   insertMessage(message: Message): Promise<void>
   insertEvent(event: CaseEvent): Promise<void>
   /**
    * Stores a new bank application and the confirmed `loan_submitted` event that
-   * carries its id, in one transaction: neither lands without the other.
+   * carries its id, in one transaction: neither lands without the other. Throws
+   * `OpenApplicationError` while the same bank (trimmed, any case) still holds
+   * an undecided application on the booking; the check runs under a per-booking
+   * lock, so a retried submission cannot slip in beside the first.
    */
   insertApplication(application: LoanApplication, submitted: CaseEvent): Promise<void>
-  /** Staff review: sets the status and records `reviewer` as `verifiedBy`. */
-  reviewEvent(id: string, status: EvidenceStatus, reviewer: string): Promise<CaseEvent | null>
-  /** Supersedes still-open proposals (`provisional` or `disputed`) carrying `messageId`. */
-  supersedePendingProposals(messageId: string): Promise<void>
+  /**
+   * Staff review of a Jev proposal: sets the status, records `reviewer` as
+   * `verifiedBy`, and appends the change to `event_reviews`, all in one
+   * transaction. `null` when there is no such event; throws `EventSettledError`
+   * unless the event is a Jev proposal still waiting (`provisional` or
+   * `disputed`, and not already `status`), so a stale screen never overturns a
+   * settled update.
+   */
+  reviewEvent(id: string, status: EvidenceStatus, reviewer: string, at: IsoDateTime): Promise<CaseEvent | null>
+  /**
+   * Swaps a message's pending proposals (`provisional` or `disputed`) for
+   * `proposal`, in one transaction serialised per message, so two re-reads at
+   * once leave one proposal standing. Nothing is inserted once an event on the
+   * message is confirmed, or when `proposal` is `null`; returns what was.
+   */
+  replaceProposal(messageId: string, proposal: CaseEvent | null): Promise<CaseEvent | null>
   insertTask(task: Task): Promise<void>
   /**
    * Numbers and stores imported bookings in one transaction, each with the
@@ -80,13 +100,15 @@ export interface Database {
   /**
    * Removes an import's bookings, and everything cascading from them, as long
    * as none has moved on since: no update besides its booked event, no message,
-   * no task, no bank application. `null` when there is no such import; throws
-   * `ImportMovedOnError` naming the bookings that have moved on.
-   */
-  /**
-   * Removes an import's bookings and stamps the import as undone by `undoneBy`
-   * at `undoneAt`; the import row itself stays. `null` when the import does not
-   * exist or was already undone.
+   * no task, no bank application. Locks the bookings before that check, so a
+   * staff update racing the undo either lands first (and is seen as "moved
+   * on") or is blocked until this transaction ends and then fails its own
+   * foreign key check, rather than being cascade-deleted after its own 200.
+   * Stamps the import as undone by `undoneBy` at `undoneAt` and records a
+   * `removed` snapshot of each booking (id, unit, project, buyer name, price —
+   * no IC or phone); the import row itself stays. `null` when the import does
+   * not exist or was already undone; throws `ImportMovedOnError` naming the
+   * bookings that have moved on.
    */
   undoImport(id: string, undoneBy: string, undoneAt: IsoDateTime): Promise<{ removed: string[] } | null>
   updateTaskStatus(id: string, status: Task['status'], completedAt: IsoDateTime | null): Promise<Task | null>
@@ -136,8 +158,31 @@ export class ImportMovedOnError extends Error {
   }
 }
 
+/** The event is not a Jev proposal waiting for review; `event` is how it stands now. */
+export class EventSettledError extends Error {
+  constructor(readonly event: CaseEvent) {
+    super(`event ${event.id} is not a proposal waiting for review`)
+  }
+}
+
+/** The bank already holds an undecided application on the booking. */
+export class OpenApplicationError extends Error {
+  constructor(
+    readonly bank: string,
+    readonly applicationId: string
+  ) {
+    super(`${bank} already has application ${applicationId} waiting on this booking`)
+  }
+}
+
 /** Advisory lock key that serialises imports, so two batches never draw the same booking numbers. */
 const IMPORT_LOCK = 20_260_918
+/**
+ * First keys of the two-key advisory locks (a key space apart from the
+ * import's one-key lock); the second key hashes the message or booking id.
+ */
+const MESSAGE_LOCK = 20_260_919
+const BOOKING_APPLICATIONS_LOCK = 20_260_920
 /** Highest imported booking number; the story fixtures start at `BK-9001`. */
 const LAST_IMPORT_NUMBER = 8999
 
@@ -174,7 +219,9 @@ export function createDatabase(sql: SQL): Database {
     const [bookings, applications, events, tasks] = await Promise.all([
       sql`select * from bookings order by id`,
       sql`select * from loan_applications order by id`,
-      sql`select * from events order by occurred_at, id`,
+      // Equal times keep the order the rows were stored in (`seq`), which is
+      // the order they were entered in.
+      sql`select * from events order by occurred_at, seq`,
       sql`select * from tasks order by created_at, id`
     ])
     return {
@@ -196,6 +243,11 @@ export function createDatabase(sql: SQL): Database {
   return {
     async ping() {
       await sql`select 1`
+    },
+
+    async hasBookings() {
+      const rows = await sql`select exists(select 1 from bookings) as any`
+      return Boolean(rows[0]?.any)
     },
 
     meta,
@@ -227,7 +279,7 @@ export function createDatabase(sql: SQL): Database {
       return {
         ...data,
         bookings: data.bookings.map(withMaskedContact),
-        meta: metaRow,
+        meta: { seed: metaRow.seed, referenceDate: metaRow.referenceDate, resetAt: metaRow.resetAt },
         messages: messages.map(rowToMessage),
         playbooks: playbooks.map(rowToPlaybook),
         extractions,
@@ -251,13 +303,23 @@ export function createDatabase(sql: SQL): Database {
       return rows.length ? rowToMessage(rows[0]) : null
     },
 
+    async getEvent(id) {
+      const rows = await sql`select * from events where id = ${id}`
+      return rows.length ? rowToEvent(rows[0]) : null
+    },
+
     async messagesForBooking(bookingId) {
       const rows = await sql`select * from messages where booking_id = ${bookingId} order by sent_at, id`
       return rows.map(rowToMessage)
     },
 
     async eventsForMessage(messageId) {
-      const rows = await sql`select * from events where message_id = ${messageId} order by recorded_at, id`
+      const rows = await sql`select * from events where message_id = ${messageId} order by seq`
+      return rows.map(rowToEvent)
+    },
+
+    async eventsForBooking(bookingId) {
+      const rows = await sql`select * from events where booking_id = ${bookingId} order by occurred_at, seq`
       return rows.map(rowToEvent)
     },
 
@@ -285,6 +347,19 @@ export function createDatabase(sql: SQL): Database {
 
     async insertApplication(application, submitted) {
       await sql.begin(async (tx) => {
+        await tx`select pg_advisory_xact_lock(${BOOKING_APPLICATIONS_LOCK}::int, hashtext(${application.bookingId}))`
+        // Still with the bank: no confirmed decision, and the buyer has not
+        // withdrawn (which leaves an undecided application withdrawn). A bank
+        // that rejected can be sent the case again.
+        const open = await tx`select a.id, a.bank from loan_applications a
+          where a.booking_id = ${application.bookingId}
+            and lower(trim(a.bank)) = lower(trim(${application.bank}))
+            and not exists (select 1 from events e where e.application_id = a.id
+              and e.status = 'confirmed' and e.kind in ('loan_approved', 'loan_rejected'))
+            and not exists (select 1 from events w where w.booking_id = a.booking_id
+              and w.status = 'confirmed' and w.kind = 'buyer_withdrew')
+          order by a.id limit 1`
+        if (open.length > 0) throw new OpenApplicationError(String(open[0].bank), String(open[0].id))
         await tx`insert into loan_applications ${tx({
           id: application.id,
           booking_id: application.bookingId,
@@ -295,15 +370,40 @@ export function createDatabase(sql: SQL): Database {
       })
     },
 
-    async reviewEvent(id, status, reviewer) {
-      const rows = await sql`update events set status = ${status}, verified_by = ${reviewer}
-        where id = ${id} returning *`
-      return rows.length ? rowToEvent(rows[0]) : null
+    async reviewEvent(id, status, reviewer, at) {
+      return sql.begin(async (tx) => {
+        // The row lock makes the check and the change one step: a second
+        // review waits here, then sees the first one's result.
+        const rows = await tx`select * from events where id = ${id} for update`
+        if (rows.length === 0) return null
+        const current = rowToEvent(rows[0])
+        const pending = current.source === 'jev' && (current.status === 'provisional' || current.status === 'disputed')
+        if (!pending || current.status === status) throw new EventSettledError(current)
+        const updated = await tx`update events set status = ${status}, verified_by = ${reviewer}
+          where id = ${id} returning *`
+        await tx`insert into event_reviews ${tx({
+          event_id: id,
+          from_status: current.status,
+          to_status: status,
+          reviewer,
+          at
+        })}`
+        return rowToEvent(updated[0])
+      })
     },
 
-    async supersedePendingProposals(messageId) {
-      await sql`update events set status = 'superseded'
-        where message_id = ${messageId} and status in ('provisional', 'disputed')`
+    async replaceProposal(messageId, proposal) {
+      return sql.begin(async (tx) => {
+        await tx`select pg_advisory_xact_lock(${MESSAGE_LOCK}::int, hashtext(${messageId}))`
+        await tx`update events set status = 'superseded'
+          where message_id = ${messageId} and status in ('provisional', 'disputed')`
+        if (!proposal) return null
+        const confirmed = await tx`select 1 from events
+          where message_id = ${messageId} and status = 'confirmed' limit 1`
+        if (confirmed.length > 0) return null
+        await tx`insert into events ${tx(eventRow(proposal))}`
+        return proposal
+      })
     },
 
     async insertTask(task) {
@@ -335,8 +435,18 @@ export function createDatabase(sql: SQL): Database {
           order by b.id limit 1`
         if (held.length > 0) throw new UnitHeldError(String(held[0].unit), String(held[0].id))
 
-        const rows = await tx`select coalesce(max(substring(id from 4)::int), 0)::int as n
-          from bookings where id ~ '^BK-[0-8][0-9]{3}$'`
+        // Never reuse a number: an undo deletes the bookings, so `bookings`
+        // alone would let a later import land on the same `BK-nnnn` an undone
+        // one already used, pointing the old import's `booking_ids` (and its
+        // `removed` snapshot) at a different buyer. `imports.booking_ids`
+        // keeps every id an import ever assigned, undone or not (it is never
+        // deleted — see `imports` in schema.sql), so the floor is the higher
+        // of the two.
+        const rows = await tx`select greatest(
+            coalesce((select max(substring(b.id from 4)::int) from bookings b where b.id ~ '^BK-[0-8][0-9]{3}$'), 0),
+            coalesce((select max(substring(x from 4)::int) from imports i, unnest(i.booking_ids) x
+              where x ~ '^BK-[0-8][0-9]{3}$'), 0)
+          )::int as n`
         const last = (rows[0]?.n as number | undefined) ?? 0
         if (last + drafts.length > LAST_IMPORT_NUMBER) throw new Error('no booking numbers left below BK-9000')
         const bookings: Booking[] = drafts.map((draft, i) => ({
@@ -391,18 +501,45 @@ export function createDatabase(sql: SQL): Database {
         const rows = await tx`select booking_ids from imports where id = ${id} and undone_at is null for update`
         if (rows.length === 0) return null
         const ids = rows[0].booking_ids as string[]
+        // Locks the bookings *before* checking whether any has moved on. A
+        // staff update that references one of these ids either finishes and
+        // commits first (this select then blocks until it does, and sees it
+        // in the check below) or starts after this lock and blocks on its own
+        // foreign key check until this transaction ends — at which point the
+        // booking is gone and that insert fails with a foreign key violation
+        // instead of the row being cascade-deleted out from under a request
+        // that already got a 200 (the catch-all in app.ts turns that failure
+        // into a 409).
+        await tx`select id from bookings where id in ${tx(ids)} for update`
+        // The import wrote one booked event per booking; any other event,
+        // a second booked one included, is activity since.
         const moved = await tx`select b.id from bookings b where b.id in ${tx(ids)} and (
-            exists (select 1 from events e where e.booking_id = b.id and e.kind <> 'booked')
+            (select count(*) from events e where e.booking_id = b.id) > 1
+            or exists (select 1 from events e where e.booking_id = b.id and e.kind <> 'booked')
             or exists (select 1 from messages m where m.booking_id = b.id)
             or exists (select 1 from tasks t where t.booking_id = b.id)
             or exists (select 1 from loan_applications a where a.booking_id = b.id)
           ) order by b.id`
         if (moved.length > 0) throw new ImportMovedOnError(moved.map((r: Record<string, unknown>) => String(r.id)))
+        // A retention snapshot of what is being removed (docs/RETENTION.md):
+        // kept on the import row forever, with no IC or phone, so the trace
+        // an undo leaves behind still names a real booking and buyer even
+        // after the row itself, and its `BK-nnnn` number, are gone for good.
+        const removedRows = await tx`select id, unit, project, price_rm, buyer ->> 'name' as buyer_name
+          from bookings where id in ${tx(ids)} order by id`
+        const removed = removedRows.map((r: Record<string, unknown>) => ({
+          id: String(r.id),
+          unit: String(r.unit),
+          project: String(r.project),
+          buyerName: String(r.buyer_name),
+          priceRm: Number(r.price_rm)
+        }))
         // Events cascade from bookings; cached Jev answers are keyed by booking id
         // and would otherwise greet the next booking to reuse the number.
         await tx`delete from jev_answers where subject_id in ${tx(ids)}`
         await tx`delete from bookings where id in ${tx(ids)}`
-        await tx`update imports set undone_at = ${undoneAt}, undone_by = ${undoneBy} where id = ${id}`
+        await tx`update imports set undone_at = ${undoneAt}, undone_by = ${undoneBy},
+          removed = ${JSON.stringify(removed)}::jsonb where id = ${id}`
         return { removed: ids }
       })
     },
