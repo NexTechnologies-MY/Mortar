@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import type { BuyerSignals } from '@mortar/core'
 import { SignalChips } from '../SignalChips'
@@ -34,8 +34,21 @@ describe('SignalChips', () => {
     expect(group.textContent).toContain('Committed')
   })
 
-  it('renders an em dash when there are no signals', () => {
+  it('shows muted text instead of a dash when there are no signals', () => {
     render(<SignalChips signals={null} />)
-    expect(screen.getByText('—')).not.toBeNull()
+    expect(screen.getByText('No Messages Yet')).not.toBeNull()
+  })
+
+  it('names the source of the read in a tooltip on the chips', () => {
+    render(<SignalChips signals={signals(2, 0)} />)
+    const trigger = screen.getByRole('group', { name: 'Buyer response' }).closest('button')!
+    // React delegates onFocus to the bubbling focusin event; Radix opens instantly on it.
+    fireEvent.focusIn(trigger)
+    const tooltip = screen.getByRole('tooltip')
+    expect(
+      within(tooltip).getByText(
+        "Jev's Read Of This Buyer's Messages: Reply Speed And Any Doubts. Log Messages On The Case Page To Update It."
+      )
+    ).not.toBeNull()
   })
 })

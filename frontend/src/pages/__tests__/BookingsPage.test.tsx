@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
+import { DEFAULT_SEED, PLAYBOOKS, REFERENCE_DATE, generate, type Snapshot } from '@mortar/core'
 import { PersonaProvider } from '@/lib/persona'
 import { SnapshotProvider } from '@/lib/data'
-import { postTask } from '@/lib/api'
+import { fetchSnapshot, importBookings, postTask } from '@/lib/api'
 import { BookingsPage } from '@/pages/BookingsPage'
 
 vi.mock('@/lib/api', async () => {
@@ -17,12 +18,41 @@ vi.mock('@/lib/api', async () => {
     extractMessage: vi.fn(async () => ({})),
     postMessage: vi.fn(async () => ({})),
     postTask: vi.fn(async () => ({})),
-    updateTask: vi.fn(async () => ({}))
+    updateTask: vi.fn(async () => ({})),
+    importBookings: vi.fn(async () => ({ importId: 'IMP-TEST', bookings: [] }))
   }
 })
 
+/**
+ * A bigger, story-free snapshot: enough generated bookings that Active alone
+ * spans two pages (25 per page), so the view-switch-resets-to-page-one
+ * behaviour (issue #23) can be exercised without touching the smaller,
+ * shared `buildSnapshot()` fixture other bookings tests rely on.
+ */
+function buildLargeSnapshot(): Snapshot {
+  const generated = generate({ seed: DEFAULT_SEED, referenceDate: REFERENCE_DATE, bookings: 45 })
+  return {
+    bookings: generated.bookings,
+    applications: generated.applications,
+    events: generated.events,
+    messages: [],
+    playbooks: PLAYBOOKS,
+    tasks: [],
+    extractions: [],
+    signals: [],
+    nextActions: [],
+    meta: { seed: DEFAULT_SEED, referenceDate: REFERENCE_DATE, resetAt: null }
+  }
+}
+
 function LocationEcho() {
   return <div data-testid="location">{useLocation().pathname}</div>
+}
+
+/** Radix Tabs activates on `mousedown`, not `click` — a plain `fireEvent.click` never switches the tab. */
+function clickTab(el: HTMLElement) {
+  fireEvent.mouseDown(el, { button: 0 })
+  fireEvent.click(el)
 }
 
 function renderBookings() {
@@ -45,7 +75,7 @@ describe('BookingsPage', () => {
     window.localStorage.clear()
   })
 
-  it('renders the stats and the first page of booking rows', async () => {
+  it('renders the stats, the Active/Closed tabs and the first page of booking rows', async () => {
     renderBookings()
 
     expect(await screen.findByRole('heading', { name: 'Bookings' })).toBeTruthy()
@@ -53,25 +83,19 @@ describe('BookingsPage', () => {
     // The explanatory second line moved into a tooltip on the figure.
     expect(screen.queryByText('Unresolved, Booked Within 30 Days')).toBeNull()
     expect(screen.getByText('Stalled')).toBeTruthy()
+    // The renamed stat label and the renamed checkbox both read "No Update 10+ Days" (issue #22).
+    expect(screen.getAllByText('No Update 10+ Days').length).toBe(2)
     expect(screen.getAllByText('SPA Signed').length).toBeGreaterThan(0)
     expect(screen.getByText('BK-9001')).toBeTruthy()
     expect(screen.getByText('A-12-03')).toBeTruthy()
     expect(screen.getByText('Raymond Tan Wei Hong')).toBeTruthy()
-    expect(screen.getByText('28 Bookings')).toBeTruthy()
-    expect(screen.getByText('Showing 1 To 25 Of 28')).toBeTruthy()
-  })
-
-  it('pages the table and returns to page one when a filter changes', async () => {
-    renderBookings()
-    await screen.findByText('BK-9001')
-
-    fireEvent.click(screen.getByRole('button', { name: 'Next Page' }))
-    expect(screen.getByText('Showing 26 To 28 Of 28')).toBeTruthy()
-    expect(document.querySelectorAll('tbody tr')).toHaveLength(3)
-
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Unknown Only' }))
-    expect(screen.getByText(/Showing 1 To/)).toBeTruthy()
-    expect(screen.getByText('BK-9007')).toBeTruthy()
+    // 28 bookings in the fixture split 20 Active / 8 Closed (issue #23); the
+    // ledger and its count default to the Active tab.
+    expect(screen.getByRole('tab', { name: 'Active (20)' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Closed (8)' })).toBeTruthy()
+    expect(screen.getByText('20 Bookings')).toBeTruthy()
+    expect(screen.getByText('Showing 1 To 20 Of 20')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Add Booking' })).toBeTruthy()
   })
 
   it('sorts stalled bookings first', async () => {
@@ -82,14 +106,70 @@ describe('BookingsPage', () => {
     expect(firstRow.children[3].className).toContain('text-status-danger-fg')
   })
 
-  it('keeps only unknown cases when the filter is on', async () => {
+  it('keeps only unknown cases when the renamed filter is on (issue #22)', async () => {
     renderBookings()
     await screen.findByText('BK-9001')
 
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Unknown Only' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'No Update 10+ Days' }))
 
     await waitFor(() => expect(screen.queryByText('BK-9001')).toBeNull())
     expect(screen.getByText('BK-9007')).toBeTruthy()
+  })
+
+  it('shows muted "No Messages Yet" instead of a dash for a booking with no buyer signals (issue #21)', async () => {
+    renderBookings()
+    await screen.findByText('BK-9001')
+
+    // Only BK-9001 carries a signals fixture; every other visible row falls back to this text.
+    expect(screen.getAllByText('No Messages Yet').length).toBeGreaterThan(0)
+  })
+
+  it('keeps a closed booking off the Active list until Closed is selected (issue #23)', async () => {
+    renderBookings()
+    await screen.findByText('BK-9001')
+
+    // BK-0002 is cancelled in the fixture, so it is Closed from the start.
+    expect(screen.queryByText('BK-0002')).toBeNull()
+
+    clickTab(screen.getByRole('tab', { name: 'Closed (8)' }))
+    expect(await screen.findByText('BK-0002')).toBeTruthy()
+    expect(screen.queryByText('BK-9001')).toBeNull()
+  })
+
+  it('paginates Active and Closed separately, and switching views returns to page one (issue #23)', async () => {
+    vi.mocked(fetchSnapshot).mockResolvedValueOnce(buildLargeSnapshot())
+    renderBookings()
+
+    expect(await screen.findByRole('tab', { name: 'Active (27)' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Closed (18)' })).toBeTruthy()
+    expect(screen.getByText('Showing 1 To 25 Of 27')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next Page' }))
+    expect(screen.getByText('Showing 26 To 27 Of 27')).toBeTruthy()
+
+    clickTab(screen.getByRole('tab', { name: 'Closed (18)' }))
+    expect(screen.getByText('Showing 1 To 18 Of 18')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Export To Excel' })).toBeTruthy()
+
+    clickTab(screen.getByRole('tab', { name: 'Active (27)' }))
+    expect(screen.getByText('Showing 1 To 25 Of 27')).toBeTruthy()
+  })
+
+  it('opens Add Booking and checks a typed unit against the real held units (issue #24)', async () => {
+    renderBookings()
+    await screen.findByText('BK-9001')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add Booking' }))
+    expect(await screen.findByRole('heading', { name: 'Add Booking' })).toBeTruthy()
+
+    // BK-0001 holds C-24-05 under the fixture's main project; typing it in must
+    // read the page's real held-unit map, not an empty one.
+    const unitField = screen.getByLabelText(/^Unit/)
+    fireEvent.change(unitField, { target: { value: 'C-24-05' } })
+    fireEvent.blur(unitField)
+    expect(await screen.findByText('Unit Already Held By BK-0001')).toBeTruthy()
+
+    expect(importBookings).not.toHaveBeenCalled()
   })
 
   it('opens the case page when a row is clicked', async () => {

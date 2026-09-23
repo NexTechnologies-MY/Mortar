@@ -1,7 +1,8 @@
 /**
  * Filter bar for the bookings list — stage, who the case is waiting on, and
- * financing-risk selects plus an "Unknown Only" toggle. The count of visible
- * rows sits at the right edge.
+ * financing-risk selects plus a "No Update 10+ Days" toggle (issue #22; the
+ * internal field name `unknownOnly` is unchanged, only the label reads
+ * plainly for staff). The count of visible rows sits at the right edge.
  */
 
 import type { BallHolder, RiskLevel, Stage } from '@mortar/core'
@@ -84,7 +85,7 @@ export function BookingFilters({
           onCheckedChange={(checked) => onChange({ ...filter, unknownOnly: checked === true })}
         />
         <Label htmlFor="bookings-unknown-only" className="cursor-pointer text-sm">
-          Unknown Only
+          No Update 10+ Days
         </Label>
       </div>
       <p className="ml-auto text-[13px] text-muted-foreground tabular-nums">
