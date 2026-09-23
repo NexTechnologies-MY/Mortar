@@ -163,9 +163,10 @@ test('rowToTask keeps a null completed_at', () => {
   expect(task.dueOn).toBe('2026-09-19')
 })
 
-test('rowToJevAnswer parses the answer payload', () => {
-  const row = rowToJevAnswer({ kind: 'extract', subject_id: 'MSG-1', answer: '{"confidence":0.9}' })
+test('rowToJevAnswer parses the answer payload and keeps the input hash', () => {
+  const row = rowToJevAnswer({ kind: 'extract', subject_id: 'MSG-1', input_hash: 'h1', answer: '{"confidence":0.9}' })
   expect(row.kind).toBe('extract')
+  expect(row.inputHash).toBe('h1')
   expect(row.answer).toEqual({ confidence: 0.9 } as object)
 })
 

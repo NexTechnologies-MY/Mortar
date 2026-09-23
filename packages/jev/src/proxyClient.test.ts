@@ -71,14 +71,37 @@ describe('createProxySystemOne', () => {
     const sentBody = JSON.parse(calls[0].init.body as string) as {
       model: string
       max_tokens: number
+      system: string
       messages: { role: string; content: string }[]
     }
     expect(sentBody.model).toBe('gemini-3-flash')
     expect(sentBody.max_tokens).toBe(4096)
     expect(sentBody.messages).toHaveLength(1)
     expect(sentBody.messages[0].role).toBe('user')
-    expect(sentBody.messages[0].content).toContain('color')
+  })
+
+  it('puts the question instructions in the system field and only the fenced state in the user message', async () => {
+    const { fetchFn, calls } = fakeFetch(() => ({
+      body: anthropicText(JSON.stringify({ color: { red: 0.7, blue: 0.2, green: 0.1 } }))
+    }))
+
+    const proxy = client(fetchFn)
+    await proxy.systemOne({ model: 'jev-latest', state: { text: 'the sky is red-ish' }, questions: colorQuestions })
+
+    const sentBody = JSON.parse(calls[0].init.body as string) as {
+      system: string
+      messages: { role: string; content: string }[]
+    }
+    // The question name, its criteria and the response-format instructions are
+    // developer-written text, so they belong to the system channel.
+    expect(sentBody.system).toContain('color')
+    expect(sentBody.system).toContain('Respond with ONLY one JSON object')
+    expect(sentBody.system).toContain('untrusted data')
+    // The state — which can carry a buyer's own words — is alone in the user
+    // message, fenced so it reads as data rather than instructions.
+    expect(sentBody.messages[0].content).toContain('<state>')
     expect(sentBody.messages[0].content).toContain('red-ish')
+    expect(sentBody.messages[0].content).not.toContain('Respond with ONLY one JSON object')
   })
 
   it('maps a choice question to argmax, confidence, and full probabilities', async () => {
@@ -160,16 +183,24 @@ describe('createProxySystemOne', () => {
     expect(result.answers.color.choice).toBe('red')
   })
 
-  it('spreads evenly across labels when every probability is zero or negative', async () => {
+  it('throws when every probability is zero or negative, instead of defaulting to the first label', async () => {
     const { fetchFn } = fakeFetch(() => ({
       body: anthropicText(JSON.stringify({ color: { red: 0, blue: -2, green: 0 } }))
     }))
 
-    const result = await client(fetchFn).systemOne({ model: 'jev-latest', state: 'x', questions: colorQuestions })
+    await expect(
+      client(fetchFn).systemOne({ model: 'jev-latest', state: 'x', questions: colorQuestions })
+    ).rejects.toThrow(/no usable probabilities for "color"/)
+  })
 
-    expect(result.answers.color.probabilities.red).toBeCloseTo(1 / 3)
-    expect(result.answers.color.probabilities.blue).toBeCloseTo(1 / 3)
-    expect(result.answers.color.probabilities.green).toBeCloseTo(1 / 3)
+  it('throws when every probability is for a label the question does not have', async () => {
+    const { fetchFn } = fakeFetch(() => ({
+      body: anthropicText(JSON.stringify({ color: { purple: 0.9, orange: 0.1 } }))
+    }))
+
+    await expect(
+      client(fetchFn).systemOne({ model: 'jev-latest', state: 'x', questions: colorQuestions })
+    ).rejects.toThrow(/no usable probabilities for "color"/)
   })
 
   it('throws when the response is missing an answer for a question', async () => {
@@ -297,5 +328,41 @@ describe('createJevService over the proxy client', () => {
     expect(suggestion.urgency.score).toBeCloseTo(1.6)
     expect(suggestion.meta.source).toBe('live')
     expect(suggestion.meta.stale).toBe(false)
+  })
+
+  it('falls back to the neutral no_update answer, never loan_approved, when the model gives no usable event probabilities', async () => {
+    // `loan_approved` is the first label declared for `extract`'s `event` question (jobs.ts); before the
+    // fix, an all-zero distribution here spread evenly and `argmax` silently picked it as the answer.
+    const degenerateJson = {
+      event: {
+        loan_approved: 0,
+        loan_rejected: 0,
+        documents_requested: 0,
+        documents_received: 0,
+        valuation_shortfall: 0,
+        buyer_hesitant: 0,
+        buyer_withdrawing: 0,
+        spa_appointment: 0,
+        spa_signed: 0,
+        no_update: 0
+      },
+      document: { none: 1 },
+      owner: { none: 1 },
+      withdrawalRisk: { true: 0, false: 1 },
+      needsAction: { true: 0, false: 1 }
+    }
+    const { fetchFn } = fakeFetch(() => ({ body: anthropicText(JSON.stringify(degenerateJson)) }))
+    const proxy = createProxySystemOne({
+      url: 'http://proxy.test',
+      apiKey: 'secret-key',
+      model: 'gemini-3-flash',
+      fetch: fetchFn
+    })
+    const jev = createJevService({ cache: new MemoryCache(), client: proxy })
+
+    const extraction = await jev.extract({ message: message(), summary: summary() })
+
+    expect(extraction.event.value).toBe('no_update')
+    expect(extraction.meta.source).toBe('unavailable')
   })
 })
