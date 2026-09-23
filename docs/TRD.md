@@ -245,10 +245,13 @@ no third-party schema validation libraries are loaded.
 | `POST`  | `/api/messages`                 | `{ bookingId, senderRole, senderName, body }`                         | `{ message: Message, extraction: Extraction, event: CaseEvent \| null }` | Live-First Jev    |
 | `POST`  | `/api/messages/:id/extract`     | None                                                                  | `{ extraction: Extraction, event: CaseEvent \| null }`                   | Live-First Jev    |
 | `POST`  | `/api/events`                   | `{ bookingId, track, kind, document?, note?, reportedBy }`            | `CaseEvent`                                                              | Transaction Write |
+| `POST`  | `/api/applications`             | `{ bookingId, bank, banker, note?, occurredOn?, reportedBy }`         | `{ application: LoanApplication, event: CaseEvent }`                     | Transaction Write |
 | `POST`  | `/api/events/:id/review`        | `{ decision: 'confirm' \| 'dispute' \| 'dismiss', reviewer: string }` | `CaseEvent`                                                              | Transaction Write |
 | `POST`  | `/api/bookings/:id/next-action` | None                                                                  | `NextActionSuggestion`                                                   | Live-First Jev    |
 | `GET`   | `/api/bookings/:id/playbooks`   | Optional Query `q`                                                    | `PlaybookRanking`                                                        | Cache-First Jev   |
 | `GET`   | `/api/bookings/:id/signals`     | None                                                                  | `BuyerSignals`                                                           | Cache-First Jev   |
+| `POST`  | `/api/bookings/import`          | `{ bookings: BookingDraft[], reportedBy, source? }`                   | `{ importId, bookings: Booking[] }`                                      | Transaction Write |
+| `POST`  | `/api/imports/:id/undo`         | `{ reportedBy }`                                                      | `{ removed: string[] }`                                                  | Transaction Write |
 | `POST`  | `/api/tasks`                    | `{ bookingId, action, title, ownerRole, ownerName, dueOn, origin }`   | `Task`                                                                   | Database Insert   |
 | `PATCH` | `/api/tasks/:id`                | `{ status: 'open' \| 'done' \| 'cancelled' }`                         | `Task`                                                                   | Database Update   |
 | `POST`  | `/api/admin/reset`              | None                                                                  | `SimulationMeta`                                                         | Database Truncate |
@@ -278,6 +281,22 @@ no third-party schema validation libraries are loaded.
   and the route returns `409` if the proposal had already settled (confirmed,
   dismissed, or replaced by a later re-read of its message) between the click
   and the request.
+- `POST /api/applications`: Records that the booking's loan was submitted to a
+  bank, creating the `LoanApplication` and its confirmed `loan_submitted` event
+  together in one transaction (`db.insertApplication`). Returns `400` on a
+  malformed body or a bad `occurredOn` date, `404` for an unknown booking, and
+  `409` when the case rules refuse it or that bank already has an undecided
+  application on the booking (see Write Rules And Error Codes).
+- `POST /api/bookings/import`: Imports bookings in bulk from a spreadsheet,
+  capped at `MAX_IMPORT_ROWS` rows, giving each booking a confirmed `booked`
+  event and returning `bookings` with contacts masked. Returns `400` listing the
+  first five row problems, and `409` when a unit appears twice in the batch or
+  an open booking already holds it, checked under a database lock.
+- `POST /api/imports/:id/undo`: Undoes a completed import, returning the removed
+  booking ids as `removed`. Returns `404` when the import does not exist or was
+  already undone, and `409` (`ImportMovedOnError`) when any of its bookings has
+  had updates since the import. What survives the undo is documented in
+  `docs/RETENTION.md`.
 - `POST /api/admin/reset`: Clears all tables in a single transaction and
   re-seeds the database using
   `generate({ seed: DEFAULT_SEED, referenceDate: REFERENCE_DATE, bookings: 140 })`,
