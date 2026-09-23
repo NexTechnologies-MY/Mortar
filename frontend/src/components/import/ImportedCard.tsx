@@ -11,7 +11,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CheckCircle2 } from 'lucide-react'
 import { PERSONA_STAFF, type Booking } from '@mortar/core'
-import { undoImport } from '@/lib/api'
+import { ApiError, undoImport } from '@/lib/api'
 import { usePersona } from '@/lib/persona'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -59,8 +59,10 @@ export function ImportedCard({
       setOpen(false)
       await onUndone()
     } catch (e) {
+      // The server's own words for a refusal it wants read (4xx); a plain sentence
+      // for anything else, never a raw status or technical wording (DESIGN.md).
       notify.error(
-        e instanceof Error ? `Could not undo the import: ${e.message}.` : 'Could not undo the import. Try again.'
+        e instanceof ApiError ? `Could not undo the import: ${e.message}` : 'Could not undo the import. Try again.'
       )
     } finally {
       setUndoing(false)

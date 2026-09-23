@@ -130,6 +130,23 @@ describe('BookingDetailPage', () => {
     await waitFor(() => expect(vi.mocked(updateTask)).toHaveBeenCalledWith('TSK-9001-1', 'done'))
   })
 
+  it('keeps the case on screen with a Try Again notice when the save lands but the refresh after it fails', async () => {
+    renderDetail()
+
+    expect(await screen.findByText('Request Latest Three Months Payslips From Buyer')).toBeTruthy()
+    // The task update itself succeeds; only the follow-up snapshot read fails.
+    vi.mocked(fetchSnapshot).mockRejectedValueOnce(new Error('network down'))
+    fireEvent.click(screen.getByRole('button', { name: 'Complete' }))
+
+    expect(await screen.findByText('Could Not Refresh. Showing The Last Loaded Data.')).toBeTruthy()
+    // The case stays on screen — it does not vanish behind a blocking error.
+    expect(screen.getByText('A-12-03')).toBeTruthy()
+    expect(screen.getByText('Case History')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try Again' }))
+    await waitFor(() => expect(screen.queryByText('Could Not Refresh. Showing The Last Loaded Data.')).toBeNull())
+  })
+
   it('renders the add message form', async () => {
     renderDetail()
 
