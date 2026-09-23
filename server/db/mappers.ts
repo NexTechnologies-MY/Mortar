@@ -62,6 +62,25 @@ export function rowToBooking(row: Row): Booking {
   }
 }
 
+/** Every digit but the last four becomes `•`: `900514-07-5123` → `••••••-••-5123`. */
+export function maskDigits(value: string): string {
+  const total = (value.match(/\d/g) ?? []).length
+  let seen = 0
+  return value.replace(/\d/g, (digit) => ((seen += 1) <= total - 4 ? '•' : digit))
+}
+
+/**
+ * The booking as the browser may see it: IC and phone masked. Nothing on the
+ * desks reads either in full, and the snapshot has no sign-in in front of it
+ * (issue #5). The database and the server's own reads keep them whole.
+ */
+export function withMaskedContact(booking: Booking): Booking {
+  return {
+    ...booking,
+    buyer: { ...booking.buyer, ic: maskDigits(booking.buyer.ic), phone: maskDigits(booking.buyer.phone) }
+  }
+}
+
 export function rowToApplication(row: Row): LoanApplication {
   return {
     id: String(row.id),

@@ -31,7 +31,8 @@ import type {
   Task,
   Track
 } from '@mortar/core'
-import type { Database } from '../db/index'
+import { ImportMovedOnError, UnitHeldError, type Database } from '../db/index'
+import { withMaskedContact } from '../db/mappers'
 import { body, detectLanguage, error, isIsoDate, isOneOf, isString, json, match, newId } from './util'
 
 export interface AppOptions {
@@ -310,49 +311,61 @@ export function createApp(options: AppOptions): App {
         if (problems.length > 0) return error(400, problems.slice(0, 5).join('; '))
         const drafts = b.bookings.map(cleanDraft)
 
-        // A unit an open booking holds cannot be booked again; a cancelled or
-        // lapsed one has gone back on sale. The browser checks this too, but
-        // another import may have landed since it last looked.
-        const data = await db.caseData()
-        const closed = new Set(
-          summarizeCases(data, REFERENCE_DATE)
-            .filter((s) => s.stage === 'cancelled' || s.stage === 'lapsed')
-            .map((s) => s.bookingId)
-        )
-        const held = new Map(
-          data.bookings.filter((x) => !closed.has(x.id)).map((x) => [unitKey(x.project, x.unit), x.id])
-        )
         const inBatch = new Set<string>()
         for (const draft of drafts) {
           const key = unitKey(draft.project, draft.unit)
-          const holder = held.get(key)
-          if (holder) return error(409, `unit ${draft.unit} is already held by ${holder}`)
           if (inBatch.has(key)) return error(409, `unit ${draft.unit} appears twice in the import`)
           inBatch.add(key)
         }
 
         const reportedBy = b.reportedBy.trim()
-        const note = isString(b.source)
-          ? `Imported From ${b.source.trim().slice(0, 120)}`
-          : 'Imported From A Booking Sheet'
+        const source = isString(b.source) ? b.source.trim().slice(0, 120) : null
+        const note = source ? `Imported From ${source}` : 'Imported From A Booking Sheet'
         const recordedAt = simNow(REFERENCE_DATE)
-        const bookings = await db.importBookings(drafts, (booking) => ({
-          id: newId('EV'),
-          bookingId: booking.id,
-          applicationId: null,
-          track: 'sales',
-          kind: 'booked',
-          occurredAt: `${booking.bookingDate}T09:00:00+08:00`,
-          recordedAt,
-          reportedBy,
-          verifiedBy: reportedBy,
-          status: 'confirmed',
-          source: 'staff',
-          messageId: null,
-          document: null,
-          note
-        }))
-        return json({ bookings })
+        const importId = newId('IMP')
+        try {
+          // The database refuses a unit an open booking holds (a cancelled or
+          // lapsed one is back on sale), under the lock the insert takes, so an
+          // import landing meanwhile is seen too. The browser checks as well.
+          const bookings = await db.importBookings(
+            { id: importId, source, reportedBy, createdAt: recordedAt },
+            drafts,
+            (booking) => ({
+              id: newId('EV'),
+              bookingId: booking.id,
+              applicationId: null,
+              track: 'sales',
+              kind: 'booked',
+              occurredAt: `${booking.bookingDate}T09:00:00+08:00`,
+              recordedAt,
+              reportedBy,
+              verifiedBy: reportedBy,
+              status: 'confirmed',
+              source: 'staff',
+              messageId: null,
+              document: null,
+              note
+            })
+          )
+          return json({ importId, bookings: bookings.map(withMaskedContact) })
+        } catch (e) {
+          if (e instanceof UnitHeldError) return error(409, e.message)
+          throw e
+        }
+      }
+    ],
+    [
+      'POST',
+      '/api/imports/:id/undo',
+      async ({ params }) => {
+        try {
+          const result = await db.undoImport(params.id)
+          if (!result) return error(404, `import ${params.id} not found`)
+          return json(result)
+        } catch (e) {
+          if (e instanceof ImportMovedOnError) return error(409, e.message)
+          throw e
+        }
       }
     ],
     [

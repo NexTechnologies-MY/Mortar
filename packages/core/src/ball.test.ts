@@ -15,6 +15,7 @@ function summary(overrides: Partial<CaseSummary> = {}): CaseSummary {
     daysSinceSpaSet: null,
     applications: [],
     outstandingDocuments: [],
+    buyerWithdrew: false,
     risk: { level: 'low', loanRm: 0, instalmentRm: 0, debtServiceRatio: 0.2, marginOfFinancing: 0.9, reasons: [] },
     stallReasons: [],
     openTasks: 0,
@@ -85,8 +86,21 @@ describe('ballInCourt', () => {
       summary({
         stage: 'loan_applied',
         applications: [{ id: 'A', bank: 'Apex Bank', status: 'withdrawn' }],
-        outstandingDocuments: ['payslip']
+        outstandingDocuments: ['payslip'],
+        buyerWithdrew: true
       })
+    )
+    expect(ball).toMatchObject({ holder: 'developer', nextMove: 'review_release' })
+  })
+
+  // Issue #2: a bank that already decided never marks its application withdrawn,
+  // so the withdrawal must come from the summary's own flag.
+  it.each([
+    ['approved, LO issued', 'lo_issued', 'approved'],
+    ['rejected', 'loan_applied', 'rejected']
+  ] as const)('still sees a withdrawn buyer after the bank %s', (_, stage, status) => {
+    const ball = ballInCourt(
+      summary({ stage, applications: [{ id: 'A', bank: 'Apex Bank', status }], buyerWithdrew: true })
     )
     expect(ball).toMatchObject({ holder: 'developer', nextMove: 'review_release' })
   })
@@ -114,5 +128,9 @@ describe('ballInCourt', () => {
     for (const s of open) expect(ballInCourt(s).holder).not.toBeNull()
     // Every stalled open case must say who to chase.
     for (const s of open.filter((x) => x.stallReasons.length > 0)) expect(ballInCourt(s).nextMove).not.toBeNull()
+    // Every open case whose buyer withdrew is the developer's to release (BK-0109, BK-0022, BK-0025).
+    const withdrawn = open.filter((s) => s.buyerWithdrew)
+    expect(withdrawn.map((s) => s.bookingId)).toEqual(expect.arrayContaining(['BK-0022', 'BK-0025', 'BK-0109']))
+    for (const s of withdrawn) expect(ballInCourt(s)).toMatchObject({ holder: 'developer', nextMove: 'review_release' })
   })
 })

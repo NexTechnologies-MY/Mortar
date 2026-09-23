@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   checkBookingDraft,
+  detectDateOrder,
   parseAmount,
   parseCsv,
   parseSheetDate,
@@ -74,7 +75,9 @@ describe('readBookingSheet', () => {
     expect(reading.headerLine).toBe(3)
     expect(reading.missing).toEqual([])
     expect(reading.columns.priceRm).toBe('SPA Price (RM)')
-    expect(reading.notes).toHaveLength(3)
+    // Commitments, properties and project columns absent, plus one lone date
+    // (2/9/2026) that cannot prove its own order.
+    expect(reading.notes).toHaveLength(4)
     expect(reading.rows).toHaveLength(1)
     expect(reading.rows[0]).toMatchObject({ line: 4, unit: 'A-12-03', buyerName: 'Nur Aisyah Binti Kamal', errors: [] })
     expect(reading.rows[0].draft).toEqual({
@@ -155,7 +158,7 @@ describe('readBookingSheet', () => {
           '900514-00-0002',
           '012',
           '600000',
-          '1/9/2026',
+          '15/9/2026',
           '5000',
           '',
           '2',
@@ -183,6 +186,61 @@ describe('readBookingSheet', () => {
     )
     expect(checkBookingDraft(reading.rows[0].draft, OPTIONS.referenceDate)).toEqual([])
   })
+
+  // Issue #4: number cells can carry values the server refuses; the preview must say so.
+  it('marks values the server would refuse as To Fix, never Ready', () => {
+    const header = [...HEADER, 'Commitments', 'Properties Owned']
+    const base = ['900514-00-0002', '012', 600000, '1/9/2026', 5000]
+    const reading = readBookingSheet(
+      [
+        header,
+        ['A-1', 'Lee', ...base, -500, 0],
+        ['A-2', 'Tan', ...base, 0, -1],
+        ['A-3', 'Ong', ...base, 0, 150],
+        ['A-4', 'Lim', '900514-00-0002', '012', 3_000_000_000, '1/9/2026', 5000, 0, 0],
+        ['A-5', 'Goh', '900514-00-0002', '012', 600000, '1/9/2026', 0.4, 0, 0]
+      ],
+      OPTIONS
+    )
+    expect(reading.rows.map((r) => r.errors)).toEqual([
+      ['Commitments Cannot Be Negative'],
+      ['Properties Owned Must Be 0 To 99'],
+      ['Properties Owned Must Be 0 To 99'],
+      ['Price Above RM 2,000,000,000, Check The Figure'],
+      ['Gross Monthly Income Must Be Above RM 0']
+    ])
+    expect(reading.rows.every((r) => r.draft === null)).toBe(true)
+  })
+
+  // Issue #7: the column, not a single cell, decides the date order.
+  it('reads a month-first date column month first, and says so', () => {
+    const row = (unit: string, date: string) => [unit, 'Lee', '900514-00-0002', '012', '600000', date, '5000']
+    const reading = readBookingSheet([HEADER, row('A-1', '9/2/2026'), row('A-2', '9/15/2026')], OPTIONS)
+    expect(reading.rows.map((r) => r.draft?.bookingDate)).toEqual(['2026-09-02', '2026-09-15'])
+    expect(reading.notes).toContain(
+      'Booking Dates Are Written Month First (As In 9/15/2026), So They Were Read That Way'
+    )
+  })
+
+  it('keeps day first when the column proves it, and flags a mixed column', () => {
+    const row = (unit: string, date: string) => [unit, 'Lee', '900514-00-0002', '012', '600000', date, '5000']
+    const dayFirst = readBookingSheet([HEADER, row('A-1', '9/2/2026'), row('A-2', '15/9/2026')], OPTIONS)
+    expect(dayFirst.rows.map((r) => r.draft?.bookingDate)).toEqual(['2026-02-09', '2026-09-15'])
+    expect(dayFirst.notes.some((n) => n.startsWith('Booking Dates'))).toBe(false)
+
+    const mixed = readBookingSheet([HEADER, row('A-1', '15/9/2026'), row('A-2', '9/15/2026')], OPTIONS)
+    expect(mixed.rows.map((r) => r.errors)).toEqual([[], ['Booking Date Not Recognised']])
+    expect(mixed.notes.some((n) => n.startsWith('Booking Dates Mix'))).toBe(true)
+  })
+})
+
+describe('detectDateOrder', () => {
+  it('ignores XLSX date cells, serials and ISO text, which carry their own order', () => {
+    expect(detectDateOrder([new Date(), 46267, '2026-09-02', null])).toEqual({
+      order: 'day-first',
+      evidence: 'no-numeric-dates'
+    })
+  })
 })
 
 describe('checkBookingDraft', () => {
@@ -192,7 +250,7 @@ describe('checkBookingDraft', () => {
       '2026-09-18'
     )
     expect(problems).toContain('unit is required')
-    expect(problems).toContain('priceRm must be a whole number of at least 10000')
+    expect(problems).toContain('priceRm must be a whole number from 10000 to 2000000000')
     expect(problems).toContain('bookingDate is after 2026-09-18')
     expect(problems).toContain('buyer.age must be a whole number from 18 to 100')
     expect(checkBookingDraft(null, '2026-09-18')).toEqual(['Not A Booking'])

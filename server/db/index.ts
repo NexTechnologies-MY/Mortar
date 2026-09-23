@@ -5,6 +5,7 @@
  * `mappers.ts` — handlers never see snake_case.
  */
 import { SQL } from 'bun'
+import { unitKey } from '@mortar/core'
 import type {
   Booking,
   BookingDraft,
@@ -28,6 +29,7 @@ import {
   rowToPlaybook,
   rowToTask,
   rowsToMeta,
+  withMaskedContact,
   type JevAnswerRow
 } from './mappers'
 
@@ -38,7 +40,10 @@ export interface Database {
   meta(): Promise<SimulationMeta | null>
   /** The case-derivation input: bookings, applications, events and tasks. */
   caseData(): Promise<CaseData>
-  /** Everything `GET /api/snapshot` returns; throws when the database is unseeded. */
+  /**
+   * Everything `GET /api/snapshot` returns, buyer IC and phone masked to their
+   * last four digits; throws when the database is unseeded.
+   */
   snapshot(): Promise<Snapshot>
   getBooking(id: string): Promise<Booking | null>
   getMessage(id: string): Promise<Message | null>
@@ -54,10 +59,24 @@ export interface Database {
   insertTask(task: Task): Promise<void>
   /**
    * Numbers and stores imported bookings in one transaction, each with the
-   * event `bookedEvent` builds for it, and returns them as stored. Ids continue
-   * the generator's `BK-nnnn` run, which stops short of the stories' `BK-9001`.
+   * event `bookedEvent` builds for it, records the batch under `batch.id`, and
+   * returns the bookings as stored. Ids continue the generator's `BK-nnnn` run,
+   * which stops short of the stories' `BK-9001`. Throws `UnitHeldError` when an
+   * open booking already holds one of the units; the check runs under the same
+   * lock as the insert, so two imports at once cannot both take a unit.
    */
-  importBookings(drafts: BookingDraft[], bookedEvent: (booking: Booking) => CaseEvent): Promise<Booking[]>
+  importBookings(
+    batch: ImportBatch,
+    drafts: BookingDraft[],
+    bookedEvent: (booking: Booking) => CaseEvent
+  ): Promise<Booking[]>
+  /**
+   * Removes an import's bookings, and everything cascading from them, as long
+   * as none has moved on since: no update besides its booked event, no message,
+   * no task, no bank application. `null` when there is no such import; throws
+   * `ImportMovedOnError` naming the bookings that have moved on.
+   */
+  undoImport(id: string): Promise<{ removed: string[] } | null>
   updateTaskStatus(id: string, status: Task['status'], completedAt: IsoDateTime | null): Promise<Task | null>
   /** Latest `jev_answers` rows for `extract`, `next_action` and `signals`, for the snapshot. */
   latestJevAnswers(): Promise<JevAnswerRow[]>
@@ -77,6 +96,32 @@ export interface Database {
     source: 'live' | 'precomputed'
     latencyMs: number | null
   }): Promise<void>
+}
+
+/** Who imported a sheet, and when; one row in `imports`. */
+export interface ImportBatch {
+  id: string
+  /** The file name, when the browser sent one. */
+  source: string | null
+  reportedBy: string
+  createdAt: IsoDateTime
+}
+
+/** An open booking already holds a unit the import would book. */
+export class UnitHeldError extends Error {
+  constructor(
+    readonly unit: string,
+    readonly holder: string
+  ) {
+    super(`unit ${unit} is already held by ${holder}`)
+  }
+}
+
+/** Some of an import's bookings have moved on, so the batch cannot be undone. */
+export class ImportMovedOnError extends Error {
+  constructor(readonly bookingIds: string[]) {
+    super(`${bookingIds.join(', ')} ${bookingIds.length === 1 ? 'has' : 'have'} had updates since the import`)
+  }
 }
 
 /** Advisory lock key that serialises imports, so two batches never draw the same booking numbers. */
@@ -149,6 +194,7 @@ export function createDatabase(sql: SQL): Database {
       }
       return {
         ...data,
+        bookings: data.bookings.map(withMaskedContact),
         meta: metaRow,
         messages: messages.map(rowToMessage),
         playbooks: playbooks.map(rowToPlaybook),
@@ -242,9 +288,19 @@ export function createDatabase(sql: SQL): Database {
       })}`
     },
 
-    async importBookings(drafts, bookedEvent) {
+    async importBookings(batch, drafts, bookedEvent) {
       return sql.begin(async (tx) => {
         await tx`select pg_advisory_xact_lock(${IMPORT_LOCK})`
+        // Under the lock, so a concurrent import's bookings are already visible
+        // here. Matches `unitKey`; a cancelled or lapsed booking frees its unit.
+        const keys = drafts.map((d) => unitKey(d.project, d.unit))
+        const held = await tx`select b.id, b.unit from bookings b
+          where lower(trim(b.project)) || '|' || upper(trim(b.unit)) in ${tx(keys)}
+            and not exists (select 1 from events e where e.booking_id = b.id
+              and e.status = 'confirmed' and e.kind in ('cancelled', 'lapsed'))
+          order by b.id limit 1`
+        if (held.length > 0) throw new UnitHeldError(String(held[0].unit), String(held[0].id))
+
         const rows = await tx`select coalesce(max(substring(id from 4)::int), 0)::int as n
           from bookings where id ~ '^BK-[0-8][0-9]{3}$'`
         const last = (rows[0]?.n as number | undefined) ?? 0
@@ -284,7 +340,36 @@ export function createDatabase(sql: SQL): Database {
             note: e.note
           }))
         )}`
+        await tx`insert into imports ${tx({
+          id: batch.id,
+          source: batch.source,
+          reported_by: batch.reportedBy,
+          created_at: batch.createdAt,
+          // Booking ids are generated above (`BK-nnnn`), so the literal needs no escaping.
+          booking_ids: `{${bookings.map((b) => b.id).join(',')}}`
+        })}`
         return bookings
+      })
+    },
+
+    async undoImport(id) {
+      return sql.begin(async (tx) => {
+        const rows = await tx`select booking_ids from imports where id = ${id} for update`
+        if (rows.length === 0) return null
+        const ids = rows[0].booking_ids as string[]
+        const moved = await tx`select b.id from bookings b where b.id in ${tx(ids)} and (
+            exists (select 1 from events e where e.booking_id = b.id and e.kind <> 'booked')
+            or exists (select 1 from messages m where m.booking_id = b.id)
+            or exists (select 1 from tasks t where t.booking_id = b.id)
+            or exists (select 1 from loan_applications a where a.booking_id = b.id)
+          ) order by b.id`
+        if (moved.length > 0) throw new ImportMovedOnError(moved.map((r: Record<string, unknown>) => String(r.id)))
+        // Events cascade from bookings; cached Jev answers are keyed by booking id
+        // and would otherwise greet the next booking to reuse the number.
+        await tx`delete from jev_answers where subject_id in ${tx(ids)}`
+        await tx`delete from bookings where id in ${tx(ids)}`
+        await tx`delete from imports where id = ${id}`
+        return { removed: ids }
       })
     },
 

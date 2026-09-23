@@ -2,12 +2,14 @@
  * Integration tests against the live Neon database — skipped when
  * `DATABASE_URL` is absent (CI has none). Covers `applySchema` and the
  * round-trip of every writable path in `db/index.ts`; test rows carry
- * `W2TEST-` ids and are deleted afterwards. The full `resetDatabase` path
- * needs lane W1's generator and is verified end to end once it lands.
+ * `W2TEST-` ids (imported bookings, which take real `BK-nnnn` numbers, carry
+ * the `W2TEST Project`) and are deleted afterwards. The full `resetDatabase`
+ * path needs lane W1's generator and is verified end to end once it lands.
  */
 import { afterAll, describe, expect, test } from 'bun:test'
 import { SQL } from 'bun'
-import { createDatabase } from '../index'
+import type { Booking, BookingDraft, CaseEvent } from '@mortar/core'
+import { ImportMovedOnError, UnitHeldError, createDatabase } from '../index'
 import { applySchema } from '../reset'
 
 const DATABASE_URL = process.env.DATABASE_URL
@@ -132,5 +134,109 @@ describe.skipIf(!DATABASE_URL)('database integration', () => {
     expect(await db.jevGet('signals', 'W2TEST-NONE', 'h1')).toBeNull()
     const latest = await db.latestJevAnswers()
     expect(latest.find((r) => r.subjectId === 'W2TEST-BK')?.answer).toEqual({ v: 2 })
+  })
+
+  describe('importBookings and undoImport', () => {
+    // A project of its own, so the units never meet real ones; afterAll removes it.
+    const project = 'W2TEST Project'
+    const draft = (unit: string): BookingDraft => ({
+      project,
+      unit,
+      priceRm: 600000,
+      bookingDate: '2026-09-01',
+      buyer: {
+        name: 'Test Buyer',
+        ic: '900514-00-0001',
+        phone: '+60 00-000 0001',
+        age: 36,
+        grossMonthlyIncomeRm: 8000,
+        monthlyCommitmentsRm: 0,
+        propertiesOwned: 0
+      },
+      salesOwner: 'Unassigned',
+      loanOwner: 'Tan Mei Ling',
+      legalFirm: 'Unassigned'
+    })
+    const booked =
+      (tag: string) =>
+      (booking: Booking): CaseEvent => ({
+        id: `W2TEST-EV-${tag}-${booking.id}`,
+        bookingId: booking.id,
+        applicationId: null,
+        track: 'sales',
+        kind: 'booked',
+        occurredAt: '2026-09-01T09:00:00+08:00',
+        recordedAt: '2026-09-18T09:00:00+08:00',
+        reportedBy: 'Tan Mei Ling',
+        verifiedBy: 'Tan Mei Ling',
+        status: 'confirmed',
+        source: 'staff',
+        messageId: null,
+        document: null,
+        note: 'Imported From W2TEST'
+      })
+    const batch = (id: string) => ({
+      id: `W2TEST-${id}`,
+      source: 'w2test.csv',
+      reportedBy: 'Tan Mei Ling',
+      createdAt: '2026-09-18T09:00:00+08:00'
+    })
+
+    afterAll(async () => {
+      await sql`delete from bookings where project = ${project}`
+      await sql`delete from imports where id like 'W2TEST-%'`
+    })
+
+    test('numbers after the highest BK-nnnn, records the batch, and undoes it', async () => {
+      const before = await sql`select coalesce(max(substring(id from 4)::int), 0)::int as n
+        from bookings where id ~ '^BK-[0-8][0-9]{3}$'`
+      const next = (before[0].n as number) + 1
+      const bookings = await db.importBookings(batch('A'), [draft('T-01'), draft('T-02')], booked('A'))
+      expect(bookings.map((b) => b.id)).toEqual([next, next + 1].map((n) => `BK-${String(n).padStart(4, '0')}`))
+      const events =
+        await sql`select booking_id, kind, status from events where booking_id in ${sql(bookings.map((b) => b.id))}`
+      expect(events).toHaveLength(2)
+
+      expect(await db.undoImport('W2TEST-A')).toEqual({ removed: bookings.map((b) => b.id) })
+      expect(await db.getBooking(bookings[0].id)).toBeNull()
+      expect(await db.undoImport('W2TEST-A')).toBeNull()
+    })
+
+    test('refuses a held unit, even when two imports race for it', async () => {
+      const results = await Promise.allSettled([
+        db.importBookings(batch('B'), [draft('T-10')], booked('B')),
+        db.importBookings(batch('C'), [draft('T-10')], booked('C'))
+      ])
+      expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1)
+      const refused = results.find((r) => r.status === 'rejected') as PromiseRejectedResult
+      expect(refused.reason).toBeInstanceOf(UnitHeldError)
+      const rows = await sql`select id from bookings where project = ${project} and unit = 'T-10'`
+      expect(rows).toHaveLength(1)
+    })
+
+    test('will not undo a batch whose booking has moved on', async () => {
+      const [booking] = await db.importBookings(batch('D'), [draft('T-20')], booked('D'))
+      await db.insertTask({
+        id: 'W2TEST-TSK-D',
+        bookingId: booking.id,
+        action: 'call_buyer',
+        title: 'Call',
+        ownerRole: 'sales',
+        ownerName: 'Nurul Aina',
+        dueOn: '2026-09-19',
+        status: 'open',
+        origin: 'staff',
+        createdAt: '2026-09-18T09:00:00+08:00',
+        completedAt: null
+      })
+      // Settled by hand: `await expect(...).rejects` on this promise hangs Bun's
+      // test runner (1.3.14) until the test times out, though the call returns.
+      const outcome = await db.undoImport('W2TEST-D').then(
+        () => 'resolved',
+        (e: unknown) => (e instanceof ImportMovedOnError ? 'moved-on' : `other: ${String(e)}`)
+      )
+      expect(outcome).toBe('moved-on')
+      expect(await db.getBooking(booking.id)).not.toBeNull()
+    })
   })
 })

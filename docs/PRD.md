@@ -499,6 +499,12 @@ AI service is unavailable.
 
 The system must support intake of operational spreadsheets.
 
+**Status:** Built. The shipped `/import` flow goes beyond AC-13.1 to AC-13.3 in
+two respects: an import can be undone from its confirmation screen, provided
+none of its bookings has since taken an update, message, or task; and a date
+column written month first is detected and parsed as month first across the
+whole column, with the row review stating the switch.
+
 - **AC-13.1:** The `/import` screen must provide a custom drag-and-drop zone
   accepting XLSX and CSV booking spreadsheets.
 - **AC-13.2:** The parser must extract unit codes, buyer names, ICs, phone
@@ -569,6 +575,26 @@ which is otherwise measured nowhere.
 - **AC-15.5:** `CaseSummary` must carry `daysSinceLoIssued` and
   `daysSinceSpaSet`, both nullable, so the desk and the chase list read one
   derivation rather than two.
+
+### FR-17: Waiting On Party And Next Move
+
+The system must name who is holding up each open case, what they owe, and the
+next move, on the bookings ledger and on the case page alike.
+
+- **AC-17.1:** Every open case must record the party currently waited on (buyer,
+  bank, solicitor, or developer), what that party owes, and the next move
+  together with the desk that makes it.
+- **AC-17.2:** `/bookings` must show a Waiting On column in place of the retired
+  Last Update column, displaying the waiting party in plain text while the case
+  is moving and a red pill showing days since the last update once the case
+  stalls; a Waiting On filter must narrow the table to cases waiting on one
+  chosen party.
+- **AC-17.3:** Clicking a Waiting On cell must open a quick view beside the
+  table showing the five milestones with the stuck one marked, the blocker, the
+  next move, and a one-click Add Task action, without losing the table's active
+  filters or page.
+- **AC-17.4:** `/bookings/:id` must display the same Waiting On and Next Move
+  block under the case header.
 
 ## Non-Functional Requirements
 

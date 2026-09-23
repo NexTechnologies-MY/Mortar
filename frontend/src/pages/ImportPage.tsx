@@ -4,11 +4,11 @@
  * from `@mortar/core`), every row is shown with what is wrong with it, and
  * only the ready rows are sent, as one batch, to `POST /api/bookings/import`.
  * Units an open booking already holds are caught here and again on the server.
+ * The confirmation (`ImportedCard`) can undo the batch.
  */
 
 import { useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { CheckCircle2, Download } from 'lucide-react'
+import { Download, TriangleAlert } from 'lucide-react'
 import {
   PERSONA_STAFF,
   readBookingSheet,
@@ -23,15 +23,13 @@ import { importBookings } from '@/lib/api'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { PageHeaderCard } from '@/components/layout/PageHeaderCard'
 import { DropZone } from '@/components/import/DropZone'
+import { ImportedCard } from '@/components/import/ImportedCard'
 import { SheetReview } from '@/components/import/SheetReview'
 import { SheetReadError, readSheetFile } from '@/components/import/readSheetFile'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { StatusPill } from '@/components/ui/status-pill'
 import { notify } from '@/components/ui/toastConfig'
-
-/** How many imported booking ids the confirmation lists before summing up the rest. */
-const SHOWN_IDS = 12
 
 /** The project most bookings belong to: where a sheet without a Project column lands. */
 function mainProject(bookings: Booking[]): string {
@@ -58,7 +56,7 @@ export function ImportPage() {
   const [reading, setReading] = useState(false)
   const [readError, setReadError] = useState<string | null>(null)
   const [importing, setImporting] = useState(false)
-  const [imported, setImported] = useState<Booking[] | null>(null)
+  const [imported, setImported] = useState<{ importId: string; bookings: Booking[] } | null>(null)
   /** Bumped to remount the drop zone empty once a sheet has been imported. */
   const [zoneKey, setZoneKey] = useState(0)
   /** Ignores a slow read that finishes after a newer file replaced it. */
@@ -125,7 +123,7 @@ export function ImportPage() {
         source: file?.name
       })
       readToken.current += 1
-      setImported(result.bookings)
+      setImported(result)
       setFile(null)
       setCells(null)
       setZoneKey((k) => k + 1)
@@ -186,6 +184,11 @@ export function ImportPage() {
             <p className="text-[13px] text-muted-foreground">
               The Sheet Is Read In Your Browser. Only The Rows You Import Are Sent To Mortar.
             </p>
+            <p className="flex items-start gap-1.5 text-[13px] text-status-warning-fg">
+              <TriangleAlert aria-hidden="true" className="mt-px size-4 shrink-0" />
+              This Demo Is Public And Has No Sign-In. Import Made-Up Buyers Only, Never Real Names, IC Numbers Or
+              Incomes.
+            </p>
           </CardContent>
         </Card>
 
@@ -198,7 +201,10 @@ export function ImportPage() {
               <li>One Row Per Unit Booking, Under A Row Of Column Names.</li>
               <li>Unit, Buyer Name, IC Number, Phone, Price, Booking Date And Gross Monthly Income.</li>
               <li>Optional: Monthly Commitments, Properties Owned, Project, Sales Agent And Solicitor.</li>
-              <li>Dates Read Day First, As In 2/9/2026. The Buyer&apos;s Age Comes From The IC.</li>
+              <li>
+                Dates Read Day First, As In 2/9/2026, Unless The Column Shows Month First. The Buyer&apos;s Age Comes
+                From The IC.
+              </li>
             </ul>
             <div>
               <Button variant="secondary" size="sm" asChild>
@@ -213,40 +219,14 @@ export function ImportPage() {
       </div>
 
       {imported ? (
-        <Card className="mt-4">
-          <CardContent className="flex flex-col gap-3 p-4">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 aria-hidden="true" className="size-4 text-status-positive-fg" />
-              <h2 className="text-base font-semibold">
-                {imported.length.toLocaleString()} {imported.length === 1 ? 'Booking' : 'Bookings'} Imported
-              </h2>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              They Are On The Bookings Desk Now, Each Waiting On The Developer To Collect The Loan Documents.
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {imported.slice(0, SHOWN_IDS).map((b) => (
-                <Link
-                  key={b.id}
-                  to={`/bookings/${b.id}`}
-                  className="rounded-sm border border-border px-2 py-0.5 font-mono text-[13px] font-medium hover:bg-accent"
-                >
-                  {b.id}
-                </Link>
-              ))}
-              {imported.length > SHOWN_IDS ? (
-                <span className="px-1 text-[13px] text-muted-foreground">
-                  And {(imported.length - SHOWN_IDS).toLocaleString()} More
-                </span>
-              ) : null}
-            </div>
-            <div>
-              <Button asChild size="sm">
-                <Link to="/bookings">Open Bookings</Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <ImportedCard
+          importId={imported.importId}
+          bookings={imported.bookings}
+          onUndone={async () => {
+            setImported(null)
+            await refresh()
+          }}
+        />
       ) : null}
 
       {sheet ? (

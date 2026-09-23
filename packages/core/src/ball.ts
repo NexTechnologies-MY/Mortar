@@ -44,9 +44,11 @@ export function ballInCourt(summary: CaseSummary): BallInCourt {
     return { holder: null, waitingFor: 'Nothing, The Booking Has Closed', nextMove: null, stalled: false }
   }
 
-  // Withdrawn means the buyer has walked away, so documents they still owe no
-  // longer matter: the unit is the developer's to release.
-  if (summary.applications.some((a) => a.status === 'withdrawn')) {
+  // A buyer who has walked away outranks everything else: documents they still
+  // owe and a bank's decision, approval included, no longer matter, and the unit
+  // is the developer's to release. Read the summary's flag, not the applications:
+  // an application the bank already decided is never marked withdrawn.
+  if (summary.buyerWithdrew) {
     return { holder: 'developer', waitingFor: 'A Decision To Release The Unit', nextMove: 'review_release', stalled }
   }
   if (summary.outstandingDocuments.length > 0) {

@@ -74,7 +74,9 @@ export async function resetDatabase(sql: SQL): Promise<SimulationMeta> {
   }
 
   await sql.begin(async (tx) => {
-    await tx.unsafe('truncate events, messages, loan_applications, bookings, playbooks, tasks, jev_answers, meta')
+    await tx.unsafe(
+      'truncate events, messages, loan_applications, bookings, playbooks, tasks, jev_answers, imports, meta'
+    )
     // Multi-row inserts: one round trip per chunk instead of one per row.
     const chunks = <T>(rows: T[]) => {
       const out: T[][] = []

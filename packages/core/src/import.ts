@@ -122,7 +122,15 @@ const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', '
 const DAY_MS = 86_400_000
 /** Excel's day zero; serial 1 is 1 Jan 1900 (the 1900 leap-year bug is past by 1 Mar 1900). */
 const EXCEL_EPOCH = Date.UTC(1899, 11, 30)
+/** Limits `readBookingSheet` and `checkBookingDraft` share, so a row shown Ready is never refused. */
 const MIN_PRICE_RM = 10_000
+const MAX_PRICE_RM = 2_000_000_000
+const MAX_PROPERTIES = 99
+/** `2/9/2026`, `02-09-26`, `2.9.2026`: two numbers and a year, in an order the sheet does not state. */
+const NUMERIC_DATE = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4}|\d{2})$/
+
+/** Which number comes first in a sheet's `d/m/y`-style dates. */
+export type DateOrder = 'day-first' | 'month-first'
 
 /** The key two bookings share when they hold the same unit of the same project. */
 export function unitKey(project: string, unit: string): string {
@@ -165,10 +173,11 @@ function isoFromParts(year: number, month: number, day: number): IsoDate | null 
 
 /**
  * A booking date as sheets write it: an XLSX date cell, an Excel serial
- * number, `2026-09-02`, day-first `2/9/2026` or `02-09-26` (the Malaysian
- * order), or `2 Sep 2026`. `null` when it cannot be read with certainty.
+ * number, `2026-09-02`, `2 Sep 2026`, or two numbers and a year (`2/9/2026`,
+ * `02-09-26`) read in `order`: day first by default, the Malaysian order.
+ * `null` when it cannot be read with certainty.
  */
-export function parseSheetDate(cell: SheetCell): IsoDate | null {
+export function parseSheetDate(cell: SheetCell, order: DateOrder = 'day-first'): IsoDate | null {
   if (cell instanceof Date) return Number.isNaN(cell.getTime()) ? null : cell.toISOString().slice(0, 10)
   if (typeof cell === 'number') {
     if (!Number.isFinite(cell) || cell < 32_874 || cell > 73_051) return null // 1990 to 2099
@@ -178,14 +187,46 @@ export function parseSheetDate(cell: SheetCell): IsoDate | null {
   const fullYear = (y: string) => (y.length === 2 ? 2000 + Number(y) : Number(y))
   let m = /^(\d{4})-(\d{1,2})-(\d{1,2})(?:[t\s].*)?$/.exec(value)
   if (m) return isoFromParts(Number(m[1]), Number(m[2]), Number(m[3]))
-  m = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4}|\d{2})$/.exec(value)
-  if (m) return isoFromParts(fullYear(m[3]), Number(m[2]), Number(m[1]))
+  m = NUMERIC_DATE.exec(value)
+  if (m) {
+    const [day, month] = order === 'day-first' ? [m[1], m[2]] : [m[2], m[1]]
+    return isoFromParts(fullYear(m[3]), Number(month), Number(day))
+  }
   m = /^(\d{1,2})[\s/-]*([a-z]{3,9})[\s/,-]*(\d{4}|\d{2})$/.exec(value)
   if (m) {
     const month = MONTHS.indexOf(m[2].slice(0, 3)) + 1
     return month > 0 ? isoFromParts(fullYear(m[3]), month, Number(m[1])) : null
   }
   return null
+}
+
+/**
+ * Reads a whole date column to decide its order, since one `2/9/2026` cannot.
+ * A value whose first number is over 12 (`15/9/2026`) proves day first; one
+ * whose second is over 12 (`9/15/2026`) proves month first. Day first wins
+ * unless only month-first proof exists. `evidence` says what was seen, so the
+ * review can tell the reader when the order was a guess or the column is mixed.
+ */
+export function detectDateOrder(cells: SheetCell[]): {
+  order: DateOrder
+  evidence: 'day-first' | 'month-first' | 'mixed' | 'none' | 'no-numeric-dates'
+} {
+  let dayFirst = false
+  let monthFirst = false
+  let numeric = false
+  for (const cell of cells) {
+    if (typeof cell !== 'string') continue
+    const m = NUMERIC_DATE.exec(cell.trim())
+    if (!m) continue
+    numeric = true
+    const [a, b] = [Number(m[1]), Number(m[2])]
+    if (a > 12 && b <= 12) dayFirst = true
+    if (b > 12 && a <= 12) monthFirst = true
+  }
+  if (!numeric) return { order: 'day-first', evidence: 'no-numeric-dates' }
+  if (dayFirst && monthFirst) return { order: 'day-first', evidence: 'mixed' }
+  if (monthFirst) return { order: 'month-first', evidence: 'month-first' }
+  return { order: 'day-first', evidence: dayFirst ? 'day-first' : 'none' }
 }
 
 /**
@@ -246,6 +287,16 @@ export function readBookingSheet(cells: SheetCell[][], options: ReadSheetOptions
   if (!has('propertiesOwned')) notes.push('No Properties Owned Column, So Every Buyer Counts As A First-Time Buyer')
   if (!has('project')) notes.push(`No Project Column, So Every Unit Joins ${defaults.project}`)
 
+  const dateColumn = header.columns.get('bookingDate')!
+  const dates = detectDateOrder(cells.slice(header.line).map((row) => row?.[dateColumn]))
+  if (dates.evidence === 'month-first') {
+    notes.push('Booking Dates Are Written Month First (As In 9/15/2026), So They Were Read That Way')
+  } else if (dates.evidence === 'none') {
+    notes.push('Booking Dates Were Read Day First (2/9/2026 Is 2 Sep); Check Them If The Sheet Writes Month First')
+  } else if (dates.evidence === 'mixed') {
+    notes.push('Booking Dates Mix Day-First And Month-First Writing; Rows That Cannot Be Read Day First Are Marked')
+  }
+
   const rows: SheetRow[] = []
   const seen = new Map<string, number>()
   for (let r = header.line; r < cells.length; r++) {
@@ -274,8 +325,9 @@ export function readBookingSheet(cells: SheetCell[][], options: ReadSheetOptions
     const price = parseAmount(cell('priceRm'))
     if (price === null) errors.push(text(cell('priceRm')) ? 'Price Is Not An Amount' : 'Price Missing')
     else if (price < MIN_PRICE_RM) errors.push('Price Below RM 10,000, Check The Figure')
+    else if (price > MAX_PRICE_RM) errors.push('Price Above RM 2,000,000,000, Check The Figure')
 
-    const bookingDate = parseSheetDate(cell('bookingDate'))
+    const bookingDate = parseSheetDate(cell('bookingDate'), dates.order)
     if (bookingDate === null) {
       errors.push(text(cell('bookingDate')) ? 'Booking Date Not Recognised' : 'Booking Date Missing')
     } else if (bookingDate > referenceDate) {
@@ -283,14 +335,17 @@ export function readBookingSheet(cells: SheetCell[][], options: ReadSheetOptions
     }
 
     const income = parseAmount(cell('grossMonthlyIncomeRm'))
-    if (income === null || income <= 0) {
+    if (income === null) {
       errors.push(text(cell('grossMonthlyIncomeRm')) ? 'Income Is Not An Amount' : 'Gross Monthly Income Missing')
-    }
+    } else if (Math.round(income) < 1) errors.push('Gross Monthly Income Must Be Above RM 0')
 
+    // A number cell can hold a negative that a text cell's pattern would refuse,
+    // so the limits are checked on the value, the same limits the server applies.
     let commitments = 0
     if (has('monthlyCommitmentsRm')) {
       const value = parseAmount(cell('monthlyCommitmentsRm'))
-      if (value !== null) commitments = value
+      if (value !== null && value >= 0) commitments = value
+      else if (value !== null) errors.push('Commitments Cannot Be Negative')
       else if (text(cell('monthlyCommitmentsRm'))) errors.push('Commitments Are Not An Amount')
       else warnings.push('Commitments Blank, Counted As RM 0')
     }
@@ -298,7 +353,8 @@ export function readBookingSheet(cells: SheetCell[][], options: ReadSheetOptions
     let propertiesOwned = 0
     if (has('propertiesOwned')) {
       const value = parseAmount(cell('propertiesOwned'))
-      if (value !== null && Number.isInteger(value)) propertiesOwned = value
+      if (value !== null && Number.isInteger(value) && value >= 0 && value <= MAX_PROPERTIES) propertiesOwned = value
+      else if (value !== null && Number.isInteger(value)) errors.push(`Properties Owned Must Be 0 To ${MAX_PROPERTIES}`)
       else if (text(cell('propertiesOwned'))) errors.push('Properties Owned Is Not A Whole Number')
       else warnings.push('Properties Owned Blank, Counted As None')
     }
@@ -336,23 +392,31 @@ export function readBookingSheet(cells: SheetCell[][], options: ReadSheetOptions
       monthlyCommitmentsRm: Math.round(commitments),
       propertiesOwned
     }
-    rows.push({
-      line,
+    const draft: BookingDraft = {
+      project,
       unit,
-      buyerName: name,
-      draft: {
-        project,
+      priceRm: Math.round(price),
+      bookingDate,
+      buyer,
+      salesOwner: text(cell('salesOwner')) || defaults.salesOwner,
+      loanOwner: defaults.loanOwner,
+      legalFirm: text(cell('legalFirm')) || defaults.legalFirm
+    }
+    // The server runs this same check on the batch and refuses all of it on one
+    // failure, so a row it would refuse is never shown as Ready (issue #4).
+    const refused = checkBookingDraft(draft, referenceDate)
+    if (refused.length > 0) {
+      rows.push({
+        line,
         unit,
-        priceRm: Math.round(price),
-        bookingDate,
-        buyer,
-        salesOwner: text(cell('salesOwner')) || defaults.salesOwner,
-        loanOwner: defaults.loanOwner,
-        legalFirm: text(cell('legalFirm')) || defaults.legalFirm
-      },
-      errors,
-      warnings
-    })
+        buyerName: name,
+        draft: null,
+        errors: refused.map((p) => `Mortar Would Refuse: ${p}`),
+        warnings
+      })
+      continue
+    }
+    rows.push({ line, unit, buyerName: name, draft, errors, warnings })
   }
   return { headerLine: header.line, columns, missing, notes, rows }
 }
@@ -419,8 +483,8 @@ export function checkBookingDraft(value: unknown, referenceDate: IsoDate): strin
   for (const key of ['name', 'ic', 'phone'] as const) {
     if (!isText(b[key])) problems.push(`buyer.${key} is required`)
   }
-  if (!isCount(d.priceRm, MIN_PRICE_RM, 2_000_000_000)) {
-    problems.push(`priceRm must be a whole number of at least ${MIN_PRICE_RM}`)
+  if (!isCount(d.priceRm, MIN_PRICE_RM, MAX_PRICE_RM)) {
+    problems.push(`priceRm must be a whole number from ${MIN_PRICE_RM} to ${MAX_PRICE_RM}`)
   }
   if (typeof d.bookingDate !== 'string' || parseSheetDate(d.bookingDate) !== d.bookingDate) {
     problems.push('bookingDate must be a YYYY-MM-DD date')
@@ -428,6 +492,8 @@ export function checkBookingDraft(value: unknown, referenceDate: IsoDate): strin
   if (!isCount(b.age, 18, 100)) problems.push('buyer.age must be a whole number from 18 to 100')
   if (!isCount(b.grossMonthlyIncomeRm, 1)) problems.push('buyer.grossMonthlyIncomeRm must be a positive whole number')
   if (!isCount(b.monthlyCommitmentsRm, 0)) problems.push('buyer.monthlyCommitmentsRm must be a whole number')
-  if (!isCount(b.propertiesOwned, 0, 99)) problems.push('buyer.propertiesOwned must be a whole number')
+  if (!isCount(b.propertiesOwned, 0, MAX_PROPERTIES)) {
+    problems.push(`buyer.propertiesOwned must be a whole number from 0 to ${MAX_PROPERTIES}`)
+  }
   return problems
 }

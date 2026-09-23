@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { PersonaProvider } from '@/lib/persona'
 import { SnapshotProvider } from '@/lib/data'
-import { importBookings } from '@/lib/api'
+import { importBookings, undoImport } from '@/lib/api'
 import { ImportPage } from '@/pages/ImportPage'
 
 vi.mock('@/lib/api', async () => {
@@ -12,8 +12,10 @@ vi.mock('@/lib/api', async () => {
   return {
     fetchSnapshot: vi.fn(async () => snapshot),
     importBookings: vi.fn(async ({ bookings }: { bookings: object[] }) => ({
+      importId: 'IMP-1',
       bookings: bookings.map((b, i) => ({ ...b, id: `BK-${String(141 + i).padStart(4, '0')}` }))
-    }))
+    })),
+    undoImport: vi.fn(async () => ({ removed: ['BK-0141'] }))
   }
 })
 
@@ -59,6 +61,7 @@ describe('ImportPage', () => {
   beforeEach(() => {
     window.localStorage.clear()
     vi.mocked(importBookings).mockClear()
+    vi.mocked(undoImport).mockClear()
   })
 
   it('reviews every row: ready, held by an open booking, or missing a value', async () => {
@@ -88,6 +91,26 @@ describe('ImportPage', () => {
     expect(input.bookings[0]).toMatchObject({ unit: 'D-05-01', priceRm: 548000, bookingDate: '2026-09-01' })
     expect(await screen.findByText('1 Booking Imported')).toBeTruthy()
     expect(screen.getByRole('link', { name: 'BK-0141' }).getAttribute('href')).toBe('/bookings/BK-0141')
+  })
+
+  it('undoes the import from its confirmation, after asking', async () => {
+    renderImport()
+    await screen.findByRole('heading', { name: 'Import' })
+    drop(SHEET)
+    fireEvent.click(await screen.findByRole('button', { name: 'Import 1 Booking' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Undo This Import' }))
+
+    expect(screen.getByText('Undo This Import?')).toBeTruthy()
+    expect(undoImport).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Remove 1 Booking' }))
+
+    await waitFor(() => expect(undoImport).toHaveBeenCalledWith('IMP-1'))
+    await waitFor(() => expect(screen.queryByText('1 Booking Imported')).toBeNull())
+  })
+
+  it('warns that the public demo takes made-up buyers only', async () => {
+    renderImport()
+    expect(await screen.findByText(/Import Made-Up Buyers Only/)).toBeTruthy()
   })
 
   it('names the required columns a sheet is missing', async () => {

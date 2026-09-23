@@ -1,7 +1,7 @@
 -- Mortar database schema; mirrors packages/core/src/types.ts (camelCase there,
 -- snake_case here). The server applies it idempotently on boot and on reset.
 -- Insert order for seeding: bookings, loan_applications, messages, events,
--- playbooks, tasks, jev_answers, meta.
+-- playbooks, tasks, jev_answers, meta. `imports` starts empty.
 
 create table if not exists meta (
   key text primary key,
@@ -84,6 +84,16 @@ create table if not exists tasks (
   origin text not null check (origin in ('jev', 'staff')),
   created_at timestamptz not null,
   completed_at timestamptz
+);
+
+-- One row per spreadsheet import, so a batch can be undone as a whole while
+-- none of its bookings has moved on.
+create table if not exists imports (
+  id text primary key,
+  source text,
+  reported_by text not null,
+  created_at timestamptz not null,
+  booking_ids text[] not null
 );
 
 -- Every Jev answer, live or precomputed. The latest row per key serves as the cache.

@@ -57,6 +57,7 @@ const summary = (overrides: Partial<CaseSummary> = {}): CaseSummary => ({
     { id: 'LA-2', bank: 'Bank B', status: 'rejected' }
   ],
   outstandingDocuments: ['payslip'],
+  buyerWithdrew: false,
   risk: {
     level: 'low',
     loanRm: 450000,

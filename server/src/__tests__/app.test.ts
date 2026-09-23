@@ -17,6 +17,7 @@ const SUMMARY: realCore.CaseSummary = {
   daysSinceSpaSet: null,
   applications: [{ id: 'APP-9001-1', bank: 'Apex Bank', status: 'documents_pending' }],
   outstandingDocuments: ['payslip'],
+  buyerWithdrew: false,
   risk: {
     level: 'medium',
     loanRm: 495000,
@@ -55,7 +56,7 @@ mock.module('@mortar/core', () => ({
 }))
 
 import { createApp, type App } from '../app'
-import type { Database } from '../../db/index'
+import { ImportMovedOnError, UnitHeldError, type Database, type ImportBatch } from '../../db/index'
 import type { JevAnswerRow } from '../../db/mappers'
 import type {
   Booking,
@@ -183,11 +184,42 @@ class FakeDb implements Database {
   async insertTask(task: Task) {
     this.tasks.push(task)
   }
-  async importBookings(drafts: BookingDraft[], bookedEvent: (booking: Booking) => CaseEvent) {
+  imports = new Map<string, string[]>()
+  /** Mirrors the SQL: an open booking (no confirmed cancelled or lapsed) holds its unit. */
+  async importBookings(batch: ImportBatch, drafts: BookingDraft[], bookedEvent: (booking: Booking) => CaseEvent) {
+    const closed = new Set(
+      this.events
+        .filter((e) => e.status === 'confirmed' && (e.kind === 'cancelled' || e.kind === 'lapsed'))
+        .map((e) => e.bookingId)
+    )
+    for (const draft of drafts) {
+      const key = realCore.unitKey(draft.project, draft.unit)
+      const holder = this.bookings.find((b) => !closed.has(b.id) && realCore.unitKey(b.project, b.unit) === key)
+      if (holder) throw new UnitHeldError(draft.unit, holder.id)
+    }
     const imported = drafts.map((draft, i) => ({ id: `BK-${String(141 + i).padStart(4, '0')}`, ...draft }))
     this.bookings.push(...imported)
     this.events.push(...imported.map(bookedEvent))
+    this.imports.set(
+      batch.id,
+      imported.map((b) => b.id)
+    )
     return imported
+  }
+  async undoImport(id: string) {
+    const ids = this.imports.get(id)
+    if (!ids) return null
+    const moved = ids.filter(
+      (bookingId) =>
+        this.events.some((e) => e.bookingId === bookingId && e.kind !== 'booked') ||
+        this.tasks.some((t) => t.bookingId === bookingId) ||
+        this.messages.some((m) => m.bookingId === bookingId)
+    )
+    if (moved.length > 0) throw new ImportMovedOnError(moved)
+    this.bookings = this.bookings.filter((b) => !ids.includes(b.id))
+    this.events = this.events.filter((e) => !ids.includes(e.bookingId))
+    this.imports.delete(id)
+    return { removed: ids }
   }
   async updateTaskStatus(id: string, status: Task['status'], completedAt: string | null) {
     const task = this.tasks.find((t) => t.id === id)
@@ -597,6 +629,49 @@ describe('createApp', () => {
         verifiedBy: 'Tan Mei Ling',
         note: 'Imported From september.xlsx'
       })
+    })
+
+    test('answers with the import id and the bookings, IC and phone masked', async () => {
+      const db = new FakeDb()
+      const res = await call(makeApp(db), '/api/bookings/import', post(valid))
+      const { importId, bookings } = (await res?.json()) as { importId: string; bookings: Booking[] }
+      expect(importId).toMatch(/^IMP-/)
+      expect(bookings[0].buyer.ic).toBe('••••••-••-0001')
+      expect(bookings[0].buyer.phone).toBe('+•• ••-••• 0001')
+      // The database keeps them whole.
+      expect(db.bookings.find((b) => b.id === 'BK-0141')?.buyer.ic).toBe('900514-00-0001')
+    })
+
+    test('undo removes the batch while nothing has moved on, and refuses once it has', async () => {
+      const db = new FakeDb()
+      const app = makeApp(db)
+      const first = (await (await call(app, '/api/bookings/import', post(valid)))?.json()) as { importId: string }
+      const undone = await call(app, `/api/imports/${first.importId}/undo`, post())
+      expect(undone?.status).toBe(200)
+      expect(await undone?.json()).toEqual({ removed: ['BK-0141'] })
+      expect(db.bookings.some((b) => b.id === 'BK-0141')).toBe(false)
+      expect(db.events.some((e) => e.bookingId === 'BK-0141')).toBe(false)
+
+      const second = (await (await call(app, '/api/bookings/import', post(valid)))?.json()) as { importId: string }
+      db.tasks.push({
+        id: 'TSK-1',
+        bookingId: 'BK-0141',
+        action: 'call_buyer',
+        title: 'Call',
+        ownerRole: 'sales',
+        ownerName: 'Nurul Aina',
+        dueOn: '2026-09-19',
+        status: 'open',
+        origin: 'staff',
+        createdAt: '2026-09-18T12:00:00+08:00',
+        completedAt: null
+      })
+      const refused = await call(app, `/api/imports/${second.importId}/undo`, post())
+      expect(refused?.status).toBe(409)
+      expect(await errorOf(refused)).toContain('BK-0141')
+      expect(db.bookings.some((b) => b.id === 'BK-0141')).toBe(true)
+
+      expect((await call(app, '/api/imports/IMP-nope/undo', post()))?.status).toBe(404)
     })
 
     test('stores only the contract fields of a draft', async () => {

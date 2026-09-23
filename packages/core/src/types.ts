@@ -177,6 +177,8 @@ export interface CaseSummary {
   daysSinceSpaSet: number | null
   applications: { id: string; bank: string; status: ApplicationStatus }[]
   outstandingDocuments: DocumentKind[]
+  /** A confirmed `buyer_withdrew` is on the log, whatever the banks decided. */
+  buyerWithdrew: boolean
   risk: FinancingRisk
   /** Why the stall rule flagged this booking; empty when it is not stalled. */
   stallReasons: string[]

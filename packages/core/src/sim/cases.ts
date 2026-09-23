@@ -106,6 +106,8 @@ export interface CaseFacts {
   ageDays: number
   exists: boolean
   live: boolean
+  /** A confirmed `buyer_withdrew` is on the log, whatever the banks decided. */
+  buyerWithdrew: boolean
   /**
    * Still in play: booked, not signed, not exited. Unlike `live` there is no
    * age ceiling, so a case that has sat past the horizon stays visible. Stall
@@ -223,7 +225,8 @@ export function deriveCase(
   const ageDays = diffDays(booking.bookingDate, asOf)
   const exists = ageDays >= 0
   const stage: Stage = rank === EXIT_RANK ? (terminal ?? 'cancelled') : FUNNEL_STAGES[Math.max(0, funnelRank)]
-  const withdrawn = terminal !== null || confirmed.some((e) => e.kind === 'buyer_withdrew')
+  const buyerWithdrew = confirmed.some((e) => e.kind === 'buyer_withdrew')
+  const withdrawn = terminal !== null || buyerWithdrew
   const daysSinceEvidence = lastEvidenceOn === null ? Math.max(0, ageDays) : diffDays(lastEvidenceOn, asOf)
   const signedWithinHorizon = signedOn !== null && diffDays(booking.bookingDate, signedOn) <= horizonDays
   const open = exists && signedOn === null && terminal === null
@@ -244,6 +247,7 @@ export function deriveCase(
     ageDays,
     exists,
     live,
+    buyerWithdrew,
     open,
     resolved,
     signedWithinHorizon,
@@ -329,6 +333,7 @@ export function summarizeCases(data: CaseDataInput, asOf: IsoDate, assumptions: 
       daysSinceSpaSet,
       applications: facts.applications.map((a) => ({ id: a.id, bank: a.bank, status: a.status })),
       outstandingDocuments: facts.outstandingDocuments.map((d) => d.document),
+      buyerWithdrew: facts.buyerWithdrew,
       risk,
       stallReasons,
       openTasks: openTasks.get(booking.id) ?? 0

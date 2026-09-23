@@ -91,8 +91,14 @@ export const postTask = (input: {
 export const updateTask = (taskId: string, status: Task['status']) =>
   request<Task>(`/api/tasks/${taskId}`, { method: 'PATCH', body: JSON.stringify({ status }) })
 
-/** Stores the rows a person chose from a booking sheet; `source` is the file name, kept on each booked update. */
+/**
+ * Stores the rows a person chose from a booking sheet; `source` is the file
+ * name, kept on each booked update. `importId` undoes the batch.
+ */
 export const importBookings = (input: { bookings: BookingDraft[]; reportedBy: string; source?: string }) =>
-  post<{ bookings: Booking[] }>('/api/bookings/import', input)
+  post<{ importId: string; bookings: Booking[] }>('/api/bookings/import', input)
+
+/** Removes an import's bookings; refused (409) once any of them has had an update, message or task. */
+export const undoImport = (importId: string) => post<{ removed: string[] }>(`/api/imports/${importId}/undo`)
 
 export const resetDemo = () => post<SimulationMeta>('/api/admin/reset')
