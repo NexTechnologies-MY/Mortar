@@ -10,7 +10,7 @@
 import { afterAll, describe, expect, test } from 'bun:test'
 import { SQL } from 'bun'
 import type { Booking, BookingDraft, CaseEvent } from '@mortar/core'
-import { ImportMovedOnError, UnitHeldError, createDatabase } from '../index'
+import { EventSettledError, ImportMovedOnError, OpenApplicationError, UnitHeldError, createDatabase } from '../index'
 import { applySchema } from '../reset'
 
 const DATABASE_URL = process.env.DATABASE_URL
@@ -22,6 +22,7 @@ describe.skipIf(!DATABASE_URL)('database integration', () => {
   const db = createDatabase(sql)
 
   afterAll(async () => {
+    await sql`delete from event_reviews where event_id like 'W2TEST-%'`
     await sql`delete from events where booking_id = 'W2TEST-BK'`
     await sql`delete from tasks where booking_id = 'W2TEST-BK'`
     await sql`delete from messages where booking_id = 'W2TEST-BK'`
@@ -42,7 +43,8 @@ describe.skipIf(!DATABASE_URL)('database integration', () => {
       'events',
       'playbooks',
       'tasks',
-      'jev_answers'
+      'jev_answers',
+      'event_reviews'
     ]) {
       expect(tables).toContain(table)
     }
@@ -97,10 +99,12 @@ describe.skipIf(!DATABASE_URL)('database integration', () => {
       document: 'payslip',
       note: '90% Probability'
     })
-    const reviewed = await db.reviewEvent('W2TEST-EV', 'confirmed', 'Tan Mei Ling')
+    const reviewed = await db.reviewEvent('W2TEST-EV', 'confirmed', 'Tan Mei Ling', '2026-09-18T09:00:00+08:00')
     expect(reviewed?.status).toBe('confirmed')
     expect(reviewed?.verifiedBy).toBe('Tan Mei Ling')
-    await db.supersedePendingProposals('W2TEST-MSG')
+    expect(await db.getEvent('W2TEST-EV')).toEqual(reviewed)
+    expect(await db.getEvent('W2TEST-NONE')).toBeNull()
+    expect(await db.replaceProposal('W2TEST-MSG', null)).toBeNull()
     expect((await db.eventsForMessage('W2TEST-MSG'))[0].status).toBe('confirmed')
 
     await db.insertTask({
@@ -387,6 +391,197 @@ describe.skipIf(!DATABASE_URL)('database integration', () => {
         (e: unknown) => (e instanceof ImportMovedOnError ? 'moved-on' : `other: ${String(e)}`)
       )
       expect(outcome).toBe('moved-on')
+      expect(await db.getBooking(booking.id)).not.toBeNull()
+    })
+  })
+
+  describe('write rules', () => {
+    // Rows of its own under `WRTEST-` (and the `WRTEST Project` for imports),
+    // so parallel work on the shared database is never touched.
+    const bookingId = 'WRTEST-BK'
+    const messageId = 'WRTEST-MSG'
+    const project = 'WRTEST Project'
+    const buyer = {
+      name: 'Test Buyer',
+      ic: '900514-00-0001',
+      phone: '+60 00-000 0001',
+      age: 36,
+      grossMonthlyIncomeRm: 8000,
+      monthlyCommitmentsRm: 0,
+      propertiesOwned: 0
+    }
+    const event = (id: string, extra: Partial<CaseEvent> = {}): CaseEvent => ({
+      id,
+      bookingId,
+      applicationId: null,
+      track: 'loan',
+      kind: 'documents_received',
+      occurredAt: '2026-09-17T21:05:00+08:00',
+      recordedAt: '2026-09-17T21:10:00+08:00',
+      reportedBy: 'Jev',
+      verifiedBy: null,
+      status: 'provisional',
+      source: 'jev',
+      messageId,
+      document: 'payslip',
+      note: '90% Probability',
+      ...extra
+    })
+    const settle = (work: Promise<unknown>) =>
+      work.then(
+        () => 'stored',
+        (e: unknown) => e
+      )
+
+    afterAll(async () => {
+      await sql`delete from event_reviews where event_id like 'WRTEST-%'`
+      await sql`delete from bookings where id = ${bookingId} or project = ${project}`
+      await sql`delete from imports where id like 'WRTEST-%'`
+    })
+
+    test('sets up a booking with a message', async () => {
+      await sql`insert into bookings (id, project, unit, price_rm, booking_date, buyer, sales_owner, loan_owner, legal_firm)
+        values (${bookingId}, 'WRTEST Other', 'WR-01-01', 500000, '2026-09-01', ${buyer}, 'Sales', 'Loan', 'Firm')`
+      await db.insertMessage({
+        id: messageId,
+        bookingId,
+        senderRole: 'buyer',
+        senderName: 'Test Buyer',
+        language: 'en',
+        sentAt: '2026-09-17T21:05:00+08:00',
+        body: 'Payslip sent',
+        origin: 'live'
+      })
+      expect(await db.getBooking(bookingId)).not.toBeNull()
+    })
+
+    test('two reviews at once: one lands and is kept, the other finds it settled', async () => {
+      await db.insertEvent(event('WRTEST-EV-1'))
+      const results = await Promise.all([
+        settle(db.reviewEvent('WRTEST-EV-1', 'confirmed', 'Tan Mei Ling', '2026-09-18T09:00:00+08:00')),
+        settle(db.reviewEvent('WRTEST-EV-1', 'superseded', 'Nurul Aina', '2026-09-18T09:00:01+08:00'))
+      ])
+      expect(results.filter((r) => r === 'stored')).toHaveLength(1)
+      const refused = results.find((r) => r !== 'stored')
+      expect(refused).toBeInstanceOf(EventSettledError)
+      const reviews =
+        await sql`select from_status, to_status, reviewer from event_reviews where event_id = 'WRTEST-EV-1'`
+      expect(reviews).toHaveLength(1)
+      expect(reviews[0].from_status).toBe('provisional')
+      expect((await db.getEvent('WRTEST-EV-1'))?.status).toBe(reviews[0].to_status)
+      expect((await db.getEvent('WRTEST-EV-1'))?.verifiedBy).toBe(reviews[0].reviewer)
+    })
+
+    test('a staff update is never reviewed, and a missing one is null', async () => {
+      const cancelled = event('WRTEST-EV-2', {
+        track: 'sales',
+        kind: 'cancelled',
+        reportedBy: 'Tan Mei Ling',
+        verifiedBy: 'Tan Mei Ling',
+        status: 'confirmed',
+        source: 'staff',
+        messageId: null,
+        document: null,
+        note: null
+      })
+      await db.insertEvent(cancelled)
+      const outcome = await settle(
+        db.reviewEvent('WRTEST-EV-2', 'superseded', 'Nurul Aina', '2026-09-18T09:00:00+08:00')
+      )
+      expect(outcome).toBeInstanceOf(EventSettledError)
+      expect(await db.getEvent('WRTEST-EV-2')).toEqual(cancelled)
+      expect(await sql`select 1 from event_reviews where event_id = 'WRTEST-EV-2'`).toHaveLength(0)
+      expect(await db.reviewEvent('WRTEST-EV-NONE', 'confirmed', 'x', '2026-09-18T09:00:00+08:00')).toBeNull()
+      await sql`delete from events where id = 'WRTEST-EV-2'`
+    })
+
+    test('re-reads at once leave one proposal standing', async () => {
+      await sql`delete from events where message_id = ${messageId}`
+      const stored = await Promise.all([1, 2, 3, 4].map((n) => db.replaceProposal(messageId, event(`WRTEST-EV-P${n}`))))
+      expect(stored.every((e) => e !== null)).toBe(true)
+      const standing = await sql`select id from events where message_id = ${messageId} and status = 'provisional'`
+      expect(standing).toHaveLength(1)
+      // Once one is confirmed, a re-read supersedes nothing confirmed and adds nothing.
+      await sql`update events set status = 'confirmed' where id = ${String(standing[0].id)}`
+      expect(await db.replaceProposal(messageId, event('WRTEST-EV-P5'))).toBeNull()
+      expect(await db.getEvent('WRTEST-EV-P5')).toBeNull()
+    })
+
+    test('a retried submission to a bank still deciding is refused, even at once', async () => {
+      const submit = (id: string, bank: string) =>
+        settle(
+          db.insertApplication(
+            { id, bookingId, bank, banker: 'Lim Wei Jie' },
+            event(`${id}-EV`, {
+              applicationId: id,
+              kind: 'loan_submitted',
+              reportedBy: 'Tan Mei Ling',
+              verifiedBy: 'Tan Mei Ling',
+              status: 'confirmed',
+              source: 'staff',
+              messageId: null,
+              document: null,
+              note: null
+            })
+          )
+        )
+      const results = await Promise.all([
+        submit('WRTEST-APP-1', 'Harbour Bank'),
+        submit('WRTEST-APP-2', ' harbour BANK ')
+      ])
+      expect(results.filter((r) => r === 'stored')).toHaveLength(1)
+      expect(results.find((r) => r !== 'stored')).toBeInstanceOf(OpenApplicationError)
+      const apps = await sql`select id from loan_applications where booking_id = ${bookingId}`
+      expect(apps).toHaveLength(1)
+
+      // A rejection closes the first application; the bank can then be tried again.
+      await db.insertEvent(
+        event('WRTEST-EV-REJ', {
+          applicationId: String(apps[0].id),
+          kind: 'loan_rejected',
+          status: 'confirmed',
+          source: 'staff',
+          messageId: null,
+          document: null
+        })
+      )
+      expect(await submit('WRTEST-APP-3', 'Harbour Bank')).toBe('stored')
+    })
+
+    test('undo counts a second booked event as the booking moving on', async () => {
+      const booked = (booking: Booking, id: string): CaseEvent => ({
+        ...event(id, { bookingId: booking.id }),
+        track: 'sales',
+        kind: 'booked',
+        occurredAt: '2026-09-01T09:00:00+08:00',
+        recordedAt: '2026-09-18T09:00:00+08:00',
+        reportedBy: 'Tan Mei Ling',
+        verifiedBy: 'Tan Mei Ling',
+        status: 'confirmed',
+        source: 'staff',
+        messageId: null,
+        document: null,
+        note: 'Imported From WRTEST'
+      })
+      const [booking] = await db.importBookings(
+        { id: 'WRTEST-IMP', source: 'wrtest.csv', reportedBy: 'Tan Mei Ling', createdAt: '2026-09-18T09:00:00+08:00' },
+        [
+          {
+            project,
+            unit: 'WR-01',
+            priceRm: 600000,
+            bookingDate: '2026-09-01',
+            buyer,
+            salesOwner: 'Unassigned',
+            loanOwner: 'Tan Mei Ling',
+            legalFirm: 'Unassigned'
+          }
+        ],
+        (b) => booked(b, `WRTEST-EV-BOOKED-${b.id}`)
+      )
+      await db.insertEvent({ ...booked(booking, 'WRTEST-EV-BOOKED-AGAIN'), note: 'Booked again by hand' })
+      const outcome = await settle(db.undoImport('WRTEST-IMP', 'Tan Mei Ling', '2026-09-18T10:00:00+08:00'))
+      expect(outcome).toBeInstanceOf(ImportMovedOnError)
       expect(await db.getBooking(booking.id)).not.toBeNull()
     })
   })

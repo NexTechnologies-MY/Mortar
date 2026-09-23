@@ -36,7 +36,7 @@ import type {
   Task,
   Track
 } from '@mortar/core'
-import { ImportMovedOnError, UnitHeldError, type Database } from '../db/index'
+import { EventSettledError, ImportMovedOnError, OpenApplicationError, UnitHeldError, type Database } from '../db/index'
 import { isoDateTime, withMaskedContact } from '../db/mappers'
 import {
   body,
@@ -146,6 +146,55 @@ function occurredOnProblem(occurredOn: IsoDate, booking: Booking): string | null
   return null
 }
 
+/** Updates that belong to one bank's application; without it they cannot mark the bank. */
+const NEEDS_APPLICATION: ReadonlySet<EventKind> = new Set(['loan_approved', 'loan_rejected', 'valuation_shortfall'])
+
+/** A cancelled or lapsed booking takes no more updates and no more Jev proposals. */
+function isClosed(summary: CaseSummary): boolean {
+  return summary.stage === 'cancelled' || summary.stage === 'lapsed'
+}
+
+/**
+ * Why the case as it stands refuses a `kind` update on `applicationId`, or
+ * `null` when it takes it. The forms enforce the same rules; this is the
+ * server's copy, so a stale screen or a hand-made request cannot skip them.
+ */
+function caseRuleProblem(summary: CaseSummary, kind: EventKind, applicationId: string | null): string | null {
+  if (isClosed(summary)) return `This booking is ${summary.stage}, so it takes no more updates.`
+  if (kind === 'loan_approved' || kind === 'loan_rejected') {
+    const application = summary.applications.find((a) => a.id === applicationId)
+    if (application && (application.status === 'approved' || application.status === 'rejected')) {
+      return `${application.bank} has already ${application.status} this application.`
+    }
+  }
+  return null
+}
+
+/** A Jev proposal still waiting for staff: the only kind of event a review may change. */
+function isPendingProposal(event: CaseEvent): boolean {
+  return event.source === 'jev' && (event.status === 'provisional' || event.status === 'disputed')
+}
+
+/** Why confirming the pending proposal `event` would break the case rules, or `null` when it may be confirmed. */
+function confirmProblem(summary: CaseSummary, event: CaseEvent): string | null {
+  const problem = caseRuleProblem(summary, event.kind, event.applicationId)
+  if (problem) return problem
+  if (event.applicationId === null && NEEDS_APPLICATION.has(event.kind)) {
+    return 'Jev could not tell which bank this is for. Dismiss it and record the update by hand.'
+  }
+  return null
+}
+
+/** Why a review cannot change `event`, which is no longer a Jev proposal waiting for one. */
+function settledMessage(event: CaseEvent): string {
+  if (event.source !== 'jev') return 'This update is already on record, so there is nothing to review.'
+  if (event.status === 'confirmed') return 'This update was already reviewed and confirmed.'
+  if (event.status === 'superseded') {
+    return 'This update was already dismissed, or replaced when Jev read the message again.'
+  }
+  return 'This update was already disputed.'
+}
+
 /** A back-dated update lands at noon Malaysia time on its day; an undated one at `now`. */
 function occurredAtFor(occurredOn: IsoDate | null, now: IsoDateTime): IsoDateTime {
   return occurredOn === null ? now : `${occurredOn}T12:00:00+08:00`
@@ -189,17 +238,14 @@ export function createApp(options: AppOptions): App {
     return summaries.find((s) => s.bookingId === bookingId) ?? null
   }
 
-  /** Turns a Jev extraction into a provisional event row, or `null` for `no_update`. */
-  const insertProposal = async (
-    extraction: Extraction,
-    message: Message,
-    summary: CaseSummary
-  ): Promise<CaseEvent | null> => {
+  /**
+   * Turns a Jev extraction into a provisional event, or `null` for `no_update`
+   * and on a closed booking, which takes no more updates.
+   */
+  const proposalEvent = (extraction: Extraction, message: Message, summary: CaseSummary): CaseEvent | null => {
+    if (isClosed(summary)) return null
     const proposal = proposalFromExtraction(extraction, message, summary)
-    if (!proposal) return null
-    const event: CaseEvent = { ...proposal, id: newId('EV'), recordedAt: simNow(REFERENCE_DATE) }
-    await db.insertEvent(event)
-    return event
+    return proposal && { ...proposal, id: newId('EV'), recordedAt: simNow(REFERENCE_DATE) }
   }
 
   const routes: [string, string, Handler][] = [
@@ -271,7 +317,9 @@ export function createApp(options: AppOptions): App {
         }
         await db.insertMessage(message)
         const extraction = await jev.extract({ message, summary })
-        const event = await insertProposal(extraction, message, summary)
+        // A message on a closed booking is still kept; it just proposes nothing.
+        const event = proposalEvent(extraction, message, summary)
+        if (event) await db.insertEvent(event)
         return json({ message, extraction, event })
       }
     ],
@@ -283,10 +331,10 @@ export function createApp(options: AppOptions): App {
         if (!message) return error(404, `message ${params.id} not found`)
         const summary = await summaryFor(message.bookingId)
         if (!summary) return error(500, `no case summary for ${message.bookingId}`)
+        // Jev first, outside any transaction: the call takes seconds. The swap
+        // of the old proposal for the new one is then one step per message.
         const extraction = await jev.extract({ message, summary })
-        await db.supersedePendingProposals(message.id)
-        const confirmed = (await db.eventsForMessage(message.id)).some((e) => e.status === 'confirmed')
-        const event = confirmed ? null : await insertProposal(extraction, message, summary)
+        const event = await db.replaceProposal(message.id, proposalEvent(extraction, message, summary))
         return json({ extraction, event })
       }
     ],
@@ -302,6 +350,8 @@ export function createApp(options: AppOptions): App {
         // A submission needs its application row; that route writes both together.
         if (b.kind === 'loan_submitted')
           return error(400, 'loan_submitted is recorded through POST /api/applications, which creates the application')
+        // The import writes the one booked event a booking carries.
+        if (b.kind === 'booked') return error(400, 'A booking is recorded by importing it, not as an update.')
         if (b.document != null && !isOneOf(b.document, DOCUMENT_KINDS))
           return error(400, `document must be one of: ${DOCUMENT_KINDS.join(', ')}`)
         if (b.note != null && typeof b.note !== 'string') return error(400, 'note must be a string')
@@ -311,6 +361,11 @@ export function createApp(options: AppOptions): App {
         }
         if (b.applicationId != null && !isString(b.applicationId))
           return error(400, 'applicationId must be a non-empty string')
+        if (b.applicationId == null && NEEDS_APPLICATION.has(b.kind))
+          return error(
+            400,
+            'A loan approval, rejection or valuation shortfall must say which bank application it is for.'
+          )
         if (b.occurredOn != null && !isIsoDate(b.occurredOn)) return error(400, 'occurredOn must be a YYYY-MM-DD date')
         if (!isString(b.reportedBy)) return error(400, 'reportedBy is required')
         const reportedByTooLong = tooLong('reportedBy', b.reportedBy, MAX_NAME)
@@ -326,6 +381,10 @@ export function createApp(options: AppOptions): App {
         const occurredOn = (b.occurredOn as IsoDate | undefined) ?? null
         const problem = occurredOn === null ? null : occurredOnProblem(occurredOn, booking)
         if (problem) return error(400, problem)
+        const summary = await summaryFor(booking.id)
+        if (!summary) return error(500, `no case summary for ${booking.id}`)
+        const refused = caseRuleProblem(summary, b.kind, applicationId)
+        if (refused) return error(409, refused)
         const now = simNow(REFERENCE_DATE)
         const event: CaseEvent = {
           id: newId('EV'),
@@ -374,6 +433,10 @@ export function createApp(options: AppOptions): App {
         const occurredOn = (b.occurredOn as IsoDate | undefined) ?? null
         const problem = occurredOn === null ? null : occurredOnProblem(occurredOn, booking)
         if (problem) return error(400, problem)
+        const summary = await summaryFor(booking.id)
+        if (!summary) return error(500, `no case summary for ${booking.id}`)
+        const refused = caseRuleProblem(summary, 'loan_submitted', null)
+        if (refused) return error(409, refused)
         const now = simNow(REFERENCE_DATE)
         const reportedBy = b.reportedBy.trim()
         const application: LoanApplication = {
@@ -398,7 +461,16 @@ export function createApp(options: AppOptions): App {
           document: null,
           note: (b.note as string | undefined)?.trim() || null
         }
-        await db.insertApplication(application, event)
+        try {
+          // A retried submission meets the first one's application under the
+          // database's per-booking lock; a bank that rejected can be tried again.
+          await db.insertApplication(application, event)
+        } catch (e) {
+          if (e instanceof OpenApplicationError) {
+            return error(409, `${e.bank} already has an application waiting on this booking.`)
+          }
+          throw e
+        }
         return json({ application, event })
       }
     ],
@@ -414,9 +486,26 @@ export function createApp(options: AppOptions): App {
         const reviewerTooLong = tooLong('reviewer', b.reviewer, MAX_NAME)
         if (reviewerTooLong) return reviewerTooLong
         const status = REVIEW_DECISIONS[b.decision as keyof typeof REVIEW_DECISIONS]
-        const event = await db.reviewEvent(params.id, status, b.reviewer.trim())
-        if (!event) return error(404, `event ${params.id} not found`)
-        return json(event)
+        const current = await db.getEvent(params.id)
+        if (!current) return error(404, `event ${params.id} not found`)
+        if (status === 'confirmed' && isPendingProposal(current)) {
+          // Confirming writes the proposal into the case, so the case rules apply
+          // as they do to an update recorded by hand.
+          const summary = await summaryFor(current.bookingId)
+          if (!summary) return error(500, `no case summary for ${current.bookingId}`)
+          const refused = confirmProblem(summary, current)
+          if (refused) return error(409, refused)
+        }
+        try {
+          // The database checks the proposal is still waiting, under a row lock,
+          // and keeps the change in `event_reviews`.
+          const event = await db.reviewEvent(params.id, status, b.reviewer.trim(), simNow(REFERENCE_DATE))
+          if (!event) return error(404, `event ${params.id} not found`)
+          return json(event)
+        } catch (e) {
+          if (e instanceof EventSettledError) return error(409, settledMessage(e.event))
+          throw e
+        }
       }
     ],
     [

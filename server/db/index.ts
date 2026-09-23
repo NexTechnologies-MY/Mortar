@@ -51,6 +51,7 @@ export interface Database {
   getBooking(id: string): Promise<Booking | null>
   getApplication(id: string): Promise<LoanApplication | null>
   getMessage(id: string): Promise<Message | null>
+  getEvent(id: string): Promise<CaseEvent | null>
   messagesForBooking(bookingId: string): Promise<Message[]>
   eventsForMessage(messageId: string): Promise<CaseEvent[]>
   listPlaybooks(): Promise<Playbook[]>
@@ -58,13 +59,28 @@ export interface Database {
   insertEvent(event: CaseEvent): Promise<void>
   /**
    * Stores a new bank application and the confirmed `loan_submitted` event that
-   * carries its id, in one transaction: neither lands without the other.
+   * carries its id, in one transaction: neither lands without the other. Throws
+   * `OpenApplicationError` while the same bank (trimmed, any case) still holds
+   * an undecided application on the booking; the check runs under a per-booking
+   * lock, so a retried submission cannot slip in beside the first.
    */
   insertApplication(application: LoanApplication, submitted: CaseEvent): Promise<void>
-  /** Staff review: sets the status and records `reviewer` as `verifiedBy`. */
-  reviewEvent(id: string, status: EvidenceStatus, reviewer: string): Promise<CaseEvent | null>
-  /** Supersedes still-open proposals (`provisional` or `disputed`) carrying `messageId`. */
-  supersedePendingProposals(messageId: string): Promise<void>
+  /**
+   * Staff review of a Jev proposal: sets the status, records `reviewer` as
+   * `verifiedBy`, and appends the change to `event_reviews`, all in one
+   * transaction. `null` when there is no such event; throws `EventSettledError`
+   * unless the event is a Jev proposal still waiting (`provisional` or
+   * `disputed`, and not already `status`), so a stale screen never overturns a
+   * settled update.
+   */
+  reviewEvent(id: string, status: EvidenceStatus, reviewer: string, at: IsoDateTime): Promise<CaseEvent | null>
+  /**
+   * Swaps a message's pending proposals (`provisional` or `disputed`) for
+   * `proposal`, in one transaction serialised per message, so two re-reads at
+   * once leave one proposal standing. Nothing is inserted once an event on the
+   * message is confirmed, or when `proposal` is `null`; returns what was.
+   */
+  replaceProposal(messageId: string, proposal: CaseEvent | null): Promise<CaseEvent | null>
   insertTask(task: Task): Promise<void>
   /**
    * Numbers and stores imported bookings in one transaction, each with the
@@ -140,8 +156,31 @@ export class ImportMovedOnError extends Error {
   }
 }
 
+/** The event is not a Jev proposal waiting for review; `event` is how it stands now. */
+export class EventSettledError extends Error {
+  constructor(readonly event: CaseEvent) {
+    super(`event ${event.id} is not a proposal waiting for review`)
+  }
+}
+
+/** The bank already holds an undecided application on the booking. */
+export class OpenApplicationError extends Error {
+  constructor(
+    readonly bank: string,
+    readonly applicationId: string
+  ) {
+    super(`${bank} already has application ${applicationId} waiting on this booking`)
+  }
+}
+
 /** Advisory lock key that serialises imports, so two batches never draw the same booking numbers. */
 const IMPORT_LOCK = 20_260_918
+/**
+ * First keys of the two-key advisory locks (a key space apart from the
+ * import's one-key lock); the second key hashes the message or booking id.
+ */
+const MESSAGE_LOCK = 20_260_919
+const BOOKING_APPLICATIONS_LOCK = 20_260_920
 /** Highest imported booking number; the story fixtures start at `BK-9001`. */
 const LAST_IMPORT_NUMBER = 8999
 
@@ -260,6 +299,11 @@ export function createDatabase(sql: SQL): Database {
       return rows.length ? rowToMessage(rows[0]) : null
     },
 
+    async getEvent(id) {
+      const rows = await sql`select * from events where id = ${id}`
+      return rows.length ? rowToEvent(rows[0]) : null
+    },
+
     async messagesForBooking(bookingId) {
       const rows = await sql`select * from messages where booking_id = ${bookingId} order by sent_at, id`
       return rows.map(rowToMessage)
@@ -294,6 +338,19 @@ export function createDatabase(sql: SQL): Database {
 
     async insertApplication(application, submitted) {
       await sql.begin(async (tx) => {
+        await tx`select pg_advisory_xact_lock(${BOOKING_APPLICATIONS_LOCK}::int, hashtext(${application.bookingId}))`
+        // Still with the bank: no confirmed decision, and the buyer has not
+        // withdrawn (which leaves an undecided application withdrawn). A bank
+        // that rejected can be sent the case again.
+        const open = await tx`select a.id, a.bank from loan_applications a
+          where a.booking_id = ${application.bookingId}
+            and lower(trim(a.bank)) = lower(trim(${application.bank}))
+            and not exists (select 1 from events e where e.application_id = a.id
+              and e.status = 'confirmed' and e.kind in ('loan_approved', 'loan_rejected'))
+            and not exists (select 1 from events w where w.booking_id = a.booking_id
+              and w.status = 'confirmed' and w.kind = 'buyer_withdrew')
+          order by a.id limit 1`
+        if (open.length > 0) throw new OpenApplicationError(String(open[0].bank), String(open[0].id))
         await tx`insert into loan_applications ${tx({
           id: application.id,
           booking_id: application.bookingId,
@@ -304,15 +361,40 @@ export function createDatabase(sql: SQL): Database {
       })
     },
 
-    async reviewEvent(id, status, reviewer) {
-      const rows = await sql`update events set status = ${status}, verified_by = ${reviewer}
-        where id = ${id} returning *`
-      return rows.length ? rowToEvent(rows[0]) : null
+    async reviewEvent(id, status, reviewer, at) {
+      return sql.begin(async (tx) => {
+        // The row lock makes the check and the change one step: a second
+        // review waits here, then sees the first one's result.
+        const rows = await tx`select * from events where id = ${id} for update`
+        if (rows.length === 0) return null
+        const current = rowToEvent(rows[0])
+        const pending = current.source === 'jev' && (current.status === 'provisional' || current.status === 'disputed')
+        if (!pending || current.status === status) throw new EventSettledError(current)
+        const updated = await tx`update events set status = ${status}, verified_by = ${reviewer}
+          where id = ${id} returning *`
+        await tx`insert into event_reviews ${tx({
+          event_id: id,
+          from_status: current.status,
+          to_status: status,
+          reviewer,
+          at
+        })}`
+        return rowToEvent(updated[0])
+      })
     },
 
-    async supersedePendingProposals(messageId) {
-      await sql`update events set status = 'superseded'
-        where message_id = ${messageId} and status in ('provisional', 'disputed')`
+    async replaceProposal(messageId, proposal) {
+      return sql.begin(async (tx) => {
+        await tx`select pg_advisory_xact_lock(${MESSAGE_LOCK}::int, hashtext(${messageId}))`
+        await tx`update events set status = 'superseded'
+          where message_id = ${messageId} and status in ('provisional', 'disputed')`
+        if (!proposal) return null
+        const confirmed = await tx`select 1 from events
+          where message_id = ${messageId} and status = 'confirmed' limit 1`
+        if (confirmed.length > 0) return null
+        await tx`insert into events ${tx(eventRow(proposal))}`
+        return proposal
+      })
     },
 
     async insertTask(task) {
@@ -420,8 +502,11 @@ export function createDatabase(sql: SQL): Database {
         // that already got a 200 (the catch-all in app.ts turns that failure
         // into a 409).
         await tx`select id from bookings where id in ${tx(ids)} for update`
+        // The import wrote one booked event per booking; any other event,
+        // a second booked one included, is activity since.
         const moved = await tx`select b.id from bookings b where b.id in ${tx(ids)} and (
-            exists (select 1 from events e where e.booking_id = b.id and e.kind <> 'booked')
+            (select count(*) from events e where e.booking_id = b.id) > 1
+            or exists (select 1 from events e where e.booking_id = b.id and e.kind <> 'booked')
             or exists (select 1 from messages m where m.booking_id = b.id)
             or exists (select 1 from tasks t where t.booking_id = b.id)
             or exists (select 1 from loan_applications a where a.booking_id = b.id)
