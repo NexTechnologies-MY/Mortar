@@ -195,9 +195,39 @@ function settledMessage(event: CaseEvent): string {
   return 'This update was already disputed.'
 }
 
-/** A back-dated update lands at noon Malaysia time on its day; an undated one at `now`. */
-function occurredAtFor(occurredOn: IsoDate | null, now: IsoDateTime): IsoDateTime {
-  return occurredOn === null ? now : `${occurredOn}T12:00:00+08:00`
+/**
+ * When a staff update happened, from the day it names (none means today). One
+ * dated today lands at `now`, so it falls among today's messages in the order
+ * they came; a back-dated one lands at noon Malaysia time on its day. Neither
+ * lands before anything the booking already has on record that day (seeded
+ * rows carry times of their own, and `now` falls back to 00:00 at midnight
+ * while its date stays put), and an equal time sorts by storage order, so the
+ * updates on one day keep the order they were entered in.
+ */
+function occurredAtFor(occurredOn: IsoDate | null, now: IsoDateTime, onRecord: CaseEvent[]): IsoDateTime {
+  const day = occurredOn ?? now.slice(0, 10)
+  const base = day === now.slice(0, 10) ? now : `${day}T12:00:00+08:00`
+  return onRecord.reduce((at, e) => (e.occurredAt.slice(0, 10) === day && e.occurredAt > at ? e.occurredAt : at), base)
+}
+
+const DAY_MS = 86_400_000
+/**
+ * How close to midnight a `sentAt` on the reference date must be to count as
+ * the minutes just gone once `simNow` has wrapped to 00:00, rather than as a
+ * time later that day.
+ */
+const MIDNIGHT_GRACE_MS = 10 * 60_000
+
+/**
+ * How far `sent` runs ahead of `now`, in ms. `simNow` keeps the reference date
+ * while its time of day falls back to 00:00 at midnight, so a message stamped
+ * on that date just before midnight and posted just after would read as nearly
+ * a day ahead; it is measured back across midnight instead.
+ */
+function msAheadOf(sent: number, now: IsoDateTime): number {
+  const ahead = sent - Date.parse(now)
+  const sameDay = isoDateTime(new Date(sent)).slice(0, 10) === now.slice(0, 10)
+  return sameDay && ahead > DAY_MS - MIDNIGHT_GRACE_MS ? ahead - DAY_MS : ahead
 }
 
 /**
@@ -296,12 +326,12 @@ export function createApp(options: AppOptions): App {
         let sentAt = now
         if (b.sentAt != null) {
           const sent = Date.parse(b.sentAt as string)
-          if (sent > Date.parse(now) + CLOCK_SKEW_MS)
-            return error(400, `sentAt cannot be in the future (now is ${now})`)
+          const ahead = msAheadOf(sent, now)
+          if (ahead > CLOCK_SKEW_MS) return error(400, `sentAt cannot be in the future (now is ${now})`)
           if (sent < Date.parse(`${booking.bookingDate}T00:00:00+08:00`)) {
             return error(400, `sentAt cannot be before the booking date (${booking.bookingDate})`)
           }
-          sentAt = sent > Date.parse(now) ? now : isoDateTime(new Date(sent))
+          sentAt = ahead > 0 ? now : isoDateTime(new Date(sent))
         }
         const summary = await summaryFor(booking.id)
         if (!summary) return error(500, `no case summary for ${booking.id}`)
@@ -386,13 +416,14 @@ export function createApp(options: AppOptions): App {
         const refused = caseRuleProblem(summary, b.kind, applicationId)
         if (refused) return error(409, refused)
         const now = simNow(REFERENCE_DATE)
+        const occurredAt = occurredAtFor(occurredOn, now, await db.eventsForBooking(booking.id))
         const event: CaseEvent = {
           id: newId('EV'),
           bookingId: booking.id,
           applicationId,
           track: b.track,
           kind: b.kind,
-          occurredAt: occurredAtFor(occurredOn, now),
+          occurredAt,
           recordedAt: now,
           reportedBy: b.reportedBy.trim(),
           verifiedBy: b.reportedBy.trim(),
@@ -438,6 +469,7 @@ export function createApp(options: AppOptions): App {
         const refused = caseRuleProblem(summary, 'loan_submitted', null)
         if (refused) return error(409, refused)
         const now = simNow(REFERENCE_DATE)
+        const occurredAt = occurredAtFor(occurredOn, now, await db.eventsForBooking(booking.id))
         const reportedBy = b.reportedBy.trim()
         const application: LoanApplication = {
           id: newId('APP'),
@@ -451,7 +483,7 @@ export function createApp(options: AppOptions): App {
           applicationId: application.id,
           track: 'loan',
           kind: 'loan_submitted',
-          occurredAt: occurredAtFor(occurredOn, now),
+          occurredAt,
           recordedAt: now,
           reportedBy,
           verifiedBy: reportedBy,
@@ -684,11 +716,13 @@ export function createApp(options: AppOptions): App {
           return error(403, 'demo reset is turned off on this server (MORTAR_DEMO_RESET=off)')
         }
         const meta = await db.meta()
-        // `meta.resetAt` is sim time (the reference date plus the real time of
-        // day), so the cooldown measures it against `simNow`, not `Date.now`.
+        // `meta.resetAt` is sim time, whose time of day falls back to 00:00 at
+        // midnight, so it cannot time a cooldown. Every reset also stores the
+        // real clock time, which covers a reset by another process too; either
+        // side of it, in case that process's clock runs a little ahead.
+        const resetAtWall = meta?.resetAtWall ? Date.parse(meta.resetAtWall) : Number.NaN
         const recent =
-          Date.now() - lastResetAt < RESET_COOLDOWN_MS ||
-          (meta?.resetAt != null && Date.parse(meta.resetAt) > Date.parse(simNow(REFERENCE_DATE)) - RESET_COOLDOWN_MS)
+          Date.now() - lastResetAt < RESET_COOLDOWN_MS || Math.abs(Date.now() - resetAtWall) < RESET_COOLDOWN_MS
         if (recent) return error(429, 'reset ran less than 30 seconds ago')
         // Arm before awaiting so a concurrent POST inside the reset's own
         // runtime is also a 429; a failed reset frees the window again.

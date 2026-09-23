@@ -8,6 +8,13 @@ import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test'
 import { SQL } from 'bun'
 import * as realCore from '../../../packages/core/src/index'
 
+/** What the mocked `simNow` answers; a test that moves it is put back afterwards. */
+const NOON = '2026-09-18T12:00:00+08:00'
+const clock = { now: NOON }
+afterEach(() => {
+  clock.now = NOON
+})
+
 const SUMMARY: realCore.CaseSummary = {
   bookingId: 'BK-9001',
   stage: 'loan_applied',
@@ -41,7 +48,7 @@ const deriveSummaries = realCore.summarizeCases
 
 mock.module('@mortar/core', () => ({
   ...realCore,
-  simNow: () => '2026-09-18T12:00:00+08:00',
+  simNow: () => clock.now,
   summarizeCases: (data: realCore.CaseData, asOf: string) => (deriveCases ? deriveSummaries(data, asOf) : [SUMMARY]),
   searchPlaybooks: (playbooks: realCore.Playbook[]) =>
     playbooks.map((playbook, i) => ({ playbook, keywordScore: 10 - i })),
@@ -73,7 +80,7 @@ import {
   type Database,
   type ImportBatch
 } from '../../db/index'
-import type { JevAnswerRow } from '../../db/mappers'
+import type { JevAnswerRow, StoredMeta } from '../../db/mappers'
 import type {
   Booking,
   BookingDraft,
@@ -155,13 +162,17 @@ class FakeDb implements Database {
   tasks: Task[] = []
   playbooks: realCore.Playbook[] = []
   resetAt: string | null = null
+  resetAtWall: string | null = null
+  /** Mirrors the `seq` column: every stored event is numbered in insertion order. */
+  private seq = 0
+  private stored = (event: CaseEvent): CaseEvent => ({ ...event, seq: ++this.seq })
 
   async ping() {}
   async hasBookings() {
     return this.bookings.length > 0
   }
-  async meta(): Promise<SimulationMeta | null> {
-    return { seed: 20260918, referenceDate: '2026-09-18', resetAt: this.resetAt }
+  async meta(): Promise<StoredMeta | null> {
+    return { seed: 20260918, referenceDate: '2026-09-18', resetAt: this.resetAt, resetAtWall: this.resetAtWall }
   }
   async caseData(): Promise<CaseData> {
     return { bookings: this.bookings, applications: this.applications, events: this.events, tasks: this.tasks }
@@ -198,6 +209,9 @@ class FakeDb implements Database {
   async eventsForMessage(messageId: string) {
     return this.events.filter((e) => e.messageId === messageId)
   }
+  async eventsForBooking(bookingId: string) {
+    return this.events.filter((e) => e.bookingId === bookingId).sort(realCore.byOccurred)
+  }
   async listPlaybooks() {
     return this.playbooks
   }
@@ -205,7 +219,7 @@ class FakeDb implements Database {
     this.messages.push(message)
   }
   async insertEvent(event: CaseEvent) {
-    this.events.push(event)
+    this.events.push(this.stored(event))
   }
   /**
    * Mirrors the SQL transaction: both rows land, or neither does, and never
@@ -225,7 +239,7 @@ class FakeDb implements Database {
     )
     if (open) throw new OpenApplicationError(open.bank, open.id)
     this.applications.push(application)
-    this.events.push(submitted)
+    this.events.push(this.stored(submitted))
   }
   reviews: { eventId: string; fromStatus: EvidenceStatus; toStatus: EvidenceStatus; reviewer: string; at: string }[] =
     []
@@ -269,7 +283,7 @@ class FakeDb implements Database {
     }
     const imported = drafts.map((draft, i) => ({ id: `BK-${String(141 + i).padStart(4, '0')}`, ...draft }))
     this.bookings.push(...imported)
-    this.events.push(...imported.map(bookedEvent))
+    this.events.push(...imported.map(bookedEvent).map(this.stored))
     this.imports.set(batch.id, { ids: imported.map((b) => b.id), undoneBy: null, undoneAt: null })
     return imported
   }
@@ -576,9 +590,26 @@ describe('createApp', () => {
         expect(((await res?.json()) as { message: Message }).message.sentAt).toBe('2026-09-18T12:00:00+08:00')
       })
 
+      test('takes a time stamped just before midnight and posted just after as the time it was sent', async () => {
+        // `simNow` keeps the reference date, so after midnight it reads 00:00:40.
+        clock.now = '2026-09-18T00:00:40+08:00'
+        const { res, db } = await send('2026-09-18T23:59:30+08:00')
+        expect(res?.status).toBe(200)
+        expect(((await res?.json()) as { message: Message }).message.sentAt).toBe('2026-09-18T23:59:30+08:00')
+        expect(db.messages[db.messages.length - 1]?.sentAt).toBe('2026-09-18T23:59:30+08:00')
+      })
+
+      test('still refuses a later time today that is not just before midnight', async () => {
+        clock.now = '2026-09-18T00:00:40+08:00'
+        const { res } = await send('2026-09-18T23:40:00+08:00')
+        expect(res?.status).toBe(400)
+        expect(await errorOf(res)).toContain('future')
+      })
+
       test.each([
         ['a later time today', '2026-09-18T12:05:00+08:00', 'future'],
         ['tomorrow', '2026-09-19T09:00:00+08:00', 'future'],
+        ['tomorrow, a few minutes short of a day ahead', '2026-09-19T11:55:00+08:00', 'future'],
         ['before the booking date', '2026-09-01T23:59:00+08:00', 'booking date'],
         ['a date with no time', '2026-09-17', 'sentAt'],
         ['a time with no offset', '2026-09-17T10:00:00', 'sentAt'],
@@ -717,7 +748,7 @@ describe('createApp', () => {
         source: 'staff',
         note: 'LO received'
       })
-      expect(db.events).toEqual([event])
+      expect(db.events).toEqual([{ ...event, seq: 1 }])
     })
 
     test('accepts the booking day and today as the day it happened', async () => {
@@ -726,6 +757,108 @@ describe('createApp', () => {
         expect(res?.status).toBe(200)
         expect(((await res?.json()) as CaseEvent).occurredAt).toBe(`${occurredOn}T12:00:00+08:00`)
       }
+    })
+
+    describe('the order of updates on one day', () => {
+      const today = { ...valid, applicationId: 'APP-9001-1', occurredOn: '2026-09-18' }
+      const seeded = (occurredAt: string): CaseEvent => ({
+        ...PROVISIONAL,
+        id: 'EV-000039',
+        kind: 'documents_requested',
+        occurredAt,
+        recordedAt: '2026-09-18T09:00:00+08:00',
+        reportedBy: 'Sim',
+        verifiedBy: 'Sim',
+        status: 'confirmed',
+        source: 'generator',
+        messageId: null,
+        seq: 1
+      })
+      const order = (db: FakeDb) => [...db.events].sort(realCore.byOccurred).map((e) => `${e.kind} ${e.document}`)
+
+      test('two updates at the same moment keep the order they were entered in, whatever their ids', async () => {
+        // The ids are random uuids; before `seq`, the later entry came first about half the time.
+        for (let i = 0; i < 40; i++) {
+          const db = new FakeDb()
+          const app = makeApp(db)
+          for (const occurredOn of ['2026-09-16', '2026-09-18']) {
+            await call(
+              app,
+              '/api/events',
+              post({ ...today, occurredOn, kind: 'documents_requested', document: 'payslip' })
+            )
+            await call(
+              app,
+              '/api/events',
+              post({ ...today, occurredOn, kind: 'documents_received', document: 'payslip' })
+            )
+          }
+          expect(new Set(db.events.map((e) => e.occurredAt)).size).toBe(2)
+          expect(order(db)).toEqual([
+            'documents_requested payslip',
+            'documents_received payslip',
+            'documents_requested payslip',
+            'documents_received payslip'
+          ])
+        }
+      })
+
+      test('one dated today lands at now, among the messages of the day', async () => {
+        clock.now = '2026-09-18T15:30:00+08:00'
+        const db = new FakeDb()
+        const res = await call(makeApp(db), '/api/events', post({ ...today, kind: 'buyer_contacted' }))
+        expect(((await res?.json()) as CaseEvent).occurredAt).toBe('2026-09-18T15:30:00+08:00')
+      })
+
+      test('never lands before an update the booking already has on record that day', async () => {
+        clock.now = '2026-09-18T10:00:00+08:00'
+        const db = new FakeDb()
+        // A seeded request timed later today than the clock reads now.
+        db.events.push(seeded('2026-09-18T17:58:00+08:00'))
+        const res = await call(
+          makeApp(db),
+          '/api/events',
+          post({ ...today, kind: 'documents_received', document: 'payslip' })
+        )
+        expect(((await res?.json()) as CaseEvent).occurredAt).toBe('2026-09-18T17:58:00+08:00')
+        expect(order(db)).toEqual(['documents_requested payslip', 'documents_received payslip'])
+      })
+
+      test('a back-dated one lands at noon, or after a later update on record that day', async () => {
+        const db = new FakeDb()
+        db.events.push(seeded('2026-09-16T17:00:00+08:00'))
+        const app = makeApp(db)
+        const on16 = await call(
+          app,
+          '/api/events',
+          post({ ...today, occurredOn: '2026-09-16', kind: 'documents_received', document: 'payslip' })
+        )
+        expect(((await on16?.json()) as CaseEvent).occurredAt).toBe('2026-09-16T17:00:00+08:00')
+        const on15 = await call(
+          app,
+          '/api/events',
+          post({ ...today, occurredOn: '2026-09-15', kind: 'buyer_contacted' })
+        )
+        expect(((await on15?.json()) as CaseEvent).occurredAt).toBe('2026-09-15T12:00:00+08:00')
+      })
+
+      test('updates either side of midnight keep the order they were entered in', async () => {
+        const db = new FakeDb()
+        const app = makeApp(db)
+        clock.now = '2026-09-18T23:59:50+08:00'
+        await call(app, '/api/events', post({ ...today, kind: 'documents_requested', document: 'payslip' }))
+        // `simNow` keeps the reference date, so twenty seconds later it reads 00:00:10.
+        clock.now = '2026-09-18T00:00:10+08:00'
+        const res = await call(app, '/api/events', post({ ...today, kind: 'documents_received', document: 'payslip' }))
+        expect(((await res?.json()) as CaseEvent).occurredAt).toBe('2026-09-18T23:59:50+08:00')
+        const submitted = await call(
+          app,
+          '/api/applications',
+          post({ bookingId: 'BK-9001', bank: 'Harbour Bank', banker: 'Lim Wei Jie', reportedBy: 'Tan Mei Ling' })
+        )
+        expect(((await submitted?.json()) as { event: CaseEvent }).event.occurredAt).toBe('2026-09-18T23:59:50+08:00')
+        expect(order(db)).toEqual(['documents_requested payslip', 'documents_received payslip', 'loan_submitted null'])
+      })
     })
 
     test('refuses an application that belongs to another booking', async () => {
@@ -876,7 +1009,7 @@ describe('createApp', () => {
         note: null
       })
       expect(db.applications).toContainEqual(application)
-      expect(db.events).toEqual([event])
+      expect(db.events).toEqual([{ ...event, seq: 1 }])
     })
 
     test('without a day it is dated now, and a note rides on the submission', async () => {
@@ -1497,18 +1630,32 @@ describe('createApp', () => {
       expect((await call(app, '/api/admin/reset', post()))?.status).toBe(429)
     })
 
-    test('a reset recorded in meta by another path still cools down', async () => {
-      const db = new FakeDb()
-      // `simNow` is mocked to noon on the reference date, so a reset stamped at
-      // 11:59:59 sim time ran a second ago.
-      db.resetAt = '2026-09-18T11:59:59+08:00'
-      const res = await call(makeApp(db), '/api/admin/reset', post())
-      expect(res?.status).toBe(429)
+    test('a reset recorded in meta by another path still cools down, by the real clock', async () => {
+      for (const offsetMs of [-1000, 5000]) {
+        const db = new FakeDb()
+        db.resetAt = '2026-09-18T11:59:59+08:00'
+        // Another process's clock may run a few seconds ahead.
+        db.resetAtWall = new Date(Date.now() + offsetMs).toISOString()
+        const res = await call(makeApp(db), '/api/admin/reset', post())
+        expect(res?.status).toBe(429)
+      }
     })
 
-    test('a stale resetAt does not block a fresh reset', async () => {
+    test('a stale reset does not block a fresh one', async () => {
       const db = new FakeDb()
-      db.resetAt = '2026-09-18T00:00:00+08:00'
+      db.resetAt = '2026-09-18T11:59:59+08:00'
+      db.resetAtWall = new Date(Date.now() - 60_000).toISOString()
+      const res = await call(makeApp(db), '/api/admin/reset', post())
+      expect(res?.status).toBe(200)
+    })
+
+    test('a reset last evening does not block one the next morning', async () => {
+      const db = new FakeDb()
+      // Sim time keeps the reference date: last evening's 20:00 reads as later
+      // than this morning's 08:00.
+      db.resetAt = '2026-09-18T20:00:00+08:00'
+      db.resetAtWall = new Date(Date.now() - 12 * 3_600_000).toISOString()
+      clock.now = '2026-09-18T08:00:00+08:00'
       const res = await call(makeApp(db), '/api/admin/reset', post())
       expect(res?.status).toBe(200)
     })

@@ -40,6 +40,10 @@ create table if not exists messages (
 );
 create index if not exists messages_booking_idx on messages (booking_id);
 
+-- The order events were stored in. Two updates recorded for the same moment (a
+-- back-dated day's noon, say) keep the order they were entered in; no
+-- timestamp can do that, since the demo clock's time of day wraps at midnight.
+create sequence if not exists events_seq;
 create table if not exists events (
   id text primary key,
   booking_id text not null references bookings (id) on delete cascade,
@@ -54,8 +58,12 @@ create table if not exists events (
   source text not null check (source in ('generator', 'story', 'staff', 'jev')),
   message_id text references messages (id) on delete set null,
   document text,
-  note text
+  note text,
+  seq bigint not null default nextval('events_seq')
 );
+-- Numbers existing rows in storage order, once.
+alter table events add column if not exists seq bigint not null default nextval('events_seq');
+alter sequence events_seq owned by events.seq;
 create index if not exists events_booking_idx on events (booking_id, occurred_at);
 create index if not exists events_message_idx on events (message_id);
 create index if not exists events_application_idx on events (application_id);

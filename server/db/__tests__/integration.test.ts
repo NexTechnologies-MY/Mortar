@@ -149,6 +149,54 @@ describe.skipIf(!DATABASE_URL)('database integration', () => {
     expect(latest.find((r) => r.subjectId === 'W2TEST-BK')?.answer).toEqual({ v: 2 })
   })
 
+  describe('event order', () => {
+    // Rows of its own under `FXORD-`, so other work sharing the database is never touched.
+    const bookingId = 'FXORD-BK'
+    const staffEvent = (id: string, kind: CaseEvent['kind']): CaseEvent => ({
+      id,
+      bookingId,
+      applicationId: null,
+      track: 'loan',
+      kind,
+      // Two updates back-dated to one day land at the same time.
+      occurredAt: '2026-09-16T12:00:00+08:00',
+      recordedAt: '2026-09-18T09:30:00+08:00',
+      reportedBy: 'Tan Mei Ling',
+      verifiedBy: 'Tan Mei Ling',
+      status: 'confirmed',
+      source: 'staff',
+      messageId: null,
+      document: 'payslip',
+      note: null
+    })
+
+    afterAll(async () => {
+      await sql`delete from events where booking_id = ${bookingId}`
+      await sql`delete from bookings where id = ${bookingId}`
+    })
+
+    test('equal times come back in the order they were stored, and applySchema stays idempotent', async () => {
+      await applySchema(sql)
+      const sequences =
+        await sql`select count(*)::int as n from pg_class where relkind = 'S' and relname like 'events_seq%'`
+      expect(sequences[0].n).toBe(1)
+      await sql`insert into bookings (id, project, unit, price_rm, booking_date, buyer, sales_owner, loan_owner, legal_firm)
+        values (${bookingId}, 'FXORD Project', 'FX-01-01', 500000, '2026-09-01',
+          ${{ name: 'Test Buyer', ic: 'x', phone: 'x', age: 30, grossMonthlyIncomeRm: 5000, monthlyCommitmentsRm: 100, propertiesOwned: 0 }},
+          'Sales', 'Loan', 'Firm')`
+      // Entered in this order; the ids sort the other way.
+      await db.insertEvent(staffEvent('FXORD-EV-Z', 'documents_requested'))
+      await db.insertEvent(staffEvent('FXORD-EV-A', 'documents_received'))
+
+      const own = await db.eventsForBooking(bookingId)
+      expect(own.map((e) => e.id)).toEqual(['FXORD-EV-Z', 'FXORD-EV-A'])
+      expect(typeof own[0].seq).toBe('number')
+      expect(own[1].seq ?? 0).toBeGreaterThan(own[0].seq ?? 0)
+      const all = (await db.caseData()).events.filter((e) => e.bookingId === bookingId)
+      expect(all.map((e) => e.id)).toEqual(['FXORD-EV-Z', 'FXORD-EV-A'])
+    })
+  })
+
   describe('insertApplication', () => {
     // Rows of its own under `CITEST-`, so other work sharing the database is never touched.
     const bookingId = 'CITEST-BK'
@@ -489,7 +537,8 @@ describe.skipIf(!DATABASE_URL)('database integration', () => {
         db.reviewEvent('WRTEST-EV-2', 'superseded', 'Nurul Aina', '2026-09-18T09:00:00+08:00')
       )
       expect(outcome).toBeInstanceOf(EventSettledError)
-      expect(await db.getEvent('WRTEST-EV-2')).toEqual(cancelled)
+      // Stored events also carry their storage `seq` (fx/order-clock).
+      expect(await db.getEvent('WRTEST-EV-2')).toMatchObject(cancelled)
       expect(await sql`select 1 from event_reviews where event_id = 'WRTEST-EV-2'`).toHaveLength(0)
       expect(await db.reviewEvent('WRTEST-EV-NONE', 'confirmed', 'x', '2026-09-18T09:00:00+08:00')).toBeNull()
       await sql`delete from events where id = 'WRTEST-EV-2'`

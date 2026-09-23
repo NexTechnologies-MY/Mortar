@@ -17,7 +17,6 @@ import type {
   LoanApplication,
   Message,
   Playbook,
-  SimulationMeta,
   Snapshot,
   Task
 } from '@mortar/core'
@@ -31,14 +30,15 @@ import {
   rowToTask,
   rowsToMeta,
   withMaskedContact,
-  type JevAnswerRow
+  type JevAnswerRow,
+  type StoredMeta
 } from './mappers'
 
 export interface Database {
   /** `select 1`; throws when the connection is down. */
   ping(): Promise<void>
   /** Simulation parameters, or `null` while the `seed` row is absent (pre-reset). */
-  meta(): Promise<SimulationMeta | null>
+  meta(): Promise<StoredMeta | null>
   /** Whether `bookings` has any row at all; boot uses it to tell an empty database from one whose `meta` row went missing. */
   hasBookings(): Promise<boolean>
   /** The case-derivation input: bookings, applications, events and tasks. */
@@ -54,6 +54,8 @@ export interface Database {
   getEvent(id: string): Promise<CaseEvent | null>
   messagesForBooking(bookingId: string): Promise<Message[]>
   eventsForMessage(messageId: string): Promise<CaseEvent[]>
+  /** A booking's events in case order: by `occurredAt`, equal times in the order they were stored. */
+  eventsForBooking(bookingId: string): Promise<CaseEvent[]>
   listPlaybooks(): Promise<Playbook[]>
   insertMessage(message: Message): Promise<void>
   insertEvent(event: CaseEvent): Promise<void>
@@ -217,7 +219,9 @@ export function createDatabase(sql: SQL): Database {
     const [bookings, applications, events, tasks] = await Promise.all([
       sql`select * from bookings order by id`,
       sql`select * from loan_applications order by id`,
-      sql`select * from events order by occurred_at, id`,
+      // Equal times keep the order the rows were stored in (`seq`), which is
+      // the order they were entered in.
+      sql`select * from events order by occurred_at, seq`,
       sql`select * from tasks order by created_at, id`
     ])
     return {
@@ -275,7 +279,7 @@ export function createDatabase(sql: SQL): Database {
       return {
         ...data,
         bookings: data.bookings.map(withMaskedContact),
-        meta: metaRow,
+        meta: { seed: metaRow.seed, referenceDate: metaRow.referenceDate, resetAt: metaRow.resetAt },
         messages: messages.map(rowToMessage),
         playbooks: playbooks.map(rowToPlaybook),
         extractions,
@@ -310,7 +314,12 @@ export function createDatabase(sql: SQL): Database {
     },
 
     async eventsForMessage(messageId) {
-      const rows = await sql`select * from events where message_id = ${messageId} order by recorded_at, id`
+      const rows = await sql`select * from events where message_id = ${messageId} order by seq`
+      return rows.map(rowToEvent)
+    },
+
+    async eventsForBooking(bookingId) {
+      const rows = await sql`select * from events where booking_id = ${bookingId} order by occurred_at, seq`
       return rows.map(rowToEvent)
     },
 
