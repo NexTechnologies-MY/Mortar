@@ -118,7 +118,9 @@ export function rowToEvent(row: Row): CaseEvent {
     source: row.source as CaseEvent['source'],
     messageId: row.message_id == null ? null : String(row.message_id),
     document: row.document as CaseEvent['document'],
-    note: row.note == null ? null : String(row.note)
+    note: row.note == null ? null : String(row.note),
+    // bigint may come back as text; the sequence stays far below 2^53.
+    ...(row.seq == null ? {} : { seq: Number(row.seq) })
   }
 }
 
@@ -171,14 +173,26 @@ export function rowToJevAnswer(row: Row): JevAnswerRow {
   }
 }
 
-/** Rows of the `meta` table to `SimulationMeta`; `null` while the `seed` row is absent. */
-export function rowsToMeta(rows: Row[]): SimulationMeta | null {
+/** `SimulationMeta` as stored, plus what only the server reads. */
+export interface StoredMeta extends SimulationMeta {
+  /**
+   * The real clock time of the last reset, which times the reset cooldown.
+   * `resetAt` is sim time, whose time of day falls back to 00:00 at midnight.
+   * `null` until a reset has stored it.
+   */
+  resetAtWall?: string | null
+}
+
+/** Rows of the `meta` table to `StoredMeta`; `null` while the `seed` row is absent. */
+export function rowsToMeta(rows: Row[]): StoredMeta | null {
   const values = new Map(rows.map((row) => [String(row.key), jsonb<unknown>(row.value)]))
   if (!values.has('seed')) return null
   const resetAt = values.get('resetAt')
+  const resetAtWall = values.get('resetAtWall')
   return {
     seed: Number(values.get('seed')),
     referenceDate: String(values.get('referenceDate')),
-    resetAt: resetAt == null ? null : String(resetAt)
+    resetAt: resetAt == null ? null : String(resetAt),
+    resetAtWall: resetAtWall == null ? null : String(resetAtWall)
   }
 }

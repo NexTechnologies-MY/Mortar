@@ -12,7 +12,7 @@
  */
 
 import { useState } from 'react'
-import { ListPlus } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import type { Booking, CaseSummary, Task } from '@mortar/core'
 import { formatDate } from '@/components/case/format'
 import { Button } from '@/components/ui/button'
@@ -88,7 +88,7 @@ export function TaskCell({
       }}
       onKeyDown={(e) => e.stopPropagation()}
     >
-      <ListPlus aria-hidden="true" />
+      <Plus aria-hidden="true" />
       {adding ? 'Adding…' : 'Add Task'}
     </Button>
   )

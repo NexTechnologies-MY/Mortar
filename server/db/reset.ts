@@ -75,7 +75,7 @@ export async function resetDatabase(sql: SQL): Promise<SimulationMeta> {
 
   await sql.begin(async (tx) => {
     await tx.unsafe(
-      'truncate events, messages, loan_applications, bookings, playbooks, tasks, jev_answers, imports, meta'
+      'truncate events, event_reviews, messages, loan_applications, bookings, playbooks, tasks, jev_answers, imports, meta'
     )
     // Multi-row inserts: one round trip per chunk instead of one per row.
     const chunks = <T>(rows: T[]) => {
@@ -168,10 +168,13 @@ export async function resetDatabase(sql: SQL): Promise<SimulationMeta> {
     )) {
       await tx`insert into jev_answers ${tx(chunk)}`
     }
+    // `resetAt` is sim time, whose time of day wraps at midnight; the reset
+    // cooldown reads the real clock time beside it.
     await tx`insert into meta (key, value) values
       ('seed', to_jsonb(${DEFAULT_SEED}::int)),
       ('referenceDate', to_jsonb(${REFERENCE_DATE}::text)),
-      ('resetAt', to_jsonb(${resetAt}::text))`
+      ('resetAt', to_jsonb(${resetAt}::text)),
+      ('resetAtWall', to_jsonb(${new Date().toISOString()}::text))`
   })
 
   return { seed: DEFAULT_SEED, referenceDate: REFERENCE_DATE, resetAt }

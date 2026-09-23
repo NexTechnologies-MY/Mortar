@@ -1,7 +1,9 @@
 /**
  * Typed fetchers for the `/api` routes on the Bun server. In dev, Vite proxies
  * `/api` to `localhost:8787`; in production the same origin serves both. Every
- * fetcher throws an `Error` carrying the server's `error` field on failure.
+ * fetcher throws an `ApiError` on failure: the server's own text for a 4xx
+ * refusal (the desk needs to read those), a plain sentence for a 5xx, a
+ * network drop or a timeout — never a raw status code or route.
  */
 import type {
   Booking,
@@ -20,24 +22,63 @@ import type {
   Task
 } from '@mortar/core'
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(path, {
-    headers: init?.body ? { 'content-type': 'application/json' } : undefined,
-    ...init
-  })
+/** Jev-backed routes run a live model call and can take much longer than a plain read or write. */
+const JEV_TIMEOUT_MS = 60_000
+const DEFAULT_TIMEOUT_MS = 20_000
+
+const TIMEOUT_MESSAGE = 'Took Too Long, Try Again.'
+const NETWORK_MESSAGE = 'Could Not Reach The Server. Try Again.'
+const SERVER_ERROR_MESSAGE = 'Something Went Wrong. Try Again.'
+
+/**
+ * Thrown by every fetcher. `status` carries the server's HTTP status, or
+ * `null` for a timeout or a request that never reached the server, so a
+ * caller can tell a refusal it should read out (4xx, plain by convention)
+ * from one it should not (5xx, network, timeout).
+ */
+export class ApiError extends Error {
+  status: number | null
+  constructor(message: string, status: number | null) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+  }
+}
+
+async function request<T>(path: string, init?: RequestInit, timeoutMs = DEFAULT_TIMEOUT_MS): Promise<T> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  let res: Response
+  try {
+    res = await fetch(path, {
+      headers: init?.body ? { 'content-type': 'application/json' } : undefined,
+      ...init,
+      signal: controller.signal
+    })
+  } catch (e) {
+    throw e instanceof DOMException && e.name === 'AbortError'
+      ? new ApiError(TIMEOUT_MESSAGE, null)
+      : new ApiError(NETWORK_MESSAGE, null)
+  } finally {
+    clearTimeout(timer)
+  }
   const payload: unknown = await res.json().catch(() => null)
   if (!res.ok) {
-    const message =
+    const serverMessage =
       payload !== null && typeof payload === 'object' && 'error' in payload && typeof payload.error === 'string'
         ? payload.error
-        : `${init?.method ?? 'GET'} ${path} failed (${res.status})`
-    throw new Error(message)
+        : null
+    // A 4xx is the server refusing this exact request, in words the desk asked for
+    // (e.g. a time that has not come yet); a 5xx is our own failure and never
+    // reaches the screen in its own words.
+    const message = serverMessage !== null && res.status < 500 ? serverMessage : SERVER_ERROR_MESSAGE
+    throw new ApiError(message, res.status)
   }
   return payload as T
 }
 
-const post = <T>(path: string, body?: unknown) =>
-  request<T>(path, { method: 'POST', body: body === undefined ? undefined : JSON.stringify(body) })
+const post = <T>(path: string, body?: unknown, timeoutMs?: number) =>
+  request<T>(path, { method: 'POST', body: body === undefined ? undefined : JSON.stringify(body) }, timeoutMs)
 
 export interface Health {
   ok: boolean
@@ -61,10 +102,15 @@ export const postMessage = (input: {
   senderName: string
   body: string
   sentAt?: string
-}) => post<{ message: Message; extraction: Extraction; event: CaseEvent | null }>('/api/messages', input)
+}) =>
+  post<{ message: Message; extraction: Extraction; event: CaseEvent | null }>('/api/messages', input, JEV_TIMEOUT_MS)
 
 export const extractMessage = (messageId: string) =>
-  post<{ extraction: Extraction; event: CaseEvent | null }>(`/api/messages/${messageId}/extract`)
+  post<{ extraction: Extraction; event: CaseEvent | null }>(
+    `/api/messages/${messageId}/extract`,
+    undefined,
+    JEV_TIMEOUT_MS
+  )
 
 /**
  * Records a confirmed staff update. `applicationId` must be one of the booking's bank applications; `occurredOn`
@@ -98,12 +144,17 @@ export const reviewEvent = (
 ) => post<CaseEvent>(`/api/events/${eventId}/review`, input)
 
 export const fetchNextAction = (bookingId: string) =>
-  post<NextActionSuggestion>(`/api/bookings/${bookingId}/next-action`)
+  post<NextActionSuggestion>(`/api/bookings/${bookingId}/next-action`, undefined, JEV_TIMEOUT_MS)
 
 export const fetchPlaybooks = (bookingId: string, query?: string) =>
-  request<PlaybookRanking>(`/api/bookings/${bookingId}/playbooks${query ? `?q=${encodeURIComponent(query)}` : ''}`)
+  request<PlaybookRanking>(
+    `/api/bookings/${bookingId}/playbooks${query ? `?q=${encodeURIComponent(query)}` : ''}`,
+    undefined,
+    JEV_TIMEOUT_MS
+  )
 
-export const fetchSignals = (bookingId: string) => request<BuyerSignals>(`/api/bookings/${bookingId}/signals`)
+export const fetchSignals = (bookingId: string) =>
+  request<BuyerSignals>(`/api/bookings/${bookingId}/signals`, undefined, JEV_TIMEOUT_MS)
 
 export const postTask = (input: {
   bookingId: string

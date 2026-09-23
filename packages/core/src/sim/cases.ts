@@ -83,7 +83,17 @@ export const DOCUMENT_LABELS: Record<DocumentKind, string> = {
 
 const INCOME_DOCUMENTS: DocumentKind[] = ['payslip', 'epf_statement', 'bank_statement', 'employment_letter', 'tax_form']
 
-const byOccurred = (a: CaseEvent, b: CaseEvent) => a.occurredAt.localeCompare(b.occurredAt) || a.id.localeCompare(b.id)
+/**
+ * Case order: by `occurredAt`, equal times in the order the rows were stored
+ * (`seq`), so updates recorded for the same moment keep the order they were
+ * entered in. A row not yet stored sorts last among its equals; rows with no
+ * `seq` at all (the generator, fixtures) fall back to `recordedAt`, then `id`.
+ */
+export const byOccurred = (a: CaseEvent, b: CaseEvent) =>
+  a.occurredAt.localeCompare(b.occurredAt) ||
+  (a.seq ?? Infinity) - (b.seq ?? Infinity) ||
+  a.recordedAt.localeCompare(b.recordedAt) ||
+  a.id.localeCompare(b.id)
 
 export interface ApplicationFacts {
   id: string
