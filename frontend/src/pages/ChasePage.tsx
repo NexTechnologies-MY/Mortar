@@ -21,7 +21,7 @@ import {
 } from 'lucide-react'
 import type { CaseSummary, NextActionSuggestion, OwnerRole, RiskLevel, Task } from '@mortar/core'
 import { useCases, useSnapshot } from '@/lib/data'
-import { fetchNextAction, postTask, updateTask } from '@/lib/api'
+import { ApiError, fetchNextAction, postTask, updateTask } from '@/lib/api'
 import { notify } from '@/components/ui/toastConfig'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { PageHeaderCard } from '@/components/layout/PageHeaderCard'
@@ -29,6 +29,7 @@ import { StatCard } from '@/components/StatCard'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { InfoTooltip } from '@/components/ui/InfoTooltip'
+import { RefreshErrorBanner } from '@/components/ui/RefreshErrorBanner'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ChaseCard } from '@/components/chase/ChaseCard'
@@ -150,7 +151,7 @@ export function ChasePage() {
       setLive((prev) => ({ ...prev, [bookingId]: suggestion }))
       if (suggestion.meta.source === 'unavailable') notify.warning('Jev is unavailable — showing a neutral answer')
     } catch (e) {
-      notify.error(e instanceof Error ? e.message : 'Could not reach Jev')
+      notify.error(e instanceof ApiError ? e.message : 'Could Not Reach Jev. Try Again.')
     } finally {
       setFlag(setSuggesting, bookingId, false)
     }
@@ -175,7 +176,7 @@ export function ChasePage() {
       notify.success(`Task created for ${bookingId}: ${NEXT_ACTION_LABELS[suggestion.action.value]}`)
       await refresh()
     } catch (e) {
-      notify.error(e instanceof Error ? e.message : 'Could not create the task')
+      notify.error(e instanceof ApiError ? e.message : 'Could Not Create The Task. Try Again.')
     } finally {
       setFlag(setCreating, bookingId, false)
     }
@@ -188,7 +189,7 @@ export function ChasePage() {
       notify.success(`Completed: ${task.title}`)
       await refresh()
     } catch (e) {
-      notify.error(e instanceof Error ? e.message : 'Could not complete the task')
+      notify.error(e instanceof ApiError ? e.message : 'Could Not Complete The Task. Try Again.')
     } finally {
       setFlag(setCompleting, task.id, false)
     }
@@ -203,9 +204,14 @@ export function ChasePage() {
         </p>
       </PageHeaderCard>
 
-      {error ? (
+      {error && !snapshot ? (
         <div className="mt-4">
           <EmptyState icon={SearchX} title="Could Not Load Your Bookings" description={error} />
+          <div className="mt-3 flex justify-center">
+            <Button variant="secondary" onClick={() => void refresh()}>
+              Try Again
+            </Button>
+          </div>
         </div>
       ) : loading && !snapshot ? (
         <div className="mt-4 grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
@@ -215,6 +221,10 @@ export function ChasePage() {
         </div>
       ) : (
         <>
+          {/* A create-task or complete-task save can land fine while the refresh after
+              it fails; the queue stays on screen with a way to retry rather than
+              vanishing behind it. */}
+          {error ? <RefreshErrorBanner onRetry={() => void refresh()} /> : null}
           <div className="mt-4 flex flex-wrap gap-3">
             <StatCard
               label="Stalled Bookings"

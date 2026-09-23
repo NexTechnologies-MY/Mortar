@@ -67,8 +67,31 @@ describe('legalQueue', () => {
     expect(queue.find((r) => r.booking.id === 'BK-2')?.appointmentNote).toBeNull()
   })
 
+  it('carries the latest appointment after a reschedule, whatever order the log lists them in', () => {
+    const row = waiting('BK-1', 12, 'Alpha')
+    const rescheduled = {
+      ...appointment('BK-1', 'Appointment On 2026-09-25'),
+      id: 'EV-BK-1-2',
+      occurredAt: '2026-09-15T12:00:00+08:00'
+    }
+    const queue = legalQueue(
+      [row.booking],
+      [row.summary],
+      [rescheduled, appointment('BK-1', 'Appointment On 2026-09-04')]
+    )
+    expect(queue[0].appointmentNote).toBe('Appointment On 2026-09-25')
+  })
+
+  it('needs a real letter of offer, not just the stage', () => {
+    const noOffer = {
+      booking: booking('BK-1'),
+      summary: stalledCase('BK-1', { stage: 'lo_issued', daysSinceSpaSet: 3 })
+    }
+    expect(legalQueue([noOffer.booking], [noOffer.summary], [])).toEqual([])
+  })
+
   it('drops a summary with no matching booking rather than rendering a ghost row', () => {
-    expect(legalQueue([], [stalledCase('BK-missing', { stage: 'lo_issued' })], [])).toEqual([])
+    expect(legalQueue([], [stalledCase('BK-missing', { stage: 'lo_issued', daysSinceLoIssued: 5 })], [])).toEqual([])
   })
 
   // Waiting On gives a withdrawn buyer's case to the developer to release, so

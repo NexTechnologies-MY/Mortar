@@ -4,7 +4,7 @@
  * Read from the same `CaseSummary` the chase queue and the stall rules use, so
  * the answer cannot drift from them. Confirmed updates only, like the summary.
  */
-import type { CaseSummary, NextAction, Stage } from './types'
+import type { CaseSummary, NextAction } from './types'
 import { DOCUMENT_LABELS } from './sim/cases'
 
 export type BallHolder = 'buyer' | 'bank' | 'solicitor' | 'developer'
@@ -19,8 +19,6 @@ export interface BallInCourt {
   /** A stall rule has fired on the case. */
   stalled: boolean
 }
-
-const SIGNED: ReadonlySet<Stage> = new Set<Stage>(['spa_signed', 'loan_agreement', 'disbursed'])
 
 /** `Payslip`, `Payslip And EPF Statement`, `Payslip, IC Copy And EPF Statement`. */
 function listOf(items: string[]): string {
@@ -37,11 +35,13 @@ function listOf(items: string[]): string {
  */
 export function ballInCourt(summary: CaseSummary): BallInCourt {
   const stalled = summary.stallReasons.length > 0
-  if (SIGNED.has(summary.stage)) {
-    return { holder: null, waitingFor: 'Nothing, The SPA Is Signed', nextMove: null, stalled: false }
-  }
   if (summary.stage === 'cancelled' || summary.stage === 'lapsed') {
     return { holder: null, waitingFor: 'Nothing, The Booking Has Closed', nextMove: null, stalled: false }
+  }
+  // The signed SPA itself, not a stage label: a loan agreement or disbursement
+  // recorded without one leaves the case waiting on the SPA.
+  if (summary.spaSigned) {
+    return { holder: null, waitingFor: 'Nothing, The SPA Is Signed', nextMove: null, stalled: false }
   }
 
   // A buyer who has walked away outranks everything else: documents they still
@@ -53,7 +53,9 @@ export function ballInCourt(summary: CaseSummary): BallInCourt {
     return { holder: 'developer', waitingFor: 'A Decision To Release The Unit', nextMove: 'review_release', stalled }
   }
 
-  if (summary.stage === 'lo_issued') {
+  // A real letter of offer, not an SPA appointment alone: an appointment set
+  // while a bank is still deciding leaves the case with that bank.
+  if (summary.stage === 'lo_issued' && summary.daysSinceLoIssued !== null) {
     return summary.daysSinceSpaSet !== null
       ? { holder: 'solicitor', waitingFor: 'The Solicitor To Get The SPA Signed', nextMove: 'escalate_legal', stalled }
       : { holder: 'solicitor', waitingFor: 'The Solicitor To Schedule The SPA', nextMove: 'schedule_spa', stalled }

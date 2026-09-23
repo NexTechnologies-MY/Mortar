@@ -5,6 +5,7 @@
  * then) and a `reset` callback so the admin route stays testable. Returns
  * `null` for non-API paths so the caller can fall through to static files.
  */
+import { SQL } from 'bun'
 import {
   REFERENCE_DATE,
   checkBookingDraft,
@@ -35,9 +36,21 @@ import type {
   Task,
   Track
 } from '@mortar/core'
-import { ImportMovedOnError, UnitHeldError, type Database } from '../db/index'
+import { EventSettledError, ImportMovedOnError, OpenApplicationError, UnitHeldError, type Database } from '../db/index'
 import { isoDateTime, withMaskedContact } from '../db/mappers'
-import { body, detectLanguage, error, isIsoDate, isIsoDateTime, isOneOf, isString, json, match, newId } from './util'
+import {
+  body,
+  detectLanguage,
+  error,
+  isIsoDate,
+  isIsoDateTime,
+  isOneOf,
+  isString,
+  json,
+  match,
+  newId,
+  tooLong
+} from './util'
 
 export interface AppOptions {
   db: Database
@@ -46,6 +59,12 @@ export interface AppOptions {
   reset: () => Promise<SimulationMeta>
   /** What `/api/health` reports for Jev: whether a live service is wired. */
   jevAvailable?: boolean
+  /**
+   * What `/api/health` reports as `jevLastError`: the message from the last
+   * live Jev call that failed, or `null`. Optional because not every wiring
+   * can see it (see `server/src/index.ts`).
+   */
+  jevLastError?: () => string | null
   /**
    * Whether `POST /api/admin/reset` may wipe the database. On for the public
    * demo; a server holding real data sets `MORTAR_DEMO_RESET=off`, and the
@@ -111,6 +130,13 @@ const MAX_IMPORT_ROWS = 1000
  */
 const CLOCK_SKEW_MS = 60_000
 
+/** A person's name, a note, a bank, a banker, or a task title: none needs more than this. */
+const MAX_NAME = 300
+/** A pasted buyer message; long enough for a real conversation turn, short of a pasted document. */
+const MAX_MESSAGE_BODY = 5_000
+/** The playbook search box. */
+const MAX_PLAYBOOK_QUERY = 200
+
 /** Why `occurredOn` cannot date an update on this booking, or `null` when it can. */
 function occurredOnProblem(occurredOn: IsoDate, booking: Booking): string | null {
   if (occurredOn > REFERENCE_DATE) return `occurredOn cannot be after today (${REFERENCE_DATE})`
@@ -120,9 +146,88 @@ function occurredOnProblem(occurredOn: IsoDate, booking: Booking): string | null
   return null
 }
 
-/** A back-dated update lands at noon Malaysia time on its day; an undated one at `now`. */
-function occurredAtFor(occurredOn: IsoDate | null, now: IsoDateTime): IsoDateTime {
-  return occurredOn === null ? now : `${occurredOn}T12:00:00+08:00`
+/** Updates that belong to one bank's application; without it they cannot mark the bank. */
+const NEEDS_APPLICATION: ReadonlySet<EventKind> = new Set(['loan_approved', 'loan_rejected', 'valuation_shortfall'])
+
+/** A cancelled or lapsed booking takes no more updates and no more Jev proposals. */
+function isClosed(summary: CaseSummary): boolean {
+  return summary.stage === 'cancelled' || summary.stage === 'lapsed'
+}
+
+/**
+ * Why the case as it stands refuses a `kind` update on `applicationId`, or
+ * `null` when it takes it. The forms enforce the same rules; this is the
+ * server's copy, so a stale screen or a hand-made request cannot skip them.
+ */
+function caseRuleProblem(summary: CaseSummary, kind: EventKind, applicationId: string | null): string | null {
+  if (isClosed(summary)) return `This booking is ${summary.stage}, so it takes no more updates.`
+  if (kind === 'loan_approved' || kind === 'loan_rejected') {
+    const application = summary.applications.find((a) => a.id === applicationId)
+    if (application && (application.status === 'approved' || application.status === 'rejected')) {
+      return `${application.bank} has already ${application.status} this application.`
+    }
+  }
+  return null
+}
+
+/** A Jev proposal still waiting for staff: the only kind of event a review may change. */
+function isPendingProposal(event: CaseEvent): boolean {
+  return event.source === 'jev' && (event.status === 'provisional' || event.status === 'disputed')
+}
+
+/** Why confirming the pending proposal `event` would break the case rules, or `null` when it may be confirmed. */
+function confirmProblem(summary: CaseSummary, event: CaseEvent): string | null {
+  const problem = caseRuleProblem(summary, event.kind, event.applicationId)
+  if (problem) return problem
+  if (event.applicationId === null && NEEDS_APPLICATION.has(event.kind)) {
+    return 'Jev could not tell which bank this is for. Dismiss it and record the update by hand.'
+  }
+  return null
+}
+
+/** Why a review cannot change `event`, which is no longer a Jev proposal waiting for one. */
+function settledMessage(event: CaseEvent): string {
+  if (event.source !== 'jev') return 'This update is already on record, so there is nothing to review.'
+  if (event.status === 'confirmed') return 'This update was already reviewed and confirmed.'
+  if (event.status === 'superseded') {
+    return 'This update was already dismissed, or replaced when Jev read the message again.'
+  }
+  return 'This update was already disputed.'
+}
+
+/**
+ * When a staff update happened, from the day it names (none means today). One
+ * dated today lands at `now`, so it falls among today's messages in the order
+ * they came; a back-dated one lands at noon Malaysia time on its day. Neither
+ * lands before anything the booking already has on record that day (seeded
+ * rows carry times of their own, and `now` falls back to 00:00 at midnight
+ * while its date stays put), and an equal time sorts by storage order, so the
+ * updates on one day keep the order they were entered in.
+ */
+function occurredAtFor(occurredOn: IsoDate | null, now: IsoDateTime, onRecord: CaseEvent[]): IsoDateTime {
+  const day = occurredOn ?? now.slice(0, 10)
+  const base = day === now.slice(0, 10) ? now : `${day}T12:00:00+08:00`
+  return onRecord.reduce((at, e) => (e.occurredAt.slice(0, 10) === day && e.occurredAt > at ? e.occurredAt : at), base)
+}
+
+const DAY_MS = 86_400_000
+/**
+ * How close to midnight a `sentAt` on the reference date must be to count as
+ * the minutes just gone once `simNow` has wrapped to 00:00, rather than as a
+ * time later that day.
+ */
+const MIDNIGHT_GRACE_MS = 10 * 60_000
+
+/**
+ * How far `sent` runs ahead of `now`, in ms. `simNow` keeps the reference date
+ * while its time of day falls back to 00:00 at midnight, so a message stamped
+ * on that date just before midnight and posted just after would read as nearly
+ * a day ahead; it is measured back across midnight instead.
+ */
+function msAheadOf(sent: number, now: IsoDateTime): number {
+  const ahead = sent - Date.parse(now)
+  const sameDay = isoDateTime(new Date(sent)).slice(0, 10) === now.slice(0, 10)
+  return sameDay && ahead > DAY_MS - MIDNIGHT_GRACE_MS ? ahead - DAY_MS : ahead
 }
 
 /**
@@ -163,17 +268,14 @@ export function createApp(options: AppOptions): App {
     return summaries.find((s) => s.bookingId === bookingId) ?? null
   }
 
-  /** Turns a Jev extraction into a provisional event row, or `null` for `no_update`. */
-  const insertProposal = async (
-    extraction: Extraction,
-    message: Message,
-    summary: CaseSummary
-  ): Promise<CaseEvent | null> => {
+  /**
+   * Turns a Jev extraction into a provisional event, or `null` for `no_update`
+   * and on a closed booking, which takes no more updates.
+   */
+  const proposalEvent = (extraction: Extraction, message: Message, summary: CaseSummary): CaseEvent | null => {
+    if (isClosed(summary)) return null
     const proposal = proposalFromExtraction(extraction, message, summary)
-    if (!proposal) return null
-    const event: CaseEvent = { ...proposal, id: newId('EV'), recordedAt: simNow(REFERENCE_DATE) }
-    await db.insertEvent(event)
-    return event
+    return proposal && { ...proposal, id: newId('EV'), recordedAt: simNow(REFERENCE_DATE) }
   }
 
   const routes: [string, string, Handler][] = [
@@ -189,7 +291,13 @@ export function createApp(options: AppOptions): App {
         } catch {
           dbOk = false
         }
-        return json({ ok: true, db: dbOk, jev: Boolean(options.jevAvailable), jevAnswers })
+        return json({
+          ok: dbOk,
+          db: dbOk,
+          jev: Boolean(options.jevAvailable),
+          jevAnswers,
+          jevLastError: options.jevLastError?.() ?? null
+        })
       }
     ],
     ['GET', '/api/snapshot', async () => json(await db.snapshot())],
@@ -203,7 +311,11 @@ export function createApp(options: AppOptions): App {
         if (!isOneOf(b.senderRole, SENDER_ROLES))
           return error(400, `senderRole must be one of: ${SENDER_ROLES.join(', ')}`)
         if (!isString(b.senderName)) return error(400, 'senderName is required')
+        const senderNameTooLong = tooLong('senderName', b.senderName, MAX_NAME)
+        if (senderNameTooLong) return senderNameTooLong
         if (!isString(b.body)) return error(400, 'body is required')
+        const bodyTooLong = tooLong('body', b.body, MAX_MESSAGE_BODY)
+        if (bodyTooLong) return bodyTooLong
         if (b.sentAt != null && !isIsoDateTime(b.sentAt))
           return error(400, 'sentAt must be a date-time with an offset, e.g. 2026-09-17T21:05:00+08:00')
         const booking = await db.getBooking(b.bookingId)
@@ -214,12 +326,12 @@ export function createApp(options: AppOptions): App {
         let sentAt = now
         if (b.sentAt != null) {
           const sent = Date.parse(b.sentAt as string)
-          if (sent > Date.parse(now) + CLOCK_SKEW_MS)
-            return error(400, `sentAt cannot be in the future (now is ${now})`)
+          const ahead = msAheadOf(sent, now)
+          if (ahead > CLOCK_SKEW_MS) return error(400, `sentAt cannot be in the future (now is ${now})`)
           if (sent < Date.parse(`${booking.bookingDate}T00:00:00+08:00`)) {
             return error(400, `sentAt cannot be before the booking date (${booking.bookingDate})`)
           }
-          sentAt = sent > Date.parse(now) ? now : isoDateTime(new Date(sent))
+          sentAt = ahead > 0 ? now : isoDateTime(new Date(sent))
         }
         const summary = await summaryFor(booking.id)
         if (!summary) return error(500, `no case summary for ${booking.id}`)
@@ -235,7 +347,9 @@ export function createApp(options: AppOptions): App {
         }
         await db.insertMessage(message)
         const extraction = await jev.extract({ message, summary })
-        const event = await insertProposal(extraction, message, summary)
+        // A message on a closed booking is still kept; it just proposes nothing.
+        const event = proposalEvent(extraction, message, summary)
+        if (event) await db.insertEvent(event)
         return json({ message, extraction, event })
       }
     ],
@@ -247,10 +361,10 @@ export function createApp(options: AppOptions): App {
         if (!message) return error(404, `message ${params.id} not found`)
         const summary = await summaryFor(message.bookingId)
         if (!summary) return error(500, `no case summary for ${message.bookingId}`)
+        // Jev first, outside any transaction: the call takes seconds. The swap
+        // of the old proposal for the new one is then one step per message.
         const extraction = await jev.extract({ message, summary })
-        await db.supersedePendingProposals(message.id)
-        const confirmed = (await db.eventsForMessage(message.id)).some((e) => e.status === 'confirmed')
-        const event = confirmed ? null : await insertProposal(extraction, message, summary)
+        const event = await db.replaceProposal(message.id, proposalEvent(extraction, message, summary))
         return json({ extraction, event })
       }
     ],
@@ -266,13 +380,26 @@ export function createApp(options: AppOptions): App {
         // A submission needs its application row; that route writes both together.
         if (b.kind === 'loan_submitted')
           return error(400, 'loan_submitted is recorded through POST /api/applications, which creates the application')
+        // The import writes the one booked event a booking carries.
+        if (b.kind === 'booked') return error(400, 'A booking is recorded by importing it, not as an update.')
         if (b.document != null && !isOneOf(b.document, DOCUMENT_KINDS))
           return error(400, `document must be one of: ${DOCUMENT_KINDS.join(', ')}`)
         if (b.note != null && typeof b.note !== 'string') return error(400, 'note must be a string')
+        if (typeof b.note === 'string') {
+          const noteTooLong = tooLong('note', b.note, MAX_NAME)
+          if (noteTooLong) return noteTooLong
+        }
         if (b.applicationId != null && !isString(b.applicationId))
           return error(400, 'applicationId must be a non-empty string')
+        if (b.applicationId == null && NEEDS_APPLICATION.has(b.kind))
+          return error(
+            400,
+            'A loan approval, rejection or valuation shortfall must say which bank application it is for.'
+          )
         if (b.occurredOn != null && !isIsoDate(b.occurredOn)) return error(400, 'occurredOn must be a YYYY-MM-DD date')
         if (!isString(b.reportedBy)) return error(400, 'reportedBy is required')
+        const reportedByTooLong = tooLong('reportedBy', b.reportedBy, MAX_NAME)
+        if (reportedByTooLong) return reportedByTooLong
         const booking = await db.getBooking(b.bookingId)
         if (!booking) return error(404, `booking ${b.bookingId} not found`)
         const applicationId = (b.applicationId as string | undefined) ?? null
@@ -284,14 +411,28 @@ export function createApp(options: AppOptions): App {
         const occurredOn = (b.occurredOn as IsoDate | undefined) ?? null
         const problem = occurredOn === null ? null : occurredOnProblem(occurredOn, booking)
         if (problem) return error(400, problem)
+        const summary = await summaryFor(booking.id)
+        if (!summary) return error(500, `no case summary for ${booking.id}`)
+        const refused = caseRuleProblem(summary, b.kind, applicationId)
+        if (refused) return error(409, refused)
+        // A loan agreement or a disbursement stands on a signed SPA; recorded
+        // before one, the case would read as past a signing that is not on the log.
+        if (b.kind === 'loan_agreement_signed' || b.kind === 'disbursed') {
+          const { events } = await db.caseData()
+          const signed = events.some(
+            (e) => e.bookingId === booking.id && e.kind === 'spa_signed' && e.status === 'confirmed'
+          )
+          if (!signed) return error(400, `${b.kind} needs a signed SPA: record spa_signed on ${booking.id} first`)
+        }
         const now = simNow(REFERENCE_DATE)
+        const occurredAt = occurredAtFor(occurredOn, now, await db.eventsForBooking(booking.id))
         const event: CaseEvent = {
           id: newId('EV'),
           bookingId: booking.id,
           applicationId,
           track: b.track,
           kind: b.kind,
-          occurredAt: occurredAtFor(occurredOn, now),
+          occurredAt,
           recordedAt: now,
           reportedBy: b.reportedBy.trim(),
           verifiedBy: b.reportedBy.trim(),
@@ -313,16 +454,31 @@ export function createApp(options: AppOptions): App {
         if (!b) return error(400, 'expected a JSON object body')
         if (!isString(b.bookingId)) return error(400, 'bookingId is required')
         if (!isString(b.bank)) return error(400, 'bank is required')
+        const bankTooLong = tooLong('bank', b.bank, MAX_NAME)
+        if (bankTooLong) return bankTooLong
         if (!isString(b.banker)) return error(400, 'banker is required')
+        const bankerTooLong = tooLong('banker', b.banker, MAX_NAME)
+        if (bankerTooLong) return bankerTooLong
         if (b.note != null && typeof b.note !== 'string') return error(400, 'note must be a string')
+        if (typeof b.note === 'string') {
+          const noteTooLong = tooLong('note', b.note, MAX_NAME)
+          if (noteTooLong) return noteTooLong
+        }
         if (b.occurredOn != null && !isIsoDate(b.occurredOn)) return error(400, 'occurredOn must be a YYYY-MM-DD date')
         if (!isString(b.reportedBy)) return error(400, 'reportedBy is required')
+        const reportedByTooLong = tooLong('reportedBy', b.reportedBy, MAX_NAME)
+        if (reportedByTooLong) return reportedByTooLong
         const booking = await db.getBooking(b.bookingId)
         if (!booking) return error(404, `booking ${b.bookingId} not found`)
         const occurredOn = (b.occurredOn as IsoDate | undefined) ?? null
         const problem = occurredOn === null ? null : occurredOnProblem(occurredOn, booking)
         if (problem) return error(400, problem)
+        const summary = await summaryFor(booking.id)
+        if (!summary) return error(500, `no case summary for ${booking.id}`)
+        const refused = caseRuleProblem(summary, 'loan_submitted', null)
+        if (refused) return error(409, refused)
         const now = simNow(REFERENCE_DATE)
+        const occurredAt = occurredAtFor(occurredOn, now, await db.eventsForBooking(booking.id))
         const reportedBy = b.reportedBy.trim()
         const application: LoanApplication = {
           id: newId('APP'),
@@ -336,7 +492,7 @@ export function createApp(options: AppOptions): App {
           applicationId: application.id,
           track: 'loan',
           kind: 'loan_submitted',
-          occurredAt: occurredAtFor(occurredOn, now),
+          occurredAt,
           recordedAt: now,
           reportedBy,
           verifiedBy: reportedBy,
@@ -346,7 +502,16 @@ export function createApp(options: AppOptions): App {
           document: null,
           note: (b.note as string | undefined)?.trim() || null
         }
-        await db.insertApplication(application, event)
+        try {
+          // A retried submission meets the first one's application under the
+          // database's per-booking lock; a bank that rejected can be tried again.
+          await db.insertApplication(application, event)
+        } catch (e) {
+          if (e instanceof OpenApplicationError) {
+            return error(409, `${e.bank} already has an application waiting on this booking.`)
+          }
+          throw e
+        }
         return json({ application, event })
       }
     ],
@@ -359,10 +524,29 @@ export function createApp(options: AppOptions): App {
         if (!isOneOf(b.decision, Object.keys(REVIEW_DECISIONS)))
           return error(400, 'decision must be one of: confirm, dispute, dismiss')
         if (!isString(b.reviewer)) return error(400, 'reviewer is required')
+        const reviewerTooLong = tooLong('reviewer', b.reviewer, MAX_NAME)
+        if (reviewerTooLong) return reviewerTooLong
         const status = REVIEW_DECISIONS[b.decision as keyof typeof REVIEW_DECISIONS]
-        const event = await db.reviewEvent(params.id, status, b.reviewer.trim())
-        if (!event) return error(404, `event ${params.id} not found`)
-        return json(event)
+        const current = await db.getEvent(params.id)
+        if (!current) return error(404, `event ${params.id} not found`)
+        if (status === 'confirmed' && isPendingProposal(current)) {
+          // Confirming writes the proposal into the case, so the case rules apply
+          // as they do to an update recorded by hand.
+          const summary = await summaryFor(current.bookingId)
+          if (!summary) return error(500, `no case summary for ${current.bookingId}`)
+          const refused = confirmProblem(summary, current)
+          if (refused) return error(409, refused)
+        }
+        try {
+          // The database checks the proposal is still waiting, under a row lock,
+          // and keeps the change in `event_reviews`.
+          const event = await db.reviewEvent(params.id, status, b.reviewer.trim(), simNow(REFERENCE_DATE))
+          if (!event) return error(404, `event ${params.id} not found`)
+          return json(event)
+        } catch (e) {
+          if (e instanceof EventSettledError) return error(409, settledMessage(e.event))
+          throw e
+        }
       }
     ],
     [
@@ -380,10 +564,13 @@ export function createApp(options: AppOptions): App {
       'GET',
       '/api/bookings/:id/playbooks',
       async ({ url, params }) => {
+        const rawQuery = url.searchParams.get('q')?.trim() ?? ''
+        const rawQueryTooLong = tooLong('q', rawQuery, MAX_PLAYBOOK_QUERY)
+        if (rawQueryTooLong) return rawQueryTooLong
         if (!(await db.getBooking(params.id))) return error(404, `booking ${params.id} not found`)
         const summary = await summaryFor(params.id)
         if (!summary) return error(500, `no case summary for ${params.id}`)
-        const query = url.searchParams.get('q')?.trim() || defaultPlaybookQuery(summary)
+        const query = rawQuery || defaultPlaybookQuery(summary)
         const candidates = searchPlaybooks(await db.listPlaybooks(), query)
         return json(await jev.rankPlaybooks({ summary, query, candidates }))
       }
@@ -412,6 +599,8 @@ export function createApp(options: AppOptions): App {
           return error(400, 'bookings must be a non-empty array')
         if (b.bookings.length > MAX_IMPORT_ROWS) return error(400, `at most ${MAX_IMPORT_ROWS} bookings per import`)
         if (!isString(b.reportedBy)) return error(400, 'reportedBy is required')
+        const reportedByTooLong = tooLong('reportedBy', b.reportedBy, MAX_NAME)
+        if (reportedByTooLong) return reportedByTooLong
         const problems = b.bookings.flatMap((draft, i) =>
           checkBookingDraft(draft, REFERENCE_DATE).map((p) => `row ${i + 1}: ${p}`)
         )
@@ -468,6 +657,8 @@ export function createApp(options: AppOptions): App {
         const b = await body(req)
         if (!b) return error(400, 'expected a JSON object body')
         if (!isString(b.reportedBy)) return error(400, 'reportedBy is required')
+        const reportedByTooLong = tooLong('reportedBy', b.reportedBy, MAX_NAME)
+        if (reportedByTooLong) return reportedByTooLong
         try {
           const result = await db.undoImport(params.id, b.reportedBy.trim(), simNow(REFERENCE_DATE))
           if (!result) return error(404, `import ${params.id} not found or already undone`)
@@ -487,8 +678,12 @@ export function createApp(options: AppOptions): App {
         if (!isString(b.bookingId)) return error(400, 'bookingId is required')
         if (!isOneOf(b.action, NEXT_ACTIONS)) return error(400, `action must be one of: ${NEXT_ACTIONS.join(', ')}`)
         if (!isString(b.title)) return error(400, 'title is required')
+        const titleTooLong = tooLong('title', b.title, MAX_NAME)
+        if (titleTooLong) return titleTooLong
         if (!isOneOf(b.ownerRole, OWNER_ROLES)) return error(400, `ownerRole must be one of: ${OWNER_ROLES.join(', ')}`)
         if (!isString(b.ownerName)) return error(400, 'ownerName is required')
+        const ownerNameTooLong = tooLong('ownerName', b.ownerName, MAX_NAME)
+        if (ownerNameTooLong) return ownerNameTooLong
         if (!isIsoDate(b.dueOn)) return error(400, 'dueOn must be a YYYY-MM-DD date')
         if (!isOneOf(b.origin, ['jev', 'staff'] as const)) return error(400, "origin must be 'jev' or 'staff'")
         if (!(await db.getBooking(b.bookingId))) return error(404, `booking ${b.bookingId} not found`)
@@ -530,11 +725,13 @@ export function createApp(options: AppOptions): App {
           return error(403, 'demo reset is turned off on this server (MORTAR_DEMO_RESET=off)')
         }
         const meta = await db.meta()
-        // `meta.resetAt` is sim time (the reference date plus the real time of
-        // day), so the cooldown measures it against `simNow`, not `Date.now`.
+        // `meta.resetAt` is sim time, whose time of day falls back to 00:00 at
+        // midnight, so it cannot time a cooldown. Every reset also stores the
+        // real clock time, which covers a reset by another process too; either
+        // side of it, in case that process's clock runs a little ahead.
+        const resetAtWall = meta?.resetAtWall ? Date.parse(meta.resetAtWall) : Number.NaN
         const recent =
-          Date.now() - lastResetAt < RESET_COOLDOWN_MS ||
-          (meta?.resetAt != null && Date.parse(meta.resetAt) > Date.parse(simNow(REFERENCE_DATE)) - RESET_COOLDOWN_MS)
+          Date.now() - lastResetAt < RESET_COOLDOWN_MS || Math.abs(Date.now() - resetAtWall) < RESET_COOLDOWN_MS
         if (recent) return error(429, 'reset ran less than 30 seconds ago')
         // Arm before awaiting so a concurrent POST inside the reset's own
         // runtime is also a 429; a failed reset frees the window again.
@@ -560,7 +757,18 @@ export function createApp(options: AppOptions): App {
         try {
           return await handler({ req, url, params })
         } catch (e) {
-          return error(500, e instanceof Error ? e.message : 'internal error')
+          // Never show raw Postgres wording to the browser, but always log it.
+          console.error(e)
+          if (e instanceof SQL.PostgresError) {
+            // SQLSTATE class (the first two digits): 22 is data exception (bad
+            // input Postgres itself rejected, e.g. a value out of range), 23 is
+            // integrity constraint violation (a foreign key, unique or check
+            // failure — including the undo/insert race in `undoImport`).
+            const sqlStateClass = e.code.slice(0, 2)
+            if (sqlStateClass === '22') return error(400, 'the request has invalid input')
+            if (sqlStateClass === '23') return error(409, 'the request conflicts with existing data')
+          }
+          return error(500, 'internal error')
         }
       }
       return error(404, `no route ${req.method} ${url.pathname}`)
