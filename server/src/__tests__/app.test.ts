@@ -5,6 +5,7 @@
  * implementations land the routes exercise them unchanged.
  */
 import { describe, expect, mock, test } from 'bun:test'
+import { SQL } from 'bun'
 import * as realCore from '../../../packages/core/src/index'
 
 const SUMMARY: realCore.CaseSummary = {
@@ -141,6 +142,9 @@ class FakeDb implements Database {
   resetAt: string | null = null
 
   async ping() {}
+  async hasBookings() {
+    return this.bookings.length > 0
+  }
   async meta(): Promise<SimulationMeta | null> {
     return { seed: 20260918, referenceDate: '2026-09-18', resetAt: this.resetAt }
   }
@@ -318,17 +322,29 @@ describe('createApp', () => {
     db.jevAnswers = 87
     const res = await call(makeApp(db), '/api/health')
     expect(res?.status).toBe(200)
-    expect(await res?.json()).toEqual({ ok: true, db: true, jev: false, jevAnswers: 87 })
+    expect(await res?.json()).toEqual({ ok: true, db: true, jev: false, jevAnswers: 87, jevLastError: null })
   })
 
-  test('GET /api/health survives a dead database', async () => {
+  test('GET /api/health reports ok: false, from a dead database, not a hardcoded true', async () => {
     const db = new FakeDb()
     db.jevAnswers = 87
     db.ping = async () => {
       throw new Error('down')
     }
     const res = await call(makeApp(db), '/api/health')
-    expect(await res?.json()).toEqual({ ok: true, db: false, jev: false, jevAnswers: null })
+    expect(await res?.json()).toEqual({ ok: false, db: false, jev: false, jevAnswers: null, jevLastError: null })
+  })
+
+  test('GET /api/health reports jevLastError from the wiring, when given one', async () => {
+    const app = createApp({
+      db: new FakeDb(),
+      jev: fakeJev(),
+      reset: async () => ({ seed: 1, referenceDate: '2026-09-18', resetAt: '2026-09-18T12:00:00+08:00' }),
+      jevAvailable: true,
+      jevLastError: () => 'jev proxy request failed: 503 Service Unavailable'
+    })
+    const res = await call(app, '/api/health')
+    expect(await res?.json()).toMatchObject({ jevLastError: 'jev proxy request failed: 503 Service Unavailable' })
   })
 
   test('GET /api/snapshot returns the snapshot', async () => {
@@ -342,6 +358,40 @@ describe('createApp', () => {
     const res = await call(makeApp(), '/api/nope')
     expect(res?.status).toBe(404)
     expect(await errorOf(res)).toMatch('no route')
+  })
+
+  describe('the catch-all error handler', () => {
+    test('a plain thrown error becomes a generic 500, never the raw message', async () => {
+      const db = new FakeDb()
+      db.getBooking = async () => {
+        throw new Error('relation "bookings" column secret_internal_field leaked here')
+      }
+      const res = await call(makeApp(db), '/api/bookings/BK-9001/next-action', post())
+      expect(res?.status).toBe(500)
+      const message = await errorOf(res)
+      expect(message).not.toContain('secret_internal_field')
+      expect(message).toBeTruthy()
+    })
+
+    test('a Postgres SQLSTATE class 22 (data exception) becomes a 400', async () => {
+      const db = new FakeDb()
+      db.getBooking = async () => {
+        throw new SQL.PostgresError('invalid input syntax for type date: "0000-01-01"', { code: '22007' })
+      }
+      const res = await call(makeApp(db), '/api/bookings/BK-9001/next-action', post())
+      expect(res?.status).toBe(400)
+    })
+
+    test('a Postgres SQLSTATE class 23 (integrity constraint violation, e.g. a foreign key) becomes a 409', async () => {
+      const db = new FakeDb()
+      db.getBooking = async () => {
+        throw new SQL.PostgresError('insert or update on table "events" violates foreign key constraint', {
+          code: '23503'
+        })
+      }
+      const res = await call(makeApp(db), '/api/bookings/BK-9001/next-action', post())
+      expect(res?.status).toBe(409)
+    })
   })
 
   describe('POST /api/messages', () => {
@@ -377,11 +427,24 @@ describe('createApp', () => {
       [{ bookingId: 'BK-9001' }, 'senderRole'],
       [{ ...valid, senderRole: 'robot' }, 'senderRole'],
       [{ ...valid, senderName: '' }, 'senderName'],
-      [{ ...valid, body: '' }, 'body']
+      [{ ...valid, body: '' }, 'body'],
+      [{ ...valid, senderName: 'a\u0000b' }, 'senderName']
     ])('validation rejects %o mentioning %s', async (input, field) => {
       const res = await call(makeApp(), '/api/messages', post(input))
       expect(res?.status).toBe(400)
       expect(await errorOf(res)).toContain(field)
+    })
+
+    test('senderName over 300 characters is refused', async () => {
+      const res = await call(makeApp(), '/api/messages', post({ ...valid, senderName: 'x'.repeat(301) }))
+      expect(res?.status).toBe(400)
+      expect(await errorOf(res)).toContain('senderName')
+    })
+
+    test('body over 5,000 characters is refused', async () => {
+      const res = await call(makeApp(), '/api/messages', post({ ...valid, body: 'x'.repeat(5001) }))
+      expect(res?.status).toBe(400)
+      expect(await errorOf(res)).toContain('body')
     })
 
     test('unknown booking is a 404', async () => {
@@ -500,6 +563,18 @@ describe('createApp', () => {
     test('unknown booking is a 404', async () => {
       const res = await call(makeApp(), '/api/events', post({ ...valid, bookingId: 'BK-0000' }))
       expect(res?.status).toBe(404)
+    })
+
+    test('note over 300 characters is refused', async () => {
+      const res = await call(makeApp(), '/api/events', post({ ...valid, note: 'x'.repeat(301) }))
+      expect(res?.status).toBe(400)
+      expect(await errorOf(res)).toContain('note')
+    })
+
+    test('reportedBy over 300 characters is refused', async () => {
+      const res = await call(makeApp(), '/api/events', post({ ...valid, reportedBy: 'x'.repeat(301) }))
+      expect(res?.status).toBe(400)
+      expect(await errorOf(res)).toContain('reportedBy')
     })
 
     test('records a bank decision against its application, on the day it happened', async () => {
@@ -639,6 +714,18 @@ describe('createApp', () => {
       expect(db.applications).toHaveLength(1)
       expect(db.events).toHaveLength(0)
     })
+
+    test.each([
+      ['bank', 'x'.repeat(301)],
+      ['banker', 'x'.repeat(301)],
+      ['note', 'x'.repeat(301)],
+      ['reportedBy', 'x'.repeat(301)]
+    ])('%s over 300 characters is refused', async (field, value) => {
+      const db = new FakeDb()
+      const res = await call(makeApp(db), '/api/applications', post({ ...valid, [field]: value }))
+      expect(res?.status).toBe(400)
+      expect(await errorOf(res)).toContain(field)
+    })
   })
 
   describe('POST /api/events/:id/review', () => {
@@ -659,6 +746,16 @@ describe('createApp', () => {
     test('rejects a bad decision', async () => {
       const res = await call(makeApp(), '/api/events/EV-9001-9/review', post({ decision: 'shrug', reviewer: 'x' }))
       expect(res?.status).toBe(400)
+    })
+
+    test('reviewer over 300 characters is refused', async () => {
+      const res = await call(
+        makeApp(),
+        '/api/events/EV-9001-9/review',
+        post({ decision: 'confirm', reviewer: 'x'.repeat(301) })
+      )
+      expect(res?.status).toBe(400)
+      expect(await errorOf(res)).toContain('reviewer')
     })
 
     test('unknown event is a 404', async () => {
@@ -728,6 +825,12 @@ describe('createApp', () => {
       const res = await call(makeApp(), '/api/bookings/BK-0000/playbooks')
       expect(res?.status).toBe(404)
     })
+
+    test('q over 200 characters is refused, before the booking is even looked up', async () => {
+      const res = await call(makeApp(), `/api/bookings/BK-0000/playbooks?q=${'x'.repeat(201)}`)
+      expect(res?.status).toBe(400)
+      expect(await errorOf(res)).toContain('q')
+    })
   })
 
   describe('GET /api/bookings/:id/signals', () => {
@@ -792,11 +895,24 @@ describe('createApp', () => {
       [{ ...valid, action: 'nap' }, 'action'],
       [{ ...valid, ownerRole: 'ceo' }, 'ownerRole'],
       [{ ...valid, dueOn: 'tomorrow' }, 'dueOn'],
+      [{ ...valid, dueOn: '0000-01-01' }, 'dueOn'],
       [{ ...valid, origin: 'robot' }, 'origin']
     ])('validation rejects %o mentioning %s', async (input, field) => {
       const res = await call(makeApp(), '/api/tasks', post(input))
       expect(res?.status).toBe(400)
       expect(await errorOf(res)).toContain(field)
+    })
+
+    test('title over 300 characters is refused', async () => {
+      const res = await call(makeApp(), '/api/tasks', post({ ...valid, title: 'x'.repeat(301) }))
+      expect(res?.status).toBe(400)
+      expect(await errorOf(res)).toContain('title')
+    })
+
+    test('ownerName over 300 characters is refused', async () => {
+      const res = await call(makeApp(), '/api/tasks', post({ ...valid, ownerName: 'x'.repeat(301) }))
+      expect(res?.status).toBe(400)
+      expect(await errorOf(res)).toContain('ownerName')
     })
   })
 
@@ -896,6 +1012,22 @@ describe('createApp', () => {
         importId: string
       }
       const res = await call(app, `/api/imports/${importId}/undo`, post({}))
+      expect(res?.status).toBe(400)
+      expect(await errorOf(res)).toContain('reportedBy')
+    })
+
+    test('undo refuses a reportedBy over 300 characters', async () => {
+      const app = makeApp()
+      const { importId } = (await (await call(app, '/api/bookings/import', post(valid)))?.json()) as {
+        importId: string
+      }
+      const res = await call(app, `/api/imports/${importId}/undo`, post({ reportedBy: 'x'.repeat(301) }))
+      expect(res?.status).toBe(400)
+      expect(await errorOf(res)).toContain('reportedBy')
+    })
+
+    test('import refuses a reportedBy over 300 characters', async () => {
+      const res = await call(makeApp(), '/api/bookings/import', post({ ...valid, reportedBy: 'x'.repeat(301) }))
       expect(res?.status).toBe(400)
       expect(await errorOf(res)).toContain('reportedBy')
     })

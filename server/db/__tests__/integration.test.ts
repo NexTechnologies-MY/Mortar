@@ -48,6 +48,14 @@ describe.skipIf(!DATABASE_URL)('database integration', () => {
     }
   })
 
+  test('hasBookings is true once any booking exists', async () => {
+    // The shared database always carries fixtures and other agents' test
+    // rows, so this only pins the happy path; the empty-database branch is
+    // exercised at boot in server/src/index.ts, which needs a database this
+    // shared instance never is.
+    expect(await db.hasBookings()).toBe(true)
+  })
+
   test('booking insert maps jsonb and dates back to the contract', async () => {
     await sql`insert into bookings (id, project, unit, price_rm, booking_date, buyer, sales_owner, loan_owner, legal_firm)
       values ('W2TEST-BK', 'Test Project', 'X-01-01', 400000, '2026-09-01',
@@ -262,6 +270,87 @@ describe.skipIf(!DATABASE_URL)('database integration', () => {
       expect(record.undone_by).toBe('Tan Mei Ling')
       expect(new Date(record.undone_at as string).toISOString()).toBe(new Date(undoneAt).toISOString())
       expect(await db.undoImport('W2TEST-A', 'Tan Mei Ling', undoneAt)).toBeNull()
+    })
+
+    test('undo never frees the booking number, and snapshots what it removed with no IC or phone', async () => {
+      const [booking] = await db.importBookings(batch('F'), [draft('T-40')], booked('F'))
+      await db.undoImport('W2TEST-F', 'Tan Mei Ling', '2026-09-18T10:05:00+08:00')
+
+      const [importRow] = await sql`select removed from imports where id = 'W2TEST-F'`
+      // jsonb comes back parsed for object writes but as raw text otherwise (see db/mappers.ts).
+      const removed = (
+        typeof importRow.removed === 'string' ? JSON.parse(importRow.removed) : importRow.removed
+      ) as Array<Record<string, unknown>>
+      expect(removed).toEqual([{ id: booking.id, unit: 'T-40', project, buyerName: 'Test Buyer', priceRm: 600000 }])
+      const serialized = JSON.stringify(removed)
+      expect(serialized).not.toContain('900514-00-0001') // IC
+      expect(serialized).not.toContain('+60 00-000 0001') // phone
+
+      // A later import numbers past the undone booking, never reusing it.
+      const [again] = await db.importBookings(batch('G'), [draft('T-41')], booked('G'))
+      const undoneNumber = Number(booking.id.slice(3))
+      const laterNumber = Number(again.id.slice(3))
+      expect(laterNumber).toBeGreaterThan(undoneNumber)
+    })
+
+    test('undoImport locks its bookings before checking whether they moved on, not just before the eventual delete', async () => {
+      // A blind concurrent race (fire undoImport and a racing insert together
+      // and hope to land inside the old window) is too fast and too flaky in
+      // practice — `undoImport`'s final `delete from bookings` needs the same
+      // kind of lock a racing insert's foreign key check does, so the two
+      // block on each other eventually either way. What the fix changes is
+      // *when* undo joins that queue: with the fix, undo queues immediately
+      // (its own `select ... for update`), before its moved-on check runs; without
+      // it, undo's moved-on check is a plain select that never waits, so undo
+      // races straight through and only queues later, at the delete — giving
+      // a racing insert every chance to land first, be cascade-deleted, and
+      // still have already told its caller "200".
+      //
+      // This holds one booking row locked externally first (as a racing
+      // insert's own FK check would), starts both undo and a real insert
+      // referencing it while the hold is up, then releases: with the fix,
+      // undo is already queued for the very same lock, so it and the insert
+      // are strictly ordered — one wins outright, the other is refused or
+      // fails cleanly, but never both "succeed" with the row now missing.
+      const [booking] = await db.importBookings(batch('I'), [draft('T-60')], booked('I'))
+
+      let releaseLock: (() => void) | undefined
+      const locked = new Promise<void>((resolveLocked) => {
+        void sql.begin(async (tx) => {
+          await tx`select id from bookings where id = ${booking.id} for update`
+          resolveLocked()
+          await new Promise<void>((resolveHold) => (releaseLock = resolveHold))
+        })
+      })
+      await locked
+
+      const undoPromise = db.undoImport('W2TEST-I', 'Tan Mei Ling', '2026-09-18T10:20:00+08:00')
+      const insertPromise = db.insertTask({
+        id: 'W2TEST-TSK-I',
+        bookingId: booking.id,
+        action: 'call_buyer',
+        title: 'Call',
+        ownerRole: 'sales',
+        ownerName: 'Nurul Aina',
+        dueOn: '2026-09-19',
+        status: 'open',
+        origin: 'staff',
+        createdAt: '2026-09-18T09:10:00+08:00',
+        completedAt: null
+      })
+      // Give both a moment to reach Postgres and queue behind the held lock.
+      await new Promise((r) => setTimeout(r, 200))
+      releaseLock?.()
+
+      const [undoResult, insertResult] = await Promise.allSettled([undoPromise, insertPromise])
+      // The bug: both could "succeed", with the task cascade-deleted right
+      // after its own caller already got a 200 for it.
+      const bothSucceeded = undoResult.status === 'fulfilled' && insertResult.status === 'fulfilled'
+      expect(bothSucceeded).toBe(false)
+      if (insertResult.status === 'fulfilled') {
+        expect(undoResult.status).toBe('rejected')
+        expect((undoResult as PromiseRejectedResult).reason).toBeInstanceOf(ImportMovedOnError)
+      }
     })
 
     test('refuses a held unit, even when two imports race for it', async () => {
