@@ -26,6 +26,7 @@ create table if not exists loan_applications (
   bank text not null,
   banker text not null
 );
+create index if not exists loan_applications_booking_idx on loan_applications (booking_id);
 
 create table if not exists messages (
   id text primary key,
@@ -37,6 +38,7 @@ create table if not exists messages (
   body text not null,
   origin text not null check (origin in ('fixture', 'live'))
 );
+create index if not exists messages_booking_idx on messages (booking_id);
 
 create table if not exists events (
   id text primary key,
@@ -55,6 +57,22 @@ create table if not exists events (
   note text
 );
 create index if not exists events_booking_idx on events (booking_id, occurred_at);
+create index if not exists events_message_idx on events (message_id);
+create index if not exists events_application_idx on events (application_id);
+
+-- Every staff review of a Jev proposal (confirm, dispute, dismiss), append-only:
+-- who moved which update from what to what, and when. No foreign key, so the
+-- trail outlives the event and a reset from an older build can still truncate
+-- `events`.
+create table if not exists event_reviews (
+  id bigint generated always as identity primary key,
+  event_id text not null,
+  from_status text not null,
+  to_status text not null,
+  reviewer text not null,
+  at timestamptz not null
+);
+create index if not exists event_reviews_event_idx on event_reviews (event_id, at);
 
 create table if not exists playbooks (
   id text primary key,
@@ -85,10 +103,13 @@ create table if not exists tasks (
   created_at timestamptz not null,
   completed_at timestamptz
 );
+create index if not exists tasks_booking_idx on tasks (booking_id);
 
 -- One row per spreadsheet import, so a batch can be undone as a whole while
 -- none of its bookings has moved on. An undo keeps the row, stamped with who
 -- undid it and when, so every removal leaves a trace (docs/RETENTION.md).
+-- `removed` is that trace's content: each undone booking's id, unit, project,
+-- buyer name and price, never its IC or phone, since the row itself is gone.
 create table if not exists imports (
   id text primary key,
   source text,
@@ -96,10 +117,12 @@ create table if not exists imports (
   created_at timestamptz not null,
   booking_ids text[] not null,
   undone_at timestamptz,
-  undone_by text
+  undone_by text,
+  removed jsonb
 );
 alter table imports add column if not exists undone_at timestamptz;
 alter table imports add column if not exists undone_by text;
+alter table imports add column if not exists removed jsonb;
 
 -- Every Jev answer, live or precomputed. The latest row per key serves as the cache.
 create table if not exists jev_answers (
