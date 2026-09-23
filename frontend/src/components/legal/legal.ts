@@ -2,7 +2,8 @@
  * Legal-desk derivations: the SPA execution queue and the load each panel firm
  * is carrying. Kept component-free so the page and its tests share them.
  *
- * The queue is every case sitting at `lo_issued` — loan approved, SPA unsigned.
+ * The queue is every case sitting at `lo_issued` with a letter of offer on the
+ * log — loan approved, SPA unsigned.
  * It deliberately ignores the 30-day forecast horizon: the cases worth showing
  * a legal admin are precisely the ones that have sat longest.
  */
@@ -13,7 +14,7 @@ import type { SortDir, SortState } from '@/components/ui/SortHeader'
 export interface LegalRow {
   booking: Booking
   summary: CaseSummary
-  /** The note the appointment event carried, e.g. `Appointment On 2026-08-20`. Display only. */
+  /** The note the latest appointment event carried, e.g. `Appointment On 2026-08-20`. Display only. */
   appointmentNote: string | null
 }
 
@@ -28,16 +29,20 @@ export function isLegalStall(reason: string): boolean {
  */
 export function legalQueue(bookings: Booking[], cases: CaseSummary[], events: CaseEvent[]): LegalRow[] {
   const byId = new Map(bookings.map((b) => [b.id, b]))
-  const notes = new Map<string, string>()
+  // The latest confirmed appointment stands: a reschedule replaces the one before it.
+  const appointments = new Map<string, CaseEvent>()
   for (const e of events) {
-    if (e.kind === 'spa_appointment_set' && e.status === 'confirmed' && e.note) notes.set(e.bookingId, e.note)
+    if (e.kind !== 'spa_appointment_set' || e.status !== 'confirmed') continue
+    const seen = appointments.get(e.bookingId)
+    if (!seen || e.occurredAt >= seen.occurredAt) appointments.set(e.bookingId, e)
   }
+  // A real letter of offer: the waiting room's clock starts at one.
   return cases
-    .filter((c) => c.stage === 'lo_issued')
+    .filter((c) => c.stage === 'lo_issued' && c.daysSinceLoIssued !== null)
     .flatMap((summary) => {
       const booking = byId.get(summary.bookingId)
       if (!booking) return []
-      return [{ booking, summary, appointmentNote: notes.get(summary.bookingId) ?? null }]
+      return [{ booking, summary, appointmentNote: appointments.get(summary.bookingId)?.note || null }]
     })
     .sort(
       (a, b) =>

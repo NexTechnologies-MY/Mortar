@@ -167,13 +167,15 @@ export type ApplicationStatus = 'submitted' | 'documents_pending' | 'approved' |
 export interface CaseSummary {
   bookingId: string
   stage: Stage
+  /** A confirmed `spa_signed` is on the log. Waiting On and Record An Update read this fact, not the stage label. */
+  spaSigned: boolean
   /** A live booking with no confirmed evidence recently: shown as unknown, never as progressing or failed. */
   unknown: boolean
   bookingAgeDays: number
   daysSinceEvidence: number
   /** Days since the loan was approved — the legal waiting room's clock. `null` when never approved. */
   daysSinceLoIssued: number | null
-  /** Days since an SPA appointment was recorded. `null` when none is on the log. */
+  /** Days since the latest SPA appointment was recorded (a reschedule restarts it). `null` when none is on the log. */
   daysSinceSpaSet: number | null
   applications: { id: string; bank: string; status: ApplicationStatus }[]
   outstandingDocuments: DocumentKind[]
