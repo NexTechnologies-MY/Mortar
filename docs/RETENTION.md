@@ -52,15 +52,29 @@ carries the Retention Standard quoted above.
 
 - Nothing in normal use deletes a booking, an event, a task or a message. A
   completed task is marked done, not removed.
+- Every staff decision on a Jev proposal (confirm, dispute, dismiss) is appended
+  to `event_reviews` — who reviewed it, what it changed from and to, and when —
+  regardless of what later happens to the event itself. It carries no foreign
+  key to `events`, so the trail outlives the event it reviewed and a reset from
+  an older build can still truncate `events` without touching it.
 - **Undo This Import** removes an import's bookings only while none of them has
   any activity beyond its booked record (no update, message, task or bank
-  application). The import's own record stays, stamped with who undid it and
-  when (`imports.undone_by`, `imports.undone_at`), so every removal leaves a
-  trace.
+  application), and locks those bookings first so a staff update landing
+  mid-undo cannot be deleted after its own request already succeeded. A booking
+  number an import has ever used is never reused, even after undo. The import's
+  own record stays, stamped with who undid it and when (`imports.undone_by`,
+  `imports.undone_at`), and carries a `removed` snapshot of what it took out —
+  each removed booking's id, unit, project, buyer name and price, never its IC
+  or phone, since the booking row itself is gone — so every removal leaves a
+  trace even once the booking cannot be looked up.
 - **Reset Demo Data** (Settings) wipes and reseeds the whole database. It exists
   for the public demo only. A server holding real data must set
-  `MORTAR_DEMO_RESET=off`; `POST /api/admin/reset` then refuses with 403 and
-  changes nothing.
+  `MORTAR_DEMO_RESET` to `off`, `false`, `0` or `no` (case-insensitive; anything
+  else, including leaving it unset, leaves the reset on). With the reset off,
+  the server never seeds or truncates on boot either: an empty database simply
+  starts unseeded, and if `meta` is missing while bookings already exist, the
+  server logs the problem loudly and starts unseeded rather than guessing.
+  `POST /api/admin/reset` then refuses with 403 and changes nothing.
 - Backups: the database host's own history covers days, not years. A 7-year
   guarantee needs regular exports of the database, kept for 7 years, outside the
   app. This is a hosting task, not something the app does today.

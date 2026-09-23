@@ -154,7 +154,10 @@ The schema establishes relational integrity while allowing flexible document
 storage for nested domain entities:
 
 - `meta`: Key-value store (`key text primary key, value jsonb not null`) holding
-  simulation parameters (`seed`, `referenceDate`, `resetAt`).
+  simulation parameters (`seed`, `referenceDate`, `resetAt`, `resetAtWall`).
+  `resetAt` is sim time; `resetAtWall` is the real wall-clock timestamp of the
+  last reset, and is what the 30-second reset cooldown reads, since sim time's
+  time-of-day wraps to `00:00` at midnight and cannot time a cooldown.
 - `bookings`: Core booking records (`id text primary key`, `project`, `unit`,
   `price_rm integer`, `booking_date date`, `buyer jsonb`, `sales_owner`,
   `loan_owner`, `legal_firm`). The nested `buyer` JSONB object stores contact
@@ -171,7 +174,18 @@ storage for nested domain entities:
 - `events`: Auditable event log capturing case history (`id text primary key`,
   `booking_id`, `application_id`, `track`, `kind`, `occurred_at`, `recorded_at`,
   `reported_by`, `verified_by`, `status`, `source`, `message_id`, `document`,
-  `note`). Indexed on `(booking_id, occurred_at)`.
+  `note`, `seq bigint`). Indexed on `(booking_id, occurred_at)`, `message_id`,
+  and `application_id`. `seq`, drawn from the `events_seq` sequence, numbers
+  rows in storage order; every ordered read of the event log (case data, the
+  snapshot, `eventsForBooking`) sorts on `occurred_at, seq`, so two events
+  recorded for the same instant — a same-day update stamped noon, say — keep the
+  order they were entered in rather than an arbitrary one.
+- `event_reviews`: Append-only log of every staff review of a Jev proposal
+  (`id bigint identity primary key`, `event_id text`, `from_status text`,
+  `to_status text`, `reviewer text`, `at timestamptz`), indexed on
+  `(event_id, at)`. Carries no foreign key to `events`, so the trail survives
+  the event it reviewed and a reset from an older build can still truncate
+  `events` without breaking `event_reviews`'s own schema.
 - `playbooks`: Structured institutional guidance records (`id text primary key`,
   `title`, `situation`, `evidence`, `action`, `rationale`, `limits`, `outcome`,
   `author`, `reviewer`, `reviewed_on date`, `status`, `tags text[]`).
@@ -182,6 +196,17 @@ storage for nested domain entities:
   (`id bigint generated always as identity primary key`, `kind`, `subject_id`,
   `input_hash`, `answer jsonb`, `source`, `latency_ms`, `created_at`). Indexed
   on `(kind, subject_id, created_at desc)` to allow rapid cache resolution.
+- `imports`: One row per spreadsheet import (`id text primary key`, `source`,
+  `reported_by`, `created_at`, `booking_ids text[]`, `undone_at timestamptz`,
+  `undone_by text`, `removed jsonb`), so a batch can be undone as a whole.
+  `undone_at`/`undone_by` stamp who undid an import and when; the row itself is
+  never deleted, so every removal leaves a trace (`docs/RETENTION.md`).
+  `removed` holds the undo's own snapshot of what it took out: each removed
+  booking's id, unit, project, buyer name and price — never its IC or phone,
+  since the booking row itself is gone once the undo commits.
+- Indexes added for query paths that did not have one: `messages(booking_id)`,
+  `tasks(booking_id)`, and `loan_applications(booking_id)`, alongside the
+  `events(message_id)` and `events(application_id)` indexes noted above.
 
 ### Event Model And Evidence Lifecycle
 
@@ -198,6 +223,15 @@ Events represent facts observed on one of three parallel tracks: `'sales'`,
   during human review. Superseded events remain in the ledger for auditability
   but do not influence case state.
 
+Only a Jev proposal still waiting (`provisional` or `disputed`) may be reviewed;
+the server checks this under a row lock and refuses a second decision on an
+already-settled proposal with `409`. Every review that succeeds — confirm,
+dispute, or dismiss — is appended to `event_reviews` (`from_status`,
+`to_status`, `reviewer`, `at`), so the case rules that gate a confirm (no update
+on a closed booking, no second decision on a bank, no bank name missing where
+one is required) apply to a reviewed proposal exactly as they do to an update
+recorded by hand.
+
 ## API Reference
 
 The Bun server exposes a RESTful JSON API. Request bodies and responses conform
@@ -206,7 +240,7 @@ no third-party schema validation libraries are loaded.
 
 | Method  | Path                            | Request Body                                                          | Response Body                                                            | Execution Pattern |
 | ------- | ------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------ | ----------------- |
-| `GET`   | `/api/health`                   | None                                                                  | `{ ok: boolean, db: boolean, jev: boolean }`                             | Direct Check      |
+| `GET`   | `/api/health`                   | None                                                                  | `{ ok, db, jev, jevAnswers, jevLastError }`                              | Direct Check      |
 | `GET`   | `/api/snapshot`                 | None                                                                  | `Snapshot`                                                               | Database Query    |
 | `POST`  | `/api/messages`                 | `{ bookingId, senderRole, senderName, body }`                         | `{ message: Message, extraction: Extraction, event: CaseEvent \| null }` | Live-First Jev    |
 | `POST`  | `/api/messages/:id/extract`     | None                                                                  | `{ extraction: Extraction, event: CaseEvent \| null }`                   | Live-First Jev    |
@@ -221,6 +255,13 @@ no third-party schema validation libraries are loaded.
 
 ### Endpoint Details
 
+- `GET /api/health`: `ok` and `db` report a live database ping (`false` on
+  failure, alongside `jevAnswers: null`); `jev` is whether a live Jev service
+  (TypeSafe key or proxy) is wired at all, not whether its last call succeeded;
+  `jevLastError` carries the message from the last failed live Jev call when the
+  proxy client is wired, or `null` otherwise. TypeSafe API-key mode does not
+  track `jevLastError`, since doing so would need `@typesafe-ai/sdk` as a
+  dependency of the server package rather than `@mortar/jev`'s.
 - `GET /api/snapshot`: Assembles the full dataset required by the frontend
   workspace: `bookings`, `loan_applications`, `events`, `messages`, `playbooks`,
   `tasks`, and the latest `extractions`, `signals`, and `nextActions` from
@@ -231,13 +272,50 @@ no third-party schema validation libraries are loaded.
 - `POST /api/events/:id/review`: Updates event status. If `'confirm'`, the event
   becomes active and sets `verifiedBy`. If `'dismiss'`, status becomes
   `'superseded'`. If `'dispute'`, status becomes `'disputed'`, which flags the
-  case as stalled until resolved.
+  case as stalled until resolved. Only a pending proposal (`source: 'jev'`,
+  status `'provisional'` or `'disputed'`) may be reviewed at all; the database
+  checks and changes it under a row lock, appends the change to `event_reviews`,
+  and the route returns `409` if the proposal had already settled (confirmed,
+  dismissed, or replaced by a later re-read of its message) between the click
+  and the request.
 - `POST /api/admin/reset`: Clears all tables in a single transaction and
   re-seeds the database using
   `generate({ seed: DEFAULT_SEED, referenceDate: REFERENCE_DATE, bookings: 140 })`,
   story fixtures, playbooks, and precomputed Jev cache entries. The endpoint
   enforces a 30-second cooldown period between resets, returning HTTP 429 if
-  called prematurely.
+  called prematurely, timed against `meta.resetAtWall` (a real clock timestamp)
+  rather than sim time, whose time of day wraps at midnight and cannot time a
+  cooldown.
+
+### Write Rules And Error Codes
+
+Every write route re-checks the case rules from the current `CaseSummary`
+server-side, so a stale screen or a hand-made request cannot skip them:
+
+- `POST /api/events` refuses (`400`) a `booked` event, a `loan_submitted` event
+  (that kind is only ever written by `POST /api/applications`), a bank decision
+  or valuation shortfall with no `applicationId`, and a `loan_agreement_signed`
+  or `disbursed` event with no confirmed `spa_signed` event yet on the booking.
+  It refuses (`409`) any update on a booking already `cancelled` or `lapsed`,
+  and a second decision (`loan_approved` or `loan_rejected`) on an application
+  that already has one.
+- `POST /api/applications` refuses (`409`) a second undecided application to the
+  same bank (trimmed, case-insensitive) on the same booking, under a per-booking
+  lock; a bank that already rejected an application may be tried again.
+- `POST /api/events/:id/review` refuses (`409`) confirming a proposal that would
+  itself break the case rules above (a closed booking, a settled decision, a
+  bank decision with no application), and refuses (`409`) reviewing a proposal
+  that is no longer pending.
+- Request bodies are capped at 2MB (`Bun.serve`'s `maxRequestBodySize`); free
+  text fields are capped and rejected with a plain `400` past their limit:
+  message body at 5,000 characters, names/notes/bank/banker/task titles at 300,
+  and the playbooks `q` query at 200.
+- Any Postgres error the routes above do not already turn into a specific
+  message is mapped by its SQLSTATE class: class `22` (data exception, e.g. a
+  value Postgres itself rejects) becomes `400`; class `23` (integrity constraint
+  violation — a foreign key, unique, or check failure) becomes `409`. Anything
+  else is a generic `500`, with the real error always logged server-side, never
+  shown to the browser.
 
 ## Simulation Method
 
