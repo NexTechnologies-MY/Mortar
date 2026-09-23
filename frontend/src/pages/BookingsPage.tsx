@@ -1,20 +1,22 @@
 /**
  * Bookings list route — the Loan Admin desk.
- * Every unit booking with its age, stage, how current its updates are,
- * financing risk, buyer response and value. Stalled bookings sort first until
- * the reader sorts a column; filters cover stage, risk and the no-recent-update
- * flag.
+ * Every unit booking with its age, stage, who it is waiting on, financing
+ * risk, buyer response and value. Stalled bookings sort first until the reader
+ * sorts a column; filters cover stage, who holds the ball, risk and the
+ * no-recent-update flag. The Waiting On cell opens a quick view of the case
+ * over the table.
  */
 
 import { useMemo, useState } from 'react'
 import { AlertTriangle, ClipboardList, FileSignature, HelpCircle } from 'lucide-react'
-import type { EventKind } from '@mortar/core'
+import { ballInCourt, type EventKind } from '@mortar/core'
 import { useCases, useSnapshot } from '@/lib/data'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { PageHeaderCard } from '@/components/layout/PageHeaderCard'
 import { StatCard } from '@/components/StatCard'
 import { BookingFilters, type BookingFilter } from '@/components/bookings/BookingFilters'
 import { BookingsTable, type BookingRow, type Sort, type SortKey } from '@/components/bookings/BookingsTable'
+import { CaseQuickView } from '@/components/bookings/CaseQuickView'
 import { Pagination, usePagination } from '@/components/ui/Pagination'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/EmptyState'
@@ -27,7 +29,13 @@ type Row = BookingRow & { stalled: boolean; live: boolean }
 export function BookingsPage() {
   const { snapshot, loading, error, refresh } = useSnapshot()
   const cases = useCases()
-  const [filter, setFilter] = useState<BookingFilter>({ stage: 'all', risk: 'all', unknownOnly: false })
+  const [filter, setFilter] = useState<BookingFilter>({
+    stage: 'all',
+    waitingOn: 'all',
+    risk: 'all',
+    unknownOnly: false
+  })
+  const [inspecting, setInspecting] = useState<string | null>(null)
 
   const confirmedKinds = useMemo(() => {
     const map = new Map<string, Set<EventKind>>()
@@ -79,6 +87,7 @@ export function BookingsPage() {
       rows.filter(
         (r) =>
           (filter.stage === 'all' || r.summary.stage === filter.stage) &&
+          (filter.waitingOn === 'all' || ballInCourt(r.summary).holder === filter.waitingOn) &&
           (filter.risk === 'all' || r.summary.risk.level === filter.risk) &&
           (!filter.unknownOnly || r.summary.unknown)
       ),
@@ -190,15 +199,21 @@ export function BookingsPage() {
               <EmptyState
                 icon={ClipboardList}
                 title="No Bookings Match"
-                description="Loosen The Stage, Risk Or Unknown Filters To See More Bookings."
+                description="Loosen The Stage, Waiting On, Risk Or Unknown Filters To See More Bookings."
               />
             ) : (
               <>
-                <BookingsTable rows={pageRows} sort={sort} onSort={toggleSort} />
+                <BookingsTable rows={pageRows} sort={sort} onSort={toggleSort} onInspect={setInspecting} />
                 <Pagination {...pagination} />
               </>
             )}
           </div>
+          <CaseQuickView
+            row={rows.find((r) => r.booking.id === inspecting) ?? null}
+            referenceDate={snapshot?.meta.referenceDate ?? ''}
+            onClose={() => setInspecting(null)}
+            onChanged={refresh}
+          />
         </>
       )}
     </PageContainer>

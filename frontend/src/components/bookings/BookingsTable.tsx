@@ -1,13 +1,16 @@
 /**
  * Bookings table — the loan admin's ledger of every unit booking.
- * Columns: booking ID, unit, buyer, age, stage, last update, risk, buyer
- * response and value. Rows navigate to the case page.
+ * Columns: booking ID, unit, buyer, age, stage, waiting on, risk, buyer
+ * response and value. Rows navigate to the case page; the Waiting On cell
+ * opens the quick view instead, so the table keeps its place.
  *
  * Chip economy (DESIGN.md Screen Density): a pill earns its place only when it
- * discriminates between rows. Stage and Last Update are plain text at their
+ * discriminates between rows. Stage and Waiting On are plain text at their
  * common values and only become a pill at the states worth noticing, so the
  * eye is not asked to scan a hundred near-white rectangles to find the one
- * that matters.
+ * that matters. Waiting On took the place of Last Update, which read "Up to
+ * date" on nearly every row; a stuck case now says who holds it and how long
+ * it has sat.
  *
  * Buyer is capped at max-w-44 on purpose. Widening it pushes the table past
  * the 1280px container and clips Value off the right edge; the horizontal
@@ -18,14 +21,21 @@
 
 import { useNavigate } from 'react-router-dom'
 import { ArrowDown, ArrowUp, ChevronsUpDown } from 'lucide-react'
-import type { Booking, BuyerSignals, CaseSummary, EventKind, Stage } from '@mortar/core'
-import { EvidencePill } from '@/components/case/EvidencePill'
+import {
+  ballInCourt,
+  type Booking,
+  type BuyerSignals,
+  type CaseSummary,
+  type EventKind,
+  type Stage
+} from '@mortar/core'
 import { RiskChip } from '@/components/case/RiskChip'
 import { SignalChips } from '@/components/case/SignalChips'
 import { StagePill } from '@/components/case/StagePill'
 import { STAGE_LABELS } from '@/components/case/StagePill'
 import { formatDays, formatRm } from '@/components/case/format'
 import { StageTracker } from './StageTracker'
+import { WaitingOnCell } from './WaitingOn'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
 
@@ -80,11 +90,14 @@ function SortHeader({
 export function BookingsTable({
   rows,
   sort = null,
-  onSort
+  onSort,
+  onInspect
 }: {
   rows: BookingRow[]
   sort?: Sort
   onSort?: (key: SortKey) => void
+  /** Opens the quick view for a booking; without it the Waiting On cell is not a button. */
+  onInspect?: (bookingId: string) => void
 }) {
   const navigate = useNavigate()
   const sortable = onSort ?? (() => {})
@@ -97,7 +110,7 @@ export function BookingsTable({
           <TableHead>Buyer</TableHead>
           <SortHeader label="Age" columnKey="age" sort={sort} onSort={sortable} className="text-right" />
           <TableHead>Stage</TableHead>
-          <TableHead>Last Update</TableHead>
+          <TableHead>Waiting On</TableHead>
           <SortHeader label="Risk" columnKey="risk" sort={sort} onSort={sortable} />
           <TableHead>Buyer Response</TableHead>
           <SortHeader label="Value" columnKey="value" sort={sort} onSort={sortable} className="text-right" />
@@ -140,11 +153,12 @@ export function BookingsTable({
               </span>
             </TableCell>
             <TableCell>
-              {summary.unknown ? (
-                <EvidencePill status="unknown" />
-              ) : (
-                <span className="text-[13px] text-muted-foreground">Up to date</span>
-              )}
+              <WaitingOnCell
+                ball={ballInCourt(summary)}
+                daysSinceEvidence={summary.daysSinceEvidence}
+                unit={booking.unit}
+                onInspect={onInspect ? () => onInspect(booking.id) : undefined}
+              />
             </TableCell>
             <TableCell>
               <RiskChip risk={summary.risk} />

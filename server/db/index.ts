@@ -7,6 +7,7 @@
 import { SQL } from 'bun'
 import type {
   Booking,
+  BookingDraft,
   CaseData,
   CaseEvent,
   EvidenceStatus,
@@ -51,6 +52,12 @@ export interface Database {
   /** Supersedes still-open proposals (`provisional` or `disputed`) carrying `messageId`. */
   supersedePendingProposals(messageId: string): Promise<void>
   insertTask(task: Task): Promise<void>
+  /**
+   * Numbers and stores imported bookings in one transaction, each with the
+   * event `bookedEvent` builds for it, and returns them as stored. Ids continue
+   * the generator's `BK-nnnn` run, which stops short of the stories' `BK-9001`.
+   */
+  importBookings(drafts: BookingDraft[], bookedEvent: (booking: Booking) => CaseEvent): Promise<Booking[]>
   updateTaskStatus(id: string, status: Task['status'], completedAt: IsoDateTime | null): Promise<Task | null>
   /** Latest `jev_answers` rows for `extract`, `next_action` and `signals`, for the snapshot. */
   latestJevAnswers(): Promise<JevAnswerRow[]>
@@ -71,6 +78,11 @@ export interface Database {
     latencyMs: number | null
   }): Promise<void>
 }
+
+/** Advisory lock key that serialises imports, so two batches never draw the same booking numbers. */
+const IMPORT_LOCK = 20_260_918
+/** Highest imported booking number; the story fixtures start at `BK-9001`. */
+const LAST_IMPORT_NUMBER = 8999
 
 /** Marks a snapshot answer as served from the store rather than a fresh Jev call. */
 function cached<T extends { meta?: JevMeta }>(answer: unknown): T {
@@ -228,6 +240,52 @@ export function createDatabase(sql: SQL): Database {
         created_at: task.createdAt,
         completed_at: task.completedAt
       })}`
+    },
+
+    async importBookings(drafts, bookedEvent) {
+      return sql.begin(async (tx) => {
+        await tx`select pg_advisory_xact_lock(${IMPORT_LOCK})`
+        const rows = await tx`select coalesce(max(substring(id from 4)::int), 0)::int as n
+          from bookings where id ~ '^BK-[0-8][0-9]{3}$'`
+        const last = (rows[0]?.n as number | undefined) ?? 0
+        if (last + drafts.length > LAST_IMPORT_NUMBER) throw new Error('no booking numbers left below BK-9000')
+        const bookings: Booking[] = drafts.map((draft, i) => ({
+          id: `BK-${String(last + i + 1).padStart(4, '0')}`,
+          ...draft
+        }))
+        await tx`insert into bookings ${tx(
+          bookings.map((b) => ({
+            id: b.id,
+            project: b.project,
+            unit: b.unit,
+            price_rm: b.priceRm,
+            booking_date: b.bookingDate,
+            buyer: b.buyer,
+            sales_owner: b.salesOwner,
+            loan_owner: b.loanOwner,
+            legal_firm: b.legalFirm
+          }))
+        )}`
+        await tx`insert into events ${tx(
+          bookings.map(bookedEvent).map((e) => ({
+            id: e.id,
+            booking_id: e.bookingId,
+            application_id: e.applicationId,
+            track: e.track,
+            kind: e.kind,
+            occurred_at: e.occurredAt,
+            recorded_at: e.recordedAt,
+            reported_by: e.reportedBy,
+            verified_by: e.verifiedBy,
+            status: e.status,
+            source: e.source,
+            message_id: e.messageId,
+            document: e.document,
+            note: e.note
+          }))
+        )}`
+        return bookings
+      })
     },
 
     async updateTaskStatus(id, status, completedAt) {

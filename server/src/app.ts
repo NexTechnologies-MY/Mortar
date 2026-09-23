@@ -5,9 +5,18 @@
  * then) and a `reset` callback so the admin route stays testable. Returns
  * `null` for non-API paths so the caller can fall through to static files.
  */
-import { REFERENCE_DATE, proposalFromExtraction, searchPlaybooks, simNow, summarizeCases } from '@mortar/core'
+import {
+  REFERENCE_DATE,
+  checkBookingDraft,
+  proposalFromExtraction,
+  searchPlaybooks,
+  simNow,
+  summarizeCases,
+  unitKey
+} from '@mortar/core'
 import { defaultPlaybookQuery } from '@mortar/jev'
 import type {
+  BookingDraft,
   CaseEvent,
   CaseSummary,
   DocumentKind,
@@ -81,6 +90,34 @@ const TASK_STATUSES: readonly Task['status'][] = ['open', 'done', 'cancelled']
 const REVIEW_DECISIONS = { confirm: 'confirmed', dispute: 'disputed', dismiss: 'superseded' } as const
 
 const RESET_COOLDOWN_MS = 30_000
+/** Rows one import may carry; a launch sheet is a few hundred units. */
+const MAX_IMPORT_ROWS = 1000
+
+/**
+ * Copies only the contract's fields, so extra keys in a posted draft never
+ * reach the `buyer` jsonb column. Call after `checkBookingDraft` passes.
+ */
+function cleanDraft(value: unknown): BookingDraft {
+  const d = value as BookingDraft
+  return {
+    project: d.project.trim(),
+    unit: d.unit.trim().toUpperCase(),
+    priceRm: d.priceRm,
+    bookingDate: d.bookingDate,
+    buyer: {
+      name: d.buyer.name.trim(),
+      ic: d.buyer.ic.trim(),
+      phone: d.buyer.phone.trim(),
+      age: d.buyer.age,
+      grossMonthlyIncomeRm: d.buyer.grossMonthlyIncomeRm,
+      monthlyCommitmentsRm: d.buyer.monthlyCommitmentsRm,
+      propertiesOwned: d.buyer.propertiesOwned
+    },
+    salesOwner: d.salesOwner.trim(),
+    loanOwner: d.loanOwner.trim(),
+    legalFirm: d.legalFirm.trim()
+  }
+}
 
 type Handler = (ctx: { req: Request; url: URL; params: Record<string, string> }) => Promise<Response>
 
@@ -255,6 +292,67 @@ export function createApp(options: AppOptions): App {
           return error(404, `booking ${params.id} has no buyer messages`)
         }
         return json(await jev.signals({ bookingId: params.id, messages }))
+      }
+    ],
+    [
+      'POST',
+      '/api/bookings/import',
+      async ({ req }) => {
+        const b = await body(req)
+        if (!b) return error(400, 'expected a JSON object body')
+        if (!Array.isArray(b.bookings) || b.bookings.length === 0)
+          return error(400, 'bookings must be a non-empty array')
+        if (b.bookings.length > MAX_IMPORT_ROWS) return error(400, `at most ${MAX_IMPORT_ROWS} bookings per import`)
+        if (!isString(b.reportedBy)) return error(400, 'reportedBy is required')
+        const problems = b.bookings.flatMap((draft, i) =>
+          checkBookingDraft(draft, REFERENCE_DATE).map((p) => `row ${i + 1}: ${p}`)
+        )
+        if (problems.length > 0) return error(400, problems.slice(0, 5).join('; '))
+        const drafts = b.bookings.map(cleanDraft)
+
+        // A unit an open booking holds cannot be booked again; a cancelled or
+        // lapsed one has gone back on sale. The browser checks this too, but
+        // another import may have landed since it last looked.
+        const data = await db.caseData()
+        const closed = new Set(
+          summarizeCases(data, REFERENCE_DATE)
+            .filter((s) => s.stage === 'cancelled' || s.stage === 'lapsed')
+            .map((s) => s.bookingId)
+        )
+        const held = new Map(
+          data.bookings.filter((x) => !closed.has(x.id)).map((x) => [unitKey(x.project, x.unit), x.id])
+        )
+        const inBatch = new Set<string>()
+        for (const draft of drafts) {
+          const key = unitKey(draft.project, draft.unit)
+          const holder = held.get(key)
+          if (holder) return error(409, `unit ${draft.unit} is already held by ${holder}`)
+          if (inBatch.has(key)) return error(409, `unit ${draft.unit} appears twice in the import`)
+          inBatch.add(key)
+        }
+
+        const reportedBy = b.reportedBy.trim()
+        const note = isString(b.source)
+          ? `Imported From ${b.source.trim().slice(0, 120)}`
+          : 'Imported From A Booking Sheet'
+        const recordedAt = simNow(REFERENCE_DATE)
+        const bookings = await db.importBookings(drafts, (booking) => ({
+          id: newId('EV'),
+          bookingId: booking.id,
+          applicationId: null,
+          track: 'sales',
+          kind: 'booked',
+          occurredAt: `${booking.bookingDate}T09:00:00+08:00`,
+          recordedAt,
+          reportedBy,
+          verifiedBy: reportedBy,
+          status: 'confirmed',
+          source: 'staff',
+          messageId: null,
+          document: null,
+          note
+        }))
+        return json({ bookings })
       }
     ],
     [

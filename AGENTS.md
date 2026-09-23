@@ -54,3 +54,4 @@ flat config at the root, Prettier, husky + lint-staged.
 | Deciding how much to build or how to change code                | [Andrej Karpathy Skills](docs/agents/andrej-karpathy-skills.md) |
 | Choosing or installing an agent skill                           | [Skills](docs/agents/skills.md)                                 |
 | Writing or formatting Markdown                                  | [Markdown Style Guide](docs/markdown-style.md)                  |
+| Reviewing proposed product features and UX enhancements         | [Product Suggestions](docs/SUGGESTIONS.md)                      |

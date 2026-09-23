@@ -10,9 +10,9 @@ import type { EventKind, Stage } from '@mortar/core'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
-const SEGMENTS = ['Booked', 'Documents', 'Loan Submitted', 'Loan Approved', 'SPA Signed'] as const
+export const SEGMENTS = ['Booked', 'Documents', 'Loan Submitted', 'Loan Approved', 'SPA Signed'] as const
 
-const STAGE_PROGRESS: Record<Stage, number> = {
+export const STAGE_PROGRESS: Record<Stage, number> = {
   booked: 1,
   loan_applied: 3,
   lo_issued: 4,
@@ -24,7 +24,7 @@ const STAGE_PROGRESS: Record<Stage, number> = {
 }
 
 /** Milestones reached, derived from the confirmed event kinds the case holds. */
-function progressFromKinds(kinds: ReadonlySet<EventKind>): number {
+export function progressFromKinds(kinds: ReadonlySet<EventKind>): number {
   if (kinds.has('spa_signed')) return 5
   if (kinds.has('loan_approved')) return 4
   if (kinds.has('loan_submitted')) return 3

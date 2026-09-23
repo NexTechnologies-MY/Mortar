@@ -59,6 +59,7 @@ import type { Database } from '../../db/index'
 import type { JevAnswerRow } from '../../db/mappers'
 import type {
   Booking,
+  BookingDraft,
   CaseData,
   CaseEvent,
   EvidenceStatus,
@@ -181,6 +182,12 @@ class FakeDb implements Database {
   }
   async insertTask(task: Task) {
     this.tasks.push(task)
+  }
+  async importBookings(drafts: BookingDraft[], bookedEvent: (booking: Booking) => CaseEvent) {
+    const imported = drafts.map((draft, i) => ({ id: `BK-${String(141 + i).padStart(4, '0')}`, ...draft }))
+    this.bookings.push(...imported)
+    this.events.push(...imported.map(bookedEvent))
+    return imported
   }
   async updateTaskStatus(id: string, status: Task['status'], completedAt: string | null) {
     const task = this.tasks.find((t) => t.id === id)
@@ -547,6 +554,83 @@ describe('createApp', () => {
       const res = await call(makeApp(), '/api/tasks', post(input))
       expect(res?.status).toBe(400)
       expect(await errorOf(res)).toContain(field)
+    })
+  })
+
+  describe('POST /api/bookings/import', () => {
+    const draft: BookingDraft = {
+      project: 'Aster Heights',
+      unit: 'b-07-01',
+      priceRm: 612800,
+      bookingDate: '2026-09-02',
+      buyer: {
+        name: 'Nur Aisyah Binti Kamal',
+        ic: '900514-00-0001',
+        phone: '+60 00-000 0001',
+        age: 36,
+        grossMonthlyIncomeRm: 8500,
+        monthlyCommitmentsRm: 400,
+        propertiesOwned: 0
+      },
+      salesOwner: 'Nurul Aina',
+      loanOwner: 'Tan Mei Ling',
+      legalFirm: 'Khor & Associates'
+    }
+    const valid = { bookings: [draft], reportedBy: 'Tan Mei Ling', source: 'september.xlsx' }
+
+    test('numbers the bookings and records a confirmed booked event for each', async () => {
+      const db = new FakeDb()
+      const res = await call(makeApp(db), '/api/bookings/import', post(valid))
+      expect(res?.status).toBe(200)
+      const { bookings } = (await res?.json()) as { bookings: Booking[] }
+      expect(bookings).toHaveLength(1)
+      expect(bookings[0]).toMatchObject({ id: 'BK-0141', unit: 'B-07-01', priceRm: 612800 })
+      const event = db.events.find((e) => e.bookingId === 'BK-0141')
+      expect(event).toMatchObject({
+        kind: 'booked',
+        track: 'sales',
+        status: 'confirmed',
+        source: 'staff',
+        occurredAt: '2026-09-02T09:00:00+08:00',
+        recordedAt: '2026-09-18T12:00:00+08:00',
+        reportedBy: 'Tan Mei Ling',
+        verifiedBy: 'Tan Mei Ling',
+        note: 'Imported From september.xlsx'
+      })
+    })
+
+    test('stores only the contract fields of a draft', async () => {
+      const db = new FakeDb()
+      const padded = { ...draft, extra: 'x', buyer: { ...draft.buyer, notes: 'x' } }
+      await call(makeApp(db), '/api/bookings/import', post({ ...valid, bookings: [padded] }))
+      const stored = db.bookings.find((b) => b.id === 'BK-0141')
+      expect(stored && 'extra' in stored).toBe(false)
+      expect(stored && 'notes' in stored.buyer).toBe(false)
+    })
+
+    test('refuses a unit an open booking already holds, and one listed twice', async () => {
+      const held = await call(
+        makeApp(),
+        '/api/bookings/import',
+        post({ ...valid, bookings: [{ ...draft, unit: 'A-12-03' }] })
+      )
+      expect(held?.status).toBe(409)
+      expect(await errorOf(held)).toContain('BK-9001')
+      const twice = await call(makeApp(), '/api/bookings/import', post({ ...valid, bookings: [draft, draft] }))
+      expect(twice?.status).toBe(409)
+    })
+
+    test.each([
+      [{ ...valid, bookings: [] }, 'bookings'],
+      [{ ...valid, reportedBy: ' ' }, 'reportedBy'],
+      [{ ...valid, bookings: [{ ...draft, bookingDate: '2026-10-01' }] }, 'row 1: bookingDate'],
+      [{ ...valid, bookings: [{ ...draft, priceRm: 'lots' }] }, 'priceRm']
+    ])('validation rejects %o mentioning %s', async (input, field) => {
+      const db = new FakeDb()
+      const res = await call(makeApp(db), '/api/bookings/import', post(input))
+      expect(res?.status).toBe(400)
+      expect(await errorOf(res)).toContain(field)
+      expect(db.bookings).toHaveLength(1)
     })
   })
 

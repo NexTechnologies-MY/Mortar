@@ -4,14 +4,15 @@
  * a 2px --ring dashed edge while a file is over it, and a solid hairline once
  * a file is held. Replaces a native <input type="file">, which is banned.
  *
- * This is the shell only. It accepts a file and reports it; parsing, column
- * mapping and committing rows are separate work.
+ * It accepts one XLSX or CSV file and reports it; the page reads the rows and
+ * passes back what it found (`detail`, `badge`) for the Parsed state.
  */
 
-import { useId, useRef, useState } from 'react'
+import { useId, useRef, useState, type ReactNode } from 'react'
 import { FileSpreadsheet, Upload, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { sheetKind } from './readSheetFile'
 
 const ACCEPT = '.xlsx,.csv'
 const MAX_BYTES = 10 * 1024 * 1024
@@ -22,7 +23,19 @@ function readableSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-export function DropZone({ onFile, className }: { onFile?: (file: File | null) => void; className?: string }) {
+export function DropZone({
+  onFile,
+  detail,
+  badge,
+  className
+}: {
+  onFile?: (file: File | null) => void
+  /** What the page found in the held file, e.g. `146 Rows Read`; the size shows until then. */
+  detail?: ReactNode
+  /** A status pill beside the file, e.g. `3 To Review`. */
+  badge?: ReactNode
+  className?: string
+}) {
   const [dragging, setDragging] = useState(false)
   const [file, setFile] = useState<File | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -30,6 +43,10 @@ export function DropZone({ onFile, className }: { onFile?: (file: File | null) =
   const describedBy = useId()
 
   function accept(next: File | null) {
+    if (next && !sheetKind(next.name)) {
+      setError('Only XLSX Or CSV Files Can Be Read. Save The Sheet In One Of Those Formats.')
+      return
+    }
     if (next && next.size > MAX_BYTES) {
       setError(`That File Is ${readableSize(next.size)}. The Limit Is 10 MB.`)
       return
@@ -46,21 +63,17 @@ export function DropZone({ onFile, className }: { onFile?: (file: File | null) =
 
   if (file) {
     return (
-      <div className={cn('flex flex-col gap-3', className)}>
-        <div className="flex items-center gap-3 rounded-md border border-border bg-card p-4">
-          <FileSpreadsheet aria-hidden="true" className="size-5 shrink-0 text-muted-foreground" />
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium">{file.name}</p>
-            <p className="text-[13px] text-muted-foreground tabular-nums">{readableSize(file.size)} · Ready To Read</p>
-          </div>
-          <Button type="button" variant="ghost" size="sm" onClick={clear} aria-label={`Remove ${file.name}`}>
-            <X aria-hidden="true" />
-            Remove
-          </Button>
+      <div className={cn('flex items-center gap-3 rounded-md border border-border bg-card p-4', className)}>
+        <FileSpreadsheet aria-hidden="true" className="size-5 shrink-0 text-muted-foreground" />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium">{file.name}</p>
+          <p className="text-[13px] text-muted-foreground tabular-nums">{detail ?? readableSize(file.size)}</p>
         </div>
-        <p className="text-[13px] text-muted-foreground">
-          Reading The Rows Is Not Built Yet. The File Stays In Your Browser.
-        </p>
+        {badge}
+        <Button type="button" variant="ghost" size="sm" onClick={clear} aria-label={`Remove ${file.name}`}>
+          <X aria-hidden="true" />
+          Remove
+        </Button>
       </div>
     )
   }

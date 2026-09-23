@@ -4,6 +4,8 @@
  * fetcher throws an `Error` carrying the server's `error` field on failure.
  */
 import type {
+  Booking,
+  BookingDraft,
   BuyerSignals,
   CaseEvent,
   Extraction,
@@ -88,5 +90,9 @@ export const postTask = (input: {
 
 export const updateTask = (taskId: string, status: Task['status']) =>
   request<Task>(`/api/tasks/${taskId}`, { method: 'PATCH', body: JSON.stringify({ status }) })
+
+/** Stores the rows a person chose from a booking sheet; `source` is the file name, kept on each booked update. */
+export const importBookings = (input: { bookings: BookingDraft[]; reportedBy: string; source?: string }) =>
+  post<{ bookings: Booking[] }>('/api/bookings/import', input)
 
 export const resetDemo = () => post<SimulationMeta>('/api/admin/reset')

@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { PersonaProvider } from '@/lib/persona'
 import { SnapshotProvider } from '@/lib/data'
+import { postTask } from '@/lib/api'
 import { BookingsPage } from '@/pages/BookingsPage'
 
 vi.mock('@/lib/api', async () => {
@@ -15,6 +16,7 @@ vi.mock('@/lib/api', async () => {
     reviewEvent: vi.fn(async () => ({})),
     extractMessage: vi.fn(async () => ({})),
     postMessage: vi.fn(async () => ({})),
+    postTask: vi.fn(async () => ({})),
     updateTask: vi.fn(async () => ({}))
   }
 })
@@ -95,6 +97,41 @@ describe('BookingsPage', () => {
     fireEvent.click(await screen.findByText('BK-9001'))
 
     expect(screen.getByTestId('location').textContent).toBe('/bookings/BK-9001')
+  })
+
+  it('opens a quick view from the Waiting On cell and stays on the table', async () => {
+    renderBookings()
+    await screen.findByText('BK-9001')
+
+    // The sheet opens synchronously; a label query keeps the lookup cheap
+    // across the whole ledger, where a role query is slow under jsdom.
+    fireEvent.click(screen.getByLabelText(/^Quick View A-12-03: Waiting On/))
+
+    const sheet = document.querySelector<HTMLElement>('[role="dialog"]')!
+    expect(sheet).toBeTruthy()
+    expect(screen.queryByTestId('location')).toBeNull()
+    expect(within(sheet).getByText('Waiting On')).toBeTruthy()
+    expect(within(sheet).getByText('Next Move')).toBeTruthy()
+    expect(within(sheet).getByRole('list', { name: 'Case Journey' })).toBeTruthy()
+    expect(
+      within(sheet)
+        .getByRole('link', { name: /Open Full Case/ })
+        .getAttribute('href')
+    ).toBe('/bookings/BK-9001')
+  })
+
+  it('puts the next move on the task list from the quick view', async () => {
+    renderBookings()
+    await screen.findByText('BK-9001')
+    fireEvent.click(screen.getByLabelText(/^Quick View A-12-03: Waiting On/))
+
+    const sheet = document.querySelector<HTMLElement>('[role="dialog"]')!
+    await act(async () => {
+      fireEvent.click(within(sheet).getByRole('button', { name: 'Add Task' }))
+    })
+
+    expect(postTask).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(postTask).mock.calls[0][0]).toMatchObject({ bookingId: 'BK-9001', origin: 'staff' })
   })
 
   it('keeps the table scrollable with compact cells so the last column cannot clip', async () => {

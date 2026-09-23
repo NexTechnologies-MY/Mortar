@@ -1,15 +1,16 @@
 /**
  * Booking detail route — the case page for one unit booking.
- * Header with stage, risk and owners; loan and legal timelines plus sales
- * events; applications with derived status; the message log with Jev
- * proposals and review actions; the Add Message form; playbooks ranked by
+ * Header with stage, risk and owners; a banner naming who the case is waiting
+ * on, the milestone it is stuck at and the next move; loan and legal timelines
+ * plus sales events; applications with derived status; the message log with
+ * Jev proposals and review actions; the Add Message form; playbooks ranked by
  * Jev fit; buyer signals; tasks; and the full evidence log.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { FileText } from 'lucide-react'
-import { PERSONA_STAFF, type BuyerSignals } from '@mortar/core'
+import { PERSONA_STAFF, ballInCourt, type BuyerSignals, type EventKind } from '@mortar/core'
 import { useCases, useSnapshot } from '@/lib/data'
 import { usePersona } from '@/lib/persona'
 import { fetchSignals } from '@/lib/api'
@@ -23,7 +24,9 @@ import { PlaybooksPanel } from '@/components/bookings/PlaybooksPanel'
 import { SignalsPanel } from '@/components/bookings/SignalsPanel'
 import { TasksPanel } from '@/components/bookings/TasksPanel'
 import { TrackTimelines } from '@/components/bookings/TrackTimelines'
+import { CaseJourney, WaitingOnPanel } from '@/components/bookings/WaitingOn'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -112,6 +115,25 @@ export function BookingDetailPage() {
       ) : (
         <>
           <CaseHeader booking={data.booking} summary={data.summary} />
+          <Card className="mt-4">
+            <CardContent className="flex flex-col gap-4 p-4">
+              <CaseJourney
+                summary={data.summary}
+                confirmedKinds={
+                  new Set<EventKind>(data.events.filter((e) => e.status === 'confirmed').map((e) => e.kind))
+                }
+                stalled={ballInCourt(data.summary).stalled}
+              />
+              <WaitingOnPanel
+                key={data.booking.id}
+                booking={data.booking}
+                summary={data.summary}
+                referenceDate={snapshot?.meta.referenceDate ?? ''}
+                onChanged={onChanged}
+                wide
+              />
+            </CardContent>
+          </Card>
           <div className="mt-4">
             <TrackTimelines events={data.events} />
           </div>
