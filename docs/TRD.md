@@ -268,7 +268,13 @@ no third-party schema validation libraries are loaded.
 - `GET /api/snapshot`: Assembles the full dataset required by the frontend
   workspace: `bookings`, `loan_applications`, `events`, `messages`, `playbooks`,
   `tasks`, and the latest `extractions`, `signals`, and `nextActions` from
-  `jev_answers`.
+  `jev_answers`. Every snapshot answer carries `source: 'cache'`; the snapshot
+  never calls Jev live. For `next_action` and `signals`, it recomputes today's
+  input hash for the subject's current case state and compares it against the
+  hash the answer was saved under, returning `stale: true` on a mismatch;
+  `extract` is keyed to an immutable message and is never stale. This is a
+  separate staleness check from the per-route fallback ladder described under
+  "Fallback And Caching Ladder" below.
 - `POST /api/messages`: Persists an incoming message, computes an input hash,
   and invokes Jev extraction. If the extraction yields an event proposal, the
   system stages a provisional `CaseEvent` linked to the message.
@@ -681,6 +687,13 @@ Request Dispatched
   for up to 25 stalled generated bookings, writing
   `server/fixtures/jev-cache.json`. This keeps demo executions under 120 calls
   and avoids live latency during presentations.
+- **Two Sources Of `stale: true`:** This ladder's Subject Stale Fallback tier
+  marks an answer stale when the exact input hash is missing and the latest
+  answer for the subject is served instead. `GET /api/snapshot` marks
+  `next_action` and `signals` answers stale a second, separate way: it always
+  serves the latest saved answer, then flags it stale if the subject's case has
+  changed since that answer was saved. Both reach the frontend as the same
+  `JevMeta.stale` flag.
 
 ## Security, Secrets And Privacy
 
