@@ -1,14 +1,28 @@
 /**
  * Chase page — the Sales Admin home desk. Every stalled live booking as a
  * chase card: its stall reasons, financing-risk chip and Jev's suggested next
- * action (cached first, re-run live). Below, the open tasks grouped by
- * owner. Filters narrow the queue by risk and by suggested owner.
+ * action (cached first, re-run live). Above the queue, Suggested Next names
+ * the most urgent stalled booking nobody is chasing yet; cards that already
+ * have an open task say so. Below, the open tasks grouped by owner. Filters
+ * narrow the queue by risk and by suggested owner.
  */
 import { useMemo, useState, type Dispatch, type SetStateAction } from 'react'
-import { AlertTriangle, Banknote, BellRing, Flame, ListChecks, SearchX, SlidersHorizontal, Users } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import {
+  AlertTriangle,
+  Banknote,
+  BellRing,
+  Flame,
+  ListChecks,
+  Plus,
+  SearchX,
+  SlidersHorizontal,
+  Users
+} from 'lucide-react'
+import { ballInCourt } from '@mortar/core'
 import type { CaseSummary, NextActionSuggestion, OwnerRole, RiskLevel, Task } from '@mortar/core'
 import { useCases, useSnapshot } from '@/lib/data'
-import { fetchNextAction, postTask, updateTask } from '@/lib/api'
+import { ApiError, fetchNextAction, postTask, updateTask } from '@/lib/api'
 import { notify } from '@/components/ui/toastConfig'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { PageHeaderCard } from '@/components/layout/PageHeaderCard'
@@ -16,12 +30,13 @@ import { StatCard } from '@/components/StatCard'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { InfoTooltip } from '@/components/ui/InfoTooltip'
+import { RefreshErrorBanner } from '@/components/ui/RefreshErrorBanner'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ChaseCard } from '@/components/chase/ChaseCard'
 import { ChaseTasks } from '@/components/chase/ChaseTasks'
 import { NEXT_ACTION_LABELS, dueOnForUrgency, ownerName, taskTitle, urgencyFor } from '@/components/chase/chase'
-import { formatRm, formatRmCompact } from '@/components/case'
+import { formatRm, formatRmCompact, MOVE_OWNER } from '@/components/case'
 import type { DocumentKind } from '@mortar/core'
 
 const RISK_OPTIONS: { value: 'all' | RiskLevel; label: string }[] = [
@@ -86,10 +101,17 @@ export function ChasePage() {
       const urgency = urgencyFor(suggestions.get(c.bookingId), c.daysSinceEvidence)
       return { pending: !pending.has(c.bookingId), tone: toneOrder[urgency.tone], score: urgency.score }
     }
+    // The owner filter's match for a case: Jev's cached suggestion when there
+    // is one, else the desk that would make Waiting On's next move — so a
+    // stalled case nobody has asked Jev about yet still shows under its
+    // rightful owner instead of disappearing from every specific filter
+    // (issue H7).
+    const ownerFor = (c: CaseSummary): OwnerRole =>
+      suggestions.get(c.bookingId)?.owner.value ?? MOVE_OWNER[ballInCourt(c).nextMove ?? 'wait']
     return cases
       .filter((c) => c.stallReasons.length > 0)
       .filter((c) => riskFilter === 'all' || c.risk.level === riskFilter)
-      .filter((c) => ownerFilter === 'all' || suggestions.get(c.bookingId)?.owner.value === ownerFilter)
+      .filter((c) => ownerFilter === 'all' || ownerFor(c) === ownerFilter)
       .sort((a, b) => {
         const ra = rank(a)
         const rb = rank(b)
@@ -105,6 +127,20 @@ export function ChasePage() {
 
   const allStalled = useMemo(() => cases.filter((c) => c.stallReasons.length > 0), [cases])
   const openTasks = useMemo(() => (snapshot?.tasks ?? []).filter((t) => t.status === 'open'), [snapshot])
+
+  /** Each booking's open task due soonest. */
+  const openTaskByBooking = useMemo(() => {
+    const map = new Map<string, Task>()
+    for (const task of openTasks) {
+      const held = map.get(task.bookingId)
+      if (!held || task.dueOn < held.dueOn) map.set(task.bookingId, task)
+    }
+    return map
+  }, [openTasks])
+
+  /** The most urgent stalled booking in the filtered queue that nobody is chasing yet. */
+  const suggestedNext = stalled.find((c) => !openTaskByBooking.has(c.bookingId))
+  const suggestedBooking = suggestedNext ? bookings.get(suggestedNext.bookingId) : undefined
   const valueAtRisk = allStalled.reduce((sum, c) => sum + (bookings.get(c.bookingId)?.priceRm ?? 0), 0)
   const highRisk = allStalled.filter((c) => c.risk.level === 'high').length
 
@@ -123,7 +159,7 @@ export function ChasePage() {
       setLive((prev) => ({ ...prev, [bookingId]: suggestion }))
       if (suggestion.meta.source === 'unavailable') notify.warning('Jev is unavailable — showing a neutral answer')
     } catch (e) {
-      notify.error(e instanceof Error ? e.message : 'Could not reach Jev')
+      notify.error(e instanceof ApiError ? e.message : 'Could Not Reach Jev. Try Again.')
     } finally {
       setFlag(setSuggesting, bookingId, false)
     }
@@ -148,7 +184,7 @@ export function ChasePage() {
       notify.success(`Task created for ${bookingId}: ${NEXT_ACTION_LABELS[suggestion.action.value]}`)
       await refresh()
     } catch (e) {
-      notify.error(e instanceof Error ? e.message : 'Could not create the task')
+      notify.error(e instanceof ApiError ? e.message : 'Could Not Create The Task. Try Again.')
     } finally {
       setFlag(setCreating, bookingId, false)
     }
@@ -161,7 +197,7 @@ export function ChasePage() {
       notify.success(`Completed: ${task.title}`)
       await refresh()
     } catch (e) {
-      notify.error(e instanceof Error ? e.message : 'Could not complete the task')
+      notify.error(e instanceof ApiError ? e.message : 'Could Not Complete The Task. Try Again.')
     } finally {
       setFlag(setCompleting, task.id, false)
     }
@@ -176,18 +212,27 @@ export function ChasePage() {
         </p>
       </PageHeaderCard>
 
-      {error ? (
+      {error && !snapshot ? (
         <div className="mt-4">
           <EmptyState icon={SearchX} title="Could Not Load Your Bookings" description={error} />
+          <div className="mt-3 flex justify-center">
+            <Button variant="secondary" onClick={() => void refresh()}>
+              Try Again
+            </Button>
+          </div>
         </div>
       ) : loading && !snapshot ? (
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
+        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-3">
           {[0, 1, 2].map((i) => (
             <Skeleton key={i} className="h-48" />
           ))}
         </div>
       ) : (
         <>
+          {/* A create-task or complete-task save can land fine while the refresh after
+              it fails; the queue stays on screen with a way to retry rather than
+              vanishing behind it. */}
+          {error ? <RefreshErrorBanner onRetry={() => void refresh()} /> : null}
           <div className="mt-4 flex flex-wrap gap-3">
             <StatCard
               label="Stalled Bookings"
@@ -264,11 +309,63 @@ export function ChasePage() {
             </div>
           ) : (
             <section className="mt-6">
+              {suggestedNext && suggestedBooking ? (
+                <div
+                  aria-label="Suggested Next"
+                  className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border border-card-border bg-card px-4 py-3 shadow-card"
+                >
+                  <span className="flex items-center text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                    Suggested Next
+                    <InfoTooltip text="The Most Urgent Stalled Booking Below That Has No Open Task Yet." />
+                  </span>
+                  <span className="flex min-w-0 flex-wrap items-baseline gap-x-2">
+                    <Link
+                      to={`/bookings/${suggestedBooking.id}`}
+                      className="font-mono text-[13px] font-medium text-foreground hover:underline"
+                    >
+                      {suggestedBooking.unit}
+                    </Link>
+                    <span className="text-[13px] text-muted-foreground">
+                      {suggestedBooking.id} · {suggestedBooking.buyer.name}
+                    </span>
+                    <span className="text-sm font-medium text-foreground">
+                      {suggestedNext.stallReasons.join(' · ')}
+                    </span>
+                  </span>
+                  {suggestions.has(suggestedBooking.id) ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="ml-auto"
+                      disabled={creating.has(suggestedBooking.id)}
+                      onClick={() => void createTask(suggestedBooking.id)}
+                    >
+                      <Plus aria-hidden="true" />
+                      {creating.has(suggestedBooking.id) ? 'Creating…' : 'Create Task'}
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      className="ml-auto"
+                      disabled={suggesting.has(suggestedBooking.id)}
+                      onClick={() => void suggest(suggestedBooking.id)}
+                    >
+                      {suggesting.has(suggestedBooking.id) ? 'Asking Jev…' : 'Suggest Next Action'}
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <p className="mb-4 text-sm text-muted-foreground">
+                  Every Stalled Booking Here Already Has An Open Task.
+                </p>
+              )}
               <h2 className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                 Action Today
                 <InfoTooltip text="Stalled Bookings, Ranked By Urgency." />
               </h2>
-              <div className="mt-3 grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
+              <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-3">
                 {(queueExpanded ? stalled : stalled.slice(0, QUEUE_PREVIEW)).map((summary) => {
                   const booking = bookings.get(summary.bookingId)
                   if (!booking) return null
@@ -279,6 +376,7 @@ export function ChasePage() {
                       summary={summary}
                       suggestion={suggestions.get(summary.bookingId)}
                       document={documentFor(summary.bookingId)}
+                      openTask={openTaskByBooking.get(summary.bookingId) ?? null}
                       suggesting={suggesting.has(summary.bookingId)}
                       creating={creating.has(summary.bookingId)}
                       onSuggest={() => void suggest(summary.bookingId)}

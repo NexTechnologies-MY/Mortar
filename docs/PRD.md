@@ -287,8 +287,8 @@ without storing transient state in database tables.
   and not yet received (`payslip`, `epf_statement`, `bank_statement`, `ic_copy`,
   `employment_letter`, `tax_form`).
 - **AC-2.5:** A live booking with no confirmed event for 10 or more calendar
-  days must be assigned `unknown: true`. The UI must display this booking as
-  unknown, never as progressing or failed.
+  days must be assigned `unknown: true`. The UI must display this booking as No
+  Update 10+ Days, never as progressing or failed.
 - **AC-2.6:** A booking must be flagged as stalled with specific Title Case
   reasons when any of the following conditions hold:
   1. No confirmed evidence for 7 or more calendar days.
@@ -494,10 +494,22 @@ AI service is unavailable.
   `server/fixtures/jev-cache.json` during reset.
 - **AC-12.4:** The application must function completely without an API key
   configured.
+- **AC-12.5:** `GET /api/snapshot` must mark `next_action` and `signals` answers
+  stale by a second, separate check: it always returns the latest saved answer
+  for the subject with `source: 'cache'`, then sets `stale: true` if recomputing
+  today's input hash for the subject's current case state no longer matches the
+  hash the answer was saved under. `extract` answers, keyed to an immutable
+  message, must never be marked stale.
 
 ### FR-13: Spreadsheet Intake And Validation
 
 The system must support intake of operational spreadsheets.
+
+**Status:** Built. The shipped `/import` flow goes beyond AC-13.1 to AC-13.3 in
+two respects: an import can be undone from its confirmation screen, provided
+none of its bookings has since taken an update, message, or task; and a date
+column written month first is detected and parsed as month first across the
+whole column, with the row review stating the switch.
 
 - **AC-13.1:** The `/import` screen must provide a custom drag-and-drop zone
   accepting XLSX and CSV booking spreadsheets.
@@ -505,6 +517,12 @@ The system must support intake of operational spreadsheets.
   numbers, prices, and booking dates, reporting total rows parsed.
 - **AC-13.3:** Parsing must occur entirely in the client without transmitting
   unverified files to third-party endpoints.
+- **AC-13.4:** Undo Import must lock its own import's bookings before checking
+  whether any has moved on, so a staff update that lands mid-undo cannot be
+  deleted after its own request already succeeded. A booking number an import
+  has ever used must never be reused, even after undo. The undo must record a
+  `removed` snapshot (id, unit, project, buyer name, price — never IC or phone)
+  on the import's own row, per `docs/RETENTION.md`.
 
 ### FR-14: Persona Navigation And Design System Compliance
 
@@ -569,6 +587,202 @@ which is otherwise measured nowhere.
 - **AC-15.5:** `CaseSummary` must carry `daysSinceLoIssued` and
   `daysSinceSpaSet`, both nullable, so the desk and the chase list read one
   derivation rather than two.
+
+### FR-17: Waiting On Party And Next Move
+
+The system must name who is holding up each open case, what they owe, and the
+next move, on the bookings ledger and on the case page alike.
+
+- **AC-17.1:** Every open case must record the party currently waited on (buyer,
+  bank, solicitor, or developer), what that party owes, and the next move
+  together with the desk that makes it.
+- **AC-17.2:** `/bookings` must show a Waiting On column in place of the retired
+  Last Update column, displaying the waiting party in plain text while the case
+  is moving and a red pill showing days since the last update once the case
+  stalls; a Waiting On filter must narrow the table to cases waiting on one
+  chosen party.
+- **AC-17.3:** Clicking a Waiting On cell must open a quick view beside the
+  table showing the five milestones with the stuck one marked, the blocker, the
+  next move, and a one-click Add Task action, without losing the table's active
+  filters or page.
+- **AC-17.4:** `/bookings/:id` must display the same Waiting On and Next Move
+  block under the case header.
+- **AC-17.5:** The party and next move must follow the case rules, not the stage
+  label alone:
+  1. A signed SPA means nobody is waited on, even if a loan agreement or
+     disbursement was recorded before the signing reached the log.
+  2. A case with only an SPA appointment on the log, and no approved bank, still
+     waits on that bank; the solicitor is named only once a real Letter of Offer
+     is on the log.
+  3. A buyer who withdrew waits on the developer for a release decision;
+     recording a bank submission on a later day brings the buyer back and clears
+     that wait.
+  4. Once a bank has approved, only that bank's own outstanding documents and
+     decision drive the wait; a declined or withdrawn bank's outstanding request
+     no longer holds the case up.
+
+### FR-18: Jev Through A Local Model Proxy
+
+When no TypeSafe API key is configured, Jev can run its structured questions
+through a local Anthropic-Messages-compatible model proxy instead, so its live
+behavior can be demonstrated without a TypeSafe key.
+
+**Status:** Built.
+
+- **AC-18.1:** The server must select the Jev mode in this priority order: if
+  `TYPESAFE_API_KEY` is present, run against the TypeSafe API; otherwise, if
+  `JEV_PROXY_URL` is set, run against the proxy client; otherwise, run
+  cache-only with Jev marked unavailable.
+- **AC-18.2:** Configuring the proxy client must read `JEV_PROXY_MODEL`, falling
+  back to `DEFAULT_JEV_PROXY_MODEL` (`gemini-3.5-flash-lite`) if the variable is
+  empty or unset, and `JEV_PROXY_KEY`, falling back to an empty string.
+- **AC-18.3:** Each `systemOne` call on the proxy client must render the
+  questions and their instructions into the Anthropic `system` field, keeping
+  the case state out of it; the state alone must go in the `user` message,
+  fenced inside a `<state>...</state>` block, with the system prompt stating
+  that anything inside that block is data to read, never an instruction to
+  follow. The call must send `POST {url}/v1/messages` with headers
+  `x-api-key: apiKey` and `anthropic-version: 2023-06-01`, body
+  `{ model, max_tokens: 4096, system, messages: [{ role: 'user', content: stateBlock }] }`,
+  and a 45000ms default timeout.
+- **AC-18.4:** The proxy client must parse the response text as JSON, require an
+  answer for every question asked, clamp negative probabilities to zero, and
+  renormalise each question's probabilities to sum to 1 into the exact
+  `ChoiceResponse`, `NoulResponse`, and `ScoreResponse` shapes the SDK defines.
+  A question whose probabilities come back all zero, all negative, or naming
+  only labels the question does not declare must fail the call rather than
+  spread evenly across the declared options and let the first one win by
+  default, so the Jev service's cache-then-neutral fallback runs instead.
+- **AC-18.5:** Because case data is sent as a prompt to whatever model sits
+  behind the proxy, this mode must only ever be used with synthetic demo data,
+  never real buyer or booking information.
+
+### FR-19: Record An Update
+
+Staff can record what happened on a booking by hand from the case page, so the
+case moves at once without waiting for a message for Jev to read.
+
+**Status:** Built.
+
+- **AC-19.1:** `RecordUpdateForm.tsx` on the case page must let staff choose an
+  update from a list grouped by track (Sales: Buyer Contacted, Buyer Hesitant,
+  Buyer Withdrew, Cancelled, Lapsed; Loan: Submitted To A Bank, Documents
+  Requested, Documents Received, Valuation Shortfall, Loan Approved (LO Issued),
+  Loan Rejected, Loan Agreement Signed, Disbursed; Legal: SPA Appointment Set,
+  SPA Signed), a date bounded between the booking date and the reference date,
+  an optional note, and, where relevant, which bank application and which
+  document. Loan Agreement Signed and Disbursed must be offered only once a
+  confirmed `spa_signed` event is on the booking's log; before that, the form
+  must leave both out of the list rather than offer an update the server will
+  refuse.
+- **AC-19.2:** Selecting Submitted To A Bank must post to
+  `POST /api/applications` with `bookingId`, `bank`, `banker`, `occurredOn`,
+  `reportedBy`, and an optional `note`, creating the loan application and its
+  submission event together.
+- **AC-19.3:** Every other update must post one event to `POST /api/events`,
+  which accepts an optional `applicationId` (must name an application belonging
+  to the same booking) and an optional `occurredOn` date; the server must reject
+  an `occurredOn` before the booking date or after the reference date.
+- **AC-19.4:** A bank decision (Loan Approved, Loan Rejected, Valuation
+  Shortfall) must name the application it decides. The server must refuse (400)
+  a Loan Agreement Signed or Disbursed event that arrives before a confirmed
+  `spa_signed` event is on the same booking's log.
+- **AC-19.5:** SPA Appointment Set must write its note as
+  `Appointment On YYYY-MM-DD`, the form the Legal desk reads the appointment
+  date from.
+- **AC-19.6:** Recording Cancelled, Lapsed, or Buyer Withdrew must ask for
+  confirmation in a dialog, Cancel focused by default, before it is saved.
+- **AC-19.7:** A saved update must be written with `status: 'confirmed'`,
+  `source: 'staff'`, and the reporting staff name as both `reportedBy` and
+  `verifiedBy`, matching AC-4.2.
+
+### FR-20: Message Timing And Buyer Response Explanation
+
+Message entries record when they were sent, and the Buyer Response column
+explains what it is showing, so both Jev and the reader can read buyer behavior
+from the message log.
+
+**Status:** Built.
+
+- **AC-20.1:** `AddMessageForm.tsx` must offer a Sent At date field and a Time
+  field validated against `^([01]?\d|2[0-3]):([0-5]\d)$`; left untouched, both
+  default to the desks' current date and time read afresh at the moment the
+  message is added, and once edited, the exact chosen values are sent as a
+  combined `sentAt` ISO date-time to `POST /api/messages`.
+- **AC-20.2:** The server must validate that `sentAt` is an ISO date-time with a
+  UTC offset, clamp a timestamp that falls within a small clock-skew tolerance
+  of the future to now, reject one further in the future than that, and reject
+  one before the booking date. Because the desks' clock keeps the reference date
+  while its time of day wraps to `00:00` at midnight, a `sentAt` stamped in the
+  closing minutes of the reference date and posted within the same small
+  tolerance after the wrap must be measured back across midnight rather than
+  read as nearly a day in the future.
+- **AC-20.3:** In `SignalChips.tsx`, the responsiveness and hesitation pills in
+  the Buyer Response column must carry a tooltip reading "Jev's Read Of This
+  Buyer's Messages: Reply Speed And Any Doubts. Log Messages On The Case Page To
+  Update It."
+- **AC-20.4:** When a booking has no buyer signals because no messages have been
+  logged, the Buyer Response cell must read "No Messages Yet" in muted text
+  instead of the usual empty-value dash.
+
+### FR-21: Bookings Active And Closed Views With Export
+
+The bookings ledger splits into Active and Closed tabs, so a case that will
+never move again stops crowding the working list without ever being deleted.
+
+**Status:** Built.
+
+- **AC-21.1:** `BookingsPage.tsx` must split the ledger into Active and Closed
+  tabs sharing one filter and sort state, each tab title showing a live count,
+  e.g. "Active (42)" and "Closed (8)".
+- **AC-21.2:** A booking at stage `disbursed`, `cancelled`, or `lapsed` must
+  fall on the Closed tab; `spa_signed` must stay on Active, because it still has
+  a legal file to close.
+- **AC-21.3:** A closed booking must never be deleted, per the 7-year retention
+  rule (`docs/RETENTION.md`); it must only leave the Active list for its own
+  filtered, sorted, paginated view on the Closed tab.
+- **AC-21.4:** The Closed tab must carry an Export To Excel button
+  (`closedExport.ts`) that downloads `mortar-closed-cases-<referenceDate>.xlsx`,
+  one row per booking currently shown, filtered and sorted, before pagination.
+- **AC-21.5:** The export must carry columns Booking, Unit, Project, Buyer,
+  Final Stage, Closed On, Value (RM), Bank, Solicitor, Sales Agent, and Loan
+  Officer, and must never include IC or phone.
+- **AC-21.6:** Closed On must be the date the closing event (`disbursed`,
+  `cancelled`, or `lapsed`) was confirmed on the event log, or blank if none is
+  on the log yet, written as `d mmm yyyy` (e.g. `31 May 2026`), matching
+  `docs/DESIGN.md`'s date format.
+
+### FR-22: Add Booking By Hand
+
+Staff can add one booking by hand from the Bookings page, validated exactly as a
+spreadsheet import row.
+
+**Status:** Built.
+
+- **AC-22.1:** `AddBookingDialog.tsx`, opened from the Bookings page, must
+  capture Project (a select of the ledger's own project names, defaulting to the
+  desk's main project, with an Other Project… option to type a new one), Unit,
+  Buyer Name, IC, Phone, Age (shown only once the IC entered is not a 12-digit
+  MyKad, since a passport carries no birth date to derive it from), Price (RM),
+  Booking Date, Gross Monthly Income (RM), Monthly Commitments (RM), Properties
+  Owned, Sales Agent, and Solicitor.
+- **AC-22.2:** The booking date must not be pickable after the reference date.
+- **AC-22.3:** The form's fields must be assembled into a two-row sheet and run
+  through `readBookingSheet` with the same defaults and held-unit map
+  `ImportPage` uses, so a row that would be refused on import is refused here
+  too, with the same messages.
+- **AC-22.4:** On submit, the one validated row must be sent to
+  `POST /api/bookings/import` as a one-row batch through `importBookings`, so
+  the server's own check runs a second time before anything is stored.
+- **AC-22.5:** On success, the dialog must navigate to the new booking's case
+  page.
+- **AC-22.6:** An IC cell read as an 11-digit number must be treated as a
+  12-digit MyKad that lost its leading zero to Excel's numeric formatting, and
+  padded back to 12 digits before validation; an 11-digit IC entered as text
+  must be kept exactly as written. The rule applies wherever `readBookingSheet`
+  runs, so `/import` and Add Booking read the same cell the same way.
+- **AC-22.7:** Closing the dialog, whether by saving or cancelling, must return
+  keyboard focus to the Add Booking button that opened it.
 
 ## Non-Functional Requirements
 

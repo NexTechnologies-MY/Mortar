@@ -42,6 +42,7 @@ export function stalledCase(id: string, overrides: Partial<CaseSummary> = {}): C
   return {
     bookingId: id,
     stage: 'loan_applied',
+    spaSigned: false,
     unknown: false,
     bookingAgeDays: 16,
     daysSinceEvidence: 6,
@@ -49,6 +50,7 @@ export function stalledCase(id: string, overrides: Partial<CaseSummary> = {}): C
     daysSinceSpaSet: null,
     applications: [],
     outstandingDocuments: [],
+    buyerWithdrew: false,
     risk: {
       level: 'low' satisfies RiskLevel,
       loanRm: 495000,

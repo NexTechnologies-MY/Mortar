@@ -14,8 +14,10 @@ import { useCases, useSnapshot } from '@/lib/data'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { PageHeaderCard } from '@/components/layout/PageHeaderCard'
 import { StatCard } from '@/components/StatCard'
+import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { InfoTooltip } from '@/components/ui/InfoTooltip'
+import { RefreshErrorBanner } from '@/components/ui/RefreshErrorBanner'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatRm, formatRmCompact } from '@/components/case'
 import { LegalQueueTable } from '@/components/legal/LegalQueueTable'
@@ -23,7 +25,7 @@ import { FirmLoadCard } from '@/components/legal/FirmLoadCard'
 import { firmLoad, isLegalStall, legalQueue } from '@/components/legal/legal'
 
 export function LegalPage() {
-  const { snapshot, loading, error } = useSnapshot()
+  const { snapshot, loading, error, refresh } = useSnapshot()
   const cases = useCases()
 
   const rows = useMemo(() => legalQueue(snapshot?.bookings ?? [], cases, snapshot?.events ?? []), [snapshot, cases])
@@ -43,18 +45,27 @@ export function LegalPage() {
         </p>
       </PageHeaderCard>
 
-      {error ? (
+      {error && !snapshot ? (
         <div className="mt-4">
           <EmptyState icon={SearchX} title="Could Not Load Your Bookings" description={error} />
+          <div className="mt-3 flex justify-center">
+            <Button variant="secondary" onClick={() => void refresh()}>
+              Try Again
+            </Button>
+          </div>
         </div>
       ) : loading && !snapshot ? (
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
+        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-3">
           {[0, 1, 2].map((i) => (
             <Skeleton key={i} className="h-48" />
           ))}
         </div>
       ) : (
         <>
+          {/* Nothing here mutates yet, but the snapshot is shared app-wide, so a
+              refresh kicked off elsewhere can still fail while this page is open;
+              stay on screen with a way to retry rather than vanishing behind it. */}
+          {error ? <RefreshErrorBanner onRetry={() => void refresh()} /> : null}
           <div className="mt-4 flex flex-wrap gap-3">
             <StatCard
               label="Awaiting SPA"
@@ -97,7 +108,7 @@ export function LegalPage() {
               <section className="mt-6">
                 <h2 className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                   Sitting With The Lawyers
-                  <InfoTooltip text="Longest Wait First. Rows Open The Case File." />
+                  <InfoTooltip text="Longest Wait First Until You Sort A Column. Rows Open The Case File." />
                 </h2>
                 <p className="mt-1 text-sm text-muted-foreground">
                   {unscheduled > 0

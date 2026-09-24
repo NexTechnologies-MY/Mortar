@@ -55,6 +55,7 @@ class MemoryCache implements JevCache {
 const summary = (overrides: Partial<CaseSummary> = {}): CaseSummary => ({
   bookingId: 'BK-9001',
   stage: 'loan_applied',
+  spaSigned: false,
   unknown: false,
   bookingAgeDays: 12,
   daysSinceEvidence: 6,
@@ -62,6 +63,7 @@ const summary = (overrides: Partial<CaseSummary> = {}): CaseSummary => ({
   daysSinceSpaSet: null,
   applications: [{ id: 'LA-1', bank: 'Fictional Bank A', status: 'documents_pending' }],
   outstandingDocuments: ['payslip'],
+  buyerWithdrew: false,
   risk: {
     level: 'low',
     loanRm: 450000,

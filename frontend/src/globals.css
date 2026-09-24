@@ -342,6 +342,16 @@
 /* BASE STYLES */
 html {
   scroll-behavior: smooth;
+  /* Keep the scrollbar's lane reserved whether the page scrolls or not, so a filter that shortens the list never
+     shifts the page sideways. */
+  scrollbar-gutter: stable;
+}
+
+/* A Radix Select, Dialog or Sheet locks scrolling through react-remove-scroll-bar, which adds a body margin the width
+   of the scrollbar it hides. The gutter above already keeps that space, so the margin would count it twice and push
+   the page left each time a dropdown opened. */
+html body[data-scroll-locked] {
+  margin-right: 0 !important;
 }
 
 /* Disable transitions during theme switch */
@@ -496,12 +506,22 @@ select:focus-visible,
     transform: none;
   }
 
+  /* Only colour and opacity may change gradually. `transition-property` starts as `all`, so a bare duration here once
+     animated every property of every element: the page slid on each filter, and a tooltip glided in from the top-left
+     corner, where Radix parks it before measuring. */
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+    transition-property:
+      color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, opacity, box-shadow !important;
     transition-duration: 120ms !important;
     scroll-behavior: auto !important;
+  }
+
+  /* A tooltip enters and leaves by fading alone, with no translate or zoom, so it keeps its fade here. */
+  [data-slot='tooltip-content'][data-state] {
+    animation-duration: var(--motion-base) !important;
   }
 }

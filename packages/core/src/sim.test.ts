@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { Assumption, Booking, CaseEvent, Dataset } from './types'
+import type { Assumption, Booking, CaseEvent, Dataset, LoanApplication } from './types'
 import {
   backtest,
   DEFAULT_ASSUMPTIONS,
@@ -13,6 +13,7 @@ import {
   summarizeCases
 } from './sim'
 import { deriveCase, STAGE_RANK } from './sim/cases'
+import { ballInCourt } from './ball'
 import { STORIES } from './fixtures/stories'
 import { wilsonInterval } from './sim/forecast'
 import { monthlyInstalment } from './sim/risk'
@@ -186,6 +187,58 @@ describe('summarizeCases', () => {
     const out = summarizeCases({ bookings: [b], applications: [], events, tasks: [] }, REFERENCE_DATE)
     expect(out[0].stage).toBe('booked')
     expect(out[0].stallReasons).toContain('Disputed Evidence Awaits Review')
+  })
+})
+
+describe('an update staff record by hand', () => {
+  const b = booking()
+  const apex: LoanApplication = { id: 'APP-T001', bookingId: b.id, bank: 'Apex Bank', banker: 'Kelvin Teo' }
+  const crest: LoanApplication = { id: 'APP-T002', bookingId: b.id, bank: 'Crestline Bank', banker: 'Aida Rahman' }
+  const before = [
+    event({ occurredAt: at('2026-09-01') }),
+    event({
+      id: 'EV-T002',
+      kind: 'loan_submitted',
+      track: 'loan',
+      applicationId: apex.id,
+      occurredAt: at('2026-09-03')
+    }),
+    event({
+      id: 'EV-T003',
+      kind: 'loan_submitted',
+      track: 'loan',
+      applicationId: crest.id,
+      occurredAt: at('2026-09-04')
+    })
+  ]
+  // What `POST /api/events` stores for a manual Loan Approved: confirmed, from staff, dated noon on the chosen day.
+  const approved = event({
+    id: 'EV-T004',
+    kind: 'loan_approved',
+    track: 'loan',
+    applicationId: crest.id,
+    occurredAt: '2026-09-16T12:00:00+08:00',
+    recordedAt: '2026-09-18T09:30:00+08:00',
+    source: 'staff'
+  })
+  const summarize = (events: CaseEvent[]) =>
+    summarizeCases({ bookings: [b], applications: [apex, crest], events, tasks: [] }, REFERENCE_DATE)[0]
+
+  it('moves the case to lo_issued and marks only that application approved', () => {
+    const waiting = summarize(before)
+    expect(waiting.stage).toBe('loan_applied')
+    expect(waiting.applications.map((a) => a.status)).toEqual(['submitted', 'submitted'])
+
+    const out = summarize([...before, approved])
+    expect(out.stage).toBe('lo_issued')
+    expect(out.daysSinceLoIssued).toBe(2)
+    expect(out.applications).toEqual([
+      { id: apex.id, bank: 'Apex Bank', status: 'submitted' },
+      { id: crest.id, bank: 'Crestline Bank', status: 'approved' }
+    ])
+    // Recorded today, so the case reads as freshly updated, and Waiting On moves to the solicitor.
+    expect(out.daysSinceEvidence).toBe(0)
+    expect(ballInCourt(out)).toMatchObject({ holder: 'solicitor', nextMove: 'schedule_spa' })
   })
 })
 
