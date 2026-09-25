@@ -12,6 +12,7 @@ import { PageHeaderCard } from '@/components/layout/PageHeaderCard'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DemoDataCard } from '@/components/settings/DemoDataCard'
+import { ProjectSettingsCard } from '@/components/settings/ProjectSettingsCard'
 import { HealthCard } from '@/components/settings/HealthCard'
 
 export function SettingsPage() {
@@ -68,7 +69,8 @@ export function SettingsPage() {
           <Skeleton className="h-72" />
         </div>
       ) : snapshot ? (
-        <div className="my-auto grid items-start gap-4 py-4 lg:grid-cols-2">
+        <div className="grid items-start gap-4 py-4 lg:grid-cols-2 xl:grid-cols-3">
+          <ProjectSettingsCard />
           <DemoDataCard snapshot={snapshot} jevAnswers={health?.jevAnswers ?? null} onReset={onReset} />
           <HealthCard health={health} failed={healthFailed} />
         </div>

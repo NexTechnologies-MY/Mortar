@@ -13,8 +13,14 @@ import { StagePill } from '@/components/case/StagePill'
 import { formatDate, formatDaysLong, formatRm } from '@/components/case/format'
 import { DOCUMENT_LABELS } from './labels'
 import { StatusPill } from '@/components/ui/status-pill'
+import { usePersonaSafe } from '@/lib/persona'
+import { cn } from '@/lib/utils'
 
 export function CaseHeader({ booking, summary }: { booking: Booking; summary: CaseSummary }) {
+  const { persona } = usePersonaSafe()
+  const isSalesDesk = persona === 'sales-admin'
+  const isLoanDesk = persona === 'loan-admin'
+  const isLegalDesk = persona === 'legal-admin'
   return (
     <header className="flex flex-col gap-3">
       <div>
@@ -44,9 +50,27 @@ export function CaseHeader({ booking, summary }: { booking: Booking; summary: Ca
         ))}
       </div>
       <div className="flex flex-wrap items-center gap-1.5">
-        <OwnerBadge role="sales" name={booking.salesOwner} />
-        <OwnerBadge role="loan_admin" name={booking.loanOwner} />
-        <OwnerBadge role="legal" name={booking.legalFirm} />
+        <div className="relative inline-flex items-center">
+          <OwnerBadge
+            role="sales"
+            name={isSalesDesk ? `${booking.salesOwner} (Your Desk)` : booking.salesOwner}
+            className={cn(isSalesDesk && 'ring-2 ring-primary/70 font-semibold bg-primary/10 text-foreground')}
+          />
+        </div>
+        <div className="relative inline-flex items-center">
+          <OwnerBadge
+            role="loan_admin"
+            name={isLoanDesk ? `${booking.loanOwner} (Your Desk)` : booking.loanOwner}
+            className={cn(isLoanDesk && 'ring-2 ring-primary/70 font-semibold bg-primary/10 text-foreground')}
+          />
+        </div>
+        <div className="relative inline-flex items-center">
+          <OwnerBadge
+            role="legal"
+            name={isLegalDesk ? `${booking.legalFirm} (Your Desk)` : booking.legalFirm}
+            className={cn(isLegalDesk && 'ring-2 ring-primary/70 font-semibold bg-primary/10 text-foreground')}
+          />
+        </div>
       </div>
     </header>
   )

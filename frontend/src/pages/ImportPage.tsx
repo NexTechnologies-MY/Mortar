@@ -22,6 +22,7 @@ import { usePersona } from '@/lib/persona'
 import { ApiError, importBookings } from '@/lib/api'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { PageHeaderCard } from '@/components/layout/PageHeaderCard'
+import { DirectTableImport } from '@/components/import/DirectTableImport'
 import { DropZone } from '@/components/import/DropZone'
 import { ImportedCard } from '@/components/import/ImportedCard'
 import { SheetReview } from '@/components/import/SheetReview'
@@ -162,8 +163,23 @@ export function ImportPage() {
     <PageContainer>
       <PageHeaderCard>
         <h1 className="text-[32px] font-semibold leading-[1.16] tracking-[-0.02em] text-foreground">Import</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Load Existing Bookings Into Mortar From A Spreadsheet.</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Import New Cases Via The Interactive Ledger Table Below Or Upload A Spreadsheet.
+        </p>
       </PageHeaderCard>
+
+      {/* Direct Case Table Entry */}
+      <div className="mt-4">
+        <DirectTableImport
+          persona={persona}
+          referenceDate={snapshot?.meta.referenceDate ?? ''}
+          held={held}
+          onImported={(res) => {
+            setImported(res)
+            void refresh()
+          }}
+        />
+      </div>
 
       <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] [&>*]:min-w-0">
         <Card>

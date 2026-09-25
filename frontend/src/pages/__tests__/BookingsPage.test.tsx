@@ -153,7 +153,8 @@ describe('BookingsPage', () => {
     await screen.findByText('BK-9001')
 
     const firstRow = document.querySelector('tbody tr')!
-    expect(firstRow.children[3].className).toContain('text-status-danger-fg')
+    // Age is column index 2 now that Booking ID was consolidated under Unit
+    expect(firstRow.children[2].className).toContain('text-status-danger-fg')
   })
 
   it('keeps only unknown cases when the renamed filter is on (issue #22)', async () => {
@@ -166,12 +167,14 @@ describe('BookingsPage', () => {
     expect(screen.getByText('BK-9007')).toBeTruthy()
   })
 
-  it('shows muted "No Messages Yet" instead of a dash for a booking with no buyer signals (issue #21)', async () => {
+  it('consolidates booking ID under unit and removed buyer responses column per streamlined design', async () => {
     renderBookings()
     await screen.findByText('BK-9001')
 
-    // Only BK-9001 carries a signals fixture; every other visible row falls back to this text.
-    expect(screen.getAllByText('No Messages Yet').length).toBeGreaterThan(0)
+    // Booking ID is shown neatly under the unit name
+    expect(screen.getByText('BK-9001')).toBeTruthy()
+    // Buyer Response column is no longer in the table header
+    expect(screen.queryByText('Buyer Response')).toBeNull()
   })
 
   it('keeps a closed booking off the Active list until Closed is selected (issue #23)', async () => {
@@ -348,5 +351,36 @@ describe('BookingsPage', () => {
     expect(vi.mocked(postTask).mock.calls[0][0]).toMatchObject({ bookingId, origin: 'staff' })
     // The row opens the case page; the button must not.
     expect(screen.queryByTestId('location')).toBeNull()
+  })
+  it('renders the Booking-to-SPA pipeline tracker under the stat cards', async () => {
+    renderBookings()
+    await screen.findByText('BK-9001')
+
+    expect(screen.getByTestId('booking-pipeline-flow')).toBeTruthy()
+    expect(screen.getByText('Booking-to-SPA Pipeline & Bottleneck Flow')).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Filter by Panel Bank/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Filter by Client \/ Buyer/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Filter by Law Firm/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Filter by SPA Signed/i })).toBeTruthy()
+  })
+
+  it('pressing Panel Bank in the pipeline shows all cases stalled by bank, and reset clears the filter', async () => {
+    renderBookings()
+    await screen.findByText('BK-9001')
+
+    // Click Panel Bank step in the pipeline
+    const bankCard = screen.getByRole('button', { name: /Filter by Panel Bank/i })
+    fireEvent.click(bankCard)
+
+    // Verify active filter indicator
+    expect(await screen.findByText('Filtered View Active')).toBeTruthy()
+    expect(screen.getByText(/Showing:/)).toBeTruthy()
+    expect(screen.getByText(/Stalled by Panel Bank/i)).toBeTruthy()
+
+    // Reset filter
+    const resetBtn = screen.getByRole('button', { name: /Reset Pipeline Filter/i })
+    fireEvent.click(resetBtn)
+
+    expect(screen.queryByText('Filtered View Active')).toBeNull()
   })
 })

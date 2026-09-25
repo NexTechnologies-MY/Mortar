@@ -32,9 +32,15 @@ import { usePersona } from '@/lib/persona'
 import { STAGE_LABELS } from '@/components/case/StagePill'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { PageHeaderCard } from '@/components/layout/PageHeaderCard'
+import { PersonaDeskLens } from '@/components/layout/PersonaDeskLens'
 import { StatCard } from '@/components/StatCard'
 import { AddBookingDialog } from '@/components/bookings/AddBookingDialog'
 import { BookingFilters, type BookingFilter } from '@/components/bookings/BookingFilters'
+import {
+  BookingPipelineFlow,
+  type PipelineCounts,
+  type PipelineSelection
+} from '@/components/bookings/BookingPipelineFlow'
 import { BookingsTable, type BookingRow, type Sort, type SortKey } from '@/components/bookings/BookingsTable'
 import { CaseQuickView } from '@/components/bookings/CaseQuickView'
 import { buildClosedExportRows, downloadClosedExport } from '@/components/bookings/closedExport'
@@ -97,6 +103,10 @@ export function BookingsPage() {
   const [view, setView] = useState<View>('active')
   const [addOpen, setAddOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
+  const [pipelineSelection, setPipelineSelection] = useState<PipelineSelection>({
+    stageId: null,
+    stalledOnly: false
+  })
   // Passed to AddBookingDialog so it can put focus back here once Escape, the
   // X or Cancel close it (issue #M12) — a successful add navigates away instead.
   const addButtonRef = useRef<HTMLButtonElement>(null)
@@ -167,20 +177,64 @@ export function BookingsPage() {
   }, [rows])
   const viewRows = view === 'active' ? activeRows : closedRows
 
+  const pipelineCounts = useMemo<PipelineCounts>(() => {
+    const counts: PipelineCounts = {
+      buyer: { total: 0, stalled: 0 },
+      bank: { total: 0, stalled: 0 },
+      solicitor: { total: 0, stalled: 0 },
+      spa: { total: 0 },
+      developer: { total: 0, stalled: 0 }
+    }
+
+    for (const r of activeRows) {
+      if (r.summary.stage === 'spa_signed') {
+        counts.spa.total++
+        continue
+      }
+      const bic = ballInCourt(r.summary)
+      if (bic.holder === 'buyer') {
+        counts.buyer.total++
+        if (r.stalled) counts.buyer.stalled++
+      } else if (bic.holder === 'bank') {
+        counts.bank.total++
+        if (r.stalled) counts.bank.stalled++
+      } else if (bic.holder === 'solicitor') {
+        counts.solicitor.total++
+        if (r.stalled) counts.solicitor.stalled++
+      } else if (bic.holder === 'developer') {
+        counts.developer.total++
+        if (r.stalled) counts.developer.stalled++
+      }
+    }
+
+    return counts
+  }, [activeRows])
+
   const [sort, setSort] = useState<Sort>(null)
 
   // Third click clears back to the default stalled-first ranking, so the
   // reader can always get back without reloading.
   const visible = useMemo(
     () =>
-      viewRows.filter(
-        (r) =>
-          (filter.stage === 'all' || r.summary.stage === filter.stage) &&
-          (filter.waitingOn === 'all' || ballInCourt(r.summary).holder === filter.waitingOn) &&
-          (filter.risk === 'all' || r.summary.risk.level === filter.risk) &&
-          (!filter.unknownOnly || r.summary.unknown)
-      ),
-    [viewRows, filter]
+      viewRows.filter((r) => {
+        if (filter.stage !== 'all' && r.summary.stage !== filter.stage) return false
+        if (filter.waitingOn !== 'all' && ballInCourt(r.summary).holder !== filter.waitingOn) return false
+        if (filter.risk !== 'all' && r.summary.risk.level !== filter.risk) return false
+        if (filter.unknownOnly && !r.summary.unknown) return false
+
+        if (view === 'active' && pipelineSelection.stageId) {
+          if (pipelineSelection.stageId === 'spa') {
+            if (r.summary.stage !== 'spa_signed') return false
+          } else {
+            const bic = ballInCourt(r.summary)
+            if (bic.holder !== pipelineSelection.stageId) return false
+            if (pipelineSelection.stalledOnly && !r.stalled) return false
+          }
+        }
+
+        return true
+      }),
+    [viewRows, filter, view, pipelineSelection]
   )
 
   // Applied after filtering so the sort acts on what the reader can see.
@@ -227,6 +281,17 @@ export function BookingsPage() {
   const changeView = (next: View) => {
     setView(next)
     setFilter((prev) => (prev.stage === 'all' ? prev : { ...prev, stage: 'all' }))
+    setPipelineSelection({ stageId: null, stalledOnly: false })
+    pagination.onPageChange(1)
+  }
+
+  const handlePipelineSelect = (next: PipelineSelection) => {
+    setPipelineSelection(next)
+    pagination.onPageChange(1)
+  }
+
+  const handlePipelineClear = () => {
+    setPipelineSelection({ stageId: null, stalledOnly: false })
     pagination.onPageChange(1)
   }
 
@@ -335,6 +400,11 @@ export function BookingsPage() {
           {/* A mutation's own save can succeed while the refresh after it fails; the
               table stays on screen with a way to retry rather than vanishing behind it. */}
           {error ? <RefreshErrorBanner onRetry={() => void refresh()} /> : null}
+          {/* Active Role Desk Lens & Purview Boundaries */}
+          <div className="mt-4">
+            <PersonaDeskLens />
+          </div>
+
           <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
               label="Live Bookings"
@@ -363,6 +433,18 @@ export function BookingsPage() {
               info="Reached SPA signing — legally sold."
             />
           </div>
+
+          {/* Booking-to-SPA Conveyance Pipeline & Bottleneck Tracker */}
+          {view === 'active' && (
+            <div className="mt-4">
+              <BookingPipelineFlow
+                counts={pipelineCounts}
+                selection={pipelineSelection}
+                onSelect={handlePipelineSelect}
+                onClear={handlePipelineClear}
+              />
+            </div>
+          )}
 
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
             <Tabs value={view} onValueChange={(next) => changeView(next as View)}>

@@ -19,6 +19,7 @@ import { PageContainer } from '@/components/layout/PageContainer'
 import { AddMessageForm } from '@/components/bookings/AddMessageForm'
 import { ApplicationsCard } from '@/components/bookings/ApplicationsCard'
 import { CaseHeader } from '@/components/bookings/CaseHeader'
+import { PersonaDeskLens } from '@/components/layout/PersonaDeskLens'
 import { EvidenceLog } from '@/components/bookings/EvidenceLog'
 import { MessagesPanel } from '@/components/bookings/MessagesPanel'
 import { PlaybooksPanel } from '@/components/bookings/PlaybooksPanel'
@@ -134,6 +135,9 @@ export function BookingDetailPage() {
           {/* The save that just landed is real; only the follow-up read failed, so the
               case stays on screen with a way to retry rather than vanishing behind it. */}
           {error ? <RefreshErrorBanner onRetry={() => void refresh()} /> : null}
+          <div className="mb-4">
+            <PersonaDeskLens />
+          </div>
           <CaseHeader booking={data.booking} summary={data.summary} />
           <Card className="mt-4">
             <CardContent className="flex flex-col gap-4 p-4">
