@@ -47,6 +47,7 @@ const PLAYBOOKS: Playbook[] = [
 const summary = (overrides: Partial<CaseSummary> = {}): CaseSummary => ({
   bookingId: 'BK-9001',
   stage: 'loan_applied',
+  spaSigned: false,
   unknown: false,
   bookingAgeDays: 12,
   daysSinceEvidence: 6,
@@ -57,6 +58,7 @@ const summary = (overrides: Partial<CaseSummary> = {}): CaseSummary => ({
     { id: 'LA-2', bank: 'Bank B', status: 'rejected' }
   ],
   outstandingDocuments: ['payslip'],
+  buyerWithdrew: false,
   risk: {
     level: 'low',
     loanRm: 450000,

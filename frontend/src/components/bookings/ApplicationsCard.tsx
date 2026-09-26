@@ -7,6 +7,8 @@ import type { ApplicationStatus, CaseSummary, LoanApplication } from '@mortar/co
 import { APPLICATION_STATUS_LABELS } from './labels'
 import { Card, CardContent } from '@/components/ui/card'
 import { StatusPill, type StatusPillTone } from '@/components/ui/status-pill'
+import { Info, Lock, ShieldCheck } from 'lucide-react'
+import { usePersonaSafe } from '@/lib/persona'
 
 const STATUS_TONES: Record<ApplicationStatus, StatusPillTone> = {
   submitted: 'info',
@@ -17,6 +19,7 @@ const STATUS_TONES: Record<ApplicationStatus, StatusPillTone> = {
 }
 
 export function ApplicationsCard({ applications, summary }: { applications: LoanApplication[]; summary: CaseSummary }) {
+  const { persona } = usePersonaSafe()
   const statusById = new Map(summary.applications.map((a) => [a.id, a.status]))
   return (
     <Card>
@@ -41,6 +44,38 @@ export function ApplicationsCard({ applications, summary }: { applications: Loan
               )
             })}
           </ul>
+        )}
+
+        {/* Role Information Boundary Notice */}
+        {persona === 'legal-admin' && (
+          <div className="rounded-md border border-border/80 bg-muted/40 p-2.5 text-[11px] text-muted-foreground flex items-start gap-2 mt-1">
+            <Lock className="size-3.5 text-muted-foreground shrink-0 mt-0.5" aria-hidden="true" />
+            <div>
+              <strong className="text-foreground">PDPA Privacy Boundary:</strong> Buyer debt ratios, private
+              liabilities, and internal bank credit scores are restricted to Loan Admin desk. Legal purview begins upon
+              Letter of Offer issuance.
+            </div>
+          </div>
+        )}
+
+        {persona === 'sales-admin' && (
+          <div className="rounded-md border border-border/80 bg-muted/40 p-2.5 text-[11px] text-muted-foreground flex items-start gap-2 mt-1">
+            <Info className="size-3.5 text-muted-foreground shrink-0 mt-0.5" aria-hidden="true" />
+            <div>
+              <strong className="text-foreground">Sales Desk View:</strong> Track bank approval status to keep the buyer
+              engaged. Complex underwriting calculations are owned by Loan Admin.
+            </div>
+          </div>
+        )}
+
+        {persona === 'loan-admin' && (
+          <div className="rounded-md border border-primary/20 bg-primary/5 p-2.5 text-[11px] text-muted-foreground flex items-start gap-2 mt-1">
+            <ShieldCheck className="size-3.5 text-primary shrink-0 mt-0.5" aria-hidden="true" />
+            <div>
+              <strong className="text-foreground">Loan Underwriting Desk:</strong> Full panel bank management active.
+              Review underwriting covenants and chase pending Letters of Offer.
+            </div>
+          </div>
         )}
       </CardContent>
     </Card>

@@ -12,6 +12,7 @@ import { PageHeaderCard } from '@/components/layout/PageHeaderCard'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DemoDataCard } from '@/components/settings/DemoDataCard'
+import { ProjectSettingsCard } from '@/components/settings/ProjectSettingsCard'
 import { HealthCard } from '@/components/settings/HealthCard'
 
 export function SettingsPage() {
@@ -63,14 +64,19 @@ export function SettingsPage() {
           <EmptyState icon={SearchX} title="Could Not Load Your Bookings" description={error} />
         </div>
       ) : loading && !snapshot ? (
-        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
           <Skeleton className="h-72" />
           <Skeleton className="h-72" />
         </div>
       ) : snapshot ? (
-        <div className="my-auto grid items-start gap-4 py-4 lg:grid-cols-2">
-          <DemoDataCard snapshot={snapshot} jevAnswers={health?.jevAnswers ?? null} onReset={onReset} />
-          <HealthCard health={health} failed={healthFailed} />
+        <div className="grid items-start gap-4 py-4 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <ProjectSettingsCard />
+          </div>
+          <div className="flex flex-col gap-4">
+            <DemoDataCard snapshot={snapshot} jevAnswers={health?.jevAnswers ?? null} onReset={onReset} />
+            <HealthCard health={health} failed={healthFailed} />
+          </div>
         </div>
       ) : null}
     </PageContainer>

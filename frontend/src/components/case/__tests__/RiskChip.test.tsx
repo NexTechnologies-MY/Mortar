@@ -2,6 +2,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { FinancingRisk } from '@mortar/core'
 import { RiskChip } from '../RiskChip'
+import { PersonaProvider } from '@/lib/persona'
 
 // Radix positions tooltip content with floating-ui, which needs observers jsdom lacks.
 for (const observer of ['ResizeObserver', 'IntersectionObserver'] as const) {
@@ -41,5 +42,15 @@ describe('RiskChip', () => {
     expect(within(tooltip).getByText(/Instalment RM 1,580\/mo/)).not.toBeNull()
     expect(within(tooltip).getByText(/Debt Service Exceeds The Cap/)).not.toBeNull()
     expect(within(tooltip).getByText(/Income Document Outstanding/)).not.toBeNull()
+  })
+
+  it('shows the lock icon on the status pill for legal admin per Malaysian PDPA', () => {
+    render(
+      <PersonaProvider initialPersona="legal-admin">
+        <RiskChip risk={RISK} />
+      </PersonaProvider>
+    )
+    const trigger = screen.getByRole('button', { name: /High Risk/ })
+    expect(trigger.querySelector('svg')).not.toBeNull()
   })
 })

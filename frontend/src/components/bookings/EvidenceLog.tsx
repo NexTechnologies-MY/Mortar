@@ -4,7 +4,7 @@
  * become confirmed here when a reviewer accepts them.
  */
 
-import type { CaseEvent } from '@mortar/core'
+import { byOccurred, type CaseEvent } from '@mortar/core'
 import { EvidencePill } from '@/components/case/EvidencePill'
 import { DOCUMENT_LABELS, EVENT_KIND_LABELS, formatDateTime } from './labels'
 import { Badge } from '@/components/ui/badge'
@@ -25,7 +25,8 @@ const SOURCE_LABELS: Record<CaseEvent['source'], string> = {
 }
 
 export function EvidenceLog({ events }: { events: CaseEvent[] }) {
-  const sorted = [...events].sort((a, b) => b.occurredAt.localeCompare(a.occurredAt) || b.id.localeCompare(a.id))
+  // The case rules' order, reversed: equal times list the later entry first.
+  const sorted = [...events].sort((a, b) => byOccurred(b, a))
   return (
     <Card>
       <CardContent className="flex flex-col gap-3 p-4">

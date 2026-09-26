@@ -9,7 +9,7 @@
  */
 
 import type { Leakage } from '@mortar/core'
-import { formatRm, formatRmCompact, formatPercent } from '@/components/case'
+import { formatRm, formatRmCompact } from '@/components/case'
 import { ProbabilityBar } from '@/components/case'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { InfoTooltip } from '@/components/ui/InfoTooltip'
@@ -46,10 +46,7 @@ export function LeakageCard({ leakage }: { leakage: Leakage }) {
                 <TableCell className="text-right tabular-nums">{c.units}</TableCell>
                 <TableCell className="text-right tabular-nums">{formatRmCompact(c.valueRm)}</TableCell>
                 <TableCell>
-                  <span className="flex items-center gap-2">
-                    <ProbabilityBar probability={c.share} />
-                    <span className="tabular-nums text-muted-foreground">{formatPercent(c.share)}</span>
-                  </span>
+                  <ProbabilityBar probability={c.share} />
                 </TableCell>
               </TableRow>
             ))}

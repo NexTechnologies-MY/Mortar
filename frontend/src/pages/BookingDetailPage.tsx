@@ -1,15 +1,17 @@
 /**
  * Booking detail route — the case page for one unit booking.
- * Header with stage, risk and owners; loan and legal timelines plus sales
- * events; applications with derived status; the message log with Jev
- * proposals and review actions; the Add Message form; playbooks ranked by
+ * Header with stage, risk and owners; a banner naming who the case is waiting
+ * on, the milestone it is stuck at and the next move, with the Record An
+ * Update form beneath it while the case is open; loan and legal timelines
+ * plus sales events; applications with derived status; the message log with
+ * Jev proposals and review actions; the Add Message form; playbooks ranked by
  * Jev fit; buyer signals; tasks; and the full evidence log.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { FileText } from 'lucide-react'
-import { PERSONA_STAFF, type BuyerSignals } from '@mortar/core'
+import { PERSONA_STAFF, ballInCourt, type BuyerSignals, type EventKind } from '@mortar/core'
 import { useCases, useSnapshot } from '@/lib/data'
 import { usePersona } from '@/lib/persona'
 import { fetchSignals } from '@/lib/api'
@@ -17,14 +19,19 @@ import { PageContainer } from '@/components/layout/PageContainer'
 import { AddMessageForm } from '@/components/bookings/AddMessageForm'
 import { ApplicationsCard } from '@/components/bookings/ApplicationsCard'
 import { CaseHeader } from '@/components/bookings/CaseHeader'
+import { PersonaDeskLens } from '@/components/layout/PersonaDeskLens'
 import { EvidenceLog } from '@/components/bookings/EvidenceLog'
 import { MessagesPanel } from '@/components/bookings/MessagesPanel'
 import { PlaybooksPanel } from '@/components/bookings/PlaybooksPanel'
+import { RecordUpdateForm } from '@/components/bookings/RecordUpdateForm'
 import { SignalsPanel } from '@/components/bookings/SignalsPanel'
 import { TasksPanel } from '@/components/bookings/TasksPanel'
 import { TrackTimelines } from '@/components/bookings/TrackTimelines'
+import { CaseJourney, WaitingOnPanel } from '@/components/bookings/WaitingOn'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { RefreshErrorBanner } from '@/components/ui/RefreshErrorBanner'
 import { Skeleton } from '@/components/ui/skeleton'
 
 export function BookingDetailPage() {
@@ -33,9 +40,15 @@ export function BookingDetailPage() {
   const cases = useCases()
   const { persona } = usePersona()
   const reviewer = PERSONA_STAFF[persona].name
+  /** The desks' today, which every new update and message is dated against. */
+  const referenceDate = snapshot?.meta.referenceDate ?? ''
 
   const [refreshKey, setRefreshKey] = useState(0)
   const [fetchedSignals, setFetchedSignals] = useState<BuyerSignals | null>(null)
+  /** The booking id the last signals read settled for (success or failure); `loading` is
+   * derived by comparing this to the current booking rather than set synchronously in the
+   * effect below, so switching bookings without a remount still reads as loading. */
+  const [signalsLoadedFor, setSignalsLoadedFor] = useState<string | null>(null)
 
   /** Mutations toast then re-fetch the snapshot; the bump re-runs cache-first reads. */
   const onChanged = useCallback(async () => {
@@ -54,6 +67,9 @@ export function BookingDetailPage() {
         if (live) setFetchedSignals(signals)
       })
       .catch(() => {})
+      .finally(() => {
+        if (live) setSignalsLoadedFor(id)
+      })
     return () => {
       live = false
     }
@@ -72,7 +88,12 @@ export function BookingDetailPage() {
       messages: snapshot.messages.filter((m) => m.bookingId === id),
       tasks: snapshot.tasks.filter((t) => t.bookingId === id),
       extractions: new Map(snapshot.extractions.map((e) => [e.messageId, e])),
-      signals: snapshot.signals.find((s) => s.bookingId === id) ?? fetchedSignals,
+      // The fetched read wins: it runs after each change, while the snapshot's
+      // copy can predate the message that just arrived.
+      signals:
+        (fetchedSignals?.bookingId === id ? fetchedSignals : null) ??
+        snapshot.signals.find((s) => s.bookingId === id) ??
+        null,
       playbooks: snapshot.playbooks
     }
   }, [snapshot, cases, id, fetchedSignals])
@@ -111,7 +132,44 @@ export function BookingDetailPage() {
         </div>
       ) : (
         <>
+          {/* The save that just landed is real; only the follow-up read failed, so the
+              case stays on screen with a way to retry rather than vanishing behind it. */}
+          {error ? <RefreshErrorBanner onRetry={() => void refresh()} /> : null}
+          <div className="mb-4">
+            <PersonaDeskLens />
+          </div>
           <CaseHeader booking={data.booking} summary={data.summary} />
+          <Card className="mt-4">
+            <CardContent className="flex flex-col gap-4 p-4">
+              <CaseJourney
+                summary={data.summary}
+                confirmedKinds={
+                  new Set<EventKind>(data.events.filter((e) => e.status === 'confirmed').map((e) => e.kind))
+                }
+                stalled={ballInCourt(data.summary).stalled}
+              />
+              <WaitingOnPanel
+                key={data.booking.id}
+                booking={data.booking}
+                summary={data.summary}
+                referenceDate={referenceDate}
+                onChanged={onChanged}
+                wide
+              />
+              {/* A closed case takes no more updates. */}
+              {data.summary.stage !== 'cancelled' && data.summary.stage !== 'lapsed' && (
+                <RecordUpdateForm
+                  key={`record-${data.booking.id}`}
+                  booking={data.booking}
+                  applications={data.applications}
+                  summary={data.summary}
+                  referenceDate={referenceDate}
+                  reportedBy={reviewer}
+                  onRecorded={onChanged}
+                />
+              )}
+            </CardContent>
+          </Card>
           <div className="mt-4">
             <TrackTimelines events={data.events} />
           </div>
@@ -125,8 +183,10 @@ export function BookingDetailPage() {
                 onChanged={onChanged}
                 footer={
                   <AddMessageForm
+                    key={data.booking.id}
                     booking={data.booking}
                     banker={data.applications[data.applications.length - 1]?.banker}
+                    referenceDate={referenceDate}
                     onAdded={onChanged}
                   />
                 }
@@ -143,6 +203,7 @@ export function BookingDetailPage() {
               <SignalsPanel
                 signals={data.signals}
                 hasBuyerMessages={data.messages.some((m) => m.senderRole === 'buyer')}
+                loading={signalsLoadedFor !== data.booking.id}
               />
               <TasksPanel tasks={data.tasks} onChanged={onChanged} />
             </div>

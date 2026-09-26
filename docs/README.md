@@ -120,19 +120,19 @@ The app is used as three personas, switched in the header and persisted in
 | Loan Admin  | `/bookings` | Tracks loan and banker status across bookings              |
 | Legal Admin | `/legal`    | Works the queue of unsigned SPAs by how long they have sat |
 
-| Route           | Purpose                                                           |
-| --------------- | ----------------------------------------------------------------- |
-| `/`             | Public landing page                                               |
-| `/sign-in`      | Persona picker, no real authentication                            |
-| `/app`          | Redirects to the active persona's home                            |
-| `/bookings`     | Every live booking with stage and risk flags                      |
-| `/bookings/:id` | Stage timeline and missing-document checklist for one booking     |
-| `/chase`        | Who to chase today, with WhatsApp click-to-chat links             |
-| `/legal`        | Approved loans with no signed SPA, longest wait first             |
-| `/forecast`     | What will sign, then where bookings died and what was recoverable |
-| `/import`       | Spreadsheet intake                                                |
-| `/faq`          | FAQ                                                               |
-| `/settings`     | Demo dataset controls, reset, and server health                   |
+| Route           | Purpose                                                                                                                         |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `/`             | Public landing page                                                                                                             |
+| `/sign-in`      | Persona picker, no real authentication                                                                                          |
+| `/app`          | Redirects to the active persona's home                                                                                          |
+| `/bookings`     | Every booking, Active and Closed, with stage, risk flags, and Waiting On; hand-entry Add Booking and a Closed-case Excel export |
+| `/bookings/:id` | Stage timeline, missing-document checklist, Waiting On next move, and Record An Update for hand-entered progress                |
+| `/chase`        | Who to chase today, with WhatsApp click-to-chat links                                                                           |
+| `/legal`        | Approved loans with no signed SPA, longest wait first                                                                           |
+| `/forecast`     | What will sign, then where bookings died and what was recoverable                                                               |
+| `/import`       | Spreadsheet intake with row-by-row review before import                                                                         |
+| `/faq`          | FAQ                                                                                                                             |
+| `/settings`     | Demo dataset controls, reset, and server health                                                                                 |
 
 <p align="right"><a href="#readme-top">&uarr;</a></p>
 
@@ -144,7 +144,8 @@ Measured, not estimated.
 
 |                               |        |
 | ----------------------------- | ------ |
-| Live routes                   | **11** |
+| App pages                     | **11** |
+| API routes                    | **15** |
 | Personas                      | **3**  |
 | Funnel stages tracked         | **6**  |
 | Shared packages               | **2**  |
@@ -165,20 +166,20 @@ behind a Bun API reading Postgres.
 Every shot below is the running app on the seeded demo dataset. The data is
 simulated; the screens are not mockups.
 
-| Landing                                                                  | Chase                                                                                    | Bookings                                                                               |
-| ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| ![The public landing page](assets/screens/landing.webp)                  | ![The chase list of stalled bookings](assets/screens/chase.webp)                         | ![The bookings table](assets/screens/bookings.webp)                                    |
-| The public entry point: the claim, and how the three desks fit together. | Sales Admin's daily list. Stalled bookings first, each with Jev's suggested next action. | Loan Admin's desk. Every booking with age, stage, update freshness and financing risk. |
+| Landing                                                                  | Chase                                                                                    | Bookings                                                                                    |
+| ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| ![The public landing page](assets/screens/landing.webp)                  | ![The chase list of stalled bookings](assets/screens/chase.webp)                         | ![The bookings table](assets/screens/bookings.webp)                                         |
+| The public entry point: the claim, and how the three desks fit together. | Sales Admin's daily list. Stalled bookings first, each with Jev's suggested next action. | Loan Admin's desk. Every booking with age, stage, who it is waiting on, and financing risk. |
 
-| Case Page                                                                    | Legal                                                                             | Forecast                                                                             |
-| ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| ![A single booking case page](assets/screens/case.webp)                      | ![The legal queue awaiting SPA execution](assets/screens/legal.webp)              | ![The forecast of projected signings](assets/screens/forecast.webp)                  |
-| One booking end to end: loan and legal tracks, messages, tasks and evidence. | What sits between an approved loan and a signed SPA, with whom, and for how long. | Expected signings inside 30 days, with stage conversion rates and an accuracy check. |
+| Case Page                                                                                              | Legal                                                                             | Forecast                                                                             |
+| ------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| ![A single booking case page](assets/screens/case.webp)                                                | ![The legal queue awaiting SPA execution](assets/screens/legal.webp)              | ![The forecast of projected signings](assets/screens/forecast.webp)                  |
+| One booking end to end: loan and legal tracks, Waiting On and next move, messages, tasks and evidence. | What sits between an approved loan and a signed SPA, with whom, and for how long. | Expected signings inside 30 days, with stage conversion rates and an accuracy check. |
 
-| Import                                                                  | Settings                                                            | Jev Proposal                                                                      |
-| ----------------------------------------------------------------------- | ------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| ![The spreadsheet import page](assets/screens/import.webp)              | ![The settings and demo data page](assets/screens/settings.webp)    | ![Jev proposing a case update on a banker message](assets/screens/proposal.webp)  |
-| Load existing bookings from a spreadsheet. Parsing is not wired up yet. | The demo dataset: seed, reference date, record counts, and a reset. | Jev reads each message and proposes an update. Staff confirm, dispute or dismiss. |
+| Import                                                                                 | Settings                                                            | Jev Proposal                                                                      |
+| -------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| ![The spreadsheet import page](assets/screens/import.webp)                             | ![The settings and demo data page](assets/screens/settings.webp)    | ![Jev proposing a case update on a banker message](assets/screens/proposal.webp)  |
+| Load a booking sheet, review it row by row, and send only the ready rows to the desks. | The demo dataset: seed, reference date, record counts, and a reset. | Jev reads each message and proposes an update. Staff confirm, dispute or dismiss. |
 
 <p align="right"><a href="#readme-top">&uarr;</a></p>
 
@@ -208,7 +209,7 @@ Google Cloud Run (asia-southeast1)
         |
         v
 Bun.serve — one process, server/src/index.ts
-  frontend/dist + SPA fallback  ·  /api/* (12 routes)
+  frontend/dist + SPA fallback  ·  /api/* (15 routes)
         |
         |             @mortar/jev ──> TypeSafe Jev (jev-latest)
         |             key stays server-side, cache-first
@@ -286,6 +287,23 @@ bun run db:reset   # Re-seed the database deterministically
 Prerequisites: [Bun 1.3.14](https://bun.sh/) (pinned by `packageManager` in
 `package.json`), Postgres 17, and a modern desktop browser.
 
+### Run Jev Locally
+
+Without `TYPESAFE_API_KEY` set, Jev serves only precomputed answers. Setting
+`JEV_PROXY_URL` (with `TYPESAFE_API_KEY` still unset) points Jev at a local
+Anthropic-Messages-compatible model proxy, such as CLIProxyAPI, instead, so
+Jev's live path can be exercised without a TypeSafe key.
+
+```sh
+JEV_PROXY_URL=http://127.0.0.1:PORT     # base URL, no trailing /v1/messages
+JEV_PROXY_KEY=                          # the proxy's x-api-key
+JEV_PROXY_MODEL=gemini-3.5-flash-lite   # model to route to (default shown)
+```
+
+**Warning:** case data is sent as a prompt to whatever model sits behind the
+proxy. Use this only with made-up demo data, never with real buyer or booking
+information.
+
 <p align="right"><a href="#readme-top">&uarr;</a></p>
 
 ---
@@ -323,6 +341,11 @@ AGENTS.md        Agent instructions: stack, routes, rules
   not yet recorded.
 - **PDPA.** Real buyer documents are personal data under Malaysia's PDPA and
   stay out of free-tier AI APIs.
+- **No sign-in on the public demo.** Only made-up buyers should be imported;
+  income figures still reach the browser because risk is worked out there.
+- **Retention.** Transaction records are kept 7 years (Companies Act 2016 s245,
+  Income Tax Act 1967 s82); a server holding real data must set
+  `MORTAR_DEMO_RESET=off`. See [Data Retention](TRD.md#data-retention).
 - **AI is an assistant, not a decider.** Rules flag risk; AI may draft and check
   documents and messages, but it never makes credit decisions.
 

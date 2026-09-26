@@ -44,8 +44,14 @@ export async function body(req: Request): Promise<Record<string, unknown> | null
   }
 }
 
+/** A NUL byte can't be stored as Postgres `text`; every free-text field is rejected outright rather than silently truncated. */
 export function isString(value: unknown): value is string {
-  return typeof value === 'string' && value.trim().length > 0
+  return typeof value === 'string' && value.trim().length > 0 && !value.includes('\0')
+}
+
+/** `null` when `value` is at most `max` characters; a ready `400` response otherwise. */
+export function tooLong(field: string, value: string, max: number): Response | null {
+  return value.length > max ? error(400, `${field} must be at most ${max} characters`) : null
 }
 
 export function isOneOf<T extends string>(value: unknown, options: readonly T[]): value is T {
@@ -53,8 +59,24 @@ export function isOneOf<T extends string>(value: unknown, options: readonly T[])
 }
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
+/**
+ * A real calendar day as `YYYY-MM-DD`; `2026-02-30` fails, where `Date.parse`
+ * alone would roll it over. Year `0000` (1 BC in the proleptic calendar) is
+ * refused too — nothing in the business predates year 1.
+ */
 export function isIsoDate(value: unknown): value is string {
-  return typeof value === 'string' && ISO_DATE.test(value) && !Number.isNaN(Date.parse(value))
+  if (typeof value !== 'string' || !ISO_DATE.test(value)) return false
+  if (Number(value.slice(0, 4)) < 1) return false
+  const time = Date.parse(`${value}T00:00:00Z`)
+  return !Number.isNaN(time) && new Date(time).toISOString().slice(0, 10) === value
+}
+
+const ISO_DATE_TIME = /^(\d{4}-\d{2}-\d{2})T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})$/
+/** A timestamp with an explicit offset, `2026-09-17T21:05:00+08:00` or `…Z`; a bare local time is ambiguous. */
+export function isIsoDateTime(value: unknown): value is string {
+  if (typeof value !== 'string') return false
+  const match = ISO_DATE_TIME.exec(value)
+  return match !== null && isIsoDate(match[1]) && !Number.isNaN(Date.parse(value))
 }
 
 const CJK = /[぀-ヿ㐀-䶿一-鿿豈-﫿]/
@@ -69,4 +91,15 @@ export function detectLanguage(text: string): Language {
   if (cjk) return 'zh'
   if (malay) return 'ms'
   return 'en'
+}
+
+const RESET_DISABLED_VALUES = new Set(['off', 'false', '0', 'no'])
+/**
+ * Whether `MORTAR_DEMO_RESET` leaves the demo reset on: `off`, `false`, `0`
+ * and `no`, case-insensitively, turn it off; anything else — including unset —
+ * leaves it on. A pure parse of the raw env value, so the boot seed and
+ * `POST /api/admin/reset` agree and the rule is testable without a process.
+ */
+export function isResetEnabled(value: string | undefined): boolean {
+  return value === undefined || !RESET_DISABLED_VALUES.has(value.trim().toLowerCase())
 }

@@ -4,14 +4,16 @@
  * pill, the blocker in plain words, a meta line, Jev's suggested next action
  * with its source tag, and the action footer. Urgency is carried by the pill
  * and its word alone: no coloured strip runs down any edge (DESIGN.md
- * acceptance criterion 13). Create Task is Primary on every card, never on the
- * first card only — one action offered many times.
+ * acceptance criterion 13). Create Task is Primary on every card that has no
+ * open task, never on the first card only — one action offered many times. A
+ * card whose booking already has an open task says Task Open, with its due date
+ * and owner, instead of inviting a duplicate.
  */
 
 import { Link } from 'react-router-dom'
 import { JEV_REVIEW_THRESHOLD } from '@mortar/core'
-import type { Booking, CaseSummary, DocumentKind, NextActionSuggestion } from '@mortar/core'
-import { JevTag, RiskChip, STAGE_LABELS, formatDaysLong, formatRm } from '@/components/case'
+import type { Booking, CaseSummary, DocumentKind, NextActionSuggestion, Task } from '@mortar/core'
+import { JevTag, RiskChip, STAGE_LABELS, formatDate, formatDaysLong, formatRm } from '@/components/case'
 import type { LucideIcon } from 'lucide-react'
 import { Plus, RefreshCw } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -38,6 +40,7 @@ export function ChaseCard({
   summary,
   suggestion,
   document,
+  openTask = null,
   suggesting,
   creating,
   onSuggest,
@@ -48,6 +51,8 @@ export function ChaseCard({
   suggestion?: NextActionSuggestion
   /** The document the suggestion refers to, when one is outstanding or proposed. */
   document?: DocumentKind
+  /** The booking's open task due soonest; the card then offers no Create Task. */
+  openTask?: Task | null
   suggesting?: boolean
   creating?: boolean
   onSuggest: () => void
@@ -140,22 +145,34 @@ export function ChaseCard({
 
       {/* Footer */}
       <div className="flex items-center justify-end gap-2">
+        {openTask ? (
+          <p className="mr-auto flex min-w-0 items-center gap-2 text-[13px] text-muted-foreground">
+            <StatusPill tone="info" className="shrink-0">
+              Task Open
+            </StatusPill>
+            <span className="truncate">
+              Due {formatDate(openTask.dueOn)} · {openTask.ownerName}
+            </span>
+          </p>
+        ) : null}
         {suggestion ? (
           <Button type="button" variant="ghost" size="sm" disabled={suggesting} onClick={onSuggest}>
             <RefreshCw aria-hidden="true" />
             {suggesting ? 'Asking Jev…' : 'Ask Jev Again'}
           </Button>
         ) : null}
-        <Button
-          type="button"
-          variant="default"
-          size="sm"
-          disabled={creating || suggestion === undefined}
-          onClick={onCreateTask}
-        >
-          <Plus aria-hidden="true" />
-          {creating ? 'Creating…' : 'Create Task'}
-        </Button>
+        {openTask ? null : (
+          <Button
+            type="button"
+            variant="default"
+            size="sm"
+            disabled={creating || suggestion === undefined}
+            onClick={onCreateTask}
+          >
+            <Plus aria-hidden="true" />
+            {creating ? 'Creating…' : 'Create Task'}
+          </Button>
+        )}
       </div>
     </article>
   )

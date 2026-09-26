@@ -62,6 +62,25 @@ export function rowToBooking(row: Row): Booking {
   }
 }
 
+/** Every digit but the last four becomes `•`: `900514-07-5123` → `••••••-••-5123`. */
+export function maskDigits(value: string): string {
+  const total = (value.match(/\d/g) ?? []).length
+  let seen = 0
+  return value.replace(/\d/g, (digit) => ((seen += 1) <= total - 4 ? '•' : digit))
+}
+
+/**
+ * The booking as the browser may see it: IC and phone masked. Nothing on the
+ * desks reads either in full, and the snapshot has no sign-in in front of it
+ * (issue #5). The database and the server's own reads keep them whole.
+ */
+export function withMaskedContact(booking: Booking): Booking {
+  return {
+    ...booking,
+    buyer: { ...booking.buyer, ic: maskDigits(booking.buyer.ic), phone: maskDigits(booking.buyer.phone) }
+  }
+}
+
 export function rowToApplication(row: Row): LoanApplication {
   return {
     id: String(row.id),
@@ -99,7 +118,9 @@ export function rowToEvent(row: Row): CaseEvent {
     source: row.source as CaseEvent['source'],
     messageId: row.message_id == null ? null : String(row.message_id),
     document: row.document as CaseEvent['document'],
-    note: row.note == null ? null : String(row.note)
+    note: row.note == null ? null : String(row.note),
+    // bigint may come back as text; the sequence stays far below 2^53.
+    ...(row.seq == null ? {} : { seq: Number(row.seq) })
   }
 }
 
@@ -141,6 +162,8 @@ export function rowToTask(row: Row): Task {
 export interface JevAnswerRow {
   kind: JevKind
   subjectId: string
+  /** The hash the answer was stored under; the snapshot compares it to the subject's current state hash. */
+  inputHash: string
   answer: unknown
 }
 
@@ -148,18 +171,31 @@ export function rowToJevAnswer(row: Row): JevAnswerRow {
   return {
     kind: row.kind as JevKind,
     subjectId: String(row.subject_id),
+    inputHash: String(row.input_hash),
     answer: jsonb(row.answer)
   }
 }
 
-/** Rows of the `meta` table to `SimulationMeta`; `null` while the `seed` row is absent. */
-export function rowsToMeta(rows: Row[]): SimulationMeta | null {
+/** `SimulationMeta` as stored, plus what only the server reads. */
+export interface StoredMeta extends SimulationMeta {
+  /**
+   * The real clock time of the last reset, which times the reset cooldown.
+   * `resetAt` is sim time, whose time of day falls back to 00:00 at midnight.
+   * `null` until a reset has stored it.
+   */
+  resetAtWall?: string | null
+}
+
+/** Rows of the `meta` table to `StoredMeta`; `null` while the `seed` row is absent. */
+export function rowsToMeta(rows: Row[]): StoredMeta | null {
   const values = new Map(rows.map((row) => [String(row.key), jsonb<unknown>(row.value)]))
   if (!values.has('seed')) return null
   const resetAt = values.get('resetAt')
+  const resetAtWall = values.get('resetAtWall')
   return {
     seed: Number(values.get('seed')),
     referenceDate: String(values.get('referenceDate')),
-    resetAt: resetAt == null ? null : String(resetAt)
+    resetAt: resetAt == null ? null : String(resetAt),
+    resetAtWall: resetAtWall == null ? null : String(resetAtWall)
   }
 }
