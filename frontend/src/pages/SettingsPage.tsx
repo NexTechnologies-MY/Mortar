@@ -69,10 +69,14 @@ export function SettingsPage() {
           <Skeleton className="h-72" />
         </div>
       ) : snapshot ? (
-        <div className="grid items-start gap-4 py-4 lg:grid-cols-2 xl:grid-cols-3">
-          <ProjectSettingsCard />
-          <DemoDataCard snapshot={snapshot} jevAnswers={health?.jevAnswers ?? null} onReset={onReset} />
-          <HealthCard health={health} failed={healthFailed} />
+        <div className="grid items-start gap-4 py-4 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <ProjectSettingsCard />
+          </div>
+          <div className="flex flex-col gap-4">
+            <DemoDataCard snapshot={snapshot} jevAnswers={health?.jevAnswers ?? null} onReset={onReset} />
+            <HealthCard health={health} failed={healthFailed} />
+          </div>
         </div>
       ) : null}
     </PageContainer>

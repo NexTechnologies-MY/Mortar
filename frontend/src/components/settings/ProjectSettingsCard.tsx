@@ -233,89 +233,129 @@ export function ProjectSettingsCard() {
         </div>
 
         {/* Unit Models & Layouts Section */}
-        <div className="flex flex-col gap-2.5 border-t border-border pt-3">
+        <div className="flex flex-col gap-3 border-t border-border pt-3.5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <LayoutGrid className="size-3.5 text-primary" />
-              <Label className="text-xs font-medium">Unit Models & Layouts ({draft.models.length})</Label>
+              <Label className="text-xs font-semibold text-foreground">
+                Unit Models & Layouts ({draft.models.length})
+              </Label>
             </div>
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={handleAddModel}
-              className="h-7 gap-1 text-[11px]"
+              className="h-7 gap-1 text-[11px] font-medium"
             >
               <Plus className="size-3" />
               Add Model / Layout
             </Button>
           </div>
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-[11px] text-muted-foreground leading-normal">
             Configure different floor plan models (e.g. Type A, Type B). Selecting a model on the Import page
-            automatically fills the unit layout & pricing.
+            automatically populates the unit layout description & base pricing.
           </p>
 
-          <div className="space-y-2">
+          <div className="space-y-3">
             {draft.models.map((model) => {
               const isDefault = draft.defaultModelId === model.id
               return (
                 <div
                   key={model.id}
-                  className="flex flex-col gap-2 sm:flex-row sm:items-center justify-between rounded-md border border-border bg-muted/30 p-2.5 text-xs"
+                  className="rounded-lg border border-border/80 bg-card p-3 shadow-2xs space-y-2.5 transition-colors hover:border-primary/40"
                 >
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 flex-1">
-                    <div>
-                      <Label className="text-[10px] text-muted-foreground">Model Name</Label>
-                      <Input
-                        value={model.name}
-                        onChange={(e) => handleModelChange(model.id, 'name', e.target.value)}
-                        placeholder="e.g. Type A"
-                        className="h-7 text-xs font-medium mt-0.5"
-                      />
+                  {/* Model Card Header: Title/Badge & Actions */}
+                  <div className="flex items-center justify-between pb-2 border-b border-border/40">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-xs text-foreground tracking-tight">
+                        {model.name.trim() || 'Untitled Model'}
+                      </span>
+                      {isDefault ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 border border-primary/20 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                          <span className="size-1.5 rounded-full bg-primary" />
+                          Default Layout
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleSetDefaultModel(model.id)}
+                          title="Set as Default Model"
+                          className="rounded px-2 py-0.5 text-[10px] font-medium text-muted-foreground hover:text-foreground bg-muted hover:bg-accent border border-border/60 transition-colors"
+                        >
+                          Make Default
+                        </button>
+                      )}
                     </div>
-                    <div>
-                      <Label className="text-[10px] text-muted-foreground">Layout Description</Label>
-                      <Input
-                        value={model.layout}
-                        onChange={(e) => handleModelChange(model.id, 'layout', e.target.value)}
-                        placeholder="e.g. 2 Bed · 2 Bath (750 sqft)"
-                        className="h-7 text-xs mt-0.5"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-[10px] text-muted-foreground">Base Price (RM)</Label>
-                      <Input
-                        type="number"
-                        step={10000}
-                        value={model.priceRm}
-                        onChange={(e) => handleModelChange(model.id, 'priceRm', parseInt(e.target.value, 10) || 0)}
-                        className="h-7 text-xs font-mono mt-0.5"
-                      />
+
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteModel(model.id)}
+                        disabled={draft.models.length <= 1}
+                        title="Delete Model"
+                        className="rounded p-1 text-muted-foreground hover:text-status-danger hover:bg-status-danger/10 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </button>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5 self-end sm:self-center sm:pl-2">
-                    <button
-                      type="button"
-                      onClick={() => handleSetDefaultModel(model.id)}
-                      title={isDefault ? 'Default Model' : 'Set as Default Model'}
-                      className={`rounded px-2 py-1 text-[10px] font-semibold transition-colors ${
-                        isDefault
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground'
-                      }`}
-                    >
-                      {isDefault ? 'Default' : 'Make Default'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteModel(model.id)}
-                      disabled={draft.models.length <= 1}
-                      title="Delete Model"
-                      className="rounded p-1 text-muted-foreground hover:text-status-danger hover:bg-status-danger/10 disabled:opacity-30 disabled:pointer-events-none"
-                    >
-                      <Trash2 className="size-3.5" />
-                    </button>
+                  {/* Model Form Fields: Model Name (3 cols), Layout Description (5 cols), Base Price (4 cols) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-end">
+                    <div className="sm:col-span-3 flex flex-col gap-1">
+                      <Label
+                        htmlFor={`model-name-${model.id}`}
+                        className="text-[11px] font-medium text-muted-foreground"
+                      >
+                        Model Name
+                      </Label>
+                      <Input
+                        id={`model-name-${model.id}`}
+                        value={model.name}
+                        onChange={(e) => handleModelChange(model.id, 'name', e.target.value)}
+                        placeholder="e.g. Type A"
+                        className="h-8 text-xs font-medium"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-5 flex flex-col gap-1">
+                      <Label
+                        htmlFor={`model-layout-${model.id}`}
+                        className="text-[11px] font-medium text-muted-foreground"
+                      >
+                        Layout Description
+                      </Label>
+                      <Input
+                        id={`model-layout-${model.id}`}
+                        value={model.layout}
+                        onChange={(e) => handleModelChange(model.id, 'layout', e.target.value)}
+                        placeholder="e.g. 2 Bed · 2 Bath (750 sqft)"
+                        className="h-8 text-xs"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-4 flex flex-col gap-1">
+                      <Label
+                        htmlFor={`model-price-${model.id}`}
+                        className="text-[11px] font-medium text-muted-foreground"
+                      >
+                        Base Price (RM)
+                      </Label>
+                      <div className="relative">
+                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] font-semibold text-muted-foreground select-none">
+                          RM
+                        </span>
+                        <Input
+                          id={`model-price-${model.id}`}
+                          type="number"
+                          step={10000}
+                          value={model.priceRm}
+                          onChange={(e) => handleModelChange(model.id, 'priceRm', parseInt(e.target.value, 10) || 0)}
+                          className="h-8 pl-9 pr-2 text-xs font-mono font-medium min-w-[120px]"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               )

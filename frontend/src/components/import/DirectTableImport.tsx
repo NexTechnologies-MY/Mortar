@@ -28,7 +28,7 @@ import {
 import { PERSONA_STAFF, unitKey, type Booking, type BookingDraft, type Persona } from '@mortar/core'
 import { importBookings } from '@/lib/api'
 import { usePersona } from '@/lib/persona'
-import { useProjectSettings, isUnitInRange, getAvailableInventoryUnits } from '@/lib/projectSettings'
+import { useProjectSettings, isUnitInRange, getAvailableInventoryUnits, PANEL_LAW_FIRMS } from '@/lib/projectSettings'
 import { UnitAutocompleteInput } from '@/components/import/UnitAutocompleteInput'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -45,13 +45,19 @@ export interface CaseEntryRow {
   lawFirm?: string
 }
 
-function createEmptyRow(defaultPriceRm: number, defaultModelId = 'model-a', customId?: string): CaseEntryRow {
+function createEmptyRow(
+  defaultPriceRm: number,
+  defaultModelId = 'model-a',
+  defaultLawFirm = 'Teh & Partners',
+  customId?: string
+): CaseEntryRow {
   return {
     id: customId ?? `row-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     unit: '',
     buyerName: '',
     modelId: defaultModelId,
-    priceRm: defaultPriceRm
+    priceRm: defaultPriceRm,
+    lawFirm: defaultLawFirm
   }
 }
 
@@ -88,7 +94,7 @@ export function DirectTableImport({
 
   // Default is 1 row initially
   const [rows, setRows] = useState<CaseEntryRow[]>([
-    createEmptyRow(settings.defaultPriceRm, settings.defaultModelId, 'row-1')
+    createEmptyRow(settings.defaultPriceRm, settings.defaultModelId, settings.defaultLawFirm, 'row-1')
   ])
   const [importing, setImporting] = useState(false)
 
@@ -111,17 +117,20 @@ export function DirectTableImport({
   }
 
   const handleAddRow = () => {
-    setRows((prev) => [...prev, createEmptyRow(settings.defaultPriceRm, settings.defaultModelId)])
+    setRows((prev) => [
+      ...prev,
+      createEmptyRow(settings.defaultPriceRm, settings.defaultModelId, settings.defaultLawFirm)
+    ])
   }
 
   const handleAddFiveRows = () => {
     setRows((prev) => [
       ...prev,
-      createEmptyRow(settings.defaultPriceRm, settings.defaultModelId),
-      createEmptyRow(settings.defaultPriceRm, settings.defaultModelId),
-      createEmptyRow(settings.defaultPriceRm, settings.defaultModelId),
-      createEmptyRow(settings.defaultPriceRm, settings.defaultModelId),
-      createEmptyRow(settings.defaultPriceRm, settings.defaultModelId)
+      createEmptyRow(settings.defaultPriceRm, settings.defaultModelId, settings.defaultLawFirm),
+      createEmptyRow(settings.defaultPriceRm, settings.defaultModelId, settings.defaultLawFirm),
+      createEmptyRow(settings.defaultPriceRm, settings.defaultModelId, settings.defaultLawFirm),
+      createEmptyRow(settings.defaultPriceRm, settings.defaultModelId, settings.defaultLawFirm),
+      createEmptyRow(settings.defaultPriceRm, settings.defaultModelId, settings.defaultLawFirm)
     ])
   }
 
@@ -129,12 +138,12 @@ export function DirectTableImport({
     setRows((prev) =>
       prev.length > 1
         ? prev.filter((r) => r.id !== id)
-        : [createEmptyRow(settings.defaultPriceRm, settings.defaultModelId)]
+        : [createEmptyRow(settings.defaultPriceRm, settings.defaultModelId, settings.defaultLawFirm)]
     )
   }
 
   const handleClearAll = () => {
-    setRows([createEmptyRow(settings.defaultPriceRm, settings.defaultModelId)])
+    setRows([createEmptyRow(settings.defaultPriceRm, settings.defaultModelId, settings.defaultLawFirm)])
   }
 
   // Row inspection & validation helper
@@ -230,7 +239,7 @@ export function DirectTableImport({
         `${result.bookings.length} ${result.bookings.length === 1 ? 'case' : 'cases'} successfully imported!`
       )
       onImported(result)
-      setRows([createEmptyRow(settings.defaultPriceRm, settings.defaultModelId)])
+      setRows([createEmptyRow(settings.defaultPriceRm, settings.defaultModelId, settings.defaultLawFirm)])
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Could not import the cases.'
       notify.error(msg)
@@ -310,7 +319,7 @@ export function DirectTableImport({
                 <th className="py-2.5 px-3 min-w-[170px]">Client / Buyer Name</th>
                 <th className="py-2.5 px-3 w-48">Model / Layout</th>
                 <th className="py-2.5 px-3 w-32">Sales Owner</th>
-                <th className="py-2.5 px-3 w-36">Panel Law Firm</th>
+                <th className="py-2.5 px-3 w-44">Panel Law Firm</th>
                 <th className="py-2.5 px-3 w-28 text-right">Price (RM)</th>
                 <th className="py-2.5 px-3 w-28 text-center">Status</th>
                 <th className="py-2.5 px-2 w-12 text-center"></th>
@@ -356,6 +365,7 @@ export function DirectTableImport({
                     <select
                       value={row.modelId}
                       onChange={(e) => handleModelChange(row.id, e.target.value)}
+                      aria-label="Model / Layout"
                       className="h-8 w-full rounded-md border border-input bg-background px-2 py-1 text-xs font-medium text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     >
                       {settings.models.map((m) => (
@@ -374,11 +384,20 @@ export function DirectTableImport({
                     </span>
                   </td>
 
-                  {/* Auto-assigned Panel Law Firm */}
-                  <td className="py-2 px-3">
-                    <span className="text-xs text-muted-foreground truncate block max-w-[140px]">
-                      {row.lawFirm || settings.defaultLawFirm}
-                    </span>
+                  {/* Panel Law Firm selector */}
+                  <td className="py-1.5 px-3">
+                    <select
+                      value={row.lawFirm || settings.defaultLawFirm}
+                      onChange={(e) => handleRowChange(row.id, 'lawFirm', e.target.value)}
+                      aria-label="Panel Law Firm"
+                      className="h-8 w-full rounded-md border border-input bg-background px-2 py-1 text-xs font-medium text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    >
+                      {PANEL_LAW_FIRMS.map((firm) => (
+                        <option key={firm} value={firm}>
+                          {firm}
+                        </option>
+                      ))}
+                    </select>
                   </td>
 
                   {/* Price (RM) editable input */}

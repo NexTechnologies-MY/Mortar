@@ -80,10 +80,10 @@ describe('DirectTableImport', () => {
   })
 
   it('automatically updates the SPA price when a different layout model is selected', async () => {
-    const { container } = renderDirectImport()
+    renderDirectImport()
     await screen.findByText(/Direct Case Import Ledger/i)
 
-    const modelSelect = container.querySelector('select')!
+    const modelSelect = screen.getByRole('combobox', { name: /Model \/ Layout/i })
     expect(modelSelect).toBeTruthy()
     expect(screen.getByDisplayValue('480000')).toBeTruthy()
 
@@ -94,6 +94,32 @@ describe('DirectTableImport', () => {
     // Change to Type C (RM 720,000)
     fireEvent.change(modelSelect, { target: { value: 'model-c' } })
     expect(screen.getByDisplayValue('720000')).toBeTruthy()
+  })
+
+  it('allows changing panel law firm per case row', async () => {
+    renderDirectImport()
+    await screen.findByText(/Direct Case Import Ledger/i)
+
+    const lawFirmSelect = screen.getByRole('combobox', { name: /Panel Law Firm/i })
+    expect(lawFirmSelect).toBeTruthy()
+    expect((lawFirmSelect as HTMLSelectElement).value).toBe('Teh & Partners')
+
+    // Change to Cheah & Associates
+    fireEvent.change(lawFirmSelect, { target: { value: 'Cheah & Associates' } })
+    expect((lawFirmSelect as HTMLSelectElement).value).toBe('Cheah & Associates')
+
+    const unitInput = screen.getByPlaceholderText(/A-12-08/i)
+    const nameInput = screen.getByPlaceholderText(/Nurul Huda Binti Ahmad/i)
+
+    fireEvent.change(unitInput, { target: { value: 'A-20-08' } })
+    fireEvent.change(nameInput, { target: { value: 'Norazlan Bin Hashim' } })
+
+    const importButton = screen.getByRole('button', { name: /Import 1 Case/i })
+    fireEvent.click(importButton)
+
+    await waitFor(() => expect(importBookings).toHaveBeenCalledTimes(1))
+    const payload = vi.mocked(importBookings).mock.calls[0][0]
+    expect(payload.bookings[0].legalFirm).toBe('Cheah & Associates')
   })
 
   it('validates unit against range and existing held units', async () => {
