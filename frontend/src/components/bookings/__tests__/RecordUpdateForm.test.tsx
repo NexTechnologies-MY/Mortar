@@ -193,4 +193,30 @@ describe('RecordUpdateForm', () => {
       })
     )
   })
+
+  it('opens closed behind a button when the caller collapses it', async () => {
+    render(
+      <RecordUpdateForm
+        booking={BOOKING}
+        applications={[]}
+        summary={summary([])}
+        referenceDate="2026-09-18"
+        reportedBy="Tan Mei Ling"
+        onRecorded={vi.fn(async () => {})}
+        collapsible
+      />
+    )
+
+    // Three forms open on load was the case page's 2,635 px wall.
+    expect(screen.queryByLabelText('What Happened')).toBeNull()
+    const toggle = screen.getByRole('button', { name: 'Record An Update' })
+    expect(toggle.getAttribute('aria-expanded')).toBe('false')
+
+    fireEvent.click(toggle)
+    expect(screen.getByLabelText('What Happened')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Close' }).getAttribute('aria-expanded')).toBe('true')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    expect(screen.queryByLabelText('What Happened')).toBeNull()
+  })
 })

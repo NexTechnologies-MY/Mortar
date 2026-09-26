@@ -1,12 +1,15 @@
 /**
  * Add Message form — paste a new message onto the case (sender role, name,
  * when it was sent, body). Posting runs Jev live-first; the reply panel shows
- * the extraction, its source tag and latency before the snapshot refreshes.
+ * the extraction and its source tag once the snapshot refreshes.
  *
  * Sent At is when the message was sent, not when it was pasted in: Jev reads
  * the buyer's reply speed from the gaps between messages, and a proposal it
  * makes is dated from it. It defaults to now (the desks' today, at the current
  * Malaysia time); left untouched, it is read afresh when the message is added.
+ *
+ * `collapsible` opens the form closed behind a "Paste A Message" button, so
+ * the case page does not carry three forms expanded on load.
  */
 
 import { useState } from 'react'
@@ -48,7 +51,8 @@ export function AddMessageForm({
   booking,
   banker,
   referenceDate,
-  onAdded
+  onAdded,
+  collapsible = false
 }: {
   booking: Booking
   /** The latest application's banker, used to prefill the sender name. */
@@ -56,8 +60,15 @@ export function AddMessageForm({
   /** The desks' today: Sent At defaults to it and cannot run past it. */
   referenceDate: string
   onAdded: () => Promise<void>
+  /**
+   * `true` on the case page, where the form opens closed behind a
+   * "Paste A Message" button. `false` leaves it open on load, for callers that
+   * have no room for the toggle (a dialog, a narrow sheet).
+   */
+  collapsible?: boolean
 }) {
   const [role, setRole] = useState<SenderRole>('buyer')
+  const [open, setOpen] = useState(false)
   const [name, setName] = useState(() => booking.buyer.name)
   const [body, setBody] = useState('')
   const [sentOn, setSentOn] = useState(referenceDate)
@@ -106,8 +117,7 @@ export function AddMessageForm({
       setSentOn(referenceDate)
       setSentTime(timeNow(referenceDate))
       setSentAtChosen(false)
-      const ms = posted.extraction.meta.latencyMs
-      notify.success(ms != null ? `Message added — Jev answered live in ${ms.toLocaleString()} ms.` : 'Message added.')
+      notify.success('Message added.')
       await onAdded()
     } catch (e) {
       // The server's own words for a refusal it wants read (4xx); a plain sentence
@@ -118,9 +128,12 @@ export function AddMessageForm({
     }
   }
 
-  return (
-    <div className="flex flex-col gap-3 border-t border-border pt-4">
-      <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Add Message</h3>
+  const heading = (
+    <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Add Message</h3>
+  )
+
+  const form = (
+    <>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-[180px_1fr]">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="add-message-role">Sender Role</Label>
@@ -224,6 +237,36 @@ export function AddMessageForm({
           </p>
         )}
       </div>
+    </>
+  )
+
+  if (!collapsible) {
+    return (
+      <div className="flex flex-col gap-3 border-t border-border pt-4">
+        {heading}
+        {form}
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col items-start gap-3 border-t border-border pt-4">
+      {heading}
+      <Button
+        type="button"
+        size="sm"
+        variant="secondary"
+        aria-expanded={open}
+        aria-controls="add-message-form"
+        onClick={() => setOpen((was) => !was)}
+      >
+        {open ? 'Close' : 'Paste A Message'}
+      </Button>
+      {open && (
+        <div id="add-message-form" className="flex w-full flex-col gap-3">
+          {form}
+        </div>
+      )}
     </div>
   )
 }

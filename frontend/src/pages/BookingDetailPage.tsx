@@ -1,8 +1,8 @@
 /**
  * Booking detail route — the case page for one unit booking.
- * Header with stage, risk and owners; a banner naming who the case is waiting
- * on, the milestone it is stuck at and the next move, with the Record An
- * Update form beneath it while the case is open; loan and legal timelines
+ * Header with the case's identity and one status sentence; the journey strip
+ * and the block naming who the case is waiting on, with Record An Update
+ * behind a button while the case is open; loan and legal timelines
  * plus sales events; applications with derived status; the message log with
  * Jev proposals and review actions; the Add Message form; playbooks ranked by
  * Jev fit; buyer signals; tasks; and the full evidence log.
@@ -19,7 +19,6 @@ import { PageContainer } from '@/components/layout/PageContainer'
 import { AddMessageForm } from '@/components/bookings/AddMessageForm'
 import { ApplicationsCard } from '@/components/bookings/ApplicationsCard'
 import { CaseHeader } from '@/components/bookings/CaseHeader'
-import { PersonaDeskLens } from '@/components/layout/PersonaDeskLens'
 import { EvidenceLog } from '@/components/bookings/EvidenceLog'
 import { MessagesPanel } from '@/components/bookings/MessagesPanel'
 import { PlaybooksPanel } from '@/components/bookings/PlaybooksPanel'
@@ -135,9 +134,6 @@ export function BookingDetailPage() {
           {/* The save that just landed is real; only the follow-up read failed, so the
               case stays on screen with a way to retry rather than vanishing behind it. */}
           {error ? <RefreshErrorBanner onRetry={() => void refresh()} /> : null}
-          <div className="mb-4">
-            <PersonaDeskLens />
-          </div>
           <CaseHeader booking={data.booking} summary={data.summary} />
           <Card className="mt-4">
             <CardContent className="flex flex-col gap-4 p-4">
@@ -166,6 +162,7 @@ export function BookingDetailPage() {
                   referenceDate={referenceDate}
                   reportedBy={reviewer}
                   onRecorded={onChanged}
+                  collapsible
                 />
               )}
             </CardContent>
@@ -188,6 +185,7 @@ export function BookingDetailPage() {
                     banker={data.applications[data.applications.length - 1]?.banker}
                     referenceDate={referenceDate}
                     onAdded={onChanged}
+                    collapsible
                   />
                 }
               />

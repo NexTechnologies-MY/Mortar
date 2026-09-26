@@ -16,6 +16,8 @@
  *   signed; neither can come before it.
  * - Closing the case (Cancelled, Lapsed) or recording a withdrawal asks first
  *   in a dialog, Cancel focused.
+ * - `collapsible` opens the form closed behind a "Record An Update" button,
+ *   so the case page does not carry three forms expanded on load.
  */
 
 import { useRef, useState } from 'react'
@@ -54,9 +56,17 @@ import {
 } from '@/components/ui/select'
 import { APPLICATION_STATUS_LABELS, DOCUMENT_LABELS } from './labels'
 import { DateField } from './DateField'
+import { cn } from '@/lib/utils'
 
 /** What staff can record by hand; `booked` is written by the import alone. */
 type UpdateKind = Exclude<EventKind, 'booked'>
+
+/**
+ * The application fields the form reads: which bank a decision lands on. A
+ * full `LoanApplication` satisfies it, and so does a derived case summary's
+ * application list, so the quick view can pass what it already holds.
+ */
+export type UpdateApplication = Pick<LoanApplication, 'id' | 'bank'>
 
 const GROUPS: { track: Track; label: string; kinds: [UpdateKind, string][] }[] = [
   {
@@ -147,11 +157,13 @@ export function RecordUpdateForm({
   summary,
   referenceDate,
   reportedBy,
-  onRecorded
+  onRecorded,
+  collapsible = false,
+  className
 }: {
   booking: Booking
   /** This booking's bank applications. */
-  applications: LoanApplication[]
+  applications: UpdateApplication[]
   /** The case as derived now; gives each application its status. */
   summary: CaseSummary
   /** The desks' today: the default day, and the latest one an update can carry. */
@@ -160,8 +172,17 @@ export function RecordUpdateForm({
   reportedBy: string
   /** Re-reads the case once the update is saved. */
   onRecorded: () => Promise<void>
+  /**
+   * `true` on the case page, where the form opens closed behind a
+   * "Record An Update" button. `false` leaves it open on load, for callers
+   * that have no room for the toggle (a dialog, a narrow sheet).
+   */
+  collapsible?: boolean
+  /** Sits on the caller's own separator, where the form is not the last block. */
+  className?: string
 }) {
   const [kind, setKind] = useState<UpdateKind | ''>('')
+  const [open, setOpen] = useState(false)
   const [applicationId, setApplicationId] = useState('')
   const [bank, setBank] = useState('')
   const [banker, setBanker] = useState('')
@@ -174,7 +195,7 @@ export function RecordUpdateForm({
   const cancelRef = useRef<HTMLButtonElement>(null)
 
   const statusOf = new Map(summary.applications.map((a) => [a.id, a.status]))
-  const status = (app: LoanApplication): ApplicationStatus => statusOf.get(app.id) ?? 'submitted'
+  const status = (app: UpdateApplication): ApplicationStatus => statusOf.get(app.id) ?? 'submitted'
   const bankRequired = kind !== '' && BANK_REQUIRED.has(kind)
   const bankOptional = kind !== '' && BANK_OPTIONAL.has(kind)
   const takesDocument = bankOptional
@@ -265,11 +286,9 @@ export function RecordUpdateForm({
     else void save()
   }
 
-  return (
-    <section aria-labelledby="record-update-heading" className="flex flex-col gap-3 border-t border-border pt-4">
-      <h2 id="record-update-heading" className={EYEBROW}>
-        Record An Update
-      </h2>
+  // The form itself, unchanged: the toggle only decides whether it is on screen.
+  const form = (
+    <>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="record-update-kind">What Happened</Label>
@@ -418,8 +437,8 @@ export function RecordUpdateForm({
 
       <Dialog
         open={confirming}
-        onOpenChange={(open) => {
-          if (!pending) setConfirming(open)
+        onOpenChange={(next) => {
+          if (!pending) setConfirming(next)
         }}
       >
         {confirmation && (
@@ -446,6 +465,47 @@ export function RecordUpdateForm({
           </DialogContent>
         )}
       </Dialog>
+    </>
+  )
+
+  if (!collapsible) {
+    return (
+      <section
+        aria-labelledby="record-update-heading"
+        className={cn('flex flex-col gap-3 border-t border-border pt-4', className)}
+      >
+        <h2 id="record-update-heading" className={EYEBROW}>
+          Record An Update
+        </h2>
+        {form}
+      </section>
+    )
+  }
+
+  return (
+    <section
+      aria-labelledby="record-update-heading"
+      className={cn('flex flex-col gap-3 border-t border-border pt-4', className)}
+    >
+      <h2 id="record-update-heading" className={EYEBROW}>
+        Record An Update
+      </h2>
+      <Button
+        type="button"
+        size="sm"
+        variant="secondary"
+        className="self-start"
+        aria-expanded={open}
+        aria-controls="record-update-form"
+        onClick={() => setOpen((was) => !was)}
+      >
+        {open ? 'Close' : 'Record An Update'}
+      </Button>
+      {open && (
+        <div id="record-update-form" className="flex flex-col gap-3">
+          {form}
+        </div>
+      )}
     </section>
   )
 }

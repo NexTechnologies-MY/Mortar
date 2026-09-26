@@ -63,6 +63,12 @@ async function pickDay(label: string, day: string) {
   fireEvent.click(await screen.findByLabelText(day, { selector: 'button' }))
 }
 
+/** Opens Record An Update, which the case page keeps closed until asked. */
+async function openRecordUpdate() {
+  const button = await screen.findByRole('button', { name: 'Record An Update' })
+  if (button.getAttribute('aria-expanded') === 'false') fireEvent.click(button)
+}
+
 function renderDetail(id = 'BK-9001') {
   return render(
     <MemoryRouter initialEntries={[`/bookings/${id}`]}>
@@ -83,6 +89,20 @@ describe('BookingDetailPage', () => {
     vi.clearAllMocks()
   })
 
+  it('says the case state in one sentence, and never "Up To Date" beside a stall', async () => {
+    renderDetail('BK-9002')
+
+    await screen.findByText('B-08-05')
+    // Stage, who holds it, how long, and stalled: one sentence, no four pills.
+    const sentence = [...document.body.querySelectorAll('p')].map((p) => p.textContent)
+    expect(sentence.some((t) => t?.includes('Waiting On') && t.includes('17 days') && t.includes('Stalled'))).toBe(true)
+    // The freshness pill's own 10-day rule used to sit beside a 7-day stall.
+    expect(screen.queryByText('Up To Date')).toBeNull()
+    // Owners are one muted line, with no "(Your Desk)" ring on any of them.
+    expect(screen.getByText(/Nurul Aina \(Sales\) · Tan Mei Ling \(Loan\)/)).toBeTruthy()
+    expect(screen.queryByText(/Your Desk/)).toBeNull()
+  })
+
   it('renders the case header, tracks and applications', async () => {
     renderDetail()
 
@@ -99,10 +119,15 @@ describe('BookingDetailPage', () => {
     renderDetail()
 
     expect(await screen.findByText(/Still need latest 3 months slip gaji/)).toBeTruthy()
-    expect(screen.getAllByText('Jev Suggests').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Documents Requested').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Payslip').length).toBeGreaterThan(0)
-    expect(screen.getByText('Confidence 91%')).toBeTruthy()
+    // One line, built from three spans, so match the block that holds them.
+    const line = [...document.body.querySelectorAll('p')]
+      .map((p) => p.textContent)
+      .find((t) => t?.startsWith('Jev Suggests:'))
+    expect(line).toContain('Documents Requested')
+    expect(line).toContain('Payslip')
+    expect(line).toContain('Jev Is Sure')
+    // The probability bar and the percentage went; confidence reads in words.
+    expect(screen.queryByText(/Confidence \d+%/)).toBeNull()
 
     fireEvent.click(screen.getByRole('button', { name: 'Confirm' }))
 
@@ -118,7 +143,7 @@ describe('BookingDetailPage', () => {
     renderDetail()
 
     expect(await screen.findByText(/Missing Income Documents/)).toBeTruthy()
-    expect(screen.getAllByText('Direct Fit').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Applies').length).toBeGreaterThan(0)
   })
 
   it('lists the open task and completes it', async () => {
@@ -147,12 +172,24 @@ describe('BookingDetailPage', () => {
     await waitFor(() => expect(screen.queryByText('Could Not Refresh. Showing The Last Loaded Data.')).toBeNull())
   })
 
-  it('renders the add message form', async () => {
+  it('keeps Record An Update and Paste A Message closed on load and opens them in place', async () => {
     renderDetail()
 
-    expect(await screen.findByText('Sender Role')).toBeTruthy()
-    expect(screen.getByText('Sender Name')).toBeTruthy()
+    // Three forms open on load was the 2,635 px wall; two now sit behind buttons.
+    expect(await screen.findByRole('button', { name: 'Paste A Message' })).toBeTruthy()
+    expect(screen.queryByLabelText('Sender Role')).toBeNull()
+    expect(screen.queryByLabelText('What Happened')).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Paste A Message' }))
+    expect(screen.getByLabelText('Sender Role')).toBeTruthy()
+    expect(screen.getByLabelText('Sender Name')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Add Message' })).toBeTruthy()
+
+    const record = screen.getByRole('button', { name: 'Record An Update' })
+    expect(record.getAttribute('aria-expanded')).toBe('false')
+    fireEvent.click(record)
+    expect(screen.getByLabelText('What Happened')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Record Update' })).toBeTruthy()
   })
 
   it('does not dress an extraction in the status of an event recording a different claim', async () => {
@@ -161,8 +198,9 @@ describe('BookingDetailPage', () => {
     // MSG-9002-1: Jev read documents_received, but the message only carries the confirmed `booked`.
     const body = await screen.findByText(/Passing my payslips and bank statement/)
     const item = body.closest('li')!
-    expect(within(item).getByText('Documents Received')).toBeTruthy()
-    expect(within(item).getByText('Payslip')).toBeTruthy()
+    const line = [...item.querySelectorAll('p')].map((p) => p.textContent).find((t) => t?.startsWith('Jev Suggests:'))
+    expect(line).toContain('Documents Received')
+    expect(line).toContain('Payslip')
     expect(within(item).queryByText('Confirmed')).toBeNull()
     expect(within(item).queryByRole('button', { name: 'Confirm' })).toBeNull()
   })
@@ -203,7 +241,7 @@ describe('BookingDetailPage', () => {
   describe('Record An Update', () => {
     it('records Loan Approved against its bank on the day chosen, then re-reads the case', async () => {
       renderDetail()
-      expect(await screen.findByText('Record An Update')).toBeTruthy()
+      await openRecordUpdate()
 
       await choose('What Happened', 'Loan Approved (LO Issued)')
       // Apex Bank holds the one open application, so it is chosen already.
@@ -229,7 +267,7 @@ describe('BookingDetailPage', () => {
 
     it('writes an SPA appointment into the note the Legal desk reads', async () => {
       renderDetail()
-      await screen.findByText('Record An Update')
+      await openRecordUpdate()
 
       await choose('What Happened', 'SPA Appointment Set')
       // The appointment day is required.
@@ -252,7 +290,7 @@ describe('BookingDetailPage', () => {
 
     it('records Submitted To A Bank as a new application', async () => {
       renderDetail()
-      await screen.findByText('Record An Update')
+      await openRecordUpdate()
 
       await choose('What Happened', 'Submitted To A Bank')
       fireEvent.change(screen.getByLabelText('Bank'), { target: { value: 'Harbour Bank' } })
@@ -273,7 +311,7 @@ describe('BookingDetailPage', () => {
 
     it('asks before recording a cancellation, with Cancel focused', async () => {
       renderDetail()
-      await screen.findByText('Record An Update')
+      await openRecordUpdate()
 
       await choose('What Happened', 'Cancelled')
       fireEvent.click(screen.getByRole('button', { name: 'Record Update' }))
@@ -310,8 +348,8 @@ describe('BookingDetailPage', () => {
 
       expect(await screen.findByText('Case History')).toBeTruthy()
       // Messages can still be logged; only updates stop.
-      expect(screen.getByLabelText('Sender Role')).toBeTruthy()
-      expect(screen.queryByText('Record An Update')).toBeNull()
+      expect(screen.getByRole('button', { name: 'Paste A Message' })).toBeTruthy()
+      expect(screen.queryByRole('button', { name: 'Record An Update' })).toBeNull()
     })
   })
 
@@ -319,7 +357,8 @@ describe('BookingDetailPage', () => {
     it('sends the day and time the message was sent', async () => {
       renderDetail()
 
-      fireEvent.change(await screen.findByLabelText('Message'), { target: { value: 'Payslip sent last night' } })
+      fireEvent.click(await screen.findByRole('button', { name: 'Paste A Message' }))
+      fireEvent.change(screen.getByLabelText('Message'), { target: { value: 'Payslip sent last night' } })
       await pickDay('Sent At', 'Thursday, September 17th, 2026')
       fireEvent.change(screen.getByLabelText('Time'), { target: { value: '21:05' } })
       fireEvent.click(screen.getByRole('button', { name: 'Add Message' }))
@@ -338,7 +377,8 @@ describe('BookingDetailPage', () => {
     it('defaults to now on the desks’ today', async () => {
       renderDetail()
 
-      fireEvent.change(await screen.findByLabelText('Message'), { target: { value: 'Noted, thanks' } })
+      fireEvent.click(await screen.findByRole('button', { name: 'Paste A Message' }))
+      fireEvent.change(screen.getByLabelText('Message'), { target: { value: 'Noted, thanks' } })
       expect(screen.getByLabelText('Sent At, 18 Sep 2026')).toBeTruthy()
       fireEvent.click(screen.getByRole('button', { name: 'Add Message' }))
 
@@ -349,7 +389,8 @@ describe('BookingDetailPage', () => {
     it('will not send a time that is not a time', async () => {
       renderDetail()
 
-      fireEvent.change(await screen.findByLabelText('Message'), { target: { value: 'Noted, thanks' } })
+      fireEvent.click(await screen.findByRole('button', { name: 'Paste A Message' }))
+      fireEvent.change(screen.getByLabelText('Message'), { target: { value: 'Noted, thanks' } })
       fireEvent.change(screen.getByLabelText('Time'), { target: { value: '25:00' } })
       fireEvent.click(screen.getByRole('button', { name: 'Add Message' }))
 

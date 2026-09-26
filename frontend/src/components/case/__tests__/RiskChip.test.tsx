@@ -32,25 +32,44 @@ describe('RiskChip', () => {
     expect(trigger.querySelector('span')?.className).toContain('bg-status-danger-bg')
   })
 
-  it('reveals the ratio, instalment, margin and reasons on keyboard focus', () => {
+  it('explains the risk in plain words on keyboard focus', () => {
     render(<RiskChip risk={RISK} />)
     // React delegates onFocus to the bubbling focusin event; Radix opens instantly on it.
     fireEvent.focusIn(screen.getByRole('button', { name: 'High Risk' }))
 
     const tooltip = screen.getByRole('tooltip')
-    expect(within(tooltip).getByText(/Debt Service 52% · Margin 90%/)).not.toBeNull()
-    expect(within(tooltip).getByText(/Instalment RM 1,580\/mo/)).not.toBeNull()
+    // "DSR" and "instalment" are loan-desk shorthand, not office words.
+    expect(within(tooltip).getByText(/Monthly Repayments Compared With Income: 52%/)).not.toBeNull()
+    expect(within(tooltip).getByText(/Loan Against The Property Value: 90%/)).not.toBeNull()
+    expect(within(tooltip).getByText(/Monthly Repayment RM 1,580/)).not.toBeNull()
     expect(within(tooltip).getByText(/Debt Service Exceeds The Cap/)).not.toBeNull()
     expect(within(tooltip).getByText(/Income Document Outstanding/)).not.toBeNull()
   })
 
-  it('shows the lock icon on the status pill for legal admin per Malaysian PDPA', () => {
-    render(
-      <PersonaProvider initialPersona="legal-admin">
-        <RiskChip risk={RISK} />
-      </PersonaProvider>
-    )
-    const trigger = screen.getByRole('button', { name: /High Risk/ })
-    expect(trigger.querySelector('svg')).not.toBeNull()
+  it('carries no lock glyph and no privacy claim, and shows every persona the same figures', () => {
+    for (const persona of ['legal-admin', 'sales-admin', 'loan-admin'] as const) {
+      const { unmount } = render(
+        <PersonaProvider initialPersona={persona}>
+          <RiskChip risk={RISK} />
+        </PersonaProvider>
+      )
+      const trigger = screen.getByRole('button', { name: 'High Risk' })
+      expect(trigger.querySelector('svg')).toBeNull()
+
+      fireEvent.focusIn(trigger)
+      const tooltip = screen.getByRole('tooltip')
+      expect(within(tooltip).getByText(/Monthly Repayments Compared With Income: 52%/)).not.toBeNull()
+      // Nothing on the server masks buyer data, so the chip claims no masking.
+      expect(within(tooltip).queryByText(/PDPA/)).toBeNull()
+      expect(within(tooltip).queryByText(/Restricted/)).toBeNull()
+      unmount()
+    }
+  })
+
+  it('says so in words when nothing has flagged the case', () => {
+    render(<RiskChip risk={{ ...RISK, reasons: [] }} />)
+    fireEvent.focusIn(screen.getByRole('button', { name: 'High Risk' }))
+
+    expect(within(screen.getByRole('tooltip')).getByText(/No Specific Risk Flags Recorded/)).not.toBeNull()
   })
 })
