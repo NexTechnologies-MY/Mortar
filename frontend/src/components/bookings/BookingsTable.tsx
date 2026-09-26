@@ -19,7 +19,6 @@
  * offers Add Task when nobody is (see TaskCell).
  */
 
-import { useNavigate } from 'react-router-dom'
 import {
   ballInCourt,
   type Booking,
@@ -39,7 +38,6 @@ import { WaitingOnCell } from './WaitingOn'
 import { SortHeader, type SortDir, type SortState } from '@/components/ui/SortHeader'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
-import { usePersonaSafe } from '@/lib/persona'
 
 export interface BookingRow {
   booking: Booking
@@ -90,9 +88,7 @@ export function BookingsTable({
   /** Reloads the data after the Task column adds a task. */
   onChanged: () => Promise<void>
 }) {
-  const navigate = useNavigate()
   const sortable = onSort ?? (() => {})
-  const { persona } = usePersonaSafe()
 
   return (
     <Table className="min-w-[860px] table-fixed [&_td]:px-2 [&_td:first-child]:pl-3 [&_td:last-child]:pr-3 [&_th]:px-2 [&_th:first-child]:pl-3 [&_th:last-child]:pr-3">
@@ -121,25 +117,20 @@ export function BookingsTable({
       <TableBody>
         {rows.map(({ booking, summary, confirmedKinds, openTask }) => {
           const bic = ballInCourt(summary)
-          const isMyDesk =
-            (persona === 'sales-admin' && bic.holder === 'buyer') ||
-            (persona === 'loan-admin' && bic.holder === 'bank') ||
-            (persona === 'legal-admin' && (bic.holder === 'solicitor' || summary.stage === 'spa_signed'))
+          const isWaitingOnRed = bic.holder !== null && bic.stalled
+          const isAgeRed = summary.stallReasons.length > 0 && !isWaitingOnRed
 
           return (
             <TableRow
               key={booking.id}
               tabIndex={0}
               aria-label={`Open Booking ${booking.id}`}
-              className={cn(
-                'cursor-pointer transition-colors',
-                isMyDesk && 'bg-primary/[0.03] hover:bg-primary/[0.06]'
-              )}
-              onClick={() => navigate(`/bookings/${booking.id}`)}
+              className="cursor-pointer transition-colors"
+              onClick={() => onInspect?.(booking.id)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault()
-                  navigate(`/bookings/${booking.id}`)
+                  onInspect?.(booking.id)
                 }
               }}
             >
@@ -152,12 +143,7 @@ export function BookingsTable({
                 </span>
               </TableCell>
               <TableCell className="truncate">{booking.buyer.name}</TableCell>
-              <TableCell
-                className={cn(
-                  'text-right tabular-nums',
-                  summary.stallReasons.length > 0 && 'font-medium text-status-danger-fg'
-                )}
-              >
+              <TableCell className={cn('text-right tabular-nums', isAgeRed && 'font-medium text-status-danger-fg')}>
                 {formatDays(summary.bookingAgeDays)}
               </TableCell>
               <TableCell>
@@ -172,14 +158,18 @@ export function BookingsTable({
               </TableCell>
               <TableCell>
                 <WaitingOnCell
-                  ball={ballInCourt(summary)}
+                  ball={bic}
                   daysSinceEvidence={summary.daysSinceEvidence}
                   unit={booking.unit}
                   onInspect={onInspect ? () => onInspect(booking.id) : undefined}
                 />
               </TableCell>
               <TableCell>
-                <RiskChip risk={summary.risk} />
+                {summary.risk.level === 'low' ? (
+                  <span className="text-[13px] text-muted-foreground">Low Risk</span>
+                ) : (
+                  <RiskChip risk={summary.risk} />
+                )}
               </TableCell>
               <TableCell className="text-right tabular-nums">{formatRm(booking.priceRm)}</TableCell>
               <TableCell>
