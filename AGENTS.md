@@ -55,4 +55,5 @@ flat config at the root, Prettier, husky + lint-staged.
 | Choosing or installing an agent skill                           | [Skills](docs/agents/skills.md)                                 |
 | Writing or formatting Markdown                                  | [Markdown Style Guide](docs/markdown-style.md)                  |
 | Weighing feature ideas that are not built yet                   | [Feature Ideas](docs/research/feature-ideas/README.md)          |
+| Reviewing the UI triage and its redesign plan                   | [UI Triage](docs/research/ui-triage/README.md)                  |
 | Deleting data, or deploying with real buyer data                | [Data Retention](docs/TRD.md#data-retention)                    |

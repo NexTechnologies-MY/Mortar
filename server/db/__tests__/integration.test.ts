@@ -1,27 +1,38 @@
 /**
- * Integration tests against the live Neon database — skipped when
- * `DATABASE_URL` is absent (CI has none). Covers `applySchema` and the
- * round-trip of every writable path in `db/index.ts`; test rows carry
+ * Integration tests against a dedicated test database, named by
+ * `TEST_DATABASE_URL` and skipped when it is absent (CI passes the repository
+ * secret of the same name). They never read `DATABASE_URL`: the server's test
+ * script loads `../.env`, which often points at production, and these tests
+ * write and delete rows. An empty test database is seeded once, as the server
+ * does on first boot. Covers `applySchema`, `resetDatabase` on that first run,
+ * and the round-trip of every writable path in `db/index.ts`; test rows carry
  * `W2TEST-` ids (imported bookings, which take real `BK-nnnn` numbers, carry
  * the `W2TEST Project`; the bank application tests use `CITEST-` ids) and are
- * deleted afterwards. The full `resetDatabase`
- * path needs lane W1's generator and is verified end to end once it lands.
+ * deleted afterwards.
  */
-import { afterAll, describe, expect, test } from 'bun:test'
+import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
 import { SQL } from 'bun'
 import { REFERENCE_DATE, summarizeCases } from '@mortar/core'
 import type { Booking, BookingDraft, CaseEvent, Message } from '@mortar/core'
 import { QUESTION_VERSION, jevInputHash, nextActionJob, signalsJob } from '@mortar/jev'
 import { EventSettledError, ImportMovedOnError, OpenApplicationError, UnitHeldError, createDatabase } from '../index'
-import { applySchema } from '../reset'
+import { applySchema, resetDatabase } from '../reset'
 
-const DATABASE_URL = process.env.DATABASE_URL
+const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL
 
-describe.skipIf(!DATABASE_URL)('database integration', () => {
+describe.skipIf(!TEST_DATABASE_URL)('database integration', () => {
   // Guarded by skipIf: the callback body still runs during collection, so only
   // construct the client when the URL is present.
-  const sql = DATABASE_URL ? new SQL(DATABASE_URL) : (null as unknown as SQL)
+  const sql = TEST_DATABASE_URL ? new SQL(TEST_DATABASE_URL) : (null as unknown as SQL)
   const db = createDatabase(sql)
+
+  // A fresh test database has no tables or seed yet. Seed it once, the way the
+  // server does on first boot, so the fixture-dependent tests below hold.
+  beforeAll(async () => {
+    await applySchema(sql)
+    const [seeded] = await sql`select 1 from meta limit 1`
+    if (!seeded) await resetDatabase(sql)
+  })
 
   afterAll(async () => {
     await sql`delete from event_reviews where event_id like 'W2TEST-%'`
@@ -53,10 +64,8 @@ describe.skipIf(!DATABASE_URL)('database integration', () => {
   })
 
   test('hasBookings is true once any booking exists', async () => {
-    // The shared database always carries fixtures and other agents' test
-    // rows, so this only pins the happy path; the empty-database branch is
-    // exercised at boot in server/src/index.ts, which needs a database this
-    // shared instance never is.
+    // beforeAll seeds the test database, so this only pins the happy path;
+    // the empty-database branch is exercised at boot in server/src/index.ts.
     expect(await db.hasBookings()).toBe(true)
   })
 
