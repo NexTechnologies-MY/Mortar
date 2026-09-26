@@ -11,6 +11,7 @@ document derive from industry research, an anonymous practitioner survey (n =
 Contents:
 
 1.  [The Problem And Its Cost](#the-problem-and-its-cost)
+1.  [Target Users](#target-users)
 1.  [Who Uses Mortar](#who-uses-mortar)
 1.  [What Mortar Does](#what-mortar-does)
 1.  [How It Works In One Flow](#how-it-works-in-one-flow)
@@ -66,6 +67,66 @@ imposing rigid pre-qualification gates that block bookings, Mortar surfaces
 every stalled case in a daily queue. It equips staff to chase salvageable
 bookings systematically while surfacing unsalvageable cases early so inventory
 can be re-released promptly.
+
+## Target Users
+
+Mortar is built for the back-office staff of a Malaysian property developer, not
+for buyers, agents or the developer's outside partners. This section sets out
+who adopts it, who uses it daily, who benefits without logging in, and who is
+deliberately left out.
+
+### Target Organisation
+
+A Malaysian property developer that launches projects in campaigns and sells
+most units to mortgage-financed buyers through panel banks and panel solicitors.
+The first target is the challenge sponsor, Chin Hin Group's property development
+business.
+
+The fit is strongest where one launch produces more live bookings than staff can
+track from memory. It also fits where booking status is already split across a
+CRM, spreadsheets and WhatsApp, as practitioners in our survey describe.
+
+### Daily Users
+
+Three internal administration roles use Mortar every working day. Each is
+described in full under [Who Uses Mortar](#who-uses-mortar).
+
+| Daily User  | Owns The Stretch                    | Opens Mortar To                                    |
+| ----------- | ----------------------------------- | -------------------------------------------------- |
+| Sales Admin | Booking to complete buyer documents | Work today's chase list of stuck bookings          |
+| Loan Admin  | Bank submission to Letter of Offer  | See which bank applications are late or incomplete |
+| Legal Admin | Letter of Offer to signed SPA       | See which approved cases have not been signed      |
+
+### Beneficiaries Who Do Not Log In Daily
+
+- **Finance:** receives a stage-weighted forecast of expected SPAs in place of
+  booking counts at face value.
+- **Sales Director:** keeps launch momentum, because Mortar advises on financing
+  risk without blocking bookings.
+- **Management:** sees persistent stalls early enough to decide whether to
+  release a unit for resale.
+
+### Deliberately Not Users
+
+Buyers, sales agents, panel bankers and panel solicitors never log in. The
+developer has no authority over most of them, so Mortar does not depend on their
+cooperation. Their updates reach a case when staff paste in a WhatsApp message
+or email and confirm what it says.
+
+### What The Daily Users Have In Common
+
+These traits come from the practitioner survey and the challenge brief. They
+decide how simple the product has to be.
+
+- **Not Technical:** their current tools are spreadsheets, email and WhatsApp,
+  so every screen must be clear at a glance with no training.
+- **Interrupt-Driven:** their day is a stream of buyer, banker and solicitor
+  messages, so Mortar must show the next action first and the detail on demand.
+- **Multilingual:** updates arrive in English, Malay, Chinese and Manglish, so
+  staff paste messages as they are instead of retyping them.
+- **Accountable For Outcomes They Do Not Control:** banks decide credit and
+  solicitors set appointments, so Mortar puts a clock on each wait and names who
+  holds the case, rather than judging the outside party.
 
 ## Who Uses Mortar
 
