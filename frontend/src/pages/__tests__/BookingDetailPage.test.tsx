@@ -93,9 +93,13 @@ describe('BookingDetailPage', () => {
     renderDetail('BK-9002')
 
     await screen.findByText('B-08-05')
-    // Stage, who holds it, how long, and stalled: one sentence, no four pills.
     const sentence = [...document.body.querySelectorAll('p')].map((p) => p.textContent)
-    expect(sentence.some((t) => t?.includes('Waiting On') && t.includes('17 days') && t.includes('Stalled'))).toBe(true)
+    // Stage, who holds it, how long, and stalled: one sentence, no four pills.
+    // The age in it is Title Case like everything beside it.
+    expect(sentence.some((t) => t?.includes('Waiting On') && t.includes('17 Days Old') && t.includes('Stalled'))).toBe(
+      true
+    )
+    expect(document.body.textContent).not.toContain('17 days')
     // The freshness pill's own 10-day rule used to sit beside a 7-day stall.
     expect(screen.queryByText('Up To Date')).toBeNull()
     // Owners are one muted line, with no "(Your Desk)" ring on any of them.
@@ -268,7 +272,7 @@ describe('BookingDetailPage', () => {
       renderDetail()
       await openRecordUpdate()
 
-      await choose('What Happened', 'Loan Approved (LO Issued)')
+      await choose('What Happened', 'Loan Approved')
       // Apex Bank holds the one open application, so it is chosen already.
       expect(screen.getByRole('combobox', { name: 'Which Bank' }).textContent).toContain('Apex Bank')
       await pickDay('When It Happened', 'Wednesday, September 16th, 2026')

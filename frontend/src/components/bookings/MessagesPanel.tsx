@@ -34,10 +34,23 @@ const DECISION_TOASTS: Record<Decision, string> = {
 }
 
 /** How sure Jev is, in the words a reader uses rather than a probability. */
-function certainty(confidence: number): string {
+export function certainty(confidence: number): string {
   if (confidence >= 0.9) return 'Jev Is Sure'
   if (confidence >= 0.7) return 'Jev Is Fairly Sure'
   return 'Jev Is Not Sure'
+}
+
+/**
+ * Jev stores how sure it was as a note like `100% Probability`, which reads as
+ * a score rather than a person. Where a note is nothing but that, show the
+ * same words the messages panel uses; anything else is staff prose and reads
+ * as written.
+ */
+const PROBABILITY_NOTE = /^\d+% Probability$/
+
+export function displayNote(note: string): string {
+  const match = PROBABILITY_NOTE.exec(note)
+  return match ? certainty(Number.parseInt(match[0], 10) / 100) : note
 }
 
 /** The event kind an extraction records, mirroring `proposalFromExtraction`; `no_update` records nothing. */

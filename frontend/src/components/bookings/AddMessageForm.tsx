@@ -128,10 +128,6 @@ export function AddMessageForm({
     }
   }
 
-  const heading = (
-    <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Add Message</h3>
-  )
-
   const form = (
     <>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-[180px_1fr]">
@@ -243,15 +239,15 @@ export function AddMessageForm({
   if (!collapsible) {
     return (
       <div className="flex flex-col gap-3 border-t border-border pt-4">
-        {heading}
+        <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Add Message</h3>
         {form}
       </div>
     )
   }
 
+  // The button says what it opens, so it needs no heading above it.
   return (
     <div className="flex flex-col items-start gap-3 border-t border-border pt-4">
-      {heading}
       <Button
         type="button"
         size="sm"

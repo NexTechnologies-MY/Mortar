@@ -1,15 +1,17 @@
 /**
  * Case history — every event on the case, newest first: what happened, who
  * reported it, who verified it and where it stands. Provisional Jev proposals
- * become confirmed here when a reviewer accepts them. The full table waits
- * behind "Show Full History (N)"; the loan and legal track timelines above
- * carry the story the desk reads.
+ * become confirmed here when a reviewer accepts them. A note that is only Jev's
+ * own confidence reads as the words a person uses for it, never as a
+ * percentage. The full table waits behind "Show Full History (N)"; the loan and
+ * legal track timelines above carry the story the desk reads.
  */
 
 import { useState } from 'react'
 import { byOccurred, type CaseEvent } from '@mortar/core'
 import { EvidencePill } from '@/components/case/EvidencePill'
 import { DOCUMENT_LABELS, EVENT_KIND_LABELS, formatDateTime } from './labels'
+import { displayNote } from './MessagesPanel'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -82,7 +84,7 @@ export function EvidenceLog({ events }: { events: CaseEvent[] }) {
                       )}
                     </TableCell>
                     <TableCell className="max-w-72 truncate text-[13px] text-muted-foreground">
-                      {event.note ?? '—'}
+                      {event.note ? displayNote(event.note) : '—'}
                     </TableCell>
                     <TableCell className="text-[13px]">{event.reportedBy}</TableCell>
                     <TableCell className="text-[13px]">{event.verifiedBy ?? '—'}</TableCell>

@@ -10,7 +10,9 @@
  */
 import { useMemo } from 'react'
 import { Banknote, CalendarClock, FileSignature, Hourglass, ScrollText, SearchX } from 'lucide-react'
+import { PERSONA_STAFF } from '@mortar/core'
 import { useCases, useSnapshot } from '@/lib/data'
+import { usePersona } from '@/lib/persona'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { PageHeaderCard } from '@/components/layout/PageHeaderCard'
 import { StatCard } from '@/components/StatCard'
@@ -25,8 +27,10 @@ import { FirmLoadCard } from '@/components/legal/FirmLoadCard'
 import { firmLoad, isLegalStall, legalQueue } from '@/components/legal/legal'
 
 export function LegalPage() {
+  const { persona } = usePersona()
   const { snapshot, loading, error, refresh } = useSnapshot()
   const cases = useCases()
+  const reviewer = PERSONA_STAFF[persona].name
 
   const rows = useMemo(() => legalQueue(snapshot?.bookings ?? [], cases, snapshot?.events ?? []), [snapshot, cases])
   const firms = useMemo(() => firmLoad(rows), [rows])
@@ -34,6 +38,7 @@ export function LegalPage() {
   const flagged = rows.filter((r) => r.summary.stallReasons.some(isLegalStall)).length
   const longest = rows.reduce((max, r) => Math.max(max, r.summary.daysSinceLoIssued ?? 0), 0)
   const valueHeld = rows.reduce((sum, r) => sum + r.booking.priceRm, 0)
+  const referenceDate = snapshot?.meta.referenceDate ?? ''
   const noAppointmentRows = useMemo(() => rows.filter((r) => r.summary.daysSinceSpaSet === null), [rows])
   const appointmentSetRows = useMemo(() => rows.filter((r) => r.summary.daysSinceSpaSet !== null), [rows])
 
@@ -117,7 +122,13 @@ export function LegalPage() {
                   </p>
                 ) : (
                   <div className="mt-3">
-                    <LegalQueueTable rows={noAppointmentRows} />
+                    <LegalQueueTable
+                      rows={noAppointmentRows}
+                      kind="spa_appointment_set"
+                      referenceDate={referenceDate}
+                      reportedBy={reviewer}
+                      onRecorded={refresh}
+                    />
                   </div>
                 )}
               </section>
@@ -133,7 +144,13 @@ export function LegalPage() {
                   </p>
                 ) : (
                   <div className="mt-3">
-                    <LegalQueueTable rows={appointmentSetRows} />
+                    <LegalQueueTable
+                      rows={appointmentSetRows}
+                      kind="spa_signed"
+                      referenceDate={referenceDate}
+                      reportedBy={reviewer}
+                      onRecorded={refresh}
+                    />
                   </div>
                 )}
               </section>
