@@ -36,14 +36,21 @@ function groupTasks(tasks: Task[]): Map<string, Task[]> {
 export function ChaseTasks({
   tasks,
   completing,
-  onComplete
+  onComplete,
+  emptyLabel
 }: {
   tasks: Task[]
   /** Task ids with a complete request in flight. */
   completing: ReadonlySet<string>
   onComplete: (task: Task) => void
+  /** Said in place of the groups when the view is filtered to nothing. */
+  emptyLabel?: string
 }) {
   const groups = groupTasks(tasks)
+
+  if (groups.size === 0) {
+    return <p className="text-sm text-muted-foreground">{emptyLabel ?? 'No Open Tasks.'}</p>
+  }
 
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

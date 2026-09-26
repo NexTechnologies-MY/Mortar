@@ -16,10 +16,10 @@ type Crumb = { label: string; to?: string; icon?: React.ReactNode; short?: strin
 
 const ROUTE_LABELS: Record<string, string> = {
   '/bookings': 'Bookings',
-  '/chase': 'Chase List',
+  '/chase': 'Today',
   '/legal': 'Legal',
   '/forecast': 'Forecast',
-  '/import': 'Import',
+  '/import': 'Add Bookings',
   '/settings': 'Settings'
 }
 

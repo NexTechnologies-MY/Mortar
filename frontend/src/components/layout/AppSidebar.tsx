@@ -1,34 +1,32 @@
 /**
  * Collapsible app sidebar navigation.
  * Used by the app shell on desktop and as a slide-in menu on mobile.
+ *
+ * The items come from `PERSONA_PAGES`, the same map `PersonaRoute` guards
+ * against, so a role can never be shown a page it cannot open. Two groups read
+ * down the rail: Primary, where the persona's own desk leads, and More.
  */
 
 import { useState, useCallback, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
-import { ChevronLeft, ClipboardList, BellRing, Scale, TrendingUp, FileUp, Settings, X } from 'lucide-react'
+import { BellRing, ChevronLeft, ClipboardList, FileUp, Scale, Settings, TrendingUp, X } from 'lucide-react'
 import { MortarMark } from '@/components/brand/MortarMark'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { usePersona } from '@/lib/persona'
-
-interface NavItem {
-  to: string
-  label: string
-  icon: LucideIcon
-}
+import { NAV_GROUP_LABELS, pagesForPersona, usePersona, type NavGroup, type PersonaPage } from '@/lib/persona'
 
 const SIDEBAR_EXPANDED = 200
 const SIDEBAR_COLLAPSED = 64
 
-/** Canonical route order; the active persona's home is hoisted to the top at render time. */
-const NAV_ITEMS: NavItem[] = [
-  { to: '/bookings', label: 'Bookings', icon: ClipboardList },
-  { to: '/chase', label: 'Chase List', icon: BellRing },
-  { to: '/legal', label: 'Legal', icon: Scale },
-  { to: '/forecast', label: 'Forecast', icon: TrendingUp },
-  { to: '/import', label: 'Import', icon: FileUp },
-  { to: '/settings', label: 'Settings', icon: Settings }
-]
+/** Glyph per page, chosen by the work the page is for rather than by its rank. */
+const PAGE_ICONS: Record<string, LucideIcon> = {
+  '/chase': BellRing,
+  '/bookings': ClipboardList,
+  '/legal': Scale,
+  '/import': FileUp,
+  '/forecast': TrendingUp,
+  '/settings': Settings
+}
 
 /** Crossfade section heading: divider when collapsed, title text when expanded */
 function SectionHeading({
@@ -102,6 +100,39 @@ function NavLink({
   )
 }
 
+/** One group of nav links under its heading, in the order the page map lists. */
+function NavGroup({
+  group,
+  pages,
+  pathname,
+  alwaysExpanded,
+  onNavigate
+}: {
+  group: NavGroup
+  pages: PersonaPage[]
+  pathname: string
+  alwaysExpanded?: boolean
+  onNavigate?: () => void
+}) {
+  if (pages.length === 0) return null
+  return (
+    <>
+      <SectionHeading title={NAV_GROUP_LABELS[group]} first={group === 'primary'} alwaysExpanded={alwaysExpanded} />
+      {pages.map((page) => (
+        <NavLink
+          key={page.to}
+          to={page.to}
+          icon={PAGE_ICONS[page.to] ?? ClipboardList}
+          label={page.label}
+          active={pathname === page.to || pathname.startsWith(`${page.to}/`)}
+          alwaysExpanded={alwaysExpanded}
+          onClick={onNavigate}
+        />
+      ))}
+    </>
+  )
+}
+
 type AppSidebarProps = {
   /** Whether the mobile drawer is open (only relevant below lg breakpoint) */
   mobileOpen?: boolean
@@ -116,13 +147,15 @@ type AppSidebarProps = {
 export function AppSidebar({ mobileOpen = false, onMobileClose }: AppSidebarProps = {}) {
   const [collapsed, setCollapsed] = useState(true)
   const { pathname } = useLocation()
-  const { home } = usePersona()
+  const { persona } = usePersona()
 
   const handleMouseEnter = useCallback(() => setCollapsed(false), [])
   const handleMouseLeave = useCallback(() => setCollapsed(true), [])
 
-  // The persona's home route leads the list; the rest keep canonical order
-  const navItems = [...NAV_ITEMS].sort((a, b) => (a.to === home ? -1 : b.to === home ? 1 : 0))
+  // Each persona sees only its own pages, its own desk first.
+  const pages = pagesForPersona(persona)
+  const primary = pages.filter((page) => page.group === 'primary')
+  const more = pages.filter((page) => page.group === 'more')
 
   // Lock body scroll while mobile drawer is open
   useEffect(() => {
@@ -162,16 +195,8 @@ export function AppSidebar({ mobileOpen = false, onMobileClose }: AppSidebarProp
 
         {/* Nav items */}
         <nav className="flex-1 space-y-1.5 overflow-x-hidden overflow-y-auto px-2 py-3">
-          <SectionHeading title="Menu" first />
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              icon={item.icon}
-              label={item.label}
-              active={pathname.startsWith(item.to)}
-            />
-          ))}
+          <NavGroup group="primary" pages={primary} pathname={pathname} />
+          <NavGroup group="more" pages={more} pathname={pathname} />
         </nav>
 
         {/* Collapse indicator */}
@@ -230,18 +255,8 @@ export function AppSidebar({ mobileOpen = false, onMobileClose }: AppSidebarProp
 
           {/* Nav items */}
           <nav className="flex-1 space-y-1.5 overflow-x-hidden overflow-y-auto px-2 py-3">
-            <SectionHeading title="Menu" first alwaysExpanded />
-            {navItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                icon={item.icon}
-                label={item.label}
-                active={pathname.startsWith(item.to)}
-                alwaysExpanded
-                onClick={onMobileClose}
-              />
-            ))}
+            <NavGroup group="primary" pages={primary} pathname={pathname} alwaysExpanded onNavigate={onMobileClose} />
+            <NavGroup group="more" pages={more} pathname={pathname} alwaysExpanded onNavigate={onMobileClose} />
           </nav>
         </aside>
       </div>

@@ -1,33 +1,31 @@
 /**
- * Chase card — one stalled live booking in the Sales Admin chase queue.
- * Follows the spec's chase-card anatomy: unit and buyer header with an urgency
- * pill, the blocker in plain words, a meta line, Jev's suggested next action
- * with its source tag, and the action footer. Urgency is carried by the pill
- * and its word alone: no coloured strip runs down any edge (DESIGN.md
- * acceptance criterion 13). Create Task is Primary on every card that has no
- * open task, never on the first card only — one action offered many times. A
- * card whose booking already has an open task says Task Open, with its due date
- * and owner, instead of inviting a duplicate.
+ * Chase card — one stalled live booking in Today's queue.
+ *
+ * Card stack, in reading order: unit and buyer, the blocker in plain words,
+ * one muted meta line, the next step, the footer. One pill per card — urgency
+ * when the card is overdue, otherwise Task Open — and the risk chip only when
+ * the financing risk is High, because a chip true of every card on the page
+ * is not a warning any more.
+ *
+ * There is one next step. It is the rule-based move from `ballInCourt`, which
+ * every screen leads with, so the same click here, in Waiting On and in the
+ * table raises the same task. When Jev's cached answer names a different move,
+ * it gets one extra muted line and its own small button — never a second block
+ * of equal weight. The "Jev checked earlier" note lives in a tooltip on the
+ * suggestion's glyph rather than on a pill.
  */
 
 import { Link } from 'react-router-dom'
-import { JEV_REVIEW_THRESHOLD } from '@mortar/core'
-import type { Booking, CaseSummary, DocumentKind, NextActionSuggestion, Task } from '@mortar/core'
-import { JevTag, RiskChip, STAGE_LABELS, formatDate, formatDaysLong, formatRm } from '@/components/case'
+import type { Booking, CaseSummary, Task } from '@mortar/core'
+import { RiskChip, STAGE_LABELS, formatDate, formatDaysLong, formatRm } from '@/components/case'
+import type { NextStep } from '@/components/case/nextStep'
 import type { LucideIcon } from 'lucide-react'
 import { Plus, RefreshCw } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { StatusPill } from '@/components/ui/status-pill'
-import {
-  NEXT_ACTION_LABELS,
-  DOCUMENT_LABELS,
-  actionIcon,
-  blockerIcon,
-  ownerName,
-  ownerRoleLabel,
-  urgencyFor
-} from './chase'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { DOCUMENT_LABELS, actionIcon, blockerIcon, urgencyFor } from './chase'
 
 /** Renders a decorative glyph handed in as a prop, so the icon component is
     never created inside the card's own render. */
@@ -38,8 +36,8 @@ function Glyph({ icon: Icon, className }: { icon: LucideIcon; className?: string
 export function ChaseCard({
   booking,
   summary,
-  suggestion,
-  document,
+  step,
+  alternativeStep,
   openTask = null,
   suggesting,
   creating,
@@ -48,18 +46,24 @@ export function ChaseCard({
 }: {
   booking: Booking
   summary: CaseSummary
-  suggestion?: NextActionSuggestion
-  /** The document the suggestion refers to, when one is outstanding or proposed. */
-  document?: DocumentKind
-  /** The booking's open task due soonest; the card then offers no Create Task. */
+  /** The case's one next step, from `nextStepFor`. */
+  step: NextStep
+  /** Jev's differing move, when there is one. */
+  alternativeStep?: NextStep
   openTask?: Task | null
   suggesting?: boolean
   creating?: boolean
   onSuggest: () => void
-  onCreateTask: () => void
+  /** Raises the task for the step the person picked. */
+  onCreateTask: (step: NextStep) => void
 }) {
-  const urgency = urgencyFor(suggestion, summary.daysSinceEvidence)
-  const needsReview = suggestion !== undefined && suggestion.action.confidence < JEV_REVIEW_THRESHOLD
+  const urgency = urgencyFor(undefined, summary.daysSinceEvidence)
+  // One pill per card: the overdue date when the card is late, otherwise
+  // whether a task is already open. Due-today is the queue's norm, so it says
+  // nothing, and a card with a task is already reported in the footer.
+  const pill = openTask ? null : urgency.tone === 'danger' ? (
+    <StatusPill tone={urgency.tone}>{urgency.label}</StatusPill>
+  ) : null
 
   return (
     <article
@@ -67,7 +71,7 @@ export function ChaseCard({
       data-card-interactive=""
       className="flex flex-col gap-3 rounded-md border border-card-border bg-card p-4 shadow-card transition-[box-shadow,transform] duration-[160ms] ease-[var(--ease-out)] hover:-translate-y-px hover:shadow-card-hover"
     >
-      {/* Header: unit + buyer + urgency pill */}
+      {/* Header: unit + buyer */}
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <Link
@@ -80,25 +84,19 @@ export function ChaseCard({
             {booking.id} · {booking.buyer.name}
           </p>
         </div>
-        {/* Due Today is the queue's norm, so the pill only appears when a card
-            differs: overdue, or scheduled later than today. */}
-        {urgency.score !== 2 ? (
-          <StatusPill tone={urgency.tone} className="shrink-0 whitespace-nowrap">
-            {urgency.label}
-          </StatusPill>
-        ) : null}
+        {pill}
       </div>
 
       {/* Blocker. The glyph names the kind of blocker, never its severity. */}
       <p className="flex items-start gap-2 text-base font-semibold tracking-[-0.01em] text-foreground">
-        <Glyph icon={blockerIcon(summary.stallReasons, document)} className="mt-0.5" />
+        <Glyph icon={blockerIcon(summary.stallReasons, step.document)} className="mt-0.5" />
         <span>{summary.stallReasons.join(' · ')}</span>
       </p>
 
-      {/* Meta line: the risk chip stays; stage, age, last evidence and price
-          fold into one muted line. */}
+      {/* One muted meta line. The risk chip only earns its place when the
+          financing risk is High; the stage, age and price read in a line. */}
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-muted-foreground">
-        <RiskChip risk={summary.risk} />
+        {summary.risk.level === 'high' ? <RiskChip risk={summary.risk} /> : null}
         <span>
           {STAGE_LABELS[summary.stage]} · {formatDaysLong(summary.bookingAgeDays)} Old · Last Update{' '}
           {formatDaysLong(summary.daysSinceEvidence)} Ago
@@ -106,41 +104,30 @@ export function ChaseCard({
         <span className="tabular-nums">{formatRm(booking.priceRm)}</span>
       </div>
 
-      {/* Jev's suggested next action. The action and its owner share the first
-          line; the Jev tag always takes its own line beneath, because the tag
-          is a sentence now and wrapped at a different point on every card when
-          it shared the row. */}
-      <div className="flex flex-col gap-1.5 rounded-sm bg-muted px-2 py-1.5 text-[13px]">
-        {suggestion ? (
-          <>
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <Glyph icon={actionIcon(suggestion.action.value)} />
-              <span className="font-medium text-foreground">
-                {NEXT_ACTION_LABELS[suggestion.action.value]}
-                {document ? ` · ${DOCUMENT_LABELS[document]}` : ''}
-              </span>
-              <span className="text-muted-foreground">
-                {ownerRoleLabel(suggestion.owner.value)} · {ownerName(suggestion.owner.value, booking)}
-              </span>
-              {needsReview ? <StatusPill tone="warning">Needs Review</StatusPill> : null}
-            </div>
-            <JevTag meta={suggestion.meta} className="self-start" />
-          </>
-        ) : (
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="text-muted-foreground">No Suggestion Yet</span>
+      {/* The one next step, and Jev's alternative as a single muted line. */}
+      <div className="flex flex-col gap-1.5 text-[13px]">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <Glyph icon={actionIcon(step.action)} />
+          <span className="font-medium text-foreground">
+            {step.label}
+            {step.action === 'request_document' && step.document ? ` · ${DOCUMENT_LABELS[step.document]}` : ''}
+          </span>
+        </div>
+        {alternativeStep ? (
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground">
+            <span>Jev Suggests: {alternativeStep.label} Instead</span>
             <Button
               type="button"
-              variant="ghost"
+              variant="secondary"
               size="sm"
-              className="ml-auto h-7 px-2"
-              disabled={suggesting}
-              onClick={onSuggest}
+              className="h-7 px-2 text-[13px]"
+              disabled={creating}
+              onClick={() => onCreateTask(alternativeStep)}
             >
-              {suggesting ? 'Asking Jev…' : 'Suggest Next Action'}
+              {creating ? 'Creating…' : 'Do That Instead'}
             </Button>
           </div>
-        )}
+        ) : null}
       </div>
 
       {/* Footer */}
@@ -155,25 +142,42 @@ export function ChaseCard({
             </span>
           </p>
         ) : null}
-        {suggestion ? (
-          <Button type="button" variant="ghost" size="sm" disabled={suggesting} onClick={onSuggest}>
-            <RefreshCw aria-hidden="true" />
-            {suggesting ? 'Asking Jev…' : 'Ask Jev Again'}
-          </Button>
-        ) : null}
+        <JevRefresh suggesting={suggesting} onSuggest={onSuggest} />
         {openTask ? null : (
-          <Button
-            type="button"
-            variant="default"
-            size="sm"
-            disabled={creating || suggestion === undefined}
-            onClick={onCreateTask}
-          >
+          <Button type="button" variant="default" size="sm" disabled={creating} onClick={() => onCreateTask(step)}>
             <Plus aria-hidden="true" />
             {creating ? 'Creating…' : 'Create Task'}
           </Button>
         )}
       </div>
     </article>
+  )
+}
+
+/**
+ * "Ask Jev again" as a ghost icon button, with the note on when Jev last
+ * checked in its tooltip — a note that was true of every card on the page is
+ * not a warning, so it explains rather than shouts.
+ */
+function JevRefresh({ suggesting, onSuggest }: { suggesting?: boolean; onSuggest: () => void }) {
+  return (
+    <TooltipProvider delayDuration={300}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-8"
+            aria-label="Ask Jev Again"
+            disabled={suggesting}
+            onClick={onSuggest}
+          >
+            <RefreshCw aria-hidden="true" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="top">{suggesting ? 'Asking Jev…' : 'Ask Jev Again. Jev Checked Earlier.'}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   )
 }
