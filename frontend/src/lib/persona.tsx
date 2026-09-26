@@ -184,63 +184,6 @@ export function usePersona() {
   return context
 }
 
-/** Information boundaries and visibility rules for staff personas. */
-export interface PersonaInfoPermissions {
-  canViewFullCreditRatios: boolean
-  canViewSensitiveCommitments: boolean
-  canEditBankApplications: boolean
-  canViewLegalDrafts: boolean
-  canScheduleSpa: boolean
-  canChaseBuyer: boolean
-  deskLabel: string
-  primaryStage: 'buyer' | 'bank' | 'solicitor' | 'spa'
-  lensSummary: string
-  whatYouSee: string
-  whatIsMasked: string
-}
-
-export const PERSONA_PERMISSIONS: Record<Persona, PersonaInfoPermissions> = {
-  'sales-admin': {
-    canViewFullCreditRatios: false,
-    canViewSensitiveCommitments: false,
-    canEditBankApplications: false,
-    canViewLegalDrafts: false,
-    canScheduleSpa: false,
-    canChaseBuyer: true,
-    deskLabel: 'Sales Admin Desk',
-    primaryStage: 'buyer',
-    lensSummary: 'Buyer Chasing & Lead Progression',
-    whatYouSee: 'Buyer contact signals, reservation age, follow-up queues, and outstanding buyer documents.',
-    whatIsMasked: 'Confidential bank DSR ratios, private debt calculations, and panel legal drafts are masked.'
-  },
-  'loan-admin': {
-    canViewFullCreditRatios: true,
-    canViewSensitiveCommitments: true,
-    canEditBankApplications: true,
-    canViewLegalDrafts: false,
-    canScheduleSpa: false,
-    canChaseBuyer: false,
-    deskLabel: 'Loan Admin Desk',
-    primaryStage: 'bank',
-    lensSummary: 'Full Underwriting & Bank Tracking',
-    whatYouSee: 'Full credit ratios, DSR calculations, panel bank decisions, and loan document verification.',
-    whatIsMasked: 'Conveyancing legal file drafts and sales commission lead chasing are de-emphasized.'
-  },
-  'legal-admin': {
-    canViewFullCreditRatios: false,
-    canViewSensitiveCommitments: false,
-    canEditBankApplications: false,
-    canViewLegalDrafts: true,
-    canScheduleSpa: true,
-    canChaseBuyer: false,
-    deskLabel: 'Legal Admin Desk',
-    primaryStage: 'solicitor',
-    lensSummary: 'Conveyancing & SPA Execution',
-    whatYouSee: 'Panel law firm assignment, Letter of Offer verification, and SPA signing schedules.',
-    whatIsMasked: 'Buyer gross income, debt commitments, and bank rejection logs are masked per PDPA standards.'
-  }
-}
-
 /** Safe hook that returns active persona context or fallback when outside PersonaProvider. */
 export function usePersonaSafe(): PersonaContextValue {
   const context = useContext(PersonaContext)

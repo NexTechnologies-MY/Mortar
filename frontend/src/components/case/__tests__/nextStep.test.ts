@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { ballInCourt } from '@mortar/core'
 import type { Booking, CaseSummary, NextAction, NextActionSuggestion } from '@mortar/core'
 import { MOVE_OWNER } from '@/components/case/ball'
-import { NEXT_ACTION_LABELS } from '@/components/chase/chase'
+import { NEXT_ACTION_LABELS, documentStepLabel } from '@/components/chase/chase'
 import { nextStepFor, stepToTask } from '../nextStep'
 
 const BOOKING: Booking = {
@@ -107,7 +107,10 @@ describe('nextStepFor', () => {
     const result = next(summary({ outstandingDocuments: ['payslip'] }))
 
     expect(result.defaultStep.action).toBe('request_document')
-    expect(result.defaultStep.label).toBe('Ask For The Document')
+    expect(result.defaultStep.label).toBe('Ask For The Missing Document')
+    // The step keeps the generic label; `documentStepLabel` is what turns it
+    // into the sentence a screen shows, so both forms cannot drift apart.
+    expect(documentStepLabel(result.defaultStep.label, result.defaultStep.document)).toBe('Ask For Payslip')
     expect(result.defaultStep.document).toBe('payslip')
   })
 

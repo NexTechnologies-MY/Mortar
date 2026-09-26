@@ -1,22 +1,24 @@
 /**
  * Today (`/chase`) — every persona's home desk. The header answers the only
- * question the page opens with: how many bookings need a move from this desk,
- * and how many tasks are due today. Two stat tiles follow, the filter row, then
- * the cards.
+ * question the page opens with: how many bookings are stalled, and how many
+ * tasks are due today. Two stat tiles follow, the filter row, then the cards.
+ *
+ * Sales Admin coordinates every booking to a signed SPA, so their home opens
+ * on the whole chase — every desk, every owner. Loan Admin and Legal Admin open
+ * on their own desk. The header sentence and the first tile follow the owner
+ * filter rather than the persona, so choosing a desk relabels them instead of
+ * leaving one sentence describing a different list from the one on screen.
  *
  * Each card names the blocker in plain words and the one next step, which is
  * the rule-based move from `ballInCourt` — the same move Waiting On and the
  * table's Task column raise, so one click anywhere creates one task. Jev's
- * cached answer appears only where it differs, as a single extra line.
- *
- * The owner filter and Open Tasks both default to the active persona's desk
- * rather than to everyone: a person opening their desk wants their own work,
- * and can widen it when they need to.
+ * cached answer appears only where it differs, as a single extra line. Clicking
+ * the unit and buyer opens the same side sheet a row opens on the ledger.
  */
 import { useMemo, useState, type Dispatch, type SetStateAction } from 'react'
 import { AlertTriangle, Banknote, BellRing, ListChecks, SearchX, SlidersHorizontal, Users } from 'lucide-react'
 import { PERSONA_STAFF } from '@mortar/core'
-import type { CaseSummary, NextActionSuggestion, OwnerRole, RiskLevel, Task } from '@mortar/core'
+import type { CaseSummary, EventKind, NextActionSuggestion, OwnerRole, RiskLevel, Task } from '@mortar/core'
 import { useCases, useSnapshot } from '@/lib/data'
 import { ApiError, fetchNextAction, postTask, updateTask } from '@/lib/api'
 import { notify } from '@/components/ui/toastConfig'
@@ -29,12 +31,14 @@ import { InfoTooltip } from '@/components/ui/InfoTooltip'
 import { RefreshErrorBanner } from '@/components/ui/RefreshErrorBanner'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { CaseQuickView } from '@/components/bookings/CaseQuickView'
+import type { BookingRow } from '@/components/bookings/BookingsTable'
 import { ChaseCard } from '@/components/chase/ChaseCard'
 import { ChaseTasks } from '@/components/chase/ChaseTasks'
 import { NEXT_ACTION_LABELS } from '@/components/chase/chase'
-import { formatRm, formatRmCompact } from '@/components/case'
+import { OWNER_ROLE_LABELS, formatRm, formatRmCompact } from '@/components/case'
 import { nextStepFor, stepToTask, type NextStep } from '@/components/case/nextStep'
-import { PERSONA_DESK_ROLE, usePersona } from '@/lib/persona'
+import { PERSONA_DESK_ROLE, usePersona, type Persona } from '@/lib/persona'
 
 const RISK_OPTIONS: { value: 'all' | RiskLevel; label: string }[] = [
   { value: 'all', label: 'All Risk' },
@@ -44,7 +48,7 @@ const RISK_OPTIONS: { value: 'all' | RiskLevel; label: string }[] = [
 ]
 
 const OWNER_OPTIONS: { value: 'all' | OwnerRole; label: string }[] = [
-  { value: 'all', label: 'All Owners' },
+  { value: 'all', label: 'All Desks' },
   { value: 'sales', label: 'Sales' },
   { value: 'sales_admin', label: 'Sales Admin' },
   { value: 'loan_admin', label: 'Loan Admin' },
@@ -53,6 +57,49 @@ const OWNER_OPTIONS: { value: 'all' | OwnerRole; label: string }[] = [
 
 const QUEUE_PREVIEW = 9
 
+/**
+ * What the page opens on, per persona.
+ *
+ * Sales Admin coordinates every booking to a signed SPA, so their home is the
+ * whole chase: every desk, and every owner's tasks. Loan Admin and Legal Admin
+ * open on their own desk and their own work. One place decides all of it, so
+ * the owner filter, the header and Open Tasks cannot drift apart.
+ */
+function defaultsFor(persona: Persona): { owner: 'all' | OwnerRole; mineOnly: boolean } {
+  return persona === 'sales-admin'
+    ? { owner: 'all', mineOnly: false }
+    : { owner: PERSONA_DESK_ROLE[persona], mineOnly: true }
+}
+
+/**
+ * The header's count and the first tile, in the words a person would say.
+ *
+ * All desks count every stalled booking; one desk counts the cases waiting on
+ * it. Either way the number is the size of the list on screen, so the sentence
+ * and the queue can never describe different work. The tile drops the subject —
+ * a tile reads "Need A Move From You" under the figure — and the sentence keeps
+ * it, because a sentence with no subject is a headline. Every form reads
+ * correctly in the singular: "1 Stalled Booking", "1 Booking Needs A Move From
+ * You".
+ */
+function headlineFor(ownerFilter: 'all' | OwnerRole, ownDesk: OwnerRole, count: number) {
+  if (ownerFilter === 'all') {
+    return {
+      count,
+      sentence: `${count} ${count === 1 ? 'Stalled Booking' : 'Stalled Bookings'}`,
+      tileLabel: 'Stalled Bookings',
+      tileInfo: 'Every booking that has stopped moving, whichever desk holds it.'
+    }
+  }
+  const from = ownerFilter === ownDesk ? 'You' : OWNER_ROLE_LABELS[ownerFilter]
+  return {
+    count,
+    sentence: `${count} ${count === 1 ? 'Booking Needs' : 'Bookings Need'} A Move From ${from}`,
+    tileLabel: `${count === 1 ? 'Needs' : 'Need'} A Move From ${from}`,
+    tileInfo: 'Stalled bookings whose next step is on this desk.'
+  }
+}
+
 export function ChasePage() {
   const { snapshot, loading, error, refresh } = useSnapshot()
   const cases = useCases()
@@ -60,9 +107,10 @@ export function ChasePage() {
   // The persona's own desk, as the owner role its staff member works under.
   const deskRole = PERSONA_DESK_ROLE[persona]
   const [riskFilter, setRiskFilter] = useState<'all' | RiskLevel>('all')
-  const [ownerFilter, setOwnerFilter] = useState<'all' | OwnerRole>(deskRole)
+  const [ownerFilter, setOwnerFilter] = useState<'all' | OwnerRole>(() => defaultsFor(persona).owner)
   const [queueExpanded, setQueueExpanded] = useState(false)
-  const [mineOnly, setMineOnly] = useState(true)
+  const [mineOnly, setMineOnly] = useState(() => defaultsFor(persona).mineOnly)
+  const [inspecting, setInspecting] = useState<string | null>(null)
 
   /** A changed filter re-folds the queue to its first few cards. */
   const applyFilters = (risk: 'all' | RiskLevel, owner: 'all' | OwnerRole) => {
@@ -92,9 +140,17 @@ export function ChasePage() {
     return map
   }, [cases, bookings, suggestions])
 
-  /** The queue ranks by how long each case has sat still, then by value at
-   * risk, then by age. One rule, read from the summary the stall rules use, so
-   * a card cannot change position when Jev is asked. */
+  /** Bookings with evidence waiting for a person to confirm it. One
+   * confirmation can clear a stall outright, so they lead the queue. */
+  const awaitingReview = useMemo(
+    () => new Set((snapshot?.events ?? []).filter((e) => e.status === 'provisional').map((e) => e.bookingId)),
+    [snapshot]
+  )
+
+  /** The queue ranks by what clears a stall soonest: evidence awaiting review
+   * first, then how long each case has sat still, then by value at risk, then
+   * by age. Jev's urgency score is not in it — asking Jev must never move a
+   * card, or the queue reshuffles under the person reading it. */
   const stalled = useMemo(() => {
     // The owner filter's match for a case is the desk that makes its next step.
     const ownerFor = (c: CaseSummary): OwnerRole | undefined => steps.get(c.bookingId)?.defaultStep.ownerRole
@@ -104,20 +160,17 @@ export function ChasePage() {
       .filter((c) => ownerFilter === 'all' || ownerFor(c) === ownerFilter)
       .sort(
         (a, b) =>
+          Number(awaitingReview.has(b.bookingId)) - Number(awaitingReview.has(a.bookingId)) ||
           b.daysSinceEvidence - a.daysSinceEvidence ||
           (bookings.get(b.bookingId)?.priceRm ?? 0) - (bookings.get(a.bookingId)?.priceRm ?? 0) ||
           b.bookingAgeDays - a.bookingAgeDays
       )
-  }, [cases, riskFilter, ownerFilter, steps, bookings])
+  }, [cases, riskFilter, ownerFilter, steps, bookings, awaitingReview])
 
   const allStalled = useMemo(() => cases.filter((c) => c.stallReasons.length > 0), [cases])
   const openTasks = useMemo(() => (snapshot?.tasks ?? []).filter((t) => t.status === 'open'), [snapshot])
 
-  /** The bookings a move from the current persona is needed on. */
-  const needFromMe = useMemo(
-    () => stalled.filter((c) => steps.get(c.bookingId)?.defaultStep.ownerRole === deskRole),
-    [stalled, steps, deskRole]
-  )
+  const headline = headlineFor(ownerFilter, deskRole, stalled.length)
   const dueToday = useMemo(() => {
     if (!snapshot) return 0
     return openTasks.filter((t) => t.dueOn <= snapshot.meta.referenceDate).length
@@ -134,6 +187,33 @@ export function ChasePage() {
   }, [openTasks])
 
   const valueAtRisk = allStalled.reduce((sum, c) => sum + (bookings.get(c.bookingId)?.priceRm ?? 0), 0)
+
+  /** The confirmed evidence kinds per booking, for the side sheet's journey. */
+  const confirmedKinds = useMemo(() => {
+    const map = new Map<string, Set<EventKind>>()
+    for (const event of snapshot?.events ?? []) {
+      if (event.status !== 'confirmed') continue
+      const set = map.get(event.bookingId) ?? new Set<EventKind>()
+      set.add(event.kind)
+      map.set(event.bookingId, set)
+    }
+    return map
+  }, [snapshot])
+
+  /** The row the side sheet shows, built the way `/bookings` builds it. */
+  const quickViewRow = useMemo((): BookingRow | null => {
+    if (!inspecting) return null
+    const booking = bookings.get(inspecting)
+    const summary = cases.find((c) => c.bookingId === inspecting)
+    if (!booking || !summary) return null
+    return {
+      booking,
+      summary,
+      signals: null,
+      confirmedKinds: confirmedKinds.get(booking.id) ?? new Set<EventKind>(),
+      openTask: openTaskByBooking.get(booking.id) ?? null
+    }
+  }, [inspecting, bookings, cases, confirmedKinds, openTaskByBooking])
 
   /** Open Tasks defaults to the active persona's own work, with an all-owners widen. */
   const shownTasks = useMemo(
@@ -201,8 +281,7 @@ export function ChasePage() {
       <PageHeaderCard>
         <h1 className="text-[32px] font-semibold leading-[1.16] tracking-[-0.02em] text-foreground">Today</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {needFromMe.length} {needFromMe.length === 1 ? 'Booking Needs' : 'Bookings Need'} A Move From You · {dueToday}{' '}
-          {dueToday === 1 ? 'Task' : 'Tasks'} Due Today
+          {headline.sentence} · {dueToday} {dueToday === 1 ? 'Task' : 'Tasks'} Due Today
         </p>
       </PageHeaderCard>
 
@@ -229,10 +308,10 @@ export function ChasePage() {
           {error ? <RefreshErrorBanner onRetry={() => void refresh()} /> : null}
           <div className="mt-4 flex flex-wrap gap-3">
             <StatCard
-              label="Need A Move From You"
+              label={headline.tileLabel}
               icon={AlertTriangle}
-              value={String(needFromMe.length)}
-              info="Stalled bookings whose next step is on your desk."
+              value={String(headline.count)}
+              info={headline.tileInfo}
               exact="Click To Clear The Filters"
               onClick={() => applyFilters('all', 'all')}
             />
@@ -307,6 +386,7 @@ export function ChasePage() {
                       openTask={openTaskByBooking.get(summary.bookingId) ?? null}
                       suggesting={suggesting.has(summary.bookingId)}
                       creating={creating.has(summary.bookingId)}
+                      onInspect={() => setInspecting(summary.bookingId)}
                       onSuggest={() => void suggest(summary.bookingId)}
                       onCreateTask={(step) => void createTask(summary.bookingId, step)}
                     />
@@ -345,6 +425,17 @@ export function ChasePage() {
               </div>
             </section>
           ) : null}
+
+          {/* The same side sheet a row opens on the ledger, so what happened
+              can be recorded from Today without leaving it. A save in here
+              refreshes the queue behind the sheet, as it does there. */}
+          <CaseQuickView
+            row={quickViewRow}
+            referenceDate={snapshot?.meta.referenceDate ?? ''}
+            suggestion={inspecting ? suggestions.get(inspecting) : undefined}
+            onClose={() => setInspecting(null)}
+            onChanged={refresh}
+          />
         </>
       )}
     </PageContainer>

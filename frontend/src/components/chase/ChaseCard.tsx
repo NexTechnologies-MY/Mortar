@@ -2,10 +2,12 @@
  * Chase card — one stalled live booking in Today's queue.
  *
  * Card stack, in reading order: unit and buyer, the blocker in plain words,
- * one muted meta line, the next step, the footer. One pill per card — urgency
- * when the card is overdue, otherwise Task Open — and the risk chip only when
- * the financing risk is High, because a chip true of every card on the page
- * is not a warning any more.
+ * one muted meta line, the next step, the footer. The unit and buyer open the
+ * case's side sheet, the same one a row click opens on the ledger, so an update
+ * can be recorded without leaving Today. One pill per card — urgency when the
+ * card is overdue, otherwise Task Open — and the risk chip only when the
+ * financing risk is High, because a chip true of every card on the page is not
+ * a warning any more.
  *
  * There is one next step. It is the rule-based move from `ballInCourt`, which
  * every screen leads with, so the same click here, in Waiting On and in the
@@ -15,7 +17,6 @@
  * suggestion's glyph rather than on a pill.
  */
 
-import { Link } from 'react-router-dom'
 import type { Booking, CaseSummary, Task } from '@mortar/core'
 import { RiskChip, STAGE_LABELS, formatDate, formatDaysLong, formatRm } from '@/components/case'
 import type { NextStep } from '@/components/case/nextStep'
@@ -25,7 +26,7 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { StatusPill } from '@/components/ui/status-pill'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { DOCUMENT_LABELS, actionIcon, blockerIcon, urgencyFor } from './chase'
+import { actionIcon, blockerIcon, documentStepLabel, urgencyFor } from './chase'
 
 /** Renders a decorative glyph handed in as a prop, so the icon component is
     never created inside the card's own render. */
@@ -41,6 +42,7 @@ export function ChaseCard({
   openTask = null,
   suggesting,
   creating,
+  onInspect,
   onSuggest,
   onCreateTask
 }: {
@@ -53,6 +55,8 @@ export function ChaseCard({
   openTask?: Task | null
   suggesting?: boolean
   creating?: boolean
+  /** Opens the case's side sheet over the queue. */
+  onInspect: () => void
   onSuggest: () => void
   /** Raises the task for the step the person picked. */
   onCreateTask: (step: NextStep) => void
@@ -71,19 +75,21 @@ export function ChaseCard({
       data-card-interactive=""
       className="flex flex-col gap-3 rounded-md border border-card-border bg-card p-4 shadow-card transition-[box-shadow,transform] duration-[160ms] ease-[var(--ease-out)] hover:-translate-y-px hover:shadow-card-hover"
     >
-      {/* Header: unit + buyer */}
+      {/* Header: unit + buyer. The whole pair opens the case's side sheet, the
+          same one a row click opens on the ledger, so what happened can be
+          recorded without leaving Today. */}
       <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <Link
-            to={`/bookings/${booking.id}`}
-            className="font-mono text-[13px] font-medium text-foreground hover:underline"
-          >
-            {booking.unit}
-          </Link>
-          <p className="truncate text-[13px] text-muted-foreground">
+        <button
+          type="button"
+          onClick={onInspect}
+          aria-label={`Quick View ${booking.unit}: ${booking.id} · ${booking.buyer.name}`}
+          className="-mx-1 min-w-0 rounded-sm px-1 py-0.5 text-left transition-colors duration-[var(--motion-fast)] hover:bg-accent"
+        >
+          <span className="block font-mono text-[13px] font-medium text-foreground">{booking.unit}</span>
+          <span className="block truncate text-[13px] text-muted-foreground">
             {booking.id} · {booking.buyer.name}
-          </p>
-        </div>
+          </span>
+        </button>
         {pill}
       </div>
 
@@ -108,14 +114,11 @@ export function ChaseCard({
       <div className="flex flex-col gap-1.5 text-[13px]">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <Glyph icon={actionIcon(step.action)} />
-          <span className="font-medium text-foreground">
-            {step.label}
-            {step.action === 'request_document' && step.document ? ` · ${DOCUMENT_LABELS[step.document]}` : ''}
-          </span>
+          <span className="font-medium text-foreground">{documentStepLabel(step.label, step.document)}</span>
         </div>
         {alternativeStep ? (
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground">
-            <span>Jev Suggests: {alternativeStep.label} Instead</span>
+            <span>Jev Suggests: {documentStepLabel(alternativeStep.label, alternativeStep.document)} Instead</span>
             <Button
               type="button"
               variant="secondary"

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { NextActionSuggestion } from '@mortar/core'
-import { addDays, dueOnForUrgency, urgencyFor } from '../chase'
+import { NEXT_ACTION_LABELS, addDays, documentStepLabel, dueOnForUrgency, urgencyFor } from '../chase'
 
 function suggestion(urgencyScore: number): NextActionSuggestion {
   return {
@@ -46,5 +46,20 @@ describe('dueOnForUrgency', () => {
 describe('addDays', () => {
   it('crosses month boundaries', () => {
     expect(addDays('2026-09-30', 2)).toBe('2026-10-02')
+  })
+})
+
+describe('documentStepLabel', () => {
+  it('names the document once the case knows which one is missing', () => {
+    expect(documentStepLabel(NEXT_ACTION_LABELS.request_document, 'payslip')).toBe('Ask For Payslip')
+    expect(documentStepLabel(NEXT_ACTION_LABELS.request_document, 'epf_statement')).toBe('Ask For EPF Statement')
+  })
+
+  it('falls back to the step’s own words when no document is known', () => {
+    expect(documentStepLabel(NEXT_ACTION_LABELS.request_document)).toBe('Ask For The Missing Document')
+  })
+
+  it('leaves every other step alone', () => {
+    expect(documentStepLabel(NEXT_ACTION_LABELS.chase_banker, 'payslip')).toBe('Call The Banker')
   })
 })

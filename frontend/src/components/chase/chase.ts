@@ -11,11 +11,15 @@ import { OWNER_ROLE_LABELS } from '@/components/case'
 
 /**
  * What each next action is called on screen: a verb a person says at work.
- * "Ask For Payslip", not "Request Document · Payslip" — the user acts on the
- * thing, the record type is ours (DESIGN.md Plain Language).
+ * "Call The Banker", not "Chase Banker" — the user acts on the thing, the
+ * record type is ours (DESIGN.md Plain Language).
+ *
+ * `request_document` reads "Ask For The Missing Document" rather than "Ask For
+ * The Document": what a person asks for is a document that is missing, and the
+ * `documentStepLabel` helper below names the one when the case names it.
  */
 export const NEXT_ACTION_LABELS: Record<NextAction, string> = {
-  request_document: 'Ask For The Document',
+  request_document: 'Ask For The Missing Document',
   chase_banker: 'Call The Banker',
   submit_another_bank: 'Submit To Another Bank',
   call_buyer: 'Call The Buyer',
@@ -32,6 +36,20 @@ export const DOCUMENT_LABELS: Record<DocumentKind, string> = {
   ic_copy: 'IC Copy',
   employment_letter: 'Employment Letter',
   tax_form: 'Tax Form'
+}
+
+/**
+ * A request-document step as a person says it, in one place: "Ask For
+ * Payslip" once the case names the document, and "Ask For The Missing Document"
+ * while it does not. A step is a sentence, so the label itself carries the
+ * document rather than a "· Payslip" tail bolted on after it.
+ *
+ * Every other step passes through untouched, so a caller can hand it any
+ * step's label without checking which one it is.
+ */
+export function documentStepLabel(label: string, document?: DocumentKind): string {
+  if (document && label === NEXT_ACTION_LABELS.request_document) return `Ask For ${DOCUMENT_LABELS[document]}`
+  return label
 }
 
 /** Urgency pill copy: Jev's 0–2 score, or staleness when no suggestion exists. */

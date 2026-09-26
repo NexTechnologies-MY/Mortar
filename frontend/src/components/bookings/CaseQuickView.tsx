@@ -9,6 +9,7 @@
 import { Link } from 'react-router-dom'
 import { ChevronRight } from 'lucide-react'
 import { ballInCourt, PERSONA_STAFF } from '@mortar/core'
+import type { NextActionSuggestion } from '@mortar/core'
 import { RiskChip } from '@/components/case/RiskChip'
 import { StagePill } from '@/components/case/StagePill'
 import { formatDate, formatDaysLong, formatRm } from '@/components/case/format'
@@ -22,12 +23,15 @@ import { CaseJourney, WaitingOnPanel } from './WaitingOn'
 export function CaseQuickView({
   row,
   referenceDate,
+  suggestion,
   onClose,
   onChanged
 }: {
   /** The case to show; `null` keeps the sheet closed. */
   row: BookingRow | null
   referenceDate: string
+  /** Jev's cached answer for the shown case, when the caller has one. */
+  suggestion?: NextActionSuggestion
   onClose: () => void
   onChanged: () => Promise<void>
 }) {
@@ -69,6 +73,9 @@ export function CaseQuickView({
             summary={row.summary}
             referenceDate={referenceDate}
             onChanged={onChanged}
+            // Jev's cached answer, so the alternative reads the same here as it
+            // does on Today and on the case page.
+            suggestion={suggestion}
             className="border-t border-border pt-4"
           />
           {/* A closed case takes no more updates. */}
