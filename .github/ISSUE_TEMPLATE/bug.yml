@@ -1,0 +1,82 @@
+name: Bug Report
+description: Something in Mortar is broken or behaves wrongly.
+title: 'Bug: '
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for reporting. Plain words are fine. Describe what you saw, not what you think the cause is.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What Happened
+      description: What went wrong? Include any error message word for word.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What You Expected
+      description: What should have happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps To Reproduce
+      description: The exact steps someone else can follow to see the bug.
+      placeholder: |
+        1. Sign in as Sales Admin
+        2. Open Today
+        3. Click the first card
+        4. See the error
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where
+      options:
+        - Live site
+        - Running locally
+        - Both
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Sales Admin (Today)
+        - Loan Admin (Bookings)
+        - Legal Admin (Legal)
+        - Case page
+        - Forecast
+        - Add Bookings
+        - Settings
+        - Ask Mortar
+        - Several pages
+        - Landing or sign-in
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots Or Recording
+      description: Drag images or a short video here.
+  - type: checkboxes
+    id: data
+    attributes:
+      label: Data Check
+      options:
+        - label: My report and screenshots contain no real buyer names, IC numbers, phone numbers or bank details.
+          required: true
+  - type: checkboxes
+    id: duplicates
+    attributes:
+      label: Duplicate And Conflict Check
+      description: Search first, for example `gh issue list --state all --search "<keywords>"` and `gh pr list --state all --search "<keywords>"`.
+      options:
+        - label: I searched open and closed issues and pull requests, and linked any that overlap or conflict with this one.
+          required: true
