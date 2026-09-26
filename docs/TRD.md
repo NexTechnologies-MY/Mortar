@@ -200,10 +200,11 @@ storage for nested domain entities:
   `reported_by`, `created_at`, `booking_ids text[]`, `undone_at timestamptz`,
   `undone_by text`, `removed jsonb`), so a batch can be undone as a whole.
   `undone_at`/`undone_by` stamp who undid an import and when; the row itself is
-  never deleted, so every removal leaves a trace (`docs/RETENTION.md`).
-  `removed` holds the undo's own snapshot of what it took out: each removed
-  booking's id, unit, project, buyer name and price — never its IC or phone,
-  since the booking row itself is gone once the undo commits.
+  never deleted, so every removal leaves a trace (see
+  [Data Retention](#data-retention)). `removed` holds the undo's own snapshot of
+  what it took out: each removed booking's id, unit, project, buyer name and
+  price — never its IC or phone, since the booking row itself is gone once the
+  undo commits.
 - Indexes added for query paths that did not have one: `messages(booking_id)`,
   `tasks(booking_id)`, and `loan_applications(booking_id)`, alongside the
   `events(message_id)` and `events(application_id)` indexes noted above.
@@ -301,8 +302,8 @@ no third-party schema validation libraries are loaded.
 - `POST /api/imports/:id/undo`: Undoes a completed import, returning the removed
   booking ids as `removed`. Returns `404` when the import does not exist or was
   already undone, and `409` (`ImportMovedOnError`) when any of its bookings has
-  had updates since the import. What survives the undo is documented in
-  `docs/RETENTION.md`.
+  had updates since the import. What survives the undo is set out in
+  [Data Retention](#data-retention).
 - `POST /api/admin/reset`: Clears all tables in a single transaction and
   re-seeds the database using
   `generate({ seed: DEFAULT_SEED, referenceDate: REFERENCE_DATE, bookings: 140 })`,
@@ -741,6 +742,50 @@ architected for future corporate data onboarding:
 - **Data Minimization:** Role-based views restrict loan document visibility.
   Sales administrators view case blocker classifications without accessing
   detailed personal financial documentation.
+
+### Data Retention
+
+Every booking that became a transaction is kept for 7 years, with its whole
+record: the event log, loan applications, tasks and messages. A transaction
+means money was received, forfeited, refunded or disbursed, or an SPA was
+signed. How long to keep bookings that never became a transaction is an open
+question in the PRD.
+
+Two laws set the 7 years. The two personal-data rules pull the other way: keep
+personal data no longer than it is needed, unless another law says so.
+
+| Law                                                        | Requirement                                                                                                                                                                                     | Clock                                                        |
+| ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| Companies Act 2016 (Act 777), s245(3)                      | "The company shall retain the records referred to in subsection (1) for seven years after the completion of the transactions or operations to which the entries relate."                        | From completion of each transaction.                         |
+| Income Tax Act 1967 (Act 53), s82(1)(a)                    | Keep "sufficient records for a period of seven years from the end of the year to which any income from that business relates".                                                                  | From the end of that year.                                   |
+| Personal Data Protection Act 2010 (Act 709), s10(1)        | "The personal data processed for any purpose shall not be kept longer than is necessary for the fulfilment of that purpose."                                                                    | No fixed period: only as long as the purpose lasts.          |
+| Personal Data Protection Standard 2015, Retention Standard | "Keep personal data no longer than necessary unless there are requirements by other legal provisions" and "Prepare a personal data disposal schedule for inactive data with a 24 month period." | A disposal schedule for inactive data, on a 24-month period. |
+
+The Housing Development (Control and Licensing) Act 1966 requires a developer to
+keep proper records, but names no retention period. AMLA 2001 s17 sets 6 years
+for reporting institutions; its schedule names estate agency practice, not
+developers, so it does not appear to cover a developer selling its own units.
+
+What Mortar does today:
+
+- **No Deletion In Normal Use:** Nothing deletes a booking, an event, a task or
+  a message. A completed task is marked done, not removed.
+- **Review Trail:** Every staff decision on a Jev proposal is appended to
+  `event_reviews`. It has no foreign key to `events`, so the trail outlives the
+  event it reviewed.
+- **Undo Import:** An undo removes an import's bookings only while none of them
+  has moved on, and a booking number is never reused. The import's own row keeps
+  a `removed` snapshot of what went, without IC or phone.
+- **Demo Reset:** Reset Demo Data exists for the public demo only. A server
+  holding real data must set `MORTAR_DEMO_RESET` to `off`, `false`, `0` or `no`,
+  which also stops seeding and truncation on boot and makes
+  `POST /api/admin/reset` refuse with 403.
+- **Backups:** The database host keeps days of history, not years. A 7-year
+  guarantee needs regular database exports, kept for 7 years outside the app,
+  which is a hosting task.
+
+**Not Legal Advice:** This is a summary for the team, not legal advice. Confirm
+it with the company's lawyer.
 
 ## Deploy And CI
 

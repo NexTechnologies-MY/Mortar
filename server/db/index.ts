@@ -561,7 +561,7 @@ export function createDatabase(sql: SQL): Database {
             or exists (select 1 from loan_applications a where a.booking_id = b.id)
           ) order by b.id`
         if (moved.length > 0) throw new ImportMovedOnError(moved.map((r: Record<string, unknown>) => String(r.id)))
-        // A retention snapshot of what is being removed (docs/RETENTION.md):
+        // A retention snapshot of what is being removed (docs/TRD.md, Data Retention):
         // kept on the import row forever, with no IC or phone, so the trace
         // an undo leaves behind still names a real booking and buyer even
         // after the row itself, and its `BK-nnnn` number, are gone for good.

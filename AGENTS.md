@@ -54,5 +54,5 @@ flat config at the root, Prettier, husky + lint-staged.
 | Deciding how much to build or how to change code                | [Andrej Karpathy Skills](docs/agents/andrej-karpathy-skills.md) |
 | Choosing or installing an agent skill                           | [Skills](docs/agents/skills.md)                                 |
 | Writing or formatting Markdown                                  | [Markdown Style Guide](docs/markdown-style.md)                  |
-| Reviewing proposed product features and UX enhancements         | [Product Suggestions](docs/SUGGESTIONS.md)                      |
-| Deleting data, or deploying with real buyer data                | [Data Retention](docs/RETENTION.md)                             |
+| Weighing feature ideas that are not built yet                   | [Feature Ideas](docs/research/feature-ideas/README.md)          |
+| Deleting data, or deploying with real buyer data                | [Data Retention](docs/TRD.md#data-retention)                    |

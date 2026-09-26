@@ -345,7 +345,7 @@ AGENTS.md        Agent instructions: stack, routes, rules
   income figures still reach the browser because risk is worked out there.
 - **Retention.** Transaction records are kept 7 years (Companies Act 2016 s245,
   Income Tax Act 1967 s82); a server holding real data must set
-  `MORTAR_DEMO_RESET=off`. See [`RETENTION.md`](RETENTION.md).
+  `MORTAR_DEMO_RESET=off`. See [Data Retention](TRD.md#data-retention).
 - **AI is an assistant, not a decider.** Rules flag risk; AI may draft and check
   documents and messages, but it never makes credit decisions.
 

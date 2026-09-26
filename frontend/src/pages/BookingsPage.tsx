@@ -8,7 +8,7 @@
  *
  * Active / Closed (issue #23): a closed booking (`disbursed`, `cancelled` or
  * `lapsed` — `spa_signed` stays Active) never leaves the database, per the
- * 7-year retention rule (docs/RETENTION.md); it only leaves the Active list,
+ * 7-year retention rule (docs/TRD.md, Data Retention); it only leaves the Active list,
  * behind its own tab with its own filtered, sorted, paginated view. Closed
  * carries an Export To Excel button so a desk can pull that record out of
  * Mortar. Add Booking (issue #24) enters one booking by hand, validated the

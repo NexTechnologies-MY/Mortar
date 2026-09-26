@@ -522,7 +522,7 @@ whole column, with the row review stating the switch.
   deleted after its own request already succeeded. A booking number an import
   has ever used must never be reused, even after undo. The undo must record a
   `removed` snapshot (id, unit, project, buyer name, price — never IC or phone)
-  on the import's own row, per `docs/RETENTION.md`.
+  on the import's own row, per the TRD's Data Retention section.
 
 ### FR-14: Persona Navigation And Design System Compliance
 
@@ -739,7 +739,7 @@ never move again stops crowding the working list without ever being deleted.
   fall on the Closed tab; `spa_signed` must stay on Active, because it still has
   a legal file to close.
 - **AC-21.3:** A closed booking must never be deleted, per the 7-year retention
-  rule (`docs/RETENTION.md`); it must only leave the Active list for its own
+  rule (TRD, Data Retention); it must only leave the Active list for its own
   filtered, sorted, paginated view on the Closed tab.
 - **AC-21.4:** The Closed tab must carry an Export To Excel button
   (`closedExport.ts`) that downloads `mortar-closed-cases-<referenceDate>.xlsx`,
@@ -966,6 +966,10 @@ benchmarks.
   2026 cover impact assessments, privacy by design, and automated
   decision-making; they will apply once the forecast scores real buyers. The
   prototype holds only synthetic data, so these duties are not triggered.
+- **Record Retention:** Bookings that became transactions are kept for 7 years
+  under the Companies Act 2016 s245(3) and the Income Tax Act 1967 s82(1)(a).
+  The rule, and what Mortar does to honour it, are in the TRD's
+  [Data Retention](TRD.md#data-retention) section.
 
 ### Operational Constraints
 
@@ -1008,6 +1012,16 @@ benchmarks.
 4.  **Subsidiary Policy Variation:** How should developer-specific refund terms
     and administrative fee schedules be configured across different commercial
     operating entities?
+5.  **Non-Transaction Retention:** How long should Mortar keep bookings that
+    never became a transaction, and should it then delete them or strip the
+    personal details (name, IC, phone, income, commitments)? PDPA points to a
+    short period, and the PDP Standard's 24-month disposal schedule for inactive
+    data is one reference point.
+6.  **Estate Agent Licensing:** Are any in-house sales staff licensed estate
+    agents under the Valuers, Appraisers and Estate Agents Act 1981 (Act 242)?
+    That could bring AMLA's 6-year record-keeping into scope for their work.
+7.  **Retention Exports:** Who runs the 7-year database exports, and where are
+    they kept?
 
 ## See Also
 

@@ -147,6 +147,18 @@ from one bank does not mark a multi-application booking as failed. A live
 booking with no confirmed event for ten or more days shows as unknown,
 preventing stale cases from masquerading as healthy pipeline.
 
+### Waiting On
+
+Daily triage across the three desks comes down to four questions: where the unit
+is now, what is blocking it, who has to move next, and what that move is. The
+desk tables showed a booking's stage, age and risk, but not why it was stuck or
+what to do next.
+
+Every open case now names the party it waits on: the buyer, a panel bank, the
+solicitor or the developer's own staff. It also names what that party owes and
+the next move, on the bookings table and the case page alike, so staff can
+triage a whole list without opening each case.
+
 ### High-Density Ledger Design
 
 Mortar adheres to the strict interface rules defined in the
@@ -428,6 +440,9 @@ Mortar is structured for phased organizational deployment. The current working
 prototype exercises the underlying case mechanics on synthetic data, setting the
 stage for a controlled 12-week on-site pilot.
 
+Ideas beyond this roadmap, written up but not built, are collected in
+[Feature Ideas](research/feature-ideas/README.md).
+
 ### Current Prototype Versus Production Roadmap
 
 | System Component   | Prototype Capability                                             | Production Roadmap                                                      |
@@ -495,5 +510,7 @@ Weeks 9–12: Audit & Rollout  ◄── Weeks 5–8: Live Intervention
 - [Practitioner Survey](research/practitioner-survey/README.md): Empirical
   findings on conversion bottlenecks and leakage causes from Malaysian industry
   professionals (n = 5).
+- [Feature Ideas](research/feature-ideas/README.md): Features written up but not
+  built yet, with their worked figures and what each one rests on.
 - [Problem Statement](source/problem-statement.md): Original Chin Hin Group
   hackathon challenge brief for booking-to-SPA conversion intelligence.

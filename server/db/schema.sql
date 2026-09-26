@@ -115,7 +115,7 @@ create index if not exists tasks_booking_idx on tasks (booking_id);
 
 -- One row per spreadsheet import, so a batch can be undone as a whole while
 -- none of its bookings has moved on. An undo keeps the row, stamped with who
--- undid it and when, so every removal leaves a trace (docs/RETENTION.md).
+-- undid it and when, so every removal leaves a trace (docs/TRD.md, Data Retention).
 -- `removed` is that trace's content: each undone booking's id, unit, project,
 -- buyer name and price, never its IC or phone, since the row itself is gone.
 create table if not exists imports (

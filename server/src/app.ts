@@ -68,7 +68,7 @@ export interface AppOptions {
   /**
    * Whether `POST /api/admin/reset` may wipe the database. On for the public
    * demo; a server holding real data sets `MORTAR_DEMO_RESET=off`, and the
-   * route then refuses with 403 (docs/RETENTION.md).
+   * route then refuses with 403 (docs/TRD.md, Data Retention).
    */
   resetEnabled?: boolean
 }

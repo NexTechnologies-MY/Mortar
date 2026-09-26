@@ -1,6 +1,6 @@
 /**
  * Closed-cases export (issue #23) — retention keeps every closed booking for
- * seven years (docs/RETENTION.md), so Closed never deletes a row; this is the
+ * seven years (docs/TRD.md, Data Retention), so Closed never deletes a row; this is the
  * record a desk can pull out of Mortar for that file. Row-building is pure
  * and DOM/network-free so it is unit-testable on its own; only
  * `downloadClosedExport` touches the browser, and it lazy-loads
