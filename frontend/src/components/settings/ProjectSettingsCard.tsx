@@ -1,6 +1,6 @@
 /**
- * ProjectSettingsCard — Configure allowed unit ranges, inventory boundaries,
- * unit layout models, and default panel law firm used for automatic case assignment.
+ * ProjectSettingsCard — Configure allowed unit ranges, unit layout models,
+ * and default panel law firm used for automatic booking assignment.
  */
 
 import { useState } from 'react'
@@ -129,7 +129,7 @@ export function ProjectSettingsCard({ defaultProjectName }: { defaultProjectName
             <div>
               <h2 className="text-sm font-semibold text-foreground">Project & Unit Range Settings</h2>
               <p className="text-xs text-muted-foreground">
-                Set project unit inventory boundaries, unit layout models, and default panel law firm.
+                Set Project Unit Inventory Boundaries, Unit Layout Models, And The Default Panel Law Firm.
               </p>
             </div>
           </div>
@@ -273,8 +273,8 @@ export function ProjectSettingsCard({ defaultProjectName }: { defaultProjectName
           {layoutsOpen && (
             <>
               <p className="text-[11px] text-muted-foreground leading-normal">
-                Configure different floor plan models (e.g. Type A, Type B). Selecting a model on the Import page
-                automatically populates the unit layout description & base pricing.
+                Configure Different Floor Plan Models (e.g. Type A, Type B). Selecting A Model On Add Bookings
+                Automatically Populates The Unit Layout Description & Base Pricing.
               </p>
 
               <div className="space-y-3">
@@ -309,7 +309,7 @@ export function ProjectSettingsCard({ defaultProjectName }: { defaultProjectName
                                     Make Default
                                   </Button>
                                 </TooltipTrigger>
-                                <TooltipContent>Set as default model</TooltipContent>
+                                <TooltipContent>Set As Default Model</TooltipContent>
                               </Tooltip>
                             </TooltipProvider>
                           )}
@@ -331,7 +331,7 @@ export function ProjectSettingsCard({ defaultProjectName }: { defaultProjectName
                                   <Trash2 className="size-3.5" />
                                 </Button>
                               </TooltipTrigger>
-                              <TooltipContent>Delete model</TooltipContent>
+                              <TooltipContent>Delete Model</TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
                         </div>
@@ -408,11 +408,11 @@ export function ProjectSettingsCard({ defaultProjectName }: { defaultProjectName
         <div className="flex flex-col gap-1.5 border-t border-border pt-3">
           <Label className="flex items-center gap-1.5 text-xs font-medium">
             <Scale className="size-3.5 text-primary" />
-            Default Panel Law Firm (Auto-assigned)
+            Default Panel Law Firm
           </Label>
           <Select value={draft.defaultLawFirm} onValueChange={(val) => handleChange('defaultLawFirm', val)}>
             <SelectTrigger className="h-8 text-xs">
-              <SelectValue placeholder="Select default law firm" />
+              <SelectValue placeholder="Select Default Law Firm" />
             </SelectTrigger>
             <SelectContent>
               {PANEL_LAW_FIRMS.map((firm) => (
@@ -422,9 +422,7 @@ export function ProjectSettingsCard({ defaultProjectName }: { defaultProjectName
               ))}
             </SelectContent>
           </Select>
-          <p className="text-[11px] text-muted-foreground">
-            Newly keyed cases on the Import page will automatically be assigned to this law firm.
-          </p>
+          <p className="text-[11px] text-muted-foreground">Bookings Typed In On Add Bookings Get This Law Firm.</p>
         </div>
 
         {/* Footer Actions */}

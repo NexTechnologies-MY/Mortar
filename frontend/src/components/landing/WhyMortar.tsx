@@ -1,6 +1,6 @@
 /**
  * "Why Use Mortar" — the concrete gains, grounded in the product overview and
- * the practitioner survey (n = 5). Every number reads as "n of 5"; nothing is
+ * the practitioner survey (n = 8). Every number reads as "n of 8"; nothing is
  * invented. A block, not a sheet: LandingPage folds it into the single drawer
  * it shares with Pricing.
  */
@@ -8,16 +8,17 @@ import { cn } from '@/lib/utils'
 
 const STATS: { figure: string; label: string }[] = [
   {
-    figure: '5 of 5',
-    label: 'Practitioners name loan rejection the biggest cause of leakage — survey, n = 5.'
+    figure: '8 of 8',
+    label:
+      'Practitioners rank financing eligibility the best signal that a booking will reach a signed SPA — survey, n = 8.'
+  },
+  {
+    figure: '7 of 8',
+    label: 'Practitioners name loan rejection or insufficient financing the biggest cause of leakage.'
   },
   {
     figure: '0–2 of 10',
-    label: 'Bookings reaching a signed SPA, per 3 of 5 practitioners. The leak is real; its size is what nobody sees.'
-  },
-  {
-    figure: '6–12 weeks',
-    label: 'A stalled unit sits off the market while the statutory delivery clock keeps counting.'
+    label: 'Bookings reach a signed SPA, say half the practitioners. The leak is real; its size is what nobody sees.'
   }
 ]
 
@@ -45,9 +46,9 @@ export function WhyMortar({ className }: { className?: string }) {
         <div className="land-cell">
           <h3 className="land-cell-title">Jev Proposes. People Decide.</h3>
           <p className="land-cell-body">
-            Practitioners asked for AI on document checks (3 of 5) and next actions (2 of 5); only 1 of 5 would let it
-            score conversion. So Jev reads and proposes, a person confirms — and the forecast stays statistics, not
-            vibes.
+            Practitioners asked for AI on next actions (4 of 8), document checks (3 of 8), and summarising WhatsApp and
+            banker updates (3 of 8); only one respondent would let AI score conversion. So Jev reads and proposes, a
+            person confirms — and the forecast stays statistics, not vibes.
           </p>
         </div>
         <div className="land-cell">

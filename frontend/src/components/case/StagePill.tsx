@@ -10,7 +10,7 @@ import { StatusPill, type StatusPillTone } from '@/components/ui/status-pill'
 export const STAGE_LABELS: Record<Stage, string> = {
   booked: 'Booked',
   loan_applied: 'With Bank',
-  lo_issued: 'LO Issued',
+  lo_issued: 'Loan Approved',
   loan_agreement: 'Loan Agreement',
   disbursed: 'Disbursed',
   spa_signed: 'SPA Signed',

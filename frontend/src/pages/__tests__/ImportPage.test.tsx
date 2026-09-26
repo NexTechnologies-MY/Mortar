@@ -73,6 +73,7 @@ describe('ImportPage', () => {
   it('reviews every row: ready, held by an open booking, or missing a value', async () => {
     renderImport()
     await screen.findByRole('heading', { name: 'Add Bookings' })
+    expect(screen.getByText('Upload A Spreadsheet, Or Type Bookings In One By One.')).toBeTruthy()
     drop(SHEET)
 
     expect(await screen.findByText('3 Rows Read')).toBeTruthy()

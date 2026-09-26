@@ -11,11 +11,16 @@ describe('ProjectSettingsCard', () => {
     render(<ProjectSettingsCard />)
 
     expect(screen.getByText('Project & Unit Range Settings')).toBeTruthy()
+    expect(
+      screen.getByText('Set Project Unit Inventory Boundaries, Unit Layout Models, And The Default Panel Law Firm.')
+    ).toBeTruthy()
     expect(screen.getByDisplayValue('Bukit Damai')).toBeTruthy()
     expect(screen.getByDisplayValue('A')).toBeTruthy()
     expect(screen.getByDisplayValue('1')).toBeTruthy()
     expect(screen.getByDisplayValue('35')).toBeTruthy()
     expect(screen.getByDisplayValue('12')).toBeTruthy()
+    expect(screen.getByText('Default Panel Law Firm')).toBeTruthy()
+    expect(screen.getByText('Bookings Typed In On Add Bookings Get This Law Firm.')).toBeTruthy()
     expect(screen.getByText('Teh & Partners')).toBeTruthy()
   })
 
