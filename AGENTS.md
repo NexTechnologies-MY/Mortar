@@ -39,6 +39,13 @@ flat config at the root, Prettier, husky + lint-staged.
 - Think before coding, keep changes minimal and surgical, and verify with a test
   before claiming done. Details:
   [Andrej Karpathy Skills](docs/agents/andrej-karpathy-skills.md).
+- Before opening an issue or a pull request, read the existing ones with `gh`,
+  open and closed, and check that yours neither duplicates nor conflicts with
+  them; link any that overlap. Details:
+  [GitHub Issues And Pull Requests](docs/agents/github.md).
+- Ask the Graphify graph before grepping or reading file after file, and refresh
+  it as the last commit of every pull request so `main` always carries the
+  current graph. Details: [Graphify](docs/agents/graphify.md).
 - Run `bun run check` before finishing, then `bun run format`.
 
 ## Documents
@@ -57,3 +64,6 @@ flat config at the root, Prettier, husky + lint-staged.
 | Weighing feature ideas that are not built yet                   | [Feature Ideas](docs/research/feature-ideas/README.md)          |
 | Reviewing the UI triage and its redesign plan                   | [UI Triage](docs/research/ui-triage/README.md)                  |
 | Deleting data, or deploying with real buyer data                | [Data Retention](docs/TRD.md#data-retention)                    |
+| Branching, committing, or opening an issue or pull request      | [Contributing](.github/CONTRIBUTING.md)                         |
+| Checking a new issue or pull request against existing ones      | [GitHub Issues And Pull Requests](docs/agents/github.md)        |
+| Finding code, or tracing how parts of Mortar connect            | [Graphify](docs/agents/graphify.md)                             |
