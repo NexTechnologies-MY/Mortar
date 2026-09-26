@@ -76,4 +76,31 @@ describe('EvidenceLog', () => {
     const sources = [...container.querySelectorAll('tbody tr')].map((row) => row.children[6]?.textContent)
     expect(sources).toEqual(['Jev', 'Demo', 'Demo'])
   })
+
+  it.each([
+    ['100% Probability', 'Jev Is Sure'],
+    ['90% Probability', 'Jev Is Sure'],
+    ['84% Probability', 'Jev Is Fairly Sure'],
+    ['70% Probability', 'Jev Is Fairly Sure'],
+    ['62% Probability', 'Jev Is Not Sure']
+  ])('reads the stored note %s as the words a person uses for it', (note, certainty) => {
+    // DESIGN.md Plain Language bans a probability on screen; the same words the
+    // messages panel uses carry it instead.
+    const { container } = render(<EvidenceLog events={[event({ id: 'EV-1', note })]} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Show Full History (1)' }))
+
+    expect(container.querySelector('tbody tr')!.children[3]?.textContent).toBe(certainty)
+    expect(container.textContent).not.toContain('Probability')
+  })
+
+  it('leaves a note that is a sentence alone, however it reads', () => {
+    const { container } = render(
+      <EvidenceLog events={[event({ id: 'EV-1', note: 'Firm Confirmed 29 Jul, Awaiting Signature' })]} />
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Show Full History (1)' }))
+
+    expect(container.querySelector('tbody tr')!.children[3]?.textContent).toBe(
+      'Firm Confirmed 29 Jul, Awaiting Signature'
+    )
+  })
 })

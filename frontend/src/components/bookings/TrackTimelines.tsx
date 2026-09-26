@@ -1,14 +1,16 @@
 /**
  * Track timelines — the case's loan and legal tracks side by side, with the
  * sales events beneath. Each entry carries its date, kind, document, note and
- * evidence status; provisional and disputed events show but never advance
- * the case.
+ * evidence status; a note that is only Jev's own confidence reads as the words
+ * a person uses for it, never as a percentage. Provisional and disputed events
+ * show but never advance the case.
  */
 
 import type { CaseEvent, Track } from '@mortar/core'
 import { EvidencePill } from '@/components/case/EvidencePill'
 import { formatDate } from '@/components/case/format'
 import { DOCUMENT_LABELS, EVENT_KIND_LABELS } from './labels'
+import { displayNote } from './MessagesPanel'
 import { Card, CardContent } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 
@@ -44,7 +46,7 @@ function TrackColumn({ title, events }: { title: string; events: CaseEvent[] }) 
                 <p className="mt-0.5 text-[13px] text-muted-foreground">
                   {formatDate(event.occurredAt)}
                   {event.document ? ` · ${DOCUMENT_LABELS[event.document]}` : ''}
-                  {event.note ? ` — ${event.note}` : ''}
+                  {event.note ? ` — ${displayNote(event.note)}` : ''}
                 </p>
               </div>
             </li>

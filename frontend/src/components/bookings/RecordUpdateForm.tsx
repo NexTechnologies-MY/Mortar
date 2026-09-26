@@ -18,6 +18,9 @@
  *   in a dialog, Cancel focused.
  * - `collapsible` opens the form closed behind a "Record An Update" button,
  *   so the case page does not carry three forms expanded on load.
+ * - `initialKind` opens it already set to one update, as the Legal queue's row
+ *   action does, so a legal admin writes down a decision rather than remaking
+ *   it.
  */
 
 import { useRef, useState } from 'react'
@@ -88,7 +91,7 @@ const GROUPS: { track: Track; label: string; kinds: [UpdateKind, string][] }[] =
       ['documents_requested', 'Documents Requested'],
       ['documents_received', 'Documents Received'],
       ['valuation_shortfall', 'Valuation Shortfall'],
-      ['loan_approved', 'Loan Approved (LO Issued)'],
+      ['loan_approved', 'Loan Approved'],
       ['loan_rejected', 'Loan Rejected'],
       ['loan_agreement_signed', 'Loan Agreement Signed'],
       ['disbursed', 'Disbursed']
@@ -158,6 +161,7 @@ export function RecordUpdateForm({
   referenceDate,
   reportedBy,
   onRecorded,
+  initialKind,
   collapsible = false,
   className
 }: {
@@ -173,6 +177,12 @@ export function RecordUpdateForm({
   /** Re-reads the case once the update is saved. */
   onRecorded: () => Promise<void>
   /**
+   * Opens the form already set to this update, as the Legal queue's row action
+   * does: a legal admin has already decided the appointment happened, and is
+   * here only to write it down. Omitted, the form starts on the choice.
+   */
+  initialKind?: UpdateKind
+  /**
    * `true` on the case page, where the form opens closed behind a
    * "Record An Update" button. `false` leaves it open on load, for callers
    * that have no room for the toggle (a dialog, a narrow sheet).
@@ -181,7 +191,7 @@ export function RecordUpdateForm({
   /** Sits on the caller's own separator, where the form is not the last block. */
   className?: string
 }) {
-  const [kind, setKind] = useState<UpdateKind | ''>('')
+  const [kind, setKind] = useState<UpdateKind | ''>(initialKind ?? '')
   const [open, setOpen] = useState(false)
   const [applicationId, setApplicationId] = useState('')
   const [bank, setBank] = useState('')
@@ -217,7 +227,7 @@ export function RecordUpdateForm({
   }
 
   const reset = () => {
-    setKind('')
+    setKind(initialKind ?? '')
     setApplicationId('')
     setBank('')
     setBanker('')
@@ -484,17 +494,13 @@ export function RecordUpdateForm({
 
   return (
     <section
-      aria-labelledby="record-update-heading"
-      className={cn('flex flex-col gap-3 border-t border-border pt-4', className)}
+      aria-label="Record An Update"
+      className={cn('flex flex-col items-start gap-3 border-t border-border pt-4', className)}
     >
-      <h2 id="record-update-heading" className={EYEBROW}>
-        Record An Update
-      </h2>
       <Button
         type="button"
         size="sm"
         variant="secondary"
-        className="self-start"
         aria-expanded={open}
         aria-controls="record-update-form"
         onClick={() => setOpen((was) => !was)}
@@ -502,7 +508,7 @@ export function RecordUpdateForm({
         {open ? 'Close' : 'Record An Update'}
       </Button>
       {open && (
-        <div id="record-update-form" className="flex flex-col gap-3">
+        <div id="record-update-form" className="flex w-full flex-col gap-3">
           {form}
         </div>
       )}

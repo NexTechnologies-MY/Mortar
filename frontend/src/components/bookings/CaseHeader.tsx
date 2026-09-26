@@ -11,7 +11,7 @@ import type { Booking, CaseSummary } from '@mortar/core'
 import { ballInCourt } from '@mortar/core'
 import { RiskChip } from '@/components/case/RiskChip'
 import { STAGE_LABELS } from '@/components/case/StagePill'
-import { formatDate, formatDaysLong, formatRm } from '@/components/case/format'
+import { formatDate, formatRm } from '@/components/case/format'
 import { DOCUMENT_LABELS } from './labels'
 import { StatusPill } from '@/components/ui/status-pill'
 
@@ -21,7 +21,9 @@ export function CaseHeader({ booking, summary }: { booking: Booking; summary: Ca
   // party to wait on and no clock running against anybody.
   const closed = summary.stage === 'spa_signed' || summary.stage === 'cancelled' || summary.stage === 'lapsed'
 
-  const age = `${formatDaysLong(summary.bookingAgeDays)} Old`
+  // The status sentence is one Title Case line, so the age reads "16 Days
+  // Old" beside "With Bank" rather than the sentence case a clause would take.
+  const age = `${summary.bookingAgeDays} ${summary.bookingAgeDays === 1 ? 'Day' : 'Days'} Old`
   const party = closed ? null : `Waiting On ${waitingFor.charAt(0).toUpperCase()}${waitingFor.slice(1)}`
   const clauses = [STAGE_LABELS[summary.stage], party, age].filter(Boolean)
   if (stalled) clauses.push('Stalled')
