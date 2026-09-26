@@ -1,3 +1,4 @@
+import { unitKey } from '@mortar/core'
 /**
  * Project Settings — unit range, inventory bounds, panel law firm defaults,
  * and unit models / layouts.
@@ -139,6 +140,43 @@ export function writeStoredSettings(settings: ProjectSettings): void {
   } catch {
     // Ignore storage quota errors
   }
+}
+
+/**
+ * Generates all possible unit strings for the project inventory based on
+ * blockPrefix, minFloor, maxFloor, and unitsPerFloor.
+ * e.g., ["A-01-01", "A-01-02", ..., "A-35-12"]
+ */
+export function generateProjectInventoryUnits(settings: ProjectSettings): string[] {
+  const units: string[] = []
+  const prefix = settings.blockPrefix ? `${settings.blockPrefix}-` : ''
+  for (let f = settings.minFloor; f <= settings.maxFloor; f++) {
+    const floorStr = String(f).padStart(2, '0')
+    for (let u = 1; u <= settings.unitsPerFloor; u++) {
+      const unitStr = String(u).padStart(2, '0')
+      units.push(`${prefix}${floorStr}-${unitStr}`)
+    }
+  }
+  return units
+}
+
+/**
+ * Returns all unsold / unbooked units within the configured project inventory.
+ * Excludes units found in `held` (which maps unitKey to bookingId) and any units in `excludeUnits`.
+ */
+export function getAvailableInventoryUnits(
+  settings: ProjectSettings,
+  held: Map<string, string>,
+  excludeUnits: string[] = []
+): string[] {
+  const allUnits = generateProjectInventoryUnits(settings)
+  const excludeSet = new Set(excludeUnits.map((u) => u.trim().toUpperCase()))
+
+  return allUnits.filter((unit) => {
+    if (excludeSet.has(unit.toUpperCase())) return false
+    const key = unitKey(settings.projectName, unit)
+    return !held.has(key)
+  })
 }
 
 /** Formats a sample unit range description, e.g. "A-01-01 to A-35-12 (420 units)" */

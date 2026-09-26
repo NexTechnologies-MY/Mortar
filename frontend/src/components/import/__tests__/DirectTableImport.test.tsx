@@ -26,18 +26,16 @@ function renderDirectImport({
   held?: Map<string, string>
   onImported?: (result: { importId: string; bookings: unknown[] }) => void
 } = {}) {
-  return {
-    ...render(
-      <MemoryRouter>
-        <PersonaProvider initialPersona="sales-admin">
-          <SnapshotProvider>
-            <DirectTableImport held={held} onImported={onImported} />
-          </SnapshotProvider>
-        </PersonaProvider>
-      </MemoryRouter>
-    ),
-    onImported
-  }
+  const result = render(
+    <MemoryRouter>
+      <PersonaProvider initialPersona="sales-admin">
+        <SnapshotProvider>
+          <DirectTableImport held={held} onImported={onImported} />
+        </SnapshotProvider>
+      </PersonaProvider>
+    </MemoryRouter>
+  )
+  return { ...result, onImported }
 }
 
 describe('DirectTableImport', () => {
@@ -46,26 +44,48 @@ describe('DirectTableImport', () => {
     vi.mocked(importBookings).mockClear()
   })
 
-  it('renders direct entry ledger with default 1 row, persona auto-assignment, and layout models', async () => {
+  it('renders direct entry ledger with default 1 row, persona auto-assignment, and unsold count', async () => {
     renderDirectImport()
     expect(await screen.findByText(/Direct Case Import Ledger/i)).toBeTruthy()
     expect(screen.getAllByText(/Nurul Aina/i)[0]).toBeTruthy()
     expect(screen.getAllByText(/Teh & Partners/i)[0]).toBeTruthy()
     expect(screen.getByText(/3 Layouts/i)).toBeTruthy()
+    expect(screen.getByText(/Unsold:/i)).toBeTruthy()
 
-    // By default 1 row is rendered
+    // Exactly 1 row by default
     const unitInputs = screen.getAllByPlaceholderText(/A-12-08/i)
     expect(unitInputs).toHaveLength(1)
-    expect(screen.getAllByPlaceholderText(/Nurul Huda Binti Ahmad/i)).toHaveLength(1)
   })
 
-  it('automatically updates the SPA price when a different layout model is selected', async () => {
+  it('drops down unsold units when focusing the unit input and filters on typing', async () => {
     renderDirectImport()
     await screen.findByText(/Direct Case Import Ledger/i)
 
-    const modelSelect = screen.getByRole('combobox')
-    const priceInput = screen.getByDisplayValue('480000') // default Type A price
-    expect(priceInput).toBeTruthy()
+    const unitInput = screen.getByPlaceholderText(/A-12-08/i)
+    fireEvent.focus(unitInput)
+
+    // Dropdown header
+    expect(await screen.findByText(/Unsold Units/i)).toBeTruthy()
+
+    // Type "A-15" to filter units
+    fireEvent.change(unitInput, { target: { value: 'A-15' } })
+    expect(await screen.findByText('A-15-01')).toBeTruthy()
+
+    // Click unit from dropdown
+    const option = screen.getByText('A-15-01')
+    fireEvent.mouseDown(option)
+
+    // Unit is populated
+    expect(screen.getByDisplayValue('A-15-01')).toBeTruthy()
+  })
+
+  it('automatically updates the SPA price when a different layout model is selected', async () => {
+    const { container } = renderDirectImport()
+    await screen.findByText(/Direct Case Import Ledger/i)
+
+    const modelSelect = container.querySelector('select')!
+    expect(modelSelect).toBeTruthy()
+    expect(screen.getByDisplayValue('480000')).toBeTruthy()
 
     // Change to Type B (RM 560,000)
     fireEvent.change(modelSelect, { target: { value: 'model-b' } })

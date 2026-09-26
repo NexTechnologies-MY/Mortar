@@ -11,7 +11,7 @@
  * - One-click batch import into Mortar via importBookings API
  */
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   AlertTriangle,
@@ -28,7 +28,8 @@ import {
 import { PERSONA_STAFF, unitKey, type Booking, type BookingDraft, type Persona } from '@mortar/core'
 import { importBookings } from '@/lib/api'
 import { usePersona } from '@/lib/persona'
-import { useProjectSettings, isUnitInRange } from '@/lib/projectSettings'
+import { useProjectSettings, isUnitInRange, getAvailableInventoryUnits } from '@/lib/projectSettings'
+import { UnitAutocompleteInput } from '@/components/import/UnitAutocompleteInput'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -79,6 +80,11 @@ export function DirectTableImport({
   const activePersona = propPersona ?? contextPersona ?? 'sales-admin'
   const { settings } = useProjectSettings()
   const loggedInSalesName = PERSONA_STAFF[activePersona]?.name ?? 'Nurul Aina'
+
+  // Calculate unsold inventory units matching the configured building range
+  const availableInventoryUnits = useMemo(() => {
+    return getAvailableInventoryUnits(settings, held)
+  }, [settings, held])
 
   // Default is 1 row initially
   const [rows, setRows] = useState<CaseEntryRow[]>([
@@ -263,6 +269,16 @@ export function DirectTableImport({
               </span>
             </span>
 
+            <span
+              className="inline-flex items-center gap-1.5 rounded-md bg-accent px-2.5 py-1 font-medium text-foreground border border-border"
+              title="Unsold units available in building range"
+            >
+              <Building2 className="size-3.5 text-status-positive" />
+              <span>
+                Unsold: <strong>{availableInventoryUnits.length} Units</strong>
+              </span>
+            </span>
+
             <span className="inline-flex items-center gap-1.5 rounded-md bg-accent px-2.5 py-1 font-medium text-foreground border border-border">
               <Scale className="size-3.5 text-primary" />
               <span>
@@ -313,17 +329,15 @@ export function DirectTableImport({
                   {/* Row index */}
                   <td className="py-2 px-3 text-center text-muted-foreground font-mono text-[11px]">{idx + 1}</td>
 
-                  {/* Unit number input */}
+                  {/* Unit number autocomplete dropdown */}
                   <td className="py-1.5 px-3">
-                    <Input
+                    <UnitAutocompleteInput
                       value={row.unit}
-                      onChange={(e) => handleRowChange(row.id, 'unit', e.target.value)}
+                      onChange={(val) => handleRowChange(row.id, 'unit', val)}
+                      availableUnits={availableInventoryUnits}
                       placeholder={settings.blockPrefix ? `${settings.blockPrefix}-12-08` : '12-08'}
-                      className={cn(
-                        'h-8 text-xs font-mono font-medium',
-                        check.status === 'error' && 'border-status-danger text-status-danger-fg',
-                        check.status === 'ready' && 'border-status-positive'
-                      )}
+                      hasError={check.status === 'error'}
+                      isReady={check.status === 'ready'}
                     />
                   </td>
 
