@@ -283,7 +283,7 @@ describe('BookingsPage', () => {
     expect(sheet).toBeTruthy()
     expect(screen.queryByTestId('location')).toBeNull()
     expect(within(sheet).getByText('Waiting On')).toBeTruthy()
-    expect(within(sheet).getByText('Next Move')).toBeTruthy()
+    expect(within(sheet).getByText('Next Step')).toBeTruthy()
     expect(within(sheet).getByRole('list', { name: 'Case Journey' })).toBeTruthy()
     expect(
       within(sheet)

@@ -6,19 +6,23 @@
  *   danger pill with the days since the last update once a stall rule fires
  *   (DESIGN.md Chip economy). Opens the quick view, not the case page.
  * - `CaseJourney`: the five milestones with the one being waited on marked.
- * - `WaitingOnPanel`: holder, what they owe, why it is stuck, the next move and
- *   who on the developer's side makes it, with one button to put it on the
- *   task list. The quick view and the case page both show it.
+ * - `WaitingOnPanel`: holder, what they owe, why it is stuck, the one next
+ *   step and who on the developer's side makes it, with one button to put it on
+ *   the task list. Jev's differing move, where he has one, gets a single muted
+ *   line and its own small button. The quick view and the case page both show
+ *   it.
  */
 
 import { useState } from 'react'
 import type { KeyboardEvent, MouseEvent } from 'react'
 import { Plus } from 'lucide-react'
 import { ballInCourt, type BallInCourt, type Booking, type CaseSummary, type EventKind } from '@mortar/core'
-import { BALL_HOLDER_ICONS, BALL_HOLDER_LABELS, MOVE_OWNER } from '@/components/case/ball'
+import type { NextActionSuggestion } from '@mortar/core'
+import { BALL_HOLDER_ICONS, BALL_HOLDER_LABELS } from '@/components/case/ball'
 import { OwnerBadge } from '@/components/case/OwnerBadge'
 import { formatDaysLong } from '@/components/case/format'
-import { NEXT_ACTION_ICONS, NEXT_ACTION_LABELS, addDays, ownerName, taskTitle } from '@/components/chase/chase'
+import { nextStepFor, stepToTask } from '@/components/case/nextStep'
+import { NEXT_ACTION_ICONS, NEXT_ACTION_LABELS } from '@/components/chase/chase'
 import { Button } from '@/components/ui/button'
 import { StatusPill } from '@/components/ui/status-pill'
 import { notify } from '@/components/ui/toastConfig'
@@ -125,24 +129,17 @@ export function CaseJourney({
 }
 
 /**
- * The task Waiting On proposes: its next move, owned by whoever on the
+ * The task Waiting On proposes: its next step, owned by whoever on the
  * developer's side makes it, due today once the case is stuck and in two days
- * otherwise. `null` when the case waits on nobody. The panel and the bookings
- * table's Add Task both raise exactly this task.
+ * otherwise. `null` when the case waits on nobody.
+ *
+ * Built from `nextStepFor` so the rule-based move, its owner and its title are
+ * the same on this panel, on the chase card and in the table's Task column.
  */
 export function waitingOnTask(booking: Booking, summary: CaseSummary, referenceDate: string) {
-  const ball = ballInCourt(summary)
-  if (ball.holder === null || ball.nextMove === null) return null
-  const ownerRole = MOVE_OWNER[ball.nextMove]
-  return {
-    bookingId: booking.id,
-    action: ball.nextMove,
-    title: taskTitle(ball.nextMove, booking, summary.outstandingDocuments[0]),
-    ownerRole,
-    ownerName: ownerName(ownerRole, booking),
-    dueOn: addDays(referenceDate, ball.stalled ? 0 : 2),
-    origin: 'staff' as const
-  }
+  const { defaultStep, waitingOnNobody } = nextStepFor(booking, summary, NEXT_ACTION_LABELS)
+  if (waitingOnNobody) return null
+  return stepToTask(defaultStep, booking, referenceDate, { daysUntilDue: ballInCourt(summary).stalled ? 0 : 2 })
 }
 
 export function WaitingOnPanel({
@@ -150,6 +147,7 @@ export function WaitingOnPanel({
   summary,
   referenceDate,
   onChanged,
+  suggestion,
   wide = false,
   className
 }: {
@@ -158,13 +156,16 @@ export function WaitingOnPanel({
   /** The desks' today; a new task falls due from it. */
   referenceDate: string
   onChanged: () => Promise<void>
+  /** Jev's cached answer for this case, when the page has one. */
+  suggestion?: NextActionSuggestion
   /** Sets the next move beside the holder on large screens, for the case page banner. */
   wide?: boolean
   className?: string
 }) {
   const ball = ballInCourt(summary)
+  const next = nextStepFor(booking, summary, NEXT_ACTION_LABELS, suggestion)
   const task = waitingOnTask(booking, summary, referenceDate)
-  const [adding, setAdding] = useState(false)
+  const [adding, setAdding] = useState<'default' | 'alternative' | null>(null)
   // Keyed on the task itself, not a plain flag: the panel is keyed by booking
   // id, so recording an update that changes the next move must re-enable Add
   // Task rather than leaving it stuck on "Task Added" for a task that no
@@ -181,24 +182,32 @@ export function WaitingOnPanel({
   }
 
   const HolderIcon = BALL_HOLDER_ICONS[ball.holder]
-  const MoveIcon = NEXT_ACTION_ICONS[ball.nextMove]
-  const move = ball.nextMove
-  const ownerRole = task.ownerRole
-  const owner = task.ownerName
-  const taskKey = `${task.action}:${task.title}`
+  const MoveIcon = NEXT_ACTION_ICONS[next.defaultStep.action]
+  const defaultTask = stepToTask(next.defaultStep, booking, referenceDate, {
+    daysUntilDue: ball.stalled ? 0 : 2
+  })
+  const alternative = next.alternativeStep
+  const alternativeTask = alternative
+    ? stepToTask(alternative, booking, referenceDate, { daysUntilDue: ball.stalled ? 0 : 2, origin: 'jev' })
+    : null
+  const ownerRole = defaultTask.ownerRole
+  const owner = defaultTask.ownerName
+  const taskKey = `${defaultTask.action}:${defaultTask.title}`
   const added = addedTaskKey === taskKey
+  const addingDefault = adding === 'default'
+  const addingAlternative = adding === 'alternative'
 
-  const addTask = async () => {
-    setAdding(true)
+  const addTask = async (payload: typeof defaultTask, which: 'default' | 'alternative') => {
+    setAdding(which)
     try {
-      await postTask(task)
-      setAddedTaskKey(taskKey)
-      notify.success(`Task added for ${owner}.`)
+      await postTask(payload)
+      setAddedTaskKey(`${payload.action}:${payload.title}`)
+      notify.success(`Task added for ${payload.ownerName}.`)
       await onChanged()
     } catch {
       notify.error('Could not add the task. Try again.')
     } finally {
-      setAdding(false)
+      setAdding(null)
     }
   }
 
@@ -235,19 +244,39 @@ export function WaitingOnPanel({
           wide && 'lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0'
         )}
       >
-        <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Next Move</h3>
+        <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Next Step</h3>
         <div className="flex flex-wrap items-center gap-2">
           <span className="inline-flex items-center gap-2 text-sm font-medium">
             <MoveIcon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-            {NEXT_ACTION_LABELS[move]}
+            {next.defaultStep.label}
           </span>
           <OwnerBadge role={ownerRole} name={owner} />
         </div>
+        {alternative && alternativeTask ? (
+          <p className="text-[13px] text-muted-foreground">Jev Suggests: {alternative.label} Instead</p>
+        ) : null}
         <div className="flex flex-wrap items-center gap-3">
-          <Button type="button" size="sm" onClick={() => void addTask()} disabled={adding || added}>
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => void addTask(defaultTask, 'default')}
+            disabled={adding !== null || added}
+          >
             <Plus aria-hidden="true" />
-            {added ? 'Task Added' : adding ? 'Adding…' : 'Add Task'}
+            {added ? 'Task Added' : addingDefault ? 'Adding…' : 'Add Task'}
           </Button>
+          {alternative && alternativeTask ? (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="h-8 px-3 text-[13px]"
+              onClick={() => void addTask(alternativeTask, 'alternative')}
+              disabled={adding !== null}
+            >
+              {addingAlternative ? 'Adding…' : 'Do That Instead'}
+            </Button>
+          ) : null}
           {summary.openTasks > 0 && !added ? (
             <span className="text-[13px] text-muted-foreground">
               {summary.openTasks} Open {summary.openTasks === 1 ? 'Task' : 'Tasks'} On This Case

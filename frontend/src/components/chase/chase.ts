@@ -9,15 +9,20 @@ import { PERSONA_STAFF } from '@mortar/core'
 import type { Booking, DocumentKind, NextAction, NextActionSuggestion, OwnerRole } from '@mortar/core'
 import { OWNER_ROLE_LABELS } from '@/components/case'
 
+/**
+ * What each next action is called on screen: a verb a person says at work.
+ * "Ask For Payslip", not "Request Document · Payslip" — the user acts on the
+ * thing, the record type is ours (DESIGN.md Plain Language).
+ */
 export const NEXT_ACTION_LABELS: Record<NextAction, string> = {
-  request_document: 'Request Document',
-  chase_banker: 'Chase Banker',
+  request_document: 'Ask For The Document',
+  chase_banker: 'Call The Banker',
   submit_another_bank: 'Submit To Another Bank',
-  call_buyer: 'Call Buyer',
-  schedule_spa: 'Schedule SPA',
-  escalate_legal: 'Escalate To Legal',
-  review_release: 'Review Release',
-  wait: 'Wait For Update'
+  call_buyer: 'Call The Buyer',
+  schedule_spa: 'Book The SPA Signing',
+  escalate_legal: 'Ask The Solicitor For A Date',
+  review_release: 'Decide Whether To Release The Unit',
+  wait: 'Wait For The Bank'
 }
 
 export const DOCUMENT_LABELS: Record<DocumentKind, string> = {
@@ -81,19 +86,19 @@ export function taskTitle(action: NextAction, booking: Booking, document?: Docum
   const buyer = booking.buyer.name
   switch (action) {
     case 'request_document':
-      return `Request ${document ? DOCUMENT_LABELS[document] : 'Documents'} From ${buyer}`
+      return `Ask ${buyer} For ${document ? DOCUMENT_LABELS[document] : 'The Documents'}`
     case 'chase_banker':
-      return `Chase Banker On ${booking.unit}`
+      return `Call The Banker About ${booking.unit}`
     case 'submit_another_bank':
       return `Submit ${buyer} To Another Bank`
     case 'call_buyer':
       return `Call ${buyer}`
     case 'schedule_spa':
-      return `Schedule SPA For ${booking.unit}`
+      return `Book The SPA Signing For ${booking.unit}`
     case 'escalate_legal':
-      return `Escalate ${booking.unit} To Legal`
+      return `Ask The Solicitor For A Date For ${booking.unit}`
     case 'review_release':
-      return `Review Release For ${booking.unit}`
+      return `Decide Whether To Release ${booking.unit}`
     case 'wait':
       return `Follow Up On ${booking.unit}`
   }
