@@ -7,8 +7,8 @@
 
   <p>
     <b>Know which bookings will really become sales.</b><br />
-    One live view of every booking across Sales, Loan Admin and Legal — a
-    daily chase list for the stuck ones, and a cash forecast that only counts
+    One live view of every booking across Sales, Loan Admin and Legal — the
+    daily Today queue for the stuck ones, and a cash forecast that only counts
     bookings likely to sign.
   </p>
 
@@ -108,31 +108,31 @@ The funnel runs from booking fee to bank disbursement:
 
 Sales, Credit/Loan Admin and Legal each hold one slice of that funnel and no
 existing tool shows the whole. Mortar's input is the booking spreadsheet the
-team already maintains — intake, not migration — and its rules push a daily
-chase list instead of waiting for somebody to open a report.
+team already maintains — intake, not migration — and its rules push the daily
+Today queue instead of waiting for somebody to open a report.
 
 The app is used as three personas, switched in the header and persisted in
 `localStorage`:
 
 | Persona     | Home Route  | Job                                                        |
 | ----------- | ----------- | ---------------------------------------------------------- |
-| Sales Admin | `/chase`    | Works the daily chase list of stuck bookings               |
+| Sales Admin | `/chase`    | Works the Today queue of stuck bookings                    |
 | Loan Admin  | `/bookings` | Tracks loan and banker status across bookings              |
 | Legal Admin | `/legal`    | Works the queue of unsigned SPAs by how long they have sat |
 
-| Route           | Purpose                                                                                                                         |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `/`             | Public landing page                                                                                                             |
-| `/sign-in`      | Persona picker, no real authentication                                                                                          |
-| `/app`          | Redirects to the active persona's home                                                                                          |
-| `/bookings`     | Every booking, Active and Closed, with stage, risk flags, and Waiting On; hand-entry Add Booking and a Closed-case Excel export |
-| `/bookings/:id` | Stage timeline, missing-document checklist, Waiting On next move, and Record An Update for hand-entered progress                |
-| `/chase`        | Who to chase today, with WhatsApp click-to-chat links                                                                           |
-| `/legal`        | Approved loans with no signed SPA, longest wait first                                                                           |
-| `/forecast`     | What will sign, then where bookings died and what was recoverable                                                               |
-| `/import`       | Spreadsheet intake with row-by-row review before import                                                                         |
-| `/faq`          | FAQ                                                                                                                             |
-| `/settings`     | Demo dataset controls, reset, and server health                                                                                 |
+| Route           | Purpose                                                                                                                              |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `/`             | Public landing page                                                                                                                  |
+| `/sign-in`      | Persona picker, no real authentication                                                                                               |
+| `/app`          | Redirects to the active persona's home                                                                                               |
+| `/bookings`     | Bookings: unit pipeline, Who Holds Each Booking filter, and side sheet quick view; hand-entry Add Booking and closed Excel export    |
+| `/bookings/:id` | Case page: single-sentence status header, dual tracks, button-driven updates, and verbal Jev readings                                |
+| `/chase`        | Today: who to chase today, with rule-based next steps, blocker reasons, and WhatsApp click-to-chat links                             |
+| `/legal`        | Legal: SPA execution queue with No Appointment Yet and Appointment Set, Not Signed sections, with inline appointment/signing dialogs |
+| `/forecast`     | Forecast: projected signings, accuracy score sentence, and where bookings died                                                       |
+| `/import`       | Add Bookings: upload a spreadsheet or type bookings in directly, with row-by-row review                                              |
+| `/faq`          | FAQ                                                                                                                                  |
+| `/settings`     | Settings: demo dataset controls, reset, server health, and folded layouts                                                            |
 
 <p align="right"><a href="#readme-top">&uarr;</a></p>
 
@@ -154,7 +154,7 @@ Measured, not estimated.
 
 The shell, routes, and persona switch are built and deployed, and the screens
 walk the primary flows on seeded bookings. The `@mortar/core` domain rules —
-stage tracking, risk flags, chase list, risk-weighted forecast — are in place
+stage tracking, risk flags, Today queue, risk-weighted forecast — are in place
 behind a Bun API reading Postgres.
 
 <p align="right"><a href="#readme-top">&uarr;</a></p>
@@ -166,20 +166,20 @@ behind a Bun API reading Postgres.
 Every shot below is the running app on the seeded demo dataset. The data is
 simulated; the screens are not mockups.
 
-| Landing                                                                  | Chase                                                                                    | Bookings                                                                                    |
-| ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| ![The public landing page](assets/screens/landing.webp)                  | ![The chase list of stalled bookings](assets/screens/chase.webp)                         | ![The bookings table](assets/screens/bookings.webp)                                         |
-| The public entry point: the claim, and how the three desks fit together. | Sales Admin's daily list. Stalled bookings first, each with Jev's suggested next action. | Loan Admin's desk. Every booking with age, stage, who it is waiting on, and financing risk. |
+| Landing                                                                  | Today                                                                                 | Bookings                                                                                    |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| ![The public landing page](assets/screens/landing.webp)                  | ![The Today view of stalled bookings](assets/screens/chase.webp)                      | ![The bookings table](assets/screens/bookings.webp)                                         |
+| The public entry point: the claim, and how the three desks fit together. | Sales Admin's daily desk. Stalled bookings first, each with the rule-based next step. | Loan Admin's desk. Every booking with age, stage, who it is waiting on, and financing risk. |
 
 | Case Page                                                                                              | Legal                                                                             | Forecast                                                                             |
 | ------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
 | ![A single booking case page](assets/screens/case.webp)                                                | ![The legal queue awaiting SPA execution](assets/screens/legal.webp)              | ![The forecast of projected signings](assets/screens/forecast.webp)                  |
 | One booking end to end: loan and legal tracks, Waiting On and next move, messages, tasks and evidence. | What sits between an approved loan and a signed SPA, with whom, and for how long. | Expected signings inside 30 days, with stage conversion rates and an accuracy check. |
 
-| Import                                                                                 | Settings                                                            | Jev Proposal                                                                      |
+| Add Bookings                                                                           | Settings                                                            | Jev Proposal                                                                      |
 | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
 | ![The spreadsheet import page](assets/screens/import.webp)                             | ![The settings and demo data page](assets/screens/settings.webp)    | ![Jev proposing a case update on a banker message](assets/screens/proposal.webp)  |
-| Load a booking sheet, review it row by row, and send only the ready rows to the desks. | The demo dataset: seed, reference date, record counts, and a reset. | Jev reads each message and proposes an update. Staff confirm, dispute or dismiss. |
+| Upload a booking sheet or type them in, review row by row, and send to the main desks. | The demo dataset: seed, reference date, record counts, and a reset. | Jev reads each message and proposes an update. Staff confirm, dispute or dismiss. |
 
 <p align="right"><a href="#readme-top">&uarr;</a></p>
 
@@ -256,7 +256,7 @@ in `asia-southeast1`, with keyless Workload Identity Federation.
 | State    | React Context for persona; case data from `/api`           |
 | Tests    | Vitest, Testing Library, jsdom                             |
 | Serving  | One Bun process serves `/api/*` and `frontend/dist`        |
-| AI       | Jev: TypeSafe AI SDK; precomputed answers without a key    |
+| AI       | Jev (TypeSafe SDK); Ask Mortar (Gemini via assistant/)     |
 | Hosting  | Google Cloud Run (`asia-southeast1`)                       |
 
 <p align="right"><a href="#readme-top">&uarr;</a></p>
@@ -304,6 +304,36 @@ JEV_PROXY_MODEL=gemini-3.5-flash-lite   # model to route to (default shown)
 proxy. Use this only with made-up demo data, never with real buyer or booking
 information.
 
+### Ask Mortar (Gemini Assistant)
+
+Ask Mortar connects to Google's Gemini API over `fetch` (`POST /api/assistant`)
+to answer questions grounded in the live snapshot using five read-only tools.
+Set `GEMINI_API_KEY` in `.env` to enable it:
+
+```sh
+GEMINI_API_KEY=                         # Google Gemini API key
+GEMINI_MODEL=gemini-3.5-flash-lite      # Optional model (default shown)
+```
+
+Without a key, the endpoint returns 503 and the UI falls back to scripted
+answers. **Data caveat:** On Gemini's free tier, prompts and answers may be used
+by Google to improve products; use only with simulated demo data. Real buyer
+data requires a paid tier or Vertex AI under a PDPA data processing agreement.
+
+### Test Database
+
+The database integration test suite (`server/db/__tests__/integration.test.ts`)
+reads `TEST_DATABASE_URL`:
+
+```sh
+TEST_DATABASE_URL=postgres://...        # Dedicated test Postgres connection
+```
+
+Tests skip when unset and never read `DATABASE_URL`, which often points at
+production. The suite seeds an empty test database once on first boot and cleans
+up its test rows. Never point `TEST_DATABASE_URL` at production. The team test
+database is the separate Neon project `mortar-test`.
+
 <p align="right"><a href="#readme-top">&uarr;</a></p>
 
 ---
@@ -320,7 +350,7 @@ packages/core/   @mortar/core: shared TypeScript domain rules
 packages/jev/    @mortar/jev: proposals, playbooks, answer cache
 server/          Bun API over Postgres; also serves frontend/dist
   db/            Schema, seed, and row mappers
-  src/           Routes, Jev cache, static handler
+  src/           Routes, Jev cache, static handler, assistant/
 .github/         CI and Cloud Run deploy workflows
 Dockerfile       Bun build → Bun alpine runtime
 AGENTS.md        Agent instructions: stack, routes, rules
@@ -336,18 +366,18 @@ AGENTS.md        Agent instructions: stack, routes, rules
   data is touched.
 - **No integrations.** No bank, solicitor, or CRM connections — the spreadsheet
   is the only input, and case status arrives via the people who chase it.
-- **Interview findings pending.** The leakage ranking rests on a practitioner
-  interview ([`source/interview.md`](source/interview.md)) whose findings are
-  not yet recorded.
+- **Survey evidence.** The leakage ranking rests on an anonymous survey of eight
+  Malaysian industry practitioners (n = 8).
 - **PDPA.** Real buyer documents are personal data under Malaysia's PDPA and
-  stay out of free-tier AI APIs.
+  stay out of free-tier AI APIs (such as Gemini's free tier).
 - **No sign-in on the public demo.** Only made-up buyers should be imported;
   income figures still reach the browser because risk is worked out there.
 - **Retention.** Transaction records are kept 7 years (Companies Act 2016 s245,
   Income Tax Act 1967 s82); a server holding real data must set
   `MORTAR_DEMO_RESET=off`. See [Data Retention](TRD.md#data-retention).
-- **AI is an assistant, not a decider.** Rules flag risk; AI may draft and check
-  documents and messages, but it never makes credit decisions.
+- **AI is an assistant, not a decider.** Rules flag risk; Jev structures
+  messages, and Ask Mortar answers grounded inquiries, but neither ever writes
+  to records or makes credit, loan, or legal decisions.
 
 <p align="right"><a href="#readme-top">&uarr;</a></p>
 

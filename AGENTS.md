@@ -21,8 +21,8 @@ in `localStorage` under `mortar.persona`:
 
 Routes: `/` (landing), `/sign-in` (no real auth), `/app` (redirects to the
 active persona's home), `/bookings` (list), `/bookings/:id` (detail), `/chase`
-(follow-ups), `/legal` (SPA execution queue), `/forecast` (projected signings),
-`/import` (spreadsheet intake).
+(Today), `/legal` (SPA execution queue), `/forecast` (projected signings),
+`/import` (Add Bookings).
 
 ## Stack
 

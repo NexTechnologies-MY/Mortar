@@ -256,7 +256,7 @@ booking through this loop step by step.
 | Show The Derivation         | The illustrative impact calculation in the product overview                         |
 | Join Up The Three Teams     | One case record with a desk for each of Sales, Loan Admin and Legal                 |
 | Place AI Honestly           | AI reads messages and proposes updates, people confirm, the forecast is statistical |
-| Build Something Usable      | The Chase List as the Sales Admin's home screen                                     |
+| Build Something Usable      | Today, the Sales Admin's home screen                                                |
 | One Number                  | The 30-day verified SPA rate                                                        |
 
 ## The Practitioner Interview
