@@ -1,9 +1,54 @@
 /**
- * Project Settings — unit range, inventory bounds, and panel law firm defaults.
+ * Project Settings — unit range, inventory bounds, panel law firm defaults,
+ * and unit models / layouts.
  * Configured in SettingsPage and consumed by ImportPage & Bookings.
  */
 
 import { useCallback, useEffect, useState } from 'react'
+
+export interface UnitModel {
+  id: string
+  name: string // e.g. "Type A"
+  code: string // e.g. "A"
+  layout: string // e.g. "2 Bed · 2 Bath (750 sqft)"
+  priceRm: number // e.g. 480_000
+  builtUpSqft?: number
+  bedrooms?: number
+  bathrooms?: number
+}
+
+export const DEFAULT_UNIT_MODELS: UnitModel[] = [
+  {
+    id: 'model-a',
+    name: 'Type A',
+    code: 'A',
+    layout: '2 Bed · 2 Bath (750 sqft)',
+    priceRm: 480_000,
+    builtUpSqft: 750,
+    bedrooms: 2,
+    bathrooms: 2
+  },
+  {
+    id: 'model-b',
+    name: 'Type B',
+    code: 'B',
+    layout: '3 Bed · 2 Bath (950 sqft)',
+    priceRm: 560_000,
+    builtUpSqft: 950,
+    bedrooms: 3,
+    bathrooms: 2
+  },
+  {
+    id: 'model-c',
+    name: 'Type C (Dual Key)',
+    code: 'C',
+    layout: '4 Bed · 3 Bath (1,200 sqft)',
+    priceRm: 720_000,
+    builtUpSqft: 1200,
+    bedrooms: 4,
+    bathrooms: 3
+  }
+]
 
 export interface ProjectSettings {
   projectName: string
@@ -13,6 +58,8 @@ export interface ProjectSettings {
   unitsPerFloor: number
   defaultLawFirm: string
   defaultPriceRm: number
+  models: UnitModel[]
+  defaultModelId: string
 }
 
 export const PANEL_LAW_FIRMS = [
@@ -32,10 +79,29 @@ export const DEFAULT_PROJECT_SETTINGS: ProjectSettings = {
   maxFloor: 35,
   unitsPerFloor: 12,
   defaultLawFirm: 'Teh & Partners',
-  defaultPriceRm: 550_000
+  defaultPriceRm: 480_000,
+  models: DEFAULT_UNIT_MODELS,
+  defaultModelId: 'model-a'
 }
 
 const STORAGE_KEY = 'mortar.project_settings'
+
+function sanitizeModels(raw: unknown): UnitModel[] {
+  if (!Array.isArray(raw) || raw.length === 0) return DEFAULT_UNIT_MODELS
+  return raw.map((item, idx) => {
+    const it = item as Partial<UnitModel>
+    return {
+      id: String(it.id || `model-${idx + 1}`),
+      name: String(it.name || `Model ${idx + 1}`),
+      code: String(it.code || String.fromCharCode(65 + idx)),
+      layout: String(it.layout || '2 Bed · 2 Bath (750 sqft)'),
+      priceRm: Number(it.priceRm) > 0 ? Number(it.priceRm) : 480_000,
+      builtUpSqft: Number(it.builtUpSqft) || undefined,
+      bedrooms: Number(it.bedrooms) || undefined,
+      bathrooms: Number(it.bathrooms) || undefined
+    }
+  })
+}
 
 export function readStoredSettings(): ProjectSettings {
   if (typeof window === 'undefined') return DEFAULT_PROJECT_SETTINGS
@@ -43,6 +109,12 @@ export function readStoredSettings(): ProjectSettings {
     const raw = window.localStorage.getItem(STORAGE_KEY)
     if (!raw) return DEFAULT_PROJECT_SETTINGS
     const parsed = JSON.parse(raw) as Partial<ProjectSettings>
+    const models = sanitizeModels(parsed.models)
+    const defaultModelId =
+      parsed.defaultModelId && models.some((m) => m.id === parsed.defaultModelId)
+        ? parsed.defaultModelId
+        : models[0]?.id || 'model-a'
+
     return {
       projectName: parsed.projectName || DEFAULT_PROJECT_SETTINGS.projectName,
       blockPrefix: parsed.blockPrefix !== undefined ? parsed.blockPrefix : DEFAULT_PROJECT_SETTINGS.blockPrefix,
@@ -50,7 +122,9 @@ export function readStoredSettings(): ProjectSettings {
       maxFloor: Number(parsed.maxFloor) || DEFAULT_PROJECT_SETTINGS.maxFloor,
       unitsPerFloor: Number(parsed.unitsPerFloor) || DEFAULT_PROJECT_SETTINGS.unitsPerFloor,
       defaultLawFirm: parsed.defaultLawFirm || DEFAULT_PROJECT_SETTINGS.defaultLawFirm,
-      defaultPriceRm: Number(parsed.defaultPriceRm) || DEFAULT_PROJECT_SETTINGS.defaultPriceRm
+      defaultPriceRm: Number(parsed.defaultPriceRm) || DEFAULT_PROJECT_SETTINGS.defaultPriceRm,
+      models,
+      defaultModelId
     }
   } catch {
     return DEFAULT_PROJECT_SETTINGS

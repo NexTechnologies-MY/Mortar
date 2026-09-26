@@ -4,15 +4,27 @@
  * Requirements:
  * - Key in Unit Number (validated against Settings unit range and active held units)
  * - Key in Client / Buyer Name
+ * - Multiple layout models supported (Type A, Type B, Type C) with auto price updates
  * - Auto-assigns Sales Agent to current logged-in account (active persona)
  * - Auto-assigns Panel Law Firm from Settings configuration
- * - Auto-populates compliant defaults (IC, phone, price, booking date) so entry is lightning-fast
+ * - Default rows is 1
  * - One-click batch import into Mortar via importBookings API
  */
 
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AlertTriangle, Building2, CheckCircle2, Plus, Scale, Settings, Trash2, Upload, UserCheck } from 'lucide-react'
+import {
+  AlertTriangle,
+  Building2,
+  CheckCircle2,
+  LayoutGrid,
+  Plus,
+  Scale,
+  Settings,
+  Trash2,
+  Upload,
+  UserCheck
+} from 'lucide-react'
 import { PERSONA_STAFF, unitKey, type Booking, type BookingDraft, type Persona } from '@mortar/core'
 import { importBookings } from '@/lib/api'
 import { usePersona } from '@/lib/persona'
@@ -27,15 +39,17 @@ export interface CaseEntryRow {
   id: string
   unit: string
   buyerName: string
+  modelId: string
   priceRm: number
   lawFirm?: string
 }
 
-function createEmptyRow(defaultPriceRm: number, customId?: string): CaseEntryRow {
+function createEmptyRow(defaultPriceRm: number, defaultModelId = 'model-a', customId?: string): CaseEntryRow {
   return {
     id: customId ?? `row-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     unit: '',
     buyerName: '',
+    modelId: defaultModelId,
     priceRm: defaultPriceRm
   }
 }
@@ -64,12 +78,11 @@ export function DirectTableImport({
   const { persona: contextPersona } = usePersona()
   const activePersona = propPersona ?? contextPersona ?? 'sales-admin'
   const { settings } = useProjectSettings()
-  const loggedInSalesName = PERSONA_STAFF[activePersona]?.name ?? 'Farhan Aziz'
+  const loggedInSalesName = PERSONA_STAFF[activePersona]?.name ?? 'Nurul Aina'
 
+  // Default is 1 row initially
   const [rows, setRows] = useState<CaseEntryRow[]>([
-    createEmptyRow(settings.defaultPriceRm, 'row-1'),
-    createEmptyRow(settings.defaultPriceRm, 'row-2'),
-    createEmptyRow(settings.defaultPriceRm, 'row-3')
+    createEmptyRow(settings.defaultPriceRm, settings.defaultModelId, 'row-1')
   ])
   const [importing, setImporting] = useState(false)
 
@@ -77,27 +90,45 @@ export function DirectTableImport({
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, [field]: value } : r)))
   }
 
+  const handleModelChange = (id: string, modelId: string) => {
+    const selectedModel = settings.models.find((m) => m.id === modelId)
+    setRows((prev) =>
+      prev.map((r) => {
+        if (r.id !== id) return r
+        return {
+          ...r,
+          modelId,
+          priceRm: selectedModel ? selectedModel.priceRm : r.priceRm
+        }
+      })
+    )
+  }
+
   const handleAddRow = () => {
-    setRows((prev) => [...prev, createEmptyRow(settings.defaultPriceRm)])
+    setRows((prev) => [...prev, createEmptyRow(settings.defaultPriceRm, settings.defaultModelId)])
   }
 
   const handleAddFiveRows = () => {
     setRows((prev) => [
       ...prev,
-      createEmptyRow(settings.defaultPriceRm),
-      createEmptyRow(settings.defaultPriceRm),
-      createEmptyRow(settings.defaultPriceRm),
-      createEmptyRow(settings.defaultPriceRm),
-      createEmptyRow(settings.defaultPriceRm)
+      createEmptyRow(settings.defaultPriceRm, settings.defaultModelId),
+      createEmptyRow(settings.defaultPriceRm, settings.defaultModelId),
+      createEmptyRow(settings.defaultPriceRm, settings.defaultModelId),
+      createEmptyRow(settings.defaultPriceRm, settings.defaultModelId),
+      createEmptyRow(settings.defaultPriceRm, settings.defaultModelId)
     ])
   }
 
   const handleRemoveRow = (id: string) => {
-    setRows((prev) => (prev.length > 1 ? prev.filter((r) => r.id !== id) : [createEmptyRow(settings.defaultPriceRm)]))
+    setRows((prev) =>
+      prev.length > 1
+        ? prev.filter((r) => r.id !== id)
+        : [createEmptyRow(settings.defaultPriceRm, settings.defaultModelId)]
+    )
   }
 
   const handleClearAll = () => {
-    setRows([createEmptyRow(settings.defaultPriceRm)])
+    setRows([createEmptyRow(settings.defaultPriceRm, settings.defaultModelId)])
   }
 
   // Row inspection & validation helper
@@ -159,7 +190,8 @@ export function DirectTableImport({
       const drafts: BookingDraft[] = readyRows.map(({ row }, index) => {
         const trimmedUnit = row.unit.trim().toUpperCase()
         const trimmedName = row.buyerName.trim()
-        const price = row.priceRm > 0 ? row.priceRm : settings.defaultPriceRm
+        const selectedModel = settings.models.find((m) => m.id === row.modelId)
+        const price = row.priceRm > 0 ? row.priceRm : selectedModel?.priceRm || settings.defaultPriceRm
         const lawFirm = row.lawFirm || settings.defaultLawFirm || 'Teh & Partners'
 
         return {
@@ -192,7 +224,7 @@ export function DirectTableImport({
         `${result.bookings.length} ${result.bookings.length === 1 ? 'case' : 'cases'} successfully imported!`
       )
       onImported(result)
-      setRows([createEmptyRow(settings.defaultPriceRm)])
+      setRows([createEmptyRow(settings.defaultPriceRm, settings.defaultModelId)])
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Could not import the cases.'
       notify.error(msg)
@@ -209,7 +241,8 @@ export function DirectTableImport({
           <div>
             <h2 className="text-base font-semibold text-foreground">Direct Case Import Ledger</h2>
             <p className="text-xs text-muted-foreground">
-              Key in unit numbers and client names to batch import cases directly into the ledger.
+              Key in unit numbers, client names, and select layout models to batch import cases directly into the
+              ledger.
             </p>
           </div>
 
@@ -221,6 +254,13 @@ export function DirectTableImport({
                 Sales: <strong>{loggedInSalesName}</strong>
               </span>
               <span className="text-[10px] text-primary">(Logged in)</span>
+            </span>
+
+            <span className="inline-flex items-center gap-1.5 rounded-md bg-accent px-2.5 py-1 font-medium text-foreground border border-border">
+              <LayoutGrid className="size-3.5 text-primary" />
+              <span>
+                Models: <strong>{settings.models.length} Layouts</strong>
+              </span>
             </span>
 
             <span className="inline-flex items-center gap-1.5 rounded-md bg-accent px-2.5 py-1 font-medium text-foreground border border-border">
@@ -246,15 +286,16 @@ export function DirectTableImport({
 
         {/* The Direct Entry Grid */}
         <div className="overflow-x-auto rounded-md border border-border">
-          <table className="w-full text-left text-xs border-collapse min-w-[720px]">
+          <table className="w-full text-left text-xs border-collapse min-w-[840px]">
             <thead className="bg-muted/60 border-b border-border text-muted-foreground uppercase text-[10px] tracking-wider font-semibold">
               <tr>
                 <th className="py-2.5 px-3 w-10 text-center">#</th>
-                <th className="py-2.5 px-3 w-40">Unit Number</th>
-                <th className="py-2.5 px-3 min-w-[180px]">Client / Buyer Name</th>
+                <th className="py-2.5 px-3 w-36">Unit Number</th>
+                <th className="py-2.5 px-3 min-w-[170px]">Client / Buyer Name</th>
+                <th className="py-2.5 px-3 w-48">Model / Layout</th>
                 <th className="py-2.5 px-3 w-32">Sales Owner</th>
                 <th className="py-2.5 px-3 w-36">Panel Law Firm</th>
-                <th className="py-2.5 px-3 w-32 text-right">Price (RM)</th>
+                <th className="py-2.5 px-3 w-28 text-right">Price (RM)</th>
                 <th className="py-2.5 px-3 w-28 text-center">Status</th>
                 <th className="py-2.5 px-2 w-12 text-center"></th>
               </tr>
@@ -296,30 +337,44 @@ export function DirectTableImport({
                     />
                   </td>
 
+                  {/* Model / Layout selection */}
+                  <td className="py-1.5 px-3">
+                    <select
+                      value={row.modelId}
+                      onChange={(e) => handleModelChange(row.id, e.target.value)}
+                      className="h-8 w-full rounded-md border border-input bg-background px-2 py-1 text-xs font-medium text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    >
+                      {settings.models.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.name} · {m.layout}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+
                   {/* Auto-assigned Sales Owner badge */}
                   <td className="py-2 px-3">
-                    <span className="inline-flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-[11px] font-medium text-foreground truncate max-w-[120px]">
-                      <UserCheck className="size-3 text-muted-foreground shrink-0" />
+                    <span className="inline-flex items-center gap-1.5 text-xs text-foreground font-medium">
+                      <span className="size-1.5 rounded-full bg-status-positive" />
                       <span className="truncate">{loggedInSalesName}</span>
                     </span>
                   </td>
 
-                  {/* Auto-assigned Panel Law Firm badge */}
+                  {/* Auto-assigned Panel Law Firm */}
                   <td className="py-2 px-3">
-                    <span className="inline-flex items-center gap-1 rounded bg-muted px-2 py-0.5 text-[11px] font-medium text-foreground truncate max-w-[140px]">
-                      <Scale className="size-3 text-muted-foreground shrink-0" />
-                      <span className="truncate">{row.lawFirm || settings.defaultLawFirm}</span>
+                    <span className="text-xs text-muted-foreground truncate block max-w-[140px]">
+                      {row.lawFirm || settings.defaultLawFirm}
                     </span>
                   </td>
 
-                  {/* Price input */}
-                  <td className="py-1.5 px-3 text-right">
+                  {/* Price (RM) editable input */}
+                  <td className="py-1.5 px-3">
                     <Input
                       type="number"
                       step={5000}
                       value={row.priceRm}
                       onChange={(e) => handleRowChange(row.id, 'priceRm', parseInt(e.target.value, 10) || 0)}
-                      className="h-8 text-xs font-mono text-right tabular-nums"
+                      className="h-8 text-xs font-mono text-right font-medium"
                     />
                   </td>
 
@@ -356,8 +411,8 @@ export function DirectTableImport({
                     <button
                       type="button"
                       onClick={() => handleRemoveRow(row.id)}
-                      className="text-muted-foreground hover:text-status-danger-fg p-1 rounded transition-colors cursor-pointer"
-                      title="Delete Row"
+                      title="Remove Row"
+                      className="rounded p-1 text-muted-foreground hover:text-status-danger hover:bg-status-danger/10 transition-colors"
                     >
                       <Trash2 className="size-3.5" />
                     </button>

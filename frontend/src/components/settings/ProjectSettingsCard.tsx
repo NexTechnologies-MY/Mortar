@@ -1,15 +1,17 @@
 /**
  * ProjectSettingsCard — Configure allowed unit ranges, inventory boundaries,
- * and default panel law firm used for automatic case assignment.
+ * unit layout models, and default panel law firm used for automatic case assignment.
  */
 
 import { useState } from 'react'
-import { Building2, Check, Scale, Sliders } from 'lucide-react'
+import { Building2, Check, LayoutGrid, Plus, Scale, Sliders, Trash2 } from 'lucide-react'
 import {
   PANEL_LAW_FIRMS,
+  DEFAULT_UNIT_MODELS,
   formatUnitRangeDescription,
   useProjectSettings,
-  type ProjectSettings
+  type ProjectSettings,
+  type UnitModel
 } from '@/lib/projectSettings'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -28,10 +30,66 @@ export function ProjectSettingsCard() {
     setDirty(true)
   }
 
+  const handleModelChange = (modelId: string, field: keyof UnitModel, val: string | number) => {
+    setDraft((prev) => {
+      const nextModels = prev.models.map((m) => {
+        if (m.id !== modelId) return m
+        return { ...m, [field]: val }
+      })
+      return { ...prev, models: nextModels }
+    })
+    setDirty(true)
+  }
+
+  const handleAddModel = () => {
+    setDraft((prev) => {
+      const nextChar = String.fromCharCode(65 + (prev.models.length % 26))
+      const newModel: UnitModel = {
+        id: `model-${Date.now()}`,
+        name: `Type ${nextChar}`,
+        code: nextChar,
+        layout: '3 Bed · 2 Bath (900 sqft)',
+        priceRm: prev.defaultPriceRm || 520_000
+      }
+      return {
+        ...prev,
+        models: [...prev.models, newModel]
+      }
+    })
+    setDirty(true)
+  }
+
+  const handleDeleteModel = (modelId: string) => {
+    if (draft.models.length <= 1) {
+      notify.error('At least one unit model / layout must remain configured.')
+      return
+    }
+    setDraft((prev) => {
+      const filtered = prev.models.filter((m) => m.id !== modelId)
+      const nextDefault = prev.defaultModelId === modelId ? filtered[0].id : prev.defaultModelId
+      return {
+        ...prev,
+        models: filtered,
+        defaultModelId: nextDefault
+      }
+    })
+    setDirty(true)
+  }
+
+  const handleSetDefaultModel = (modelId: string) => {
+    const target = draft.models.find((m) => m.id === modelId)
+    setDraft((prev) => ({
+      ...prev,
+      defaultModelId: modelId,
+      defaultPriceRm: target ? target.priceRm : prev.defaultPriceRm
+    }))
+    setDirty(true)
+  }
+
   const handleSave = () => {
     updateSettings(draft)
     setDirty(false)
-    notify.success('Unit range and panel law firm settings saved.')
+    notify.success('Project unit range, models, and law firm settings saved.')
   }
 
   const handleResetDefaults = () => {
@@ -42,7 +100,9 @@ export function ProjectSettingsCard() {
       maxFloor: 35,
       unitsPerFloor: 12,
       defaultLawFirm: 'Teh & Partners',
-      defaultPriceRm: 550_000
+      defaultPriceRm: 480_000,
+      models: DEFAULT_UNIT_MODELS,
+      defaultModelId: 'model-a'
     })
     setDirty(true)
   }
@@ -60,7 +120,7 @@ export function ProjectSettingsCard() {
             <div>
               <h2 className="text-sm font-semibold text-foreground">Project & Unit Range Settings</h2>
               <p className="text-xs text-muted-foreground">
-                Set the project unit inventory boundaries and default law firm.
+                Set project unit inventory boundaries, unit layout models, and default panel law firm.
               </p>
             </div>
           </div>
@@ -83,7 +143,7 @@ export function ProjectSettingsCard() {
           </p>
         </div>
 
-        {/* Form Inputs */}
+        {/* Form Inputs: Project & Ranges */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="setting-project" className="text-xs font-medium">
@@ -158,7 +218,7 @@ export function ProjectSettingsCard() {
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="setting-price" className="text-xs font-medium">
-              Default SPA Price (RM)
+              Base SPA Price (RM)
             </Label>
             <Input
               id="setting-price"
@@ -166,9 +226,100 @@ export function ProjectSettingsCard() {
               step={10000}
               min={50000}
               value={draft.defaultPriceRm}
-              onChange={(e) => handleChange('defaultPriceRm', parseInt(e.target.value, 10) || 550000)}
+              onChange={(e) => handleChange('defaultPriceRm', parseInt(e.target.value, 10) || 480000)}
               className="h-8 text-xs"
             />
+          </div>
+        </div>
+
+        {/* Unit Models & Layouts Section */}
+        <div className="flex flex-col gap-2.5 border-t border-border pt-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <LayoutGrid className="size-3.5 text-primary" />
+              <Label className="text-xs font-medium">Unit Models & Layouts ({draft.models.length})</Label>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleAddModel}
+              className="h-7 gap-1 text-[11px]"
+            >
+              <Plus className="size-3" />
+              Add Model / Layout
+            </Button>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Configure different floor plan models (e.g. Type A, Type B). Selecting a model on the Import page
+            automatically fills the unit layout & pricing.
+          </p>
+
+          <div className="space-y-2">
+            {draft.models.map((model) => {
+              const isDefault = draft.defaultModelId === model.id
+              return (
+                <div
+                  key={model.id}
+                  className="flex flex-col gap-2 sm:flex-row sm:items-center justify-between rounded-md border border-border bg-muted/30 p-2.5 text-xs"
+                >
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 flex-1">
+                    <div>
+                      <Label className="text-[10px] text-muted-foreground">Model Name</Label>
+                      <Input
+                        value={model.name}
+                        onChange={(e) => handleModelChange(model.id, 'name', e.target.value)}
+                        placeholder="e.g. Type A"
+                        className="h-7 text-xs font-medium mt-0.5"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-[10px] text-muted-foreground">Layout Description</Label>
+                      <Input
+                        value={model.layout}
+                        onChange={(e) => handleModelChange(model.id, 'layout', e.target.value)}
+                        placeholder="e.g. 2 Bed · 2 Bath (750 sqft)"
+                        className="h-7 text-xs mt-0.5"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-[10px] text-muted-foreground">Base Price (RM)</Label>
+                      <Input
+                        type="number"
+                        step={10000}
+                        value={model.priceRm}
+                        onChange={(e) => handleModelChange(model.id, 'priceRm', parseInt(e.target.value, 10) || 0)}
+                        className="h-7 text-xs font-mono mt-0.5"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 self-end sm:self-center sm:pl-2">
+                    <button
+                      type="button"
+                      onClick={() => handleSetDefaultModel(model.id)}
+                      title={isDefault ? 'Default Model' : 'Set as Default Model'}
+                      className={`rounded px-2 py-1 text-[10px] font-semibold transition-colors ${
+                        isDefault
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground'
+                      }`}
+                    >
+                      {isDefault ? 'Default' : 'Make Default'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteModel(model.id)}
+                      disabled={draft.models.length <= 1}
+                      title="Delete Model"
+                      className="rounded p-1 text-muted-foreground hover:text-status-danger hover:bg-status-danger/10 disabled:opacity-30 disabled:pointer-events-none"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </div>
 

@@ -27,4 +27,19 @@ describe('ProjectSettingsCard', () => {
 
     expect(screen.getByText(/B-01-01 to B-35-12/i)).toBeTruthy()
   })
+
+  it('displays unit models & layouts and allows adding a new layout model', () => {
+    render(<ProjectSettingsCard />)
+
+    expect(screen.getByText(/Unit Models & Layouts/i)).toBeTruthy()
+    expect(screen.getByDisplayValue('Type A')).toBeTruthy()
+    expect(screen.getByDisplayValue('Type B')).toBeTruthy()
+    expect(screen.getByDisplayValue('Type C (Dual Key)')).toBeTruthy()
+
+    // Add new model
+    const addBtn = screen.getByRole('button', { name: /Add Model \/ Layout/i })
+    fireEvent.click(addBtn)
+
+    expect(screen.getByDisplayValue('Type D')).toBeTruthy()
+  })
 })

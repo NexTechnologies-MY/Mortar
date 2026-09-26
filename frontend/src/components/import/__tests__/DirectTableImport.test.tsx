@@ -46,21 +46,42 @@ describe('DirectTableImport', () => {
     vi.mocked(importBookings).mockClear()
   })
 
-  it('renders direct entry ledger with persona auto-assignment and default law firm', async () => {
+  it('renders direct entry ledger with default 1 row, persona auto-assignment, and layout models', async () => {
     renderDirectImport()
     expect(await screen.findByText(/Direct Case Import Ledger/i)).toBeTruthy()
     expect(screen.getAllByText(/Nurul Aina/i)[0]).toBeTruthy()
     expect(screen.getAllByText(/Teh & Partners/i)[0]).toBeTruthy()
-    expect(screen.getAllByPlaceholderText(/A-12-08/i)[0]).toBeTruthy()
-    expect(screen.getAllByPlaceholderText(/Nurul Huda Binti Ahmad/i)[0]).toBeTruthy()
+    expect(screen.getByText(/3 Layouts/i)).toBeTruthy()
+
+    // By default 1 row is rendered
+    const unitInputs = screen.getAllByPlaceholderText(/A-12-08/i)
+    expect(unitInputs).toHaveLength(1)
+    expect(screen.getAllByPlaceholderText(/Nurul Huda Binti Ahmad/i)).toHaveLength(1)
+  })
+
+  it('automatically updates the SPA price when a different layout model is selected', async () => {
+    renderDirectImport()
+    await screen.findByText(/Direct Case Import Ledger/i)
+
+    const modelSelect = screen.getByRole('combobox')
+    const priceInput = screen.getByDisplayValue('480000') // default Type A price
+    expect(priceInput).toBeTruthy()
+
+    // Change to Type B (RM 560,000)
+    fireEvent.change(modelSelect, { target: { value: 'model-b' } })
+    expect(screen.getByDisplayValue('560000')).toBeTruthy()
+
+    // Change to Type C (RM 720,000)
+    fireEvent.change(modelSelect, { target: { value: 'model-c' } })
+    expect(screen.getByDisplayValue('720000')).toBeTruthy()
   })
 
   it('validates unit against range and existing held units', async () => {
     renderDirectImport()
     await screen.findByText(/Direct Case Import Ledger/i)
 
-    const unitInput = screen.getAllByPlaceholderText(/A-12-08/i)[0]
-    const nameInput = screen.getAllByPlaceholderText(/Nurul Huda Binti Ahmad/i)[0]
+    const unitInput = screen.getByPlaceholderText(/A-12-08/i)
+    const nameInput = screen.getByPlaceholderText(/Nurul Huda Binti Ahmad/i)
 
     // Unit A-12-03 is held by BK-9001 in fixture
     fireEvent.change(unitInput, { target: { value: 'A-12-03' } })
@@ -81,8 +102,8 @@ describe('DirectTableImport', () => {
     const { onImported } = renderDirectImport()
     await screen.findByText(/Direct Case Import Ledger/i)
 
-    const unitInput = screen.getAllByPlaceholderText(/A-12-08/i)[0]
-    const nameInput = screen.getAllByPlaceholderText(/Nurul Huda Binti Ahmad/i)[0]
+    const unitInput = screen.getByPlaceholderText(/A-12-08/i)
+    const nameInput = screen.getByPlaceholderText(/Nurul Huda Binti Ahmad/i)
 
     fireEvent.change(unitInput, { target: { value: 'A-20-08' } })
     fireEvent.change(nameInput, { target: { value: 'Norazlan Bin Hashim' } })
