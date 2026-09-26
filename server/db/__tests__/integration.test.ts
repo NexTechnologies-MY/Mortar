@@ -10,7 +10,7 @@
  * the `W2TEST Project`; the bank application tests use `CITEST-` ids) and are
  * deleted afterwards.
  */
-import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
+import { afterAll, beforeAll, describe, expect, setDefaultTimeout, test } from 'bun:test'
 import { SQL } from 'bun'
 import { REFERENCE_DATE, summarizeCases } from '@mortar/core'
 import type { Booking, BookingDraft, CaseEvent, Message } from '@mortar/core'
@@ -19,6 +19,10 @@ import { EventSettledError, ImportMovedOnError, OpenApplicationError, UnitHeldEr
 import { applySchema, resetDatabase } from '../reset'
 
 const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL
+
+// Every query crosses the network to a real database: from CI's runners to the
+// Singapore test database, one test's round trips outlast the default 5 s.
+setDefaultTimeout(60_000)
 
 describe.skipIf(!TEST_DATABASE_URL)('database integration', () => {
   // Guarded by skipIf: the callback body still runs during collection, so only
