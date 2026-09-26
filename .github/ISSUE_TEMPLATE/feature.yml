@@ -1,0 +1,71 @@
+name: Feature Or Change
+description: Suggest something new, or a change to how Mortar works, looks or reads.
+title: 'Feature: '
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: Start from the problem, not the solution. A clear problem makes a better change.
+  - type: textarea
+    id: problem
+    attributes:
+      label: The Problem
+      description: What is hard, slow, confusing or missing today, and for whom?
+      placeholder: Sales Admin has to open every case to see why it is stuck.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: The Change
+      description: What should happen instead? Sketches and screenshots are welcome.
+    validations:
+      required: true
+  - type: textarea
+    id: done-when
+    attributes:
+      label: Done When
+      description: A short checklist that proves the change works.
+      placeholder: |
+        - [ ] Each Today card shows the stall reason in one sentence
+        - [ ] The card has one button for the next action
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Sales Admin (Today)
+        - Loan Admin (Bookings)
+        - Legal Admin (Legal)
+        - Case page
+        - Forecast
+        - Add Bookings
+        - Settings
+        - Ask Mortar
+        - Several pages
+        - Landing or sign-in
+        - Docs or research
+        - Tooling or repo
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Pitch Priority
+      description: How much does this matter for the Chin Hin pitch?
+      options:
+        - Blocks the pitch
+        - Improves the pitch
+        - After the pitch
+    validations:
+      required: true
+  - type: checkboxes
+    id: duplicates
+    attributes:
+      label: Duplicate And Conflict Check
+      description: Search first, for example `gh issue list --state all --search "<keywords>"` and `gh pr list --state all --search "<keywords>"`.
+      options:
+        - label: I searched open and closed issues and pull requests, and linked any that overlap or conflict with this one.
+          required: true

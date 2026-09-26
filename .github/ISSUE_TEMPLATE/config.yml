@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: How We Ship Changes
+    url: https://github.com/NexTechnologies-MY/Mortar/blob/main/.github/CONTRIBUTING.md
+    about: Read this before opening your first issue or pull request.
