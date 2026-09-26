@@ -1,12 +1,13 @@
 /**
- * Messages panel — the case's message log, each message with Jev's proposal:
- * the extracted event, document and owner with probability, confidence and
- * the Needs Review marker under the 0.6 threshold, the JevTag source line,
- * and Confirm, Dispute and Dismiss actions on the pending proposal event.
- * A `no_update` read collapses to one muted line; the full panel is reserved
- * for proposals that need a decision. Ask Jev Again re-reads any message
- * live and supersedes the old proposal. A review the server refuses, because
- * someone settled the proposal first, shows its reason and re-reads the case.
+ * Messages panel — the case's message log, each message with Jev's proposal
+ * on one line: what Jev suggests, the document and who it lands on, and how
+ * sure Jev is in words, with the Needs Review marker under the 0.6 threshold,
+ * the JevTag source line, and Confirm, Dispute and Dismiss actions on the
+ * pending proposal event. A `no_update` read collapses to one muted line; the
+ * full panel is reserved for proposals that need a decision. Ask Jev Again
+ * re-reads any message live and supersedes the old proposal. A review the
+ * server refuses, because someone settled the proposal first, shows its
+ * reason and re-reads the case.
  */
 
 import { useState, type ReactNode } from 'react'
@@ -14,9 +15,7 @@ import { Check } from 'lucide-react'
 import type { CaseEvent, EventKind, Extraction, ExtractedEvent, Message } from '@mortar/core'
 import { JEV_REVIEW_THRESHOLD } from '@mortar/core'
 import { JevTag } from '@/components/case/JevTag'
-import { ProbabilityBar } from '@/components/case/ProbabilityBar'
 import { EvidencePill } from '@/components/case/EvidencePill'
-import { formatPercent } from '@/components/case/format'
 import { DOCUMENT_LABELS, EXTRACTED_EVENT_LABELS, SENDER_ROLE_LABELS, formatDateTime } from './labels'
 import { OWNER_ROLE_LABELS } from '@/components/case/OwnerBadge'
 import { ApiError, extractMessage, reviewEvent } from '@/lib/api'
@@ -32,6 +31,13 @@ const DECISION_TOASTS: Record<Decision, string> = {
   confirm: 'Proposal confirmed.',
   dispute: 'Proposal marked as disputed.',
   dismiss: 'Proposal dismissed.'
+}
+
+/** How sure Jev is, in the words a reader uses rather than a probability. */
+function certainty(confidence: number): string {
+  if (confidence >= 0.9) return 'Jev Is Sure'
+  if (confidence >= 0.7) return 'Jev Is Fairly Sure'
+  return 'Jev Is Not Sure'
 }
 
 /** The event kind an extraction records, mirroring `proposalFromExtraction`; `no_update` records nothing. */
@@ -75,7 +81,6 @@ function ProposalBlock({
   onReview: (eventId: string, decision: Decision) => void
 }) {
   const { event, document, owner, meta } = extraction
-  const probability = event.probabilities[event.value] ?? 0
   const needsReview = event.confidence < JEV_REVIEW_THRESHOLD
   if (event.value === 'no_update') {
     return (
@@ -86,21 +91,24 @@ function ProposalBlock({
       </p>
     )
   }
+  // One line, in reading order: what Jev read, the document, who it lands on,
+  // then how sure Jev is. No probability bar and no percentage (DESIGN.md
+  // Plain Language).
+  const reading = [
+    EXTRACTED_EVENT_LABELS[event.value],
+    document.value !== 'none' ? DOCUMENT_LABELS[document.value] : null,
+    owner.value !== 'none' ? OWNER_ROLE_LABELS[owner.value] : null
+  ].filter(Boolean)
   return (
     <div className="mt-2 rounded-md border border-border bg-muted/50 p-3">
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-          Jev Suggests
-        </span>
+      <p className="text-sm">
+        <span className="text-muted-foreground">Jev Suggests: </span>
+        <span className="font-medium">{reading.join(' · ')}</span>
+        <span className="text-muted-foreground"> · {certainty(event.confidence)}</span>
+      </p>
+      <div className="mt-1.5 flex flex-wrap items-center gap-2">
         <JevTag meta={meta} />
         {needsReview && <StatusPill tone="warning">Needs Review</StatusPill>}
-      </div>
-      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm">
-        <span className="font-medium">{EXTRACTED_EVENT_LABELS[event.value]}</span>
-        {document.value !== 'none' && <span>{DOCUMENT_LABELS[document.value]}</span>}
-        {owner.value !== 'none' && <span className="text-muted-foreground">{OWNER_ROLE_LABELS[owner.value]}</span>}
-        <ProbabilityBar probability={probability} />
-        <span className="text-[13px] text-muted-foreground">Confidence {formatPercent(event.confidence)}</span>
       </div>
       {proposal && (
         <div className="mt-2 flex flex-wrap items-center gap-2">

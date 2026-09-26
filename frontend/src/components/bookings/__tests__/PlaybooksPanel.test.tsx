@@ -46,26 +46,28 @@ describe('PlaybooksPanel', () => {
     vi.mocked(fetchPlaybooks).mockResolvedValue(RANKING)
   })
 
-  it('lists only the fitting playbooks and folds the rest behind a count control', async () => {
+  it('shows the top fit only and folds the rest behind a count control', async () => {
     renderPanel()
 
     expect(await screen.findByText(titleOf('PB-001'))).toBeTruthy()
-    expect(screen.getByText(titleOf('PB-007'))).toBeTruthy()
-    expect(screen.getByText('Direct Fit')).toBeTruthy()
-    expect(screen.getByText('Partial Fit')).toBeTruthy()
+    expect(screen.getByText('Applies')).toBeTruthy()
+    expect(screen.queryByText(titleOf('PB-007'))).toBeNull()
     expect(screen.queryByText(titleOf('PB-005'))).toBeNull()
-    expect(screen.getByRole('button', { name: 'Show 3 More' })).toBeTruthy()
-    expect(screen.queryByText('No Fit')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Show 4 More' })).toBeTruthy()
+    // The keyword bar went with the rest of the fit scoring: a percentage
+    // beside "Applies" told a reader two numbers that disagreed.
+    expect(screen.queryByText('100%')).toBeNull()
   })
 
-  it('unfolds the no-fit playbooks behind one click and re-folds', async () => {
+  it('unfolds the rest behind one click and re-folds', async () => {
     renderPanel()
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Show 3 More' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Show 4 More' }))
 
+    expect(screen.getByText(titleOf('PB-007'))).toBeTruthy()
     expect(screen.getByText(titleOf('PB-005'))).toBeTruthy()
-    expect(screen.getByText(titleOf('PB-013'))).toBeTruthy()
-    expect(screen.getAllByText('No Fit').length).toBe(3)
+    expect(screen.getByText('May Apply')).toBeTruthy()
+    expect(screen.getAllByText('Does Not Apply').length).toBe(3)
     expect(screen.getByRole('button', { name: 'Show Fewer' })).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: 'Show Fewer' }))

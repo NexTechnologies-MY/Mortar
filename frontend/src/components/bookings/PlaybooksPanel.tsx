@@ -10,8 +10,8 @@
  * the panel falls back to the same keyword search locally and labels the
  * ranking as stale.
  *
- * Only playbooks Jev scored as a fit (direct or partial) are listed up front;
- * the rest fold behind a single control that names their count.
+ * Only the top fit shows; every other playbook, fitted or not, folds behind a
+ * single control that names their count.
  */
 
 import { useEffect, useMemo, useState } from 'react'
@@ -19,7 +19,6 @@ import { ChevronDown, Search } from 'lucide-react'
 import type { CaseSummary, Playbook, PlaybookRanking, ScoreAnswer } from '@mortar/core'
 import { searchPlaybooks } from '@mortar/core'
 import { JevTag } from '@/components/case/JevTag'
-import { ProbabilityBar } from '@/components/case/ProbabilityBar'
 import { fetchPlaybooks } from '@/lib/api'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -29,9 +28,9 @@ import { StatusPill } from '@/components/ui/status-pill'
 import { cn } from '@/lib/utils'
 
 const FIT_PRESENTATION: Record<number, { tone: 'positive' | 'warning' | 'neutral'; label: string }> = {
-  2: { tone: 'positive', label: 'Direct Fit' },
-  1: { tone: 'warning', label: 'Partial Fit' },
-  0: { tone: 'neutral', label: 'No Fit' }
+  2: { tone: 'positive', label: 'Applies' },
+  1: { tone: 'warning', label: 'May Apply' },
+  0: { tone: 'neutral', label: 'Does Not Apply' }
 }
 
 const STATUS_BADGES: Record<Playbook['status'], string | null> = {
@@ -68,7 +67,7 @@ export function PlaybooksPanel({
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(true)
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  /** The result whose no-fit tail is unfolded; a fresh ranking re-folds it. */
+  /** The result whose tail is unfolded; a fresh ranking re-folds it. */
   const [restOpen, setRestOpen] = useState<{ ranking: PlaybookRanking | null; requested: string } | null>(null)
   const byId = useMemo(() => new Map(playbooks.map((p) => [p.id, p])), [playbooks])
 
@@ -116,14 +115,12 @@ export function PlaybooksPanel({
     return { items, query: ranking.query }
   }, [result, playbooks, byId, defaultQuery])
 
-  const fits = (item: Ranked) => item.fit !== null && Math.round(item.fit.score) >= 1
-  const fitting = shown.items.filter(fits)
-  const rest = shown.items.filter((item) => !fits(item))
-  // With no scored fits at all (unscored stale results) there is nothing to
-  // fold behind; the full list shows.
-  const folded = fitting.length > 0 && rest.length > 0
+  // The top fit leads; the rest wait behind a control that names their count.
+  const top = shown.items[0] ?? null
+  const rest = shown.items.slice(1)
+  const folded = rest.length > 0
   const showRest = restOpen !== null && restOpen === result
-  const visible = folded && !showRest ? fitting : shown.items
+  const visible = top === null ? [] : folded && !showRest ? [top] : shown.items
 
   return (
     <Card>
@@ -164,7 +161,7 @@ export function PlaybooksPanel({
           <p className="text-sm text-muted-foreground">{loading ? 'Ranking Playbooks…' : 'No Playbooks Found.'}</p>
         ) : (
           <ul className="flex flex-col gap-2">
-            {visible.map(({ playbook, keywordScore, fit }) => {
+            {visible.map(({ playbook, fit }) => {
               const fitView = fit
                 ? FIT_PRESENTATION[Math.round(fit.score)]
                 : { tone: 'neutral' as const, label: 'Unscored' }
@@ -189,7 +186,6 @@ export function PlaybooksPanel({
                   <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
                     <StatusPill tone={fitView.tone}>{fitView.label}</StatusPill>
                     {statusBadge && <Badge variant="secondary">{statusBadge}</Badge>}
-                    <ProbabilityBar probability={keywordScore} />
                   </div>
                   {expanded && (
                     <div className="mt-2 flex flex-col gap-2 text-[13px] text-muted-foreground">

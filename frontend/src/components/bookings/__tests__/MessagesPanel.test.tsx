@@ -97,3 +97,48 @@ describe('MessagesPanel review', () => {
     expect(notify.success).not.toHaveBeenCalled()
   })
 })
+
+describe('MessagesPanel Jev line', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  /** Renders one proposal and returns the line that carries Jev's read. */
+  const readLine = (confidence: number) => {
+    const { container } = render(
+      <MessagesPanel
+        messages={[MESSAGE]}
+        extractions={new Map([[MESSAGE.id, { ...EXTRACTION, event: { ...EXTRACTION.event, confidence } }]])}
+        events={[PROPOSAL]}
+        reviewer="Nurul Aina"
+        onChanged={vi.fn(async () => {})}
+      />
+    )
+    // The line is built from three spans, so match the block that holds them.
+    return [...container.querySelectorAll('p')].map((p) => p.textContent).find((t) => t?.startsWith('Jev Suggests:'))!
+  }
+
+  it('reads the proposal on one line, with the document and who it lands on', () => {
+    expect(readLine(0.9)).toBe('Jev Suggests: Documents Received · Payslip · Loan Admin · Jev Is Sure')
+  })
+
+  it.each([
+    [0.94, 'Jev Is Sure'],
+    [0.9, 'Jev Is Sure'],
+    [0.84, 'Jev Is Fairly Sure'],
+    [0.7, 'Jev Is Fairly Sure'],
+    [0.62, 'Jev Is Not Sure']
+  ])('maps %s confidence to words, never a percentage', (confidence, expected) => {
+    const line = readLine(confidence)
+    expect(line).toContain(expected)
+    expect(line).not.toMatch(/Confidence|\d+%/)
+  })
+
+  it('keeps the review actions on the line', () => {
+    renderPanel()
+
+    expect(screen.getByRole('button', { name: 'Confirm' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Dispute' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Dismiss' })).toBeTruthy()
+  })
+})
