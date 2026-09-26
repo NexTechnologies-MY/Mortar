@@ -74,8 +74,7 @@
 *.sqlite3
 *.dump
 
-# Python bytecode — compiled build artefacts. .gitignore covers only
-# scripts/demo/__pycache__/, so the six under scripts/demo/tests/ are tracked.
+# Python bytecode — compiled build artefacts
 __pycache__/
 *.py[cod]
 

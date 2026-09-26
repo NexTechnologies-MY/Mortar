@@ -95,4 +95,7 @@ dist/
 
 # Playwright MCP session artifacts (DOM snapshots, console logs)
 .playwright-mcp/
-scripts/demo/__pycache__/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
