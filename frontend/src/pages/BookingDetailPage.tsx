@@ -93,6 +93,9 @@ export function BookingDetailPage() {
         (fetchedSignals?.bookingId === id ? fetchedSignals : null) ??
         snapshot.signals.find((s) => s.bookingId === id) ??
         null,
+      // Jev's cached answer for this case, so Waiting On can show the same
+      // alternative Today does.
+      suggestion: snapshot.nextActions.find((a) => a.bookingId === id),
       playbooks: snapshot.playbooks
     }
   }, [snapshot, cases, id, fetchedSignals])
@@ -150,6 +153,9 @@ export function BookingDetailPage() {
                 summary={data.summary}
                 referenceDate={referenceDate}
                 onChanged={onChanged}
+                // Jev's cached answer for this case, so the "Jev Suggests" line
+                // appears here as it does on Today and in the side sheet.
+                suggestion={data.suggestion}
                 wide
               />
               {/* A closed case takes no more updates. */}

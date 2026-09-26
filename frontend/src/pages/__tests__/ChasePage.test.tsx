@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { CaseSummary, Snapshot, Task } from '@mortar/core'
@@ -29,32 +29,37 @@ const mocks = vi.hoisted(() => ({
   refresh: vi.fn(),
   postTask: vi.fn(),
   updateTask: vi.fn(),
-  fetchNextAction: vi.fn()
+  fetchNextAction: vi.fn(),
+  postEvent: vi.fn(),
+  postApplication: vi.fn()
 }))
 
 let SNAP: Snapshot
 let CASES: CaseSummary[]
 
+/** A provisional event: evidence a person has to confirm, which leads the queue. */
+function provisionalEvent(bookingId: string, id: string): Snapshot['events'][number] {
+  return {
+    id,
+    bookingId,
+    applicationId: null,
+    track: 'loan',
+    kind: 'documents_requested',
+    occurredAt: '2026-09-16T15:30:00+08:00',
+    recordedAt: '2026-09-16T15:31:00+08:00',
+    reportedBy: 'Jev',
+    verifiedBy: null,
+    status: 'provisional',
+    source: 'jev',
+    messageId: 'MSG-1',
+    document: 'payslip',
+    note: null
+  }
+}
+
 function defaultData() {
   SNAP = snapshot({
-    events: [
-      {
-        id: 'EV-1',
-        bookingId: 'BK-9001',
-        applicationId: null,
-        track: 'loan',
-        kind: 'documents_requested',
-        occurredAt: '2026-09-16T15:30:00+08:00',
-        recordedAt: '2026-09-16T15:31:00+08:00',
-        reportedBy: 'Jev',
-        verifiedBy: null,
-        status: 'provisional',
-        source: 'jev',
-        messageId: 'MSG-1',
-        document: 'payslip',
-        note: null
-      }
-    ],
+    events: [provisionalEvent('BK-9001', 'EV-1')],
     nextActions: [
       // Jev disagrees with the rule on BK-9001: the rule says call the banker,
       // Jev says ask the buyer for the payslip.
@@ -81,7 +86,10 @@ vi.mock('@/lib/data', () => ({
 vi.mock('@/lib/api', () => ({
   postTask: mocks.postTask,
   updateTask: mocks.updateTask,
-  fetchNextAction: mocks.fetchNextAction
+  fetchNextAction: mocks.fetchNextAction,
+  // The side sheet's Record An Update posts through these.
+  postEvent: mocks.postEvent,
+  postApplication: mocks.postApplication
 }))
 
 vi.mock('@/components/ui/toastConfig', () => ({
@@ -107,32 +115,29 @@ describe('ChasePage', () => {
     defaultData()
   })
 
-  it('opens on the Today title and one sentence with the two counts', () => {
+  it('opens Sales Admin on the whole chase, header and tile included', () => {
     renderPage()
-    expect(screen.getByRole('heading', { level: 1, name: 'Today' })).toBeTruthy()
-    // Sales Admin is the default seat; both cases sit with Loan Admin, so the
-    // count is 0 rather than a number from another desk.
-    expect(screen.getByText(/Bookings? Need A Move From You/)).toBeTruthy()
-    expect(screen.getByText(/0 Tasks Due Today/)).toBeTruthy()
+
+    // The Sales Administration Executive coordinates every booking to a
+    // signed SPA, so their home is the whole queue, not one desk of it.
+    expect(screen.getByText(/2 Stalled Bookings · 0 Tasks Due Today/)).toBeTruthy()
+    expect(screen.getByText('Stalled Bookings')).toBeTruthy()
+    expect(screen.getAllByTestId(/chase-card-/)).toHaveLength(2)
   })
 
-  it('counts the two cards it is showing under the headline figure', () => {
+  it('counts the cards it is showing under the headline figure', () => {
     renderPage()
-    // Sales Admin owns neither stall, so the tile reads 0 and the owner
-    // filter has already narrowed the queue to nothing.
-    expect(screen.getByText('Nothing To Chase')).toBeTruthy()
-    expect(screen.getByText('No Stalled Booking Matches These Filters.')).toBeTruthy()
+    expect(screen.getAllByTestId(/chase-card-/)).toHaveLength(2)
   })
 
   it('lists a card leading with the rule-based move, with Jev’s differing move beneath it', () => {
     renderPage()
-    fireEvent.click(screen.getByRole('combobox', { name: 'Filter by owner' }))
-    fireEvent.click(screen.getByRole('option', { name: 'Loan Admin' }))
 
     const card = screen.getByTestId('chase-card-BK-9001')
     expect(card.textContent).toContain('Call The Banker')
     expect(card.textContent).toContain('Application Undecided For 10 Working Days')
-    expect(card.textContent).toContain('Jev Suggests: Ask For The Document Instead')
+    // The rule-based move is the default; Jev's differs and rides one line under it.
+    expect(card.textContent).toContain('Jev Suggests: Ask For The Missing Document Instead')
   })
 
   it('creates the default step’s task with one click, not Jev’s', async () => {
@@ -140,8 +145,6 @@ describe('ChasePage', () => {
     SNAP = { ...SNAP, tasks: [], nextActions: [] }
     CASES = [stalledCase('BK-9001', { applications: [{ id: 'APP-1', bank: 'Crestline', status: 'submitted' }] })]
     renderPage()
-    fireEvent.click(screen.getByRole('combobox', { name: 'Filter by owner' }))
-    fireEvent.click(screen.getByRole('option', { name: 'Loan Admin' }))
 
     fireEvent.click(within(screen.getByTestId('chase-card-BK-9001')).getByRole('button', { name: 'Create Task' }))
 
@@ -161,8 +164,6 @@ describe('ChasePage', () => {
   it('raises Jev’s step when the person picks the alternative', async () => {
     mocks.postTask.mockResolvedValue({})
     renderPage()
-    fireEvent.click(screen.getByRole('combobox', { name: 'Filter by owner' }))
-    fireEvent.click(screen.getByRole('option', { name: 'Loan Admin' }))
 
     const card = screen.getByTestId('chase-card-BK-9001')
     fireEvent.click(within(card).getByRole('button', { name: 'Do That Instead' }))
@@ -173,9 +174,11 @@ describe('ChasePage', () => {
     )
   })
 
-  it('ranks by how long each case has sat still, and pills only the overdue one', () => {
+  it('leads with the case whose evidence is waiting to be confirmed', () => {
+    // BK-OD is the stalest stall, but one confirmation of BK-9001's payslip
+    // clears that stall outright, so BK-9001 goes first.
     SNAP = snapshot({
-      events: SNAP.events,
+      events: [provisionalEvent('BK-9001', 'EV-1')],
       bookings: [booking('BK-9001'), booking('BK-0040'), booking('BK-OD')],
       nextActions: []
     })
@@ -193,8 +196,34 @@ describe('ChasePage', () => {
       })
     ]
     renderPage()
-    fireEvent.click(screen.getByRole('combobox', { name: 'Filter by owner' }))
-    fireEvent.click(screen.getByRole('option', { name: 'Loan Admin' }))
+
+    expect(screen.getAllByTestId(/chase-card-/).map((c) => c.getAttribute('data-testid'))).toEqual([
+      'chase-card-BK-9001',
+      'chase-card-BK-OD',
+      'chase-card-BK-0040'
+    ])
+  })
+
+  it('ranks the rest by how long each case has sat still, and pills only the overdue one', () => {
+    SNAP = snapshot({
+      events: [],
+      bookings: [booking('BK-9001'), booking('BK-0040'), booking('BK-OD')],
+      nextActions: []
+    })
+    CASES = [
+      stalledCase('BK-9001', { daysSinceEvidence: 3, applications: [{ id: 'A1', bank: 'B', status: 'submitted' }] }),
+      stalledCase('BK-0040', {
+        daysSinceEvidence: 1,
+        applications: [{ id: 'A2', bank: 'B', status: 'submitted' }],
+        stallReasons: ['Application Undecided For 10 Working Days']
+      }),
+      stalledCase('BK-OD', {
+        daysSinceEvidence: 14,
+        applications: [{ id: 'A3', bank: 'B', status: 'submitted' }],
+        stallReasons: ['Application Undecided For 10 Working Days']
+      })
+    ]
+    renderPage()
 
     const cards = screen.getAllByTestId(/chase-card-/)
     expect([...cards].map((c) => c.getAttribute('data-testid'))).toEqual([
@@ -213,8 +242,6 @@ describe('ChasePage', () => {
     SNAP = snapshot({ bookings: ids.map((id) => booking(id)) })
     CASES = ids.map((id) => stalledCase(id, { daysSinceEvidence: 3 }))
     renderPage()
-    fireEvent.click(screen.getByRole('combobox', { name: 'Filter by owner' }))
-    fireEvent.click(screen.getByRole('option', { name: 'All Owners' }))
 
     expect(screen.getAllByTestId(/chase-card-/)).toHaveLength(9)
 
@@ -237,15 +264,65 @@ describe('ChasePage', () => {
     SNAP = snapshot({ bookings: SNAP.bookings, nextActions: [] })
     CASES = [stalledCase('BK-9001', { applications: [{ id: 'A1', bank: 'B', status: 'submitted' }] })]
     renderPage()
-    fireEvent.click(screen.getByRole('combobox', { name: 'Filter by owner' }))
-    fireEvent.click(screen.getByRole('option', { name: 'Loan Admin' }))
 
     const grid = screen.getByTestId('chase-card-BK-9001').parentElement!
     expect(grid.className).toContain('grid-cols-1')
   })
 
+  describe('the side sheet', () => {
+    it('opens the same quick view a ledger row opens, from a card, without leaving Today', () => {
+      renderPage()
+      fireEvent.click(screen.getByRole('button', { name: /^Quick View A-12-03: BK-9001/ }))
+
+      const sheet = document.querySelector<HTMLElement>('[role="dialog"]')!
+      expect(sheet).toBeTruthy()
+      expect(within(sheet).getByText('Waiting On')).toBeTruthy()
+      expect(within(sheet).getByText('Next Step')).toBeTruthy()
+      expect(within(sheet).getByRole('list', { name: 'Case Journey' })).toBeTruthy()
+      // The full case stays one link away, and the queue is still behind it.
+      expect(
+        within(sheet)
+          .getByRole('link', { name: /Open Full Case/ })
+          .getAttribute('href')
+      ).toBe('/bookings/BK-9001')
+      expect(screen.getAllByTestId(/chase-card-/)).toHaveLength(2)
+    })
+
+    it('carries Record An Update, so what happened is logged from Today', () => {
+      renderPage()
+      fireEvent.click(screen.getByRole('button', { name: /^Quick View A-12-03: BK-9001/ }))
+
+      const sheet = document.querySelector<HTMLElement>('[role="dialog"]')!
+      expect(within(sheet).getByRole('button', { name: /Record An Update/ })).toBeTruthy()
+    })
+
+    it('shows Jev’s alternative in the sheet, the same line Today shows', () => {
+      renderPage()
+      fireEvent.click(screen.getByRole('button', { name: /^Quick View A-12-03: BK-9001/ }))
+
+      const sheet = document.querySelector<HTMLElement>('[role="dialog"]')!
+      expect(within(sheet).getByText('Jev Suggests: Ask For The Missing Document Instead')).toBeTruthy()
+    })
+
+    it('refreshes the queue after a save in the sheet', async () => {
+      mocks.postTask.mockResolvedValue({})
+      renderPage()
+      fireEvent.click(screen.getByRole('button', { name: /^Quick View A-12-03: BK-9001/ }))
+
+      const sheet = document.querySelector<HTMLElement>('[role="dialog"]')!
+      await act(async () => {
+        fireEvent.click(within(sheet).getByRole('button', { name: 'Add Task' }))
+      })
+
+      await waitFor(() => expect(mocks.postTask).toHaveBeenCalledTimes(1))
+      // The same refresh `/bookings` does, so the card behind the sheet counts
+      // the new task once the sheet closes.
+      await waitFor(() => expect(mocks.refresh).toHaveBeenCalled())
+    })
+  })
+
   describe('Open Tasks', () => {
-    it('defaults to the active persona’s own tasks and widens to every owner', () => {
+    it('opens every owner for Sales Admin, who coordinates the whole chase', () => {
       SNAP = snapshot({
         bookings: SNAP.bookings,
         nextActions: [],
@@ -253,11 +330,28 @@ describe('ChasePage', () => {
       })
       renderPage()
 
-      // Sales Admin’s seat is Nurul Aina, who owns none of these two.
+      // Nurul Aina, the Sales Admin seat, owns neither of these.
+      expect(screen.getByText('Call The Banker About BK-9001')).toBeTruthy()
+      expect(screen.getByText('Call The Banker About BK-0040')).toBeTruthy()
+      // The toggle stays, and narrows to hers.
+      fireEvent.click(screen.getByRole('button', { name: 'Show Mine Only' }))
       expect(screen.getByText('No Open Tasks For Nurul Aina.')).toBeTruthy()
+    })
+
+    it('opens Loan Admin on their own tasks and widens to every owner', () => {
+      window.localStorage.setItem(PERSONA_STORAGE_KEY, 'loan-admin')
+      SNAP = snapshot({
+        bookings: SNAP.bookings,
+        nextActions: [],
+        tasks: [task('BK-9001'), task('BK-0040', { id: 'TASK-2', ownerName: 'Arvind Raj', ownerRole: 'legal' })]
+      })
+      renderPage()
+
+      // Tan Mei Ling owns the first; Arvind Raj is Legal's.
+      expect(screen.getByText('Call The Banker About BK-9001')).toBeTruthy()
+      expect(screen.queryByText('Call The Banker About BK-0040')).toBeNull()
 
       fireEvent.click(screen.getByRole('button', { name: 'Show All Owners' }))
-      expect(screen.getByText('Call The Banker About BK-9001')).toBeTruthy()
       expect(screen.getByText('Call The Banker About BK-0040')).toBeTruthy()
     })
 
@@ -273,7 +367,7 @@ describe('ChasePage', () => {
     })
   })
 
-  describe('persona presets', () => {
+  describe('persona presets and the owner filter', () => {
     it('opens Loan Admin on the cases waiting on their own desk', () => {
       window.localStorage.setItem(PERSONA_STORAGE_KEY, 'loan-admin')
       renderPage()
@@ -282,11 +376,41 @@ describe('ChasePage', () => {
       expect(screen.getAllByTestId(/chase-card-/)).toHaveLength(2)
     })
 
-    it('opens Sales Admin on their own desk, which is empty on this data', () => {
-      window.localStorage.setItem(PERSONA_STORAGE_KEY, 'sales-admin')
+    it('reads another desk in the header, the tile and the cards together', () => {
+      renderPage()
+      fireEvent.click(screen.getByRole('combobox', { name: 'Filter by owner' }))
+      fireEvent.click(screen.getByRole('option', { name: 'Loan Admin' }))
+
+      expect(screen.getByText(/2 Bookings Need A Move From Loan Admin · 0 Tasks Due Today/)).toBeTruthy()
+      expect(screen.getByText('Need A Move From Loan Admin')).toBeTruthy()
+      expect(screen.getAllByTestId(/chase-card-/)).toHaveLength(2)
+    })
+
+    it('says "From You" when the persona’s own desk is selected', () => {
+      window.localStorage.setItem(PERSONA_STORAGE_KEY, 'loan-admin')
       renderPage()
 
-      expect(screen.getByText('0 Bookings Need A Move From You · 0 Tasks Due Today')).toBeTruthy()
+      expect(screen.getByText('Need A Move From You')).toBeTruthy()
+      expect(screen.getByText(/2 Bookings Need A Move From You · 0 Tasks Due Today/)).toBeTruthy()
+    })
+
+    it('reads one stalled booking in the singular over all desks', () => {
+      SNAP = snapshot({ bookings: SNAP.bookings, events: [], nextActions: [] })
+      CASES = [stalledCase('BK-9001', { applications: [{ id: 'A1', bank: 'B', status: 'submitted' }] })]
+      renderPage()
+
+      expect(screen.getByText(/1 Stalled Booking · 0 Tasks Due Today/)).toBeTruthy()
+    })
+
+    it('says a lone case on a desk in the singular too', () => {
+      SNAP = snapshot({ bookings: SNAP.bookings, events: [], nextActions: [] })
+      CASES = [stalledCase('BK-9001', { applications: [{ id: 'A1', bank: 'B', status: 'submitted' }] })]
+      window.localStorage.setItem(PERSONA_STORAGE_KEY, 'loan-admin')
+      renderPage()
+
+      // The tile drops the subject and the count, which the figure carries.
+      expect(screen.getByText('Needs A Move From You')).toBeTruthy()
+      expect(screen.getByText(/1 Booking Needs A Move From You · 0 Tasks Due Today/)).toBeTruthy()
     })
   })
 })

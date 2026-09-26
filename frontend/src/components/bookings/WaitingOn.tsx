@@ -22,7 +22,7 @@ import { BALL_HOLDER_ICONS, BALL_HOLDER_LABELS } from '@/components/case/ball'
 import { OwnerBadge } from '@/components/case/OwnerBadge'
 import { formatDaysLong } from '@/components/case/format'
 import { nextStepFor, stepToTask } from '@/components/case/nextStep'
-import { NEXT_ACTION_ICONS, NEXT_ACTION_LABELS } from '@/components/chase/chase'
+import { NEXT_ACTION_ICONS, NEXT_ACTION_LABELS, documentStepLabel } from '@/components/chase/chase'
 import { Button } from '@/components/ui/button'
 import { StatusPill } from '@/components/ui/status-pill'
 import { notify } from '@/components/ui/toastConfig'
@@ -248,12 +248,14 @@ export function WaitingOnPanel({
         <div className="flex flex-wrap items-center gap-2">
           <span className="inline-flex items-center gap-2 text-sm font-medium">
             <MoveIcon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-            {next.defaultStep.label}
+            {documentStepLabel(next.defaultStep.label, next.defaultStep.document)}
           </span>
           <OwnerBadge role={ownerRole} name={owner} />
         </div>
         {alternative && alternativeTask ? (
-          <p className="text-[13px] text-muted-foreground">Jev Suggests: {alternative.label} Instead</p>
+          <p className="text-[13px] text-muted-foreground">
+            Jev Suggests: {documentStepLabel(alternative.label, alternative.document)} Instead
+          </p>
         ) : null}
         <div className="flex flex-wrap items-center gap-3">
           <Button

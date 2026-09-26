@@ -183,4 +183,25 @@ describe('WaitingOnPanel next step', () => {
       expect(vi.mocked(postTask)).toHaveBeenCalledWith(waitingOnTask(BOOKING, WITH_BANK, '2026-09-18'))
     )
   })
+
+  it('names the outstanding document in the next step, not after it', () => {
+    // AWAITING_DOCUMENTS owes a payslip, so the step reads as a sentence.
+    render(
+      <WaitingOnPanel booking={BOOKING} summary={AWAITING_DOCUMENTS} referenceDate="2026-09-18" onChanged={noop} />
+    )
+
+    expect(screen.getByText('Ask For Payslip')).toBeTruthy()
+    expect(screen.queryByText('Ask For The Missing Document')).toBeNull()
+  })
+
+  it('says the missing document when the case does not name one', () => {
+    // A bank waiting on paperwork names no document, so the step cannot.
+    const undocumented = {
+      ...AWAITING_DOCUMENTS,
+      outstandingDocuments: [] as CaseSummary['outstandingDocuments']
+    }
+    render(<WaitingOnPanel booking={BOOKING} summary={undocumented} referenceDate="2026-09-18" onChanged={noop} />)
+
+    expect(screen.getByText('Ask For The Missing Document')).toBeTruthy()
+  })
 })

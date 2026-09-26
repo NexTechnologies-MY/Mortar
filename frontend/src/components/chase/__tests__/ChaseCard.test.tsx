@@ -96,8 +96,7 @@ function jevMove(action: NextAction) {
   }
 }
 
-function renderCard(task: Task | null, alternative?: NextStep) {
-  const caseSummary = summary()
+function renderCard(task: Task | null, alternative?: NextStep, caseSummary = summary()) {
   const next = nextStepFor(booking(), caseSummary, NEXT_ACTION_LABELS, jevMove('call_buyer'))
   const onCreateTask = vi.fn()
   render(
@@ -108,6 +107,7 @@ function renderCard(task: Task | null, alternative?: NextStep) {
         step={next.defaultStep}
         alternativeStep={alternative ?? next.alternativeStep}
         openTask={task}
+        onInspect={vi.fn()}
         onSuggest={vi.fn()}
         onCreateTask={onCreateTask}
       />
@@ -184,5 +184,45 @@ describe('ChaseCard', () => {
     const button = screen.getByRole('button', { name: 'Ask Jev Again' })
     expect(button.textContent).toBe('')
     expect(button.className).toContain('size-8')
+  })
+
+  it('names the missing document in the step itself, not as a tail after it', () => {
+    // The buyer owes a payslip, so the step reads as the sentence a person says.
+    renderCard(null, undefined, summary({ outstandingDocuments: ['payslip'] }))
+
+    expect(screen.getByText('Ask For Payslip')).toBeTruthy()
+    expect(screen.queryByText(/Ask For The Missing Document/)).toBeNull()
+  })
+
+  it('falls back to the missing document when the case names none', () => {
+    // A bank waiting on paperwork names no document, so the step cannot.
+    renderCard(
+      null,
+      undefined,
+      summary({ applications: [{ id: 'APP-1', bank: 'Crestline Bank', status: 'documents_pending' }] })
+    )
+
+    expect(screen.getByText('Ask For The Missing Document')).toBeTruthy()
+    expect(screen.queryByText(/Ask For Payslip/)).toBeNull()
+  })
+
+  it('opens the case quick view from the unit and buyer, keeping the full case one click away', () => {
+    const onInspect = vi.fn()
+    const caseSummary = summary()
+    render(
+      <MemoryRouter>
+        <ChaseCard
+          booking={booking()}
+          summary={caseSummary}
+          step={nextStepFor(booking(), caseSummary, NEXT_ACTION_LABELS).defaultStep}
+          onInspect={onInspect}
+          onSuggest={vi.fn()}
+          onCreateTask={vi.fn()}
+        />
+      </MemoryRouter>
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Quick View A-12-03: BK-9001 · Raymond Tan Wei Hong' }))
+    expect(onInspect).toHaveBeenCalledTimes(1)
   })
 })

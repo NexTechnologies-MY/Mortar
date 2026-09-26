@@ -172,6 +172,31 @@ describe('BookingDetailPage', () => {
     await waitFor(() => expect(screen.queryByText('Could Not Refresh. Showing The Last Loaded Data.')).toBeNull())
   })
 
+  it('shows Jev’s alternative in Waiting On, as Today does', async () => {
+    // The page used to pass no suggestion, so "Jev Suggests" only ever
+    // appeared on Today. One cached answer, differing from the rule, must
+    // reach the panel here too.
+    const fixture = await import('@/components/bookings/__tests__/snapshotFixture')
+    const base = fixture.buildSnapshot()
+    vi.mocked(fetchSnapshot).mockResolvedValueOnce({
+      ...base,
+      nextActions: [
+        {
+          bookingId: 'BK-9001',
+          // The rule says chase the banker; Jev says ring the buyer.
+          action: { value: 'call_buyer', probabilities: { call_buyer: 0.9 }, confidence: 0.9 },
+          owner: { value: 'sales', probabilities: { sales: 0.9 }, confidence: 0.9 },
+          urgency: { score: 2, confidence: 0.9 },
+          meta: { source: 'cache', stale: false, latencyMs: null }
+        }
+      ]
+    })
+    renderDetail('BK-9001')
+
+    expect(await screen.findByText('Waiting On')).toBeTruthy()
+    expect(screen.getByText('Jev Suggests: Call The Buyer Instead')).toBeTruthy()
+  })
+
   it('keeps Record An Update and Paste A Message closed on load and opens them in place', async () => {
     renderDetail()
 
