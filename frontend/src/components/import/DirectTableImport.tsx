@@ -13,18 +13,7 @@
 
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import {
-  AlertTriangle,
-  Building2,
-  CheckCircle2,
-  LayoutGrid,
-  Plus,
-  Scale,
-  Settings,
-  Trash2,
-  Upload,
-  UserCheck
-} from 'lucide-react'
+import { Plus, Trash2, Upload } from 'lucide-react'
 import { PERSONA_STAFF, unitKey, type Booking, type BookingDraft, type Persona } from '@mortar/core'
 import { importBookings } from '@/lib/api'
 import { usePersona } from '@/lib/persona'
@@ -33,8 +22,11 @@ import { UnitAutocompleteInput } from '@/components/import/UnitAutocompleteInput
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { StatusPill } from '@/components/ui/status-pill'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { notify } from '@/components/ui/toastConfig'
-import { cn } from '@/lib/utils'
 
 export interface CaseEntryRow {
   id: string
@@ -75,22 +67,25 @@ export function DirectTableImport({
   persona: propPersona,
   referenceDate = '',
   held = new Map(),
+  projectName: propProjectName,
   onImported = () => {}
 }: {
   persona?: Persona
   referenceDate?: string
   held?: Map<string, string>
+  projectName?: string
   onImported?: (result: { importId: string; bookings: Booking[] }) => void
 }) {
   const { persona: contextPersona } = usePersona()
   const activePersona = propPersona ?? contextPersona ?? 'sales-admin'
-  const { settings } = useProjectSettings()
+  const { settings } = useProjectSettings(propProjectName)
+  const activeProjectName = propProjectName || settings.projectName || 'Bukit Damai'
   const loggedInSalesName = PERSONA_STAFF[activePersona]?.name ?? 'Nurul Aina'
 
   // Calculate unsold inventory units matching the configured building range
   const availableInventoryUnits = useMemo(() => {
-    return getAvailableInventoryUnits(settings, held)
-  }, [settings, held])
+    return getAvailableInventoryUnits({ ...settings, projectName: activeProjectName }, held)
+  }, [settings, activeProjectName, held])
 
   // Default is 1 row initially
   const [rows, setRows] = useState<CaseEntryRow[]>([
@@ -164,7 +159,7 @@ export function DirectTableImport({
     }
 
     // Check if unit is already held in current project
-    const key = unitKey(settings.projectName, trimmedUnit)
+    const key = unitKey(activeProjectName, trimmedUnit)
     const holdingBookingId = held.get(key)
     if (holdingBookingId) {
       return {
@@ -210,7 +205,7 @@ export function DirectTableImport({
         const lawFirm = row.lawFirm || settings.defaultLawFirm || 'Teh & Partners'
 
         return {
-          project: settings.projectName || 'Bukit Damai',
+          project: activeProjectName,
           unit: trimmedUnit,
           priceRm: price,
           bookingDate: today,
@@ -249,97 +244,54 @@ export function DirectTableImport({
   }
 
   return (
-    <Card className="border-border shadow-xs">
+    <Card className="border-border shadow-card">
       <CardContent className="flex flex-col gap-4 p-4 sm:p-5">
         {/* Top Header & Settings Info Bar */}
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between border-b border-border pb-3.5">
+        <div className="flex flex-col gap-2 border-b border-border pb-3.5 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-base font-semibold text-foreground">Direct Case Import Ledger</h2>
+            <h2 className="text-base font-semibold text-foreground">Type Bookings In</h2>
             <p className="text-xs text-muted-foreground">
               Key in unit numbers, client names, and select layout models to batch import cases directly into the
               ledger.
             </p>
           </div>
 
-          {/* Quick Context Badges */}
-          <div className="flex flex-wrap items-center gap-2 text-xs">
-            <span className="inline-flex items-center gap-1.5 rounded-md bg-accent px-2.5 py-1 font-medium text-foreground border border-border">
-              <UserCheck className="size-3.5 text-primary" />
-              <span>
-                Sales: <strong>{loggedInSalesName}</strong>
-              </span>
-              <span className="text-[10px] text-primary">(Logged in)</span>
-            </span>
-
-            <span className="inline-flex items-center gap-1.5 rounded-md bg-accent px-2.5 py-1 font-medium text-foreground border border-border">
-              <LayoutGrid className="size-3.5 text-primary" />
-              <span>
-                Models: <strong>{settings.models.length} Layouts</strong>
-              </span>
-            </span>
-
-            <span
-              className="inline-flex items-center gap-1.5 rounded-md bg-accent px-2.5 py-1 font-medium text-foreground border border-border"
-              title="Unsold units available in building range"
-            >
-              <Building2 className="size-3.5 text-status-positive" />
-              <span>
-                Unsold: <strong>{availableInventoryUnits.length} Units</strong>
-              </span>
-            </span>
-
-            <span className="inline-flex items-center gap-1.5 rounded-md bg-accent px-2.5 py-1 font-medium text-foreground border border-border">
-              <Scale className="size-3.5 text-primary" />
-              <span>
-                Law Firm: <strong>{settings.defaultLawFirm}</strong>
-              </span>
-            </span>
-
-            <Link
-              to="/settings"
-              className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent border border-border transition-colors"
-            >
-              <Building2 className="size-3" />
-              <span>
-                Range: {settings.blockPrefix ? `${settings.blockPrefix}-` : ''}Fl {settings.minFloor}–
-                {settings.maxFloor}
-              </span>
-              <Settings className="size-3 ml-0.5" />
+          <p className="text-xs text-muted-foreground">
+            Sales {loggedInSalesName} · Law Firm {settings.defaultLawFirm} · Project {activeProjectName} ·{' '}
+            <Link to="/settings" className="underline-offset-4 hover:text-foreground hover:underline">
+              Change In Settings
             </Link>
-          </div>
+          </p>
         </div>
+
+        <p className="text-xs text-muted-foreground">Demo Buyer Details Such As IC And Income Are Generated For You.</p>
 
         {/* The Direct Entry Grid */}
         <div className="overflow-x-auto rounded-md border border-border">
-          <table className="w-full text-left text-xs border-collapse min-w-[840px]">
-            <thead className="bg-muted/60 border-b border-border text-muted-foreground uppercase text-[10px] tracking-wider font-semibold">
-              <tr>
-                <th className="py-2.5 px-3 w-10 text-center">#</th>
-                <th className="py-2.5 px-3 w-36">Unit Number</th>
-                <th className="py-2.5 px-3 min-w-[170px]">Client / Buyer Name</th>
-                <th className="py-2.5 px-3 w-48">Model / Layout</th>
-                <th className="py-2.5 px-3 w-32">Sales Owner</th>
-                <th className="py-2.5 px-3 w-44">Panel Law Firm</th>
-                <th className="py-2.5 px-3 w-28 text-right">Price (RM)</th>
-                <th className="py-2.5 px-3 w-28 text-center">Status</th>
-                <th className="py-2.5 px-2 w-12 text-center"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/60">
+          <Table className="min-w-[840px] text-xs">
+            <TableHeader className="bg-muted/60">
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="w-10 px-3 py-2.5 text-center">#</TableHead>
+                <TableHead className="w-36 px-3 py-2.5">Unit Number</TableHead>
+                <TableHead className="min-w-[170px] px-3 py-2.5">Client / Buyer Name</TableHead>
+                <TableHead className="w-48 px-3 py-2.5">Model / Layout</TableHead>
+                <TableHead className="w-32 px-3 py-2.5">Sales Owner</TableHead>
+                <TableHead className="w-44 px-3 py-2.5">Panel Law Firm</TableHead>
+                <TableHead className="w-32 px-3 py-2.5 text-right">Price (RM)</TableHead>
+                <TableHead className="w-28 px-3 py-2.5 text-center">Status</TableHead>
+                <TableHead className="w-12 px-2 py-2.5 text-center"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {inspectedRows.map(({ row, check }, idx) => (
-                <tr
-                  key={row.id}
-                  className={cn(
-                    'transition-colors hover:bg-accent/40',
-                    check.status === 'ready' && 'bg-status-positive/5',
-                    check.status === 'error' && 'bg-status-danger/5'
-                  )}
-                >
+                <TableRow key={row.id} className="hover:bg-accent/40">
                   {/* Row index */}
-                  <td className="py-2 px-3 text-center text-muted-foreground font-mono text-[11px]">{idx + 1}</td>
+                  <TableCell className="px-3 py-2 text-center font-mono text-[11px] text-muted-foreground">
+                    {idx + 1}
+                  </TableCell>
 
                   {/* Unit number autocomplete dropdown */}
-                  <td className="py-1.5 px-3">
+                  <TableCell className="px-3 py-1.5">
                     <UnitAutocompleteInput
                       value={row.unit}
                       onChange={(val) => handleRowChange(row.id, 'unit', val)}
@@ -348,112 +300,143 @@ export function DirectTableImport({
                       hasError={check.status === 'error'}
                       isReady={check.status === 'ready'}
                     />
-                  </td>
+                  </TableCell>
 
                   {/* Client / Buyer Name input */}
-                  <td className="py-1.5 px-3">
+                  <TableCell className="px-3 py-1.5">
                     <Input
                       value={row.buyerName}
                       onChange={(e) => handleRowChange(row.id, 'buyerName', e.target.value)}
                       placeholder="e.g. Nurul Huda Binti Ahmad"
                       className="h-8 text-xs font-medium"
                     />
-                  </td>
+                  </TableCell>
 
                   {/* Model / Layout selection */}
-                  <td className="py-1.5 px-3">
-                    <select
-                      value={row.modelId}
-                      onChange={(e) => handleModelChange(row.id, e.target.value)}
-                      aria-label="Model / Layout"
-                      className="h-8 w-full rounded-md border border-input bg-background px-2 py-1 text-xs font-medium text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                    >
-                      {settings.models.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.name} · {m.layout}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
+                  <TableCell className="px-3 py-1.5">
+                    <Select value={row.modelId} onValueChange={(val) => handleModelChange(row.id, val)}>
+                      <SelectTrigger aria-label="Model / Layout" className="h-8 w-full text-xs font-medium">
+                        <SelectValue placeholder="Select Model" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {settings.models.map((m) => (
+                          <SelectItem key={m.id} value={m.id} className="text-xs">
+                            {m.name} · {m.layout}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
 
                   {/* Auto-assigned Sales Owner badge */}
-                  <td className="py-2 px-3">
-                    <span className="inline-flex items-center gap-1.5 text-xs text-foreground font-medium">
+                  <TableCell className="px-3 py-2">
+                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-foreground">
                       <span className="size-1.5 rounded-full bg-status-positive" />
                       <span className="truncate">{loggedInSalesName}</span>
                     </span>
-                  </td>
+                  </TableCell>
 
                   {/* Panel Law Firm selector */}
-                  <td className="py-1.5 px-3">
-                    <select
+                  <TableCell className="px-3 py-1.5">
+                    <Select
                       value={row.lawFirm || settings.defaultLawFirm}
-                      onChange={(e) => handleRowChange(row.id, 'lawFirm', e.target.value)}
-                      aria-label="Panel Law Firm"
-                      className="h-8 w-full rounded-md border border-input bg-background px-2 py-1 text-xs font-medium text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      onValueChange={(val) => handleRowChange(row.id, 'lawFirm', val)}
                     >
-                      {PANEL_LAW_FIRMS.map((firm) => (
-                        <option key={firm} value={firm}>
-                          {firm}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
+                      <SelectTrigger aria-label="Panel Law Firm" className="h-8 w-full text-xs font-medium">
+                        <SelectValue placeholder="Select Law Firm" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PANEL_LAW_FIRMS.map((firm) => (
+                          <SelectItem key={firm} value={firm} className="text-xs">
+                            {firm}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
 
                   {/* Price (RM) editable input */}
-                  <td className="py-1.5 px-3">
-                    <Input
-                      type="number"
-                      step={5000}
-                      value={row.priceRm}
-                      onChange={(e) => handleRowChange(row.id, 'priceRm', parseInt(e.target.value, 10) || 0)}
-                      className="h-8 text-xs font-mono text-right font-medium"
-                    />
-                  </td>
+                  <TableCell className="px-3 py-1.5">
+                    <div className="relative">
+                      <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground select-none">
+                        RM
+                      </span>
+                      <Input
+                        type="text"
+                        inputMode="numeric"
+                        value={row.priceRm ? String(row.priceRm) : ''}
+                        onChange={(e) => {
+                          const digits = e.target.value.replace(/\D/g, '')
+                          handleRowChange(row.id, 'priceRm', digits ? parseInt(digits, 10) : 0)
+                        }}
+                        className="h-8 pl-9 text-right font-mono text-xs font-medium"
+                      />
+                    </div>
+                  </TableCell>
 
-                  {/* Validation status pill */}
-                  <td className="py-2 px-3 text-center">
-                    {check.status === 'ready' ? (
-                      <span className="inline-flex items-center gap-1 rounded-sm bg-status-positive-bg px-2 py-0.5 text-[10px] font-semibold text-status-positive-fg border border-status-positive/25">
-                        <CheckCircle2 className="size-2.5" />
-                        Ready
-                      </span>
+                  {/* Validation status pill: pill only for errors */}
+                  <TableCell className="px-3 py-2 text-center">
+                    {check.status === 'error' ? (
+                      check.reason ? (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span tabIndex={0} className="inline-flex">
+                                <StatusPill tone="danger">{check.label}</StatusPill>
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>{check.reason}</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      ) : (
+                        <StatusPill tone="danger">{check.label}</StatusPill>
+                      )
                     ) : check.status === 'warning' ? (
-                      <span
-                        className="inline-flex items-center gap-1 rounded-sm bg-status-warning-bg px-2 py-0.5 text-[10px] font-semibold text-status-warning-fg border border-status-warning/25"
-                        title={check.reason}
-                      >
-                        <AlertTriangle className="size-2.5" />
-                        {check.label}
-                      </span>
-                    ) : check.status === 'error' ? (
-                      <span
-                        className="inline-flex items-center gap-1 rounded-sm bg-status-danger-bg px-2 py-0.5 text-[10px] font-semibold text-status-danger-fg border border-status-danger/25"
-                        title={check.reason}
-                      >
-                        <AlertTriangle className="size-2.5" />
-                        {check.label}
-                      </span>
+                      check.reason ? (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span tabIndex={0} className="cursor-default text-[11px] text-muted-foreground">
+                                {check.label}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>{check.reason}</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      ) : (
+                        <span className="text-[11px] text-muted-foreground">{check.label}</span>
+                      )
+                    ) : check.status === 'ready' ? (
+                      <span className="text-[11px] text-muted-foreground">Ready</span>
                     ) : (
                       <span className="text-[11px] text-muted-foreground">—</span>
                     )}
-                  </td>
+                  </TableCell>
 
                   {/* Delete row button */}
-                  <td className="py-1.5 px-2 text-center">
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveRow(row.id)}
-                      title="Remove Row"
-                      className="rounded p-1 text-muted-foreground hover:text-status-danger hover:bg-status-danger/10 transition-colors"
-                    >
-                      <Trash2 className="size-3.5" />
-                    </button>
-                  </td>
-                </tr>
+                  <TableCell className="px-2 py-1.5 text-center">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRemoveRow(row.id)}
+                            aria-label="Remove Row"
+                            className="size-7 p-0 text-muted-foreground hover:bg-transparent hover:text-status-danger"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Remove Row</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
 
         {/* Footer Actions & Batch Import Trigger */}

@@ -82,11 +82,11 @@ describe('LegalPage', () => {
     expect(stat('Longest Wait')).toContain('67 d')
   })
 
-  it('lists the waiting cases longest first and leaves the loan-stage one out', () => {
+  it('lists the waiting cases across the two sections and leaves the loan-stage one out', () => {
     renderPage()
     const rows = screen.getAllByRole('row', { name: /Open Booking/ })
     const ids = rows.map((r) => within(r).getAllByRole('cell')[0].textContent)
-    expect(ids).toEqual(['BK-0024', 'BK-0113', 'BK-0500'])
+    expect(ids).toEqual(['BK-0113', 'BK-0500', 'BK-0024'])
     expect(ids).not.toContain('BK-0900')
   })
 
@@ -98,9 +98,16 @@ describe('LegalPage', () => {
     expect(within(screen.getByRole('row', { name: /BK-0113/ })).getByText('Not Set')).toBeTruthy()
   })
 
-  it('says how many have no appointment on the log at all', () => {
+  it('splits the queue into No Appointment Yet and Appointment Set, Not Signed sections', () => {
     renderPage()
-    expect(screen.getByText('2 of these have no SPA appointment on the log at all.')).toBeTruthy()
+    expect(screen.getByText(/No Appointment Yet \(2\)/)).toBeTruthy()
+    expect(screen.getByText(/Appointment Set, Not Signed \(1\)/)).toBeTruthy()
+  })
+
+  it('renders Days Since Loan Approved column header instead of Days Since LO', () => {
+    renderPage()
+    expect(screen.getAllByRole('columnheader', { name: 'Days Since Loan Approved' }).length).toBeGreaterThan(0)
+    expect(screen.queryByRole('columnheader', { name: 'Days Since LO' })).toBeNull()
   })
 
   it('groups the panel load by firm and refuses to read it as performance', () => {
@@ -124,26 +131,26 @@ describe('LegalPage', () => {
 
   it('sorts queue by firm ascending, descending, and back to default across clicks', () => {
     renderPage()
-    const queueTable = screen.getByRole('columnheader', { name: 'Booking' }).closest('table')!
+    const queueTable = screen.getAllByRole('columnheader', { name: 'Booking' })[0].closest('table')!
     const firmHeader = within(queueTable).getByRole('columnheader', { name: 'Firm' })
     const firmButton = within(firmHeader).getByRole('button', { name: 'Firm' })
 
-    const queueRows = () => screen.getAllByRole('row', { name: /Open Booking/ })
+    const queueRows = () => within(queueTable).getAllByRole('row', { name: /Open Booking/ })
     const rowIds = () => queueRows().map((r) => within(r).getAllByRole('cell')[0].textContent)
     const firmCells = () => queueRows().map((r) => within(r).getAllByRole('cell')[3].textContent)
 
     fireEvent.click(firmButton)
     expect(firmHeader.getAttribute('aria-sort')).toBe('ascending')
-    expect(firmCells()).toEqual(['Kuan & Teh Advocates', 'Kuan & Teh Advocates', 'Lim Yap & Associates'])
-    expect(rowIds()).toEqual(['BK-0024', 'BK-0113', 'BK-0500'])
+    expect(firmCells()).toEqual(['Kuan & Teh Advocates', 'Lim Yap & Associates'])
+    expect(rowIds()).toEqual(['BK-0113', 'BK-0500'])
 
     fireEvent.click(firmButton)
     expect(firmHeader.getAttribute('aria-sort')).toBe('descending')
-    expect(firmCells()).toEqual(['Lim Yap & Associates', 'Kuan & Teh Advocates', 'Kuan & Teh Advocates'])
-    expect(rowIds()).toEqual(['BK-0500', 'BK-0024', 'BK-0113'])
+    expect(firmCells()).toEqual(['Lim Yap & Associates', 'Kuan & Teh Advocates'])
+    expect(rowIds()).toEqual(['BK-0500', 'BK-0113'])
 
     fireEvent.click(firmButton)
     expect(firmHeader.getAttribute('aria-sort')).toBe('none')
-    expect(rowIds()).toEqual(['BK-0024', 'BK-0113', 'BK-0500'])
+    expect(rowIds()).toEqual(['BK-0113', 'BK-0500'])
   })
 })

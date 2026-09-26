@@ -104,11 +104,12 @@ function sanitizeModels(raw: unknown): UnitModel[] {
   })
 }
 
-export function readStoredSettings(): ProjectSettings {
-  if (typeof window === 'undefined') return DEFAULT_PROJECT_SETTINGS
+export function readStoredSettings(defaultProjectName?: string): ProjectSettings {
+  const fallbackProject = defaultProjectName || DEFAULT_PROJECT_SETTINGS.projectName
+  if (typeof window === 'undefined') return { ...DEFAULT_PROJECT_SETTINGS, projectName: fallbackProject }
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
-    if (!raw) return DEFAULT_PROJECT_SETTINGS
+    if (!raw) return { ...DEFAULT_PROJECT_SETTINGS, projectName: fallbackProject }
     const parsed = JSON.parse(raw) as Partial<ProjectSettings>
     const models = sanitizeModels(parsed.models)
     const defaultModelId =
@@ -117,7 +118,7 @@ export function readStoredSettings(): ProjectSettings {
         : models[0]?.id || 'model-a'
 
     return {
-      projectName: parsed.projectName || DEFAULT_PROJECT_SETTINGS.projectName,
+      projectName: parsed.projectName || fallbackProject,
       blockPrefix: parsed.blockPrefix !== undefined ? parsed.blockPrefix : DEFAULT_PROJECT_SETTINGS.blockPrefix,
       minFloor: Number(parsed.minFloor) || DEFAULT_PROJECT_SETTINGS.minFloor,
       maxFloor: Number(parsed.maxFloor) || DEFAULT_PROJECT_SETTINGS.maxFloor,
@@ -128,7 +129,7 @@ export function readStoredSettings(): ProjectSettings {
       defaultModelId
     }
   } catch {
-    return DEFAULT_PROJECT_SETTINGS
+    return { ...DEFAULT_PROJECT_SETTINGS, projectName: fallbackProject }
   }
 }
 
@@ -242,12 +243,12 @@ export function isUnitInRange(unit: string, settings: ProjectSettings): { inRang
 }
 
 /** React hook for reading and updating project settings. */
-export function useProjectSettings() {
-  const [settings, setSettingsState] = useState<ProjectSettings>(readStoredSettings)
+export function useProjectSettings(defaultProjectName?: string) {
+  const [settings, setSettingsState] = useState<ProjectSettings>(() => readStoredSettings(defaultProjectName))
 
   useEffect(() => {
     const handler = () => {
-      setSettingsState(readStoredSettings())
+      setSettingsState(readStoredSettings(defaultProjectName))
     }
     window.addEventListener('mortar:settings-changed', handler)
     window.addEventListener('storage', handler)
@@ -255,7 +256,7 @@ export function useProjectSettings() {
       window.removeEventListener('mortar:settings-changed', handler)
       window.removeEventListener('storage', handler)
     }
-  }, [])
+  }, [defaultProjectName])
 
   const updateSettings = useCallback((next: ProjectSettings | ((prev: ProjectSettings) => ProjectSettings)) => {
     setSettingsState((prev) => {

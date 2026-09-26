@@ -19,6 +19,8 @@ export function BacktestCard({ backtest }: { backtest: Backtest }) {
     observed: Math.round(c.observed * 100)
   }))
 
+  const diff = Math.abs(backtest.predicted - backtest.observed)
+
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -50,12 +52,13 @@ export function BacktestCard({ backtest }: { backtest: Backtest }) {
             </p>
           </div>
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-              Accuracy Score
-              <InfoTooltip text="Mean squared error, lower is better." />
-            </p>
-            <p className="text-2xl font-semibold tracking-[-0.03em] tabular-nums text-foreground">
-              {backtest.brier.toFixed(3)}
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Accuracy</p>
+            <p className="mt-1 text-sm text-muted-foreground leading-snug">
+              {diff < 0.05
+                ? 'The forecast matched actual signings exactly.'
+                : diff <= 1
+                  ? 'The forecast came within 1 signing of what actually happened.'
+                  : `The forecast came within ${Math.round(diff)} signings of what actually happened.`}
             </p>
           </div>
         </div>

@@ -19,6 +19,11 @@ describe('ProjectSettingsCard', () => {
     expect(screen.getByText('Teh & Partners')).toBeTruthy()
   })
 
+  it('uses defaultProjectName prop when provided', () => {
+    render(<ProjectSettingsCard defaultProjectName="Residensi Cahaya Muda" />)
+    expect(screen.getByDisplayValue('Residensi Cahaya Muda')).toBeTruthy()
+  })
+
   it('updates unit range settings and displays live unit preview', () => {
     render(<ProjectSettingsCard />)
 
@@ -28,10 +33,13 @@ describe('ProjectSettingsCard', () => {
     expect(screen.getByText(/B-01-01 to B-35-12/i)).toBeTruthy()
   })
 
-  it('displays unit models & layouts and allows adding a new layout model', () => {
+  it('folds unit models behind a toggle and allows adding a new layout model', () => {
     render(<ProjectSettingsCard />)
 
-    expect(screen.getByText(/Unit Models & Layouts/i)).toBeTruthy()
+    const toggle = screen.getByRole('button', { name: /Unit Layouts \(3\)/i })
+    expect(toggle).toBeTruthy()
+    fireEvent.click(toggle)
+
     expect(screen.getByDisplayValue('Type A')).toBeTruthy()
     expect(screen.getByDisplayValue('Type B')).toBeTruthy()
     expect(screen.getByDisplayValue('Type C (Dual Key)')).toBeTruthy()

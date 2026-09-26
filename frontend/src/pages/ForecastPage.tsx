@@ -88,7 +88,7 @@ export function ForecastPage() {
               info="10th – 90th percentile of simulated signings."
             />
             <StatCard
-              label="Live Bookings"
+              label="Bookings In The Forecast"
               value={String(result.forecast.liveBookings)}
               info="Unsigned and under 30 days old."
             />

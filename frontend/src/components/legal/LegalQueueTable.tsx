@@ -22,7 +22,7 @@ import { cn } from '@/lib/utils'
 import { LEGAL_FIRST_DIR, isLegalStall, sortLegalRows, type LegalRow, type LegalSortKey } from './legal'
 
 /** Column widths in px, cell padding included; Buyer takes what is left. */
-const WIDTHS = { booking: 96, unit: 100, firm: 210, days: 140, appointment: 230, value: 130 } as const
+const WIDTHS = { booking: 96, unit: 100, firm: 200, days: 180, appointment: 220, value: 120 } as const
 
 /** The note's raw `YYYY-MM-DD` reads as the house date format, e.g. `Appointment
  * On 2026-07-29` becomes `Appointment On 29 Jul 2026`; a note with no date, or
@@ -38,7 +38,7 @@ const COLUMNS: { key: LegalSortKey; label: string; className?: string }[] = [
   { key: 'unit', label: 'Unit' },
   { key: 'buyer', label: 'Buyer' },
   { key: 'firm', label: 'Firm' },
-  { key: 'days', label: 'Days Since LO', className: 'text-right' },
+  { key: 'days', label: 'Days Since Loan Approved', className: 'text-right' },
   { key: 'appointment', label: 'SPA Appointment' },
   { key: 'value', label: 'Value', className: 'text-right' }
 ]
