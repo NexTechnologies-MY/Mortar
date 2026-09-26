@@ -49,6 +49,7 @@ describe('DirectTableImport', () => {
   it('renders direct entry ledger with default 1 row, persona auto-assignment, and collapsed context line', async () => {
     renderDirectImport()
     expect(await screen.findByText(/Type Bookings In/i)).toBeTruthy()
+    expect(screen.getByText('Buyer Name')).toBeTruthy()
     expect(screen.getByText(/Sales Nurul Aina · Law Firm Teh & Partners · Project Bukit Damai/i)).toBeTruthy()
     expect(screen.getByText(/Demo Buyer Details Such As IC And Income Are Generated For You/i)).toBeTruthy()
 
@@ -117,7 +118,7 @@ describe('DirectTableImport', () => {
     fireEvent.change(unitInput, { target: { value: 'A-20-08' } })
     fireEvent.change(nameInput, { target: { value: 'Norazlan Bin Hashim' } })
 
-    const importButton = screen.getByRole('button', { name: /Import 1 Case/i })
+    const importButton = screen.getByRole('button', { name: /Import 1 Booking/i })
     fireEvent.click(importButton)
 
     await waitFor(() => expect(importBookings).toHaveBeenCalledTimes(1))
@@ -144,7 +145,7 @@ describe('DirectTableImport', () => {
 
     // Valid unit
     fireEvent.change(unitInput, { target: { value: 'A-15-05' } })
-    expect(await screen.findByRole('button', { name: /Import 1 Case/i })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: /Import 1 Booking/i })).toBeTruthy()
   })
 
   it('submits valid row to importBookings with auto-assigned staff and law firm', async () => {
@@ -157,7 +158,7 @@ describe('DirectTableImport', () => {
     fireEvent.change(unitInput, { target: { value: 'A-20-08' } })
     fireEvent.change(nameInput, { target: { value: 'Norazlan Bin Hashim' } })
 
-    const importButton = screen.getByRole('button', { name: /Import 1 Case/i })
+    const importButton = screen.getByRole('button', { name: /Import 1 Booking/i })
     expect(importButton).toBeTruthy()
     fireEvent.click(importButton)
 

@@ -164,9 +164,7 @@ export function ImportPage() {
     <PageContainer>
       <PageHeaderCard>
         <h1 className="text-[32px] font-semibold leading-[1.16] tracking-[-0.02em] text-foreground">Add Bookings</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Upload A Spreadsheet Or Type Bookings Directly Into The Ledger.
-        </p>
+        <p className="mt-1 text-sm text-muted-foreground">Upload A Spreadsheet, Or Type Bookings In One By One.</p>
       </PageHeaderCard>
 
       <Tabs defaultValue="upload" className="mt-4">

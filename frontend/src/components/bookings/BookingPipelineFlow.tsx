@@ -1,14 +1,14 @@
 /**
  * Who Holds Each Booking — Pipeline and holder filter strip.
  *
- * Visualizes the 5 conveyancing milestones and holders:
+ * Visualizes the 5 milestones and holders:
  * 1. Buyer: Reservation & pending documents
- * 2. Bank: Loan underwriting & credit approval
+ * 2. Bank: Bank review & credit approval
  * 3. Solicitor: SPA drafting & execution scheduling
- * 4. Signed: Converted milestone (legally sold)
- * 5. Us: Developer desk actions & case releases
+ * 4. Signed: Signed milestone (legally sold)
+ * 5. Us: Actions & booking releases
  *
- * Each step acts as a filter: clicking a step filters the ledger below to that
+ * Each step acts as a filter: clicking a step filters the table below to that
  * holder, and a second click clears the filter back to all holders.
  */
 
@@ -65,14 +65,14 @@ const STEPS: StepConfig[] = [
     title: 'Bank',
     icon: Landmark,
     holderLabel: 'Bank',
-    description: 'Submitted applications awaiting credit review & LO'
+    description: 'Submitted applications awaiting credit review & Letter Of Offer'
   },
   {
     id: 'solicitor',
     title: 'Solicitor',
     icon: Scale,
     holderLabel: 'Solicitor',
-    description: 'LO accepted, drafting SPA & coordinating signing'
+    description: 'Letter Of Offer accepted, drafting SPA & coordinating signing'
   },
   {
     id: 'spa',
@@ -86,7 +86,7 @@ const STEPS: StepConfig[] = [
     title: 'Us',
     icon: Building2,
     holderLabel: 'Us',
-    description: 'Developer desk actions & case releases'
+    description: 'Actions & booking releases'
   }
 ]
 

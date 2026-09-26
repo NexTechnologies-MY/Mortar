@@ -1,9 +1,9 @@
 /**
- * DirectTableImport — Interactive spreadsheet-style table for rapid batch case import.
+ * DirectTableImport — Type Bookings In: interactive table for rapid batch booking import.
  *
  * Requirements:
  * - Key in Unit Number (validated against Settings unit range and active held units)
- * - Key in Client / Buyer Name
+ * - Key in Buyer Name
  * - Multiple layout models supported (Type A, Type B, Type C) with auto price updates
  * - Auto-assigns Sales Agent to current logged-in account (active persona)
  * - Auto-assigns Panel Law Firm from Settings configuration
@@ -155,7 +155,7 @@ export function DirectTableImport({
     }
 
     if (!trimmedName) {
-      return { status: 'error', label: 'Enter Client Name', canImport: false }
+      return { status: 'error', label: 'Enter Buyer Name', canImport: false }
     }
 
     // Check if unit is already held in current project
@@ -189,7 +189,7 @@ export function DirectTableImport({
 
   const handleRunImport = async () => {
     if (readyRows.length === 0) {
-      notify.error('No valid rows to import. Enter at least one unit number and client name.')
+      notify.error('No valid rows to import. Enter at least one unit number and buyer name.')
       return
     }
 
@@ -231,12 +231,12 @@ export function DirectTableImport({
       })
 
       notify.success(
-        `${result.bookings.length} ${result.bookings.length === 1 ? 'case' : 'cases'} successfully imported!`
+        `${result.bookings.length} ${result.bookings.length === 1 ? 'booking' : 'bookings'} successfully imported!`
       )
       onImported(result)
       setRows([createEmptyRow(settings.defaultPriceRm, settings.defaultModelId, settings.defaultLawFirm)])
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Could not import the cases.'
+      const msg = e instanceof Error ? e.message : 'Could not import the bookings.'
       notify.error(msg)
     } finally {
       setImporting(false)
@@ -251,8 +251,7 @@ export function DirectTableImport({
           <div>
             <h2 className="text-base font-semibold text-foreground">Type Bookings In</h2>
             <p className="text-xs text-muted-foreground">
-              Key in unit numbers, client names, and select layout models to batch import cases directly into the
-              ledger.
+              Key in unit numbers, buyer names, and select layout models to batch import bookings directly.
             </p>
           </div>
 
@@ -273,7 +272,7 @@ export function DirectTableImport({
               <TableRow className="hover:bg-transparent">
                 <TableHead className="w-10 px-3 py-2.5 text-center">#</TableHead>
                 <TableHead className="w-36 px-3 py-2.5">Unit Number</TableHead>
-                <TableHead className="min-w-[170px] px-3 py-2.5">Client / Buyer Name</TableHead>
+                <TableHead className="min-w-[170px] px-3 py-2.5">Buyer Name</TableHead>
                 <TableHead className="w-48 px-3 py-2.5">Model / Layout</TableHead>
                 <TableHead className="w-32 px-3 py-2.5">Sales Owner</TableHead>
                 <TableHead className="w-44 px-3 py-2.5">Panel Law Firm</TableHead>
@@ -302,7 +301,7 @@ export function DirectTableImport({
                     />
                   </TableCell>
 
-                  {/* Client / Buyer Name input */}
+                  {/* Buyer Name input */}
                   <TableCell className="px-3 py-1.5">
                     <Input
                       value={row.buyerName}
@@ -463,7 +462,7 @@ export function DirectTableImport({
 
           <div className="flex items-center gap-3">
             <span className="text-xs text-muted-foreground">
-              <strong>{readyRows.length}</strong> of <strong>{rows.length}</strong> cases ready
+              <strong>{readyRows.length}</strong> of <strong>{rows.length}</strong> bookings ready
             </span>
             <Button
               type="button"
@@ -473,8 +472,8 @@ export function DirectTableImport({
             >
               <Upload className="size-3.5" />
               {importing
-                ? 'Importing Cases…'
-                : `Import ${readyRows.length} ${readyRows.length === 1 ? 'Case' : 'Cases'}`}
+                ? 'Importing Bookings…'
+                : `Import ${readyRows.length} ${readyRows.length === 1 ? 'Booking' : 'Bookings'}`}
             </Button>
           </div>
         </div>
