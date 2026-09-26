@@ -34,7 +34,8 @@ export function LegalPage() {
   const flagged = rows.filter((r) => r.summary.stallReasons.some(isLegalStall)).length
   const longest = rows.reduce((max, r) => Math.max(max, r.summary.daysSinceLoIssued ?? 0), 0)
   const valueHeld = rows.reduce((sum, r) => sum + r.booking.priceRm, 0)
-  const unscheduled = rows.filter((r) => r.summary.daysSinceSpaSet === null).length
+  const noAppointmentRows = useMemo(() => rows.filter((r) => r.summary.daysSinceSpaSet === null), [rows])
+  const appointmentSetRows = useMemo(() => rows.filter((r) => r.summary.daysSinceSpaSet !== null), [rows])
 
   return (
     <PageContainer>
@@ -107,17 +108,34 @@ export function LegalPage() {
             <>
               <section className="mt-6">
                 <h2 className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                  Sitting With The Lawyers
+                  No Appointment Yet ({noAppointmentRows.length})
                   <InfoTooltip text="Longest Wait First Until You Sort A Column. Rows Open The Case File." />
                 </h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {unscheduled > 0
-                    ? `${unscheduled} of these have no SPA appointment on the log at all.`
-                    : 'Every case here has an appointment on the log.'}
-                </p>
-                <div className="mt-3">
-                  <LegalQueueTable rows={rows} />
-                </div>
+                {noAppointmentRows.length === 0 ? (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    No Cases Waiting For An SPA Appointment To Be Scheduled.
+                  </p>
+                ) : (
+                  <div className="mt-3">
+                    <LegalQueueTable rows={noAppointmentRows} />
+                  </div>
+                )}
+              </section>
+
+              <section className="mt-8">
+                <h2 className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                  Appointment Set, Not Signed ({appointmentSetRows.length})
+                  <InfoTooltip text="Longest Wait First Until You Sort A Column. Rows Open The Case File." />
+                </h2>
+                {appointmentSetRows.length === 0 ? (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    No Cases With Scheduled Appointments Awaiting Signing.
+                  </p>
+                ) : (
+                  <div className="mt-3">
+                    <LegalQueueTable rows={appointmentSetRows} />
+                  </div>
+                )}
               </section>
 
               <section className="mt-8">
