@@ -15,6 +15,7 @@ import type {
   Message,
   NextActionSuggestion,
   OwnerRole,
+  Persona,
   PlaybookRanking,
   SenderRole,
   SimulationMeta,
@@ -84,6 +85,8 @@ export interface Health {
   ok: boolean
   db: boolean
   jev: boolean
+  /** Whether the server was started with a Gemini key for Ask Mortar. */
+  assistant: boolean
   /** Stored `jev_answers` rows; `null` when the database is unreachable. */
   jevAnswers: number | null
 }
@@ -184,3 +187,31 @@ export const undoImport = (importId: string, reportedBy: string) =>
   post<{ removed: string[] }>(`/api/imports/${importId}/undo`, { reportedBy })
 
 export const resetDemo = () => post<SimulationMeta>('/api/admin/reset')
+
+/** A photo of a bank letter, a form or a WhatsApp message, up to 4 MB. */
+export interface AssistantImage {
+  mimeType: 'image/png' | 'image/jpeg' | 'image/webp'
+  /** Base64, no data-URL prefix. */
+  data: string
+}
+
+export interface AssistantAnswer {
+  answer: string
+  /** The booking ids the answer named, which the panel renders as links. */
+  citations: string[]
+}
+
+/**
+ * Asks Mortar, the assistant. The server answers from its own bookings; with no
+ * model key configured it answers 503 with `fallback: true`, and the caller
+ * falls back to the scripted answers. Takes longer than a read because the
+ * model runs up to four rounds of tools, and the server allows it 30 seconds.
+ */
+export const askAssistant = (input: {
+  question: string
+  persona: Persona
+  bookingId?: string
+  /** The last few exchanges, oldest first, so the model can follow a thread. */
+  history?: { question: string; answer: string }[]
+  image?: AssistantImage
+}) => post<AssistantAnswer>('/api/assistant', input, JEV_TIMEOUT_MS)

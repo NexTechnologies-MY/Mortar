@@ -1,10 +1,10 @@
 /**
- * ProjectSettingsCard — Configure allowed unit ranges, inventory boundaries,
- * unit layout models, and default panel law firm used for automatic case assignment.
+ * ProjectSettingsCard — Configure allowed unit ranges, unit layout models,
+ * and default panel law firm used for automatic booking assignment.
  */
 
 import { useState } from 'react'
-import { Building2, Check, LayoutGrid, Plus, Scale, Sliders, Trash2 } from 'lucide-react'
+import { Building2, Check, ChevronDown, Plus, Scale, Trash2 } from 'lucide-react'
 import {
   PANEL_LAW_FIRMS,
   DEFAULT_UNIT_MODELS,
@@ -18,12 +18,21 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { notify } from '@/components/ui/toastConfig'
+import { cn } from '@/lib/utils'
 
-export function ProjectSettingsCard() {
-  const { settings, updateSettings } = useProjectSettings()
+export function ProjectSettingsCard({ defaultProjectName }: { defaultProjectName?: string } = {}) {
+  const { settings, updateSettings } = useProjectSettings(defaultProjectName)
   const [draft, setDraft] = useState<ProjectSettings>(settings)
+  const [prevSettings, setPrevSettings] = useState(settings)
   const [dirty, setDirty] = useState(false)
+  const [layoutsOpen, setLayoutsOpen] = useState(false)
+
+  if (!dirty && prevSettings !== settings) {
+    setPrevSettings(settings)
+    setDraft(settings)
+  }
 
   const handleChange = <K extends keyof ProjectSettings>(key: K, value: ProjectSettings[K]) => {
     setDraft((prev) => ({ ...prev, [key]: value }))
@@ -94,7 +103,7 @@ export function ProjectSettingsCard() {
 
   const handleResetDefaults = () => {
     setDraft({
-      projectName: 'Bukit Damai',
+      projectName: defaultProjectName || 'Bukit Damai',
       blockPrefix: 'A',
       minFloor: 1,
       maxFloor: 35,
@@ -120,28 +129,14 @@ export function ProjectSettingsCard() {
             <div>
               <h2 className="text-sm font-semibold text-foreground">Project & Unit Range Settings</h2>
               <p className="text-xs text-muted-foreground">
-                Set project unit inventory boundaries, unit layout models, and default panel law firm.
+                Set Project Unit Inventory Boundaries, Unit Layout Models, And The Default Panel Law Firm.
               </p>
             </div>
           </div>
-          {dirty && (
-            <span className="rounded-full bg-status-warning-bg px-2 py-0.5 text-[10px] font-semibold text-status-warning-fg border border-status-warning/30 animate-pulse">
-              Unsaved Changes
-            </span>
-          )}
         </div>
 
-        {/* Live Preview Banner */}
-        <div className="rounded-md border border-primary/25 bg-primary/5 p-3 text-xs">
-          <div className="flex items-center gap-1.5 font-medium text-foreground">
-            <Sliders className="size-3.5 text-primary" />
-            <span>Active Unit Range Preview:</span>
-          </div>
-          <p className="mt-1 font-mono text-sm font-semibold text-primary">{preview}</p>
-          <p className="mt-0.5 text-[11px] text-muted-foreground">
-            Direct imports and manual entries validate unit numbers against this range.
-          </p>
-        </div>
+        {/* Live Preview: one plain mono line */}
+        <p className="font-mono text-xs text-muted-foreground">{preview}</p>
 
         {/* Form Inputs: Project & Ranges */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
@@ -177,11 +172,13 @@ export function ProjectSettingsCard() {
             </Label>
             <Input
               id="setting-min-floor"
-              type="number"
-              min={1}
-              max={100}
+              type="text"
+              inputMode="numeric"
               value={draft.minFloor}
-              onChange={(e) => handleChange('minFloor', parseInt(e.target.value, 10) || 1)}
+              onChange={(e) => {
+                const val = e.target.value.replace(/\D/g, '')
+                handleChange('minFloor', val ? parseInt(val, 10) : 1)
+              }}
               className="h-8 text-xs"
             />
           </div>
@@ -192,11 +189,13 @@ export function ProjectSettingsCard() {
             </Label>
             <Input
               id="setting-max-floor"
-              type="number"
-              min={1}
-              max={100}
+              type="text"
+              inputMode="numeric"
               value={draft.maxFloor}
-              onChange={(e) => handleChange('maxFloor', parseInt(e.target.value, 10) || 35)}
+              onChange={(e) => {
+                const val = e.target.value.replace(/\D/g, '')
+                handleChange('maxFloor', val ? parseInt(val, 10) : 35)
+              }}
               className="h-8 text-xs"
             />
           </div>
@@ -207,11 +206,13 @@ export function ProjectSettingsCard() {
             </Label>
             <Input
               id="setting-units-per-floor"
-              type="number"
-              min={1}
-              max={50}
+              type="text"
+              inputMode="numeric"
               value={draft.unitsPerFloor}
-              onChange={(e) => handleChange('unitsPerFloor', parseInt(e.target.value, 10) || 12)}
+              onChange={(e) => {
+                const val = e.target.value.replace(/\D/g, '')
+                handleChange('unitsPerFloor', val ? parseInt(val, 10) : 12)
+              }}
               className="h-8 text-xs"
             />
           </div>
@@ -220,158 +221,198 @@ export function ProjectSettingsCard() {
             <Label htmlFor="setting-price" className="text-xs font-medium">
               Base SPA Price (RM)
             </Label>
-            <Input
-              id="setting-price"
-              type="number"
-              step={10000}
-              min={50000}
-              value={draft.defaultPriceRm}
-              onChange={(e) => handleChange('defaultPriceRm', parseInt(e.target.value, 10) || 480000)}
-              className="h-8 text-xs"
-            />
+            <div className="relative">
+              <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted-foreground select-none">
+                RM
+              </span>
+              <Input
+                id="setting-price"
+                type="text"
+                inputMode="numeric"
+                value={draft.defaultPriceRm ? draft.defaultPriceRm.toLocaleString('en-US') : ''}
+                onChange={(e) => {
+                  const raw = e.target.value.replace(/\D/g, '')
+                  handleChange('defaultPriceRm', raw ? parseInt(raw, 10) : 0)
+                }}
+                className="h-8 pl-9 text-xs font-mono font-medium"
+              />
+            </div>
           </div>
         </div>
 
-        {/* Unit Models & Layouts Section */}
+        {/* Unit Models & Layouts Section Folded Behind Toggle */}
         <div className="flex flex-col gap-3 border-t border-border pt-3.5">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <LayoutGrid className="size-3.5 text-primary" />
-              <Label className="text-xs font-semibold text-foreground">
-                Unit Models & Layouts ({draft.models.length})
-              </Label>
-            </div>
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               size="sm"
-              onClick={handleAddModel}
-              className="h-7 gap-1 text-[11px] font-medium"
+              onClick={() => setLayoutsOpen((prev) => !prev)}
+              aria-expanded={layoutsOpen}
+              className="h-8 -ml-2 gap-1.5 text-xs font-semibold text-foreground hover:text-foreground"
             >
-              <Plus className="size-3" />
-              Add Model / Layout
+              <ChevronDown
+                className={cn('size-3.5 text-muted-foreground transition-transform', layoutsOpen && 'rotate-180')}
+              />
+              <span>Unit Layouts ({draft.models.length})</span>
             </Button>
+            {layoutsOpen && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleAddModel}
+                className="h-7 gap-1 text-[11px] font-medium"
+              >
+                <Plus className="size-3" />
+                Add Model / Layout
+              </Button>
+            )}
           </div>
-          <p className="text-[11px] text-muted-foreground leading-normal">
-            Configure different floor plan models (e.g. Type A, Type B). Selecting a model on the Import page
-            automatically populates the unit layout description & base pricing.
-          </p>
 
-          <div className="space-y-3">
-            {draft.models.map((model) => {
-              const isDefault = draft.defaultModelId === model.id
-              return (
-                <div
-                  key={model.id}
-                  className="rounded-lg border border-border/80 bg-card p-3 shadow-2xs space-y-2.5 transition-colors hover:border-primary/40"
-                >
-                  {/* Model Card Header: Title/Badge & Actions */}
-                  <div className="flex items-center justify-between pb-2 border-b border-border/40">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-xs text-foreground tracking-tight">
-                        {model.name.trim() || 'Untitled Model'}
-                      </span>
-                      {isDefault ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 border border-primary/20 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                          <span className="size-1.5 rounded-full bg-primary" />
-                          Default Layout
-                        </span>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => handleSetDefaultModel(model.id)}
-                          title="Set as Default Model"
-                          className="rounded px-2 py-0.5 text-[10px] font-medium text-muted-foreground hover:text-foreground bg-muted hover:bg-accent border border-border/60 transition-colors"
-                        >
-                          Make Default
-                        </button>
-                      )}
-                    </div>
+          {layoutsOpen && (
+            <>
+              <p className="text-[11px] text-muted-foreground leading-normal">
+                Configure Different Floor Plan Models (e.g. Type A, Type B). Selecting A Model On Add Bookings
+                Automatically Populates The Unit Layout Description & Base Pricing.
+              </p>
 
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteModel(model.id)}
-                        disabled={draft.models.length <= 1}
-                        title="Delete Model"
-                        className="rounded p-1 text-muted-foreground hover:text-status-danger hover:bg-status-danger/10 disabled:opacity-30 disabled:pointer-events-none transition-colors"
-                      >
-                        <Trash2 className="size-3.5" />
-                      </button>
-                    </div>
-                  </div>
+              <div className="space-y-3">
+                {draft.models.map((model) => {
+                  const isDefault = draft.defaultModelId === model.id
+                  return (
+                    <div
+                      key={model.id}
+                      className="rounded-md border border-border bg-card p-3 space-y-2.5 transition-colors hover:border-border"
+                    >
+                      {/* Model Card Header: Title/Badge & Actions */}
+                      <div className="flex items-center justify-between pb-2 border-b border-border/40">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-xs text-foreground tracking-tight">
+                            {model.name.trim() || 'Untitled Model'}
+                          </span>
+                          {isDefault ? (
+                            <span className="inline-flex items-center gap-1 rounded-md border border-border bg-muted px-2 py-0.5 text-[10px] font-medium text-foreground">
+                              Default Layout
+                            </span>
+                          ) : (
+                            <TooltipProvider delayDuration={200}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleSetDefaultModel(model.id)}
+                                    className="h-6 px-2 text-[10px] font-medium text-muted-foreground hover:text-foreground"
+                                  >
+                                    Make Default
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Set As Default Model</TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                        </div>
 
-                  {/* Model Form Fields: Model Name (3 cols), Layout Description (5 cols), Base Price (4 cols) */}
-                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-end">
-                    <div className="sm:col-span-3 flex flex-col gap-1">
-                      <Label
-                        htmlFor={`model-name-${model.id}`}
-                        className="text-[11px] font-medium text-muted-foreground"
-                      >
-                        Model Name
-                      </Label>
-                      <Input
-                        id={`model-name-${model.id}`}
-                        value={model.name}
-                        onChange={(e) => handleModelChange(model.id, 'name', e.target.value)}
-                        placeholder="e.g. Type A"
-                        className="h-8 text-xs font-medium"
-                      />
-                    </div>
+                        <div className="flex items-center gap-1">
+                          <TooltipProvider delayDuration={200}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleDeleteModel(model.id)}
+                                  disabled={draft.models.length <= 1}
+                                  aria-label="Delete Model"
+                                  className="size-7 text-muted-foreground hover:text-destructive"
+                                >
+                                  <Trash2 className="size-3.5" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Delete Model</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                      </div>
 
-                    <div className="sm:col-span-5 flex flex-col gap-1">
-                      <Label
-                        htmlFor={`model-layout-${model.id}`}
-                        className="text-[11px] font-medium text-muted-foreground"
-                      >
-                        Layout Description
-                      </Label>
-                      <Input
-                        id={`model-layout-${model.id}`}
-                        value={model.layout}
-                        onChange={(e) => handleModelChange(model.id, 'layout', e.target.value)}
-                        placeholder="e.g. 2 Bed · 2 Bath (750 sqft)"
-                        className="h-8 text-xs"
-                      />
-                    </div>
+                      {/* Model Form Fields: Model Name (3 cols), Layout Description (5 cols), Base Price (4 cols) */}
+                      <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-end">
+                        <div className="sm:col-span-3 flex flex-col gap-1">
+                          <Label
+                            htmlFor={`model-name-${model.id}`}
+                            className="text-[11px] font-medium text-muted-foreground"
+                          >
+                            Model Name
+                          </Label>
+                          <Input
+                            id={`model-name-${model.id}`}
+                            value={model.name}
+                            onChange={(e) => handleModelChange(model.id, 'name', e.target.value)}
+                            placeholder="e.g. Type A"
+                            className="h-8 text-xs font-medium"
+                          />
+                        </div>
 
-                    <div className="sm:col-span-4 flex flex-col gap-1">
-                      <Label
-                        htmlFor={`model-price-${model.id}`}
-                        className="text-[11px] font-medium text-muted-foreground"
-                      >
-                        Base Price (RM)
-                      </Label>
-                      <div className="relative">
-                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] font-semibold text-muted-foreground select-none">
-                          RM
-                        </span>
-                        <Input
-                          id={`model-price-${model.id}`}
-                          type="number"
-                          step={10000}
-                          value={model.priceRm}
-                          onChange={(e) => handleModelChange(model.id, 'priceRm', parseInt(e.target.value, 10) || 0)}
-                          className="h-8 pl-9 pr-2 text-xs font-mono font-medium min-w-[120px]"
-                        />
+                        <div className="sm:col-span-5 flex flex-col gap-1">
+                          <Label
+                            htmlFor={`model-layout-${model.id}`}
+                            className="text-[11px] font-medium text-muted-foreground"
+                          >
+                            Layout Description
+                          </Label>
+                          <Input
+                            id={`model-layout-${model.id}`}
+                            value={model.layout}
+                            onChange={(e) => handleModelChange(model.id, 'layout', e.target.value)}
+                            placeholder="e.g. 2 Bed · 2 Bath (750 sqft)"
+                            className="h-8 text-xs"
+                          />
+                        </div>
+
+                        <div className="sm:col-span-4 flex flex-col gap-1">
+                          <Label
+                            htmlFor={`model-price-${model.id}`}
+                            className="text-[11px] font-medium text-muted-foreground"
+                          >
+                            Base Price (RM)
+                          </Label>
+                          <div className="relative">
+                            <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] font-semibold text-muted-foreground select-none">
+                              RM
+                            </span>
+                            <Input
+                              id={`model-price-${model.id}`}
+                              type="text"
+                              inputMode="numeric"
+                              value={model.priceRm ? model.priceRm.toLocaleString('en-US') : ''}
+                              onChange={(e) => {
+                                const raw = e.target.value.replace(/\D/g, '')
+                                handleModelChange(model.id, 'priceRm', raw ? parseInt(raw, 10) : 0)
+                              }}
+                              className="h-8 pl-9 pr-2 text-xs font-mono font-medium min-w-[120px]"
+                            />
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+                  )
+                })}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Law Firm Selection */}
         <div className="flex flex-col gap-1.5 border-t border-border pt-3">
           <Label className="flex items-center gap-1.5 text-xs font-medium">
             <Scale className="size-3.5 text-primary" />
-            Default Panel Law Firm (Auto-assigned)
+            Default Panel Law Firm
           </Label>
           <Select value={draft.defaultLawFirm} onValueChange={(val) => handleChange('defaultLawFirm', val)}>
             <SelectTrigger className="h-8 text-xs">
-              <SelectValue placeholder="Select default law firm" />
+              <SelectValue placeholder="Select Default Law Firm" />
             </SelectTrigger>
             <SelectContent>
               {PANEL_LAW_FIRMS.map((firm) => (
@@ -381,9 +422,7 @@ export function ProjectSettingsCard() {
               ))}
             </SelectContent>
           </Select>
-          <p className="text-[11px] text-muted-foreground">
-            Newly keyed cases on the Import page will automatically be assigned to this law firm.
-          </p>
+          <p className="text-[11px] text-muted-foreground">Bookings Typed In On Add Bookings Get This Law Firm.</p>
         </div>
 
         {/* Footer Actions */}

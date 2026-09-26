@@ -2,13 +2,14 @@
  * The bookings table's last column: is anyone already chasing this booking?
  *
  * - An open task shows as Task Open, with what, when and who on hover.
- * - With none, Add Task raises the task Waiting On proposes (the same one the
- *   case page adds), which then lists under Open Tasks on the Chase List.
+ * - With none, Add Task raises the case's default next step (the same one the
+ *   chase card and the case page lead with), which then lists under Open Tasks
+ *   on Today.
  * - A case that waits on nobody (signed, cancelled, lapsed) shows a dash.
  *
- * There is no "Add To Chase List": the Chase List takes every stalled booking
- * by itself, and the red Age figure already marks those rows. A task is the
- * manual way to chase one.
+ * There is no "Add To Today": Today takes every stalled booking by itself, and
+ * the red Age figure already marks those rows. A task is the manual way to
+ * chase one.
  */
 
 import { useState } from 'react'

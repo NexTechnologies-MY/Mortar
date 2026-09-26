@@ -405,12 +405,19 @@ describe('createApp', () => {
     expect(await call(makeApp(), '/')).toBeNull()
   })
 
-  test('GET /api/health reports db and jev flags plus the stored answer count', async () => {
+  test('GET /api/health reports db, jev and assistant flags plus the stored answer count', async () => {
     const db = new FakeDb()
     db.jevAnswers = 87
     const res = await call(makeApp(db), '/api/health')
     expect(res?.status).toBe(200)
-    expect(await res?.json()).toEqual({ ok: true, db: true, jev: false, jevAnswers: 87, jevLastError: null })
+    expect(await res?.json()).toEqual({
+      ok: true,
+      db: true,
+      jev: false,
+      assistant: false,
+      jevAnswers: 87,
+      jevLastError: null
+    })
   })
 
   test('GET /api/health reports ok: false, from a dead database, not a hardcoded true', async () => {
@@ -420,7 +427,27 @@ describe('createApp', () => {
       throw new Error('down')
     }
     const res = await call(makeApp(db), '/api/health')
-    expect(await res?.json()).toEqual({ ok: false, db: false, jev: false, jevAnswers: null, jevLastError: null })
+    expect(await res?.json()).toEqual({
+      ok: false,
+      db: false,
+      jev: false,
+      assistant: false,
+      jevAnswers: null,
+      jevLastError: null
+    })
+  })
+
+  test('GET /api/health reports the assistant as configured from a Gemini key, never the key itself', async () => {
+    const app = createApp({
+      db: new FakeDb(),
+      jev: fakeJev(),
+      reset: async () => ({ seed: 1, referenceDate: '2026-09-18', resetAt: '2026-09-18T12:00:00+08:00' }),
+      assistant: { apiKey: 'gemini-secret-key' }
+    })
+    const res = await call(app, '/api/health')
+    const body = await res?.text()
+    expect(JSON.parse(body!)).toMatchObject({ assistant: true })
+    expect(body).not.toContain('gemini-secret-key')
   })
 
   test('GET /api/health reports jevLastError from the wiring, when given one', async () => {

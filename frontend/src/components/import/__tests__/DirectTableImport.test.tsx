@@ -7,6 +7,8 @@ import { SnapshotProvider } from '@/lib/data'
 import { importBookings } from '@/lib/api'
 import { DirectTableImport } from '@/components/import/DirectTableImport'
 
+Element.prototype.scrollIntoView = vi.fn()
+
 vi.mock('@/lib/api', async () => {
   const fixture = await import('@/components/bookings/__tests__/snapshotFixture')
   const snapshot = fixture.buildSnapshot()
@@ -44,13 +46,12 @@ describe('DirectTableImport', () => {
     vi.mocked(importBookings).mockClear()
   })
 
-  it('renders direct entry ledger with default 1 row, persona auto-assignment, and unsold count', async () => {
+  it('renders direct entry ledger with default 1 row, persona auto-assignment, and collapsed context line', async () => {
     renderDirectImport()
-    expect(await screen.findByText(/Direct Case Import Ledger/i)).toBeTruthy()
-    expect(screen.getAllByText(/Nurul Aina/i)[0]).toBeTruthy()
-    expect(screen.getAllByText(/Teh & Partners/i)[0]).toBeTruthy()
-    expect(screen.getByText(/3 Layouts/i)).toBeTruthy()
-    expect(screen.getByText(/Unsold:/i)).toBeTruthy()
+    expect(await screen.findByText(/Type Bookings In/i)).toBeTruthy()
+    expect(screen.getByText('Buyer Name')).toBeTruthy()
+    expect(screen.getByText(/Sales Nurul Aina · Law Firm Teh & Partners · Project Bukit Damai/i)).toBeTruthy()
+    expect(screen.getByText(/Demo Buyer Details Such As IC And Income Are Generated For You/i)).toBeTruthy()
 
     // Exactly 1 row by default
     const unitInputs = screen.getAllByPlaceholderText(/A-12-08/i)
@@ -59,7 +60,7 @@ describe('DirectTableImport', () => {
 
   it('drops down unsold units when focusing the unit input and filters on typing', async () => {
     renderDirectImport()
-    await screen.findByText(/Direct Case Import Ledger/i)
+    await screen.findByText(/Type Bookings In/i)
 
     const unitInput = screen.getByPlaceholderText(/A-12-08/i)
     fireEvent.focus(unitInput)
@@ -81,32 +82,35 @@ describe('DirectTableImport', () => {
 
   it('automatically updates the SPA price when a different layout model is selected', async () => {
     renderDirectImport()
-    await screen.findByText(/Direct Case Import Ledger/i)
+    await screen.findByText(/Type Bookings In/i)
 
     const modelSelect = screen.getByRole('combobox', { name: /Model \/ Layout/i })
     expect(modelSelect).toBeTruthy()
     expect(screen.getByDisplayValue('480000')).toBeTruthy()
 
     // Change to Type B (RM 560,000)
-    fireEvent.change(modelSelect, { target: { value: 'model-b' } })
+    fireEvent.click(modelSelect)
+    fireEvent.click(await screen.findByRole('option', { name: /Type B/i }))
     expect(screen.getByDisplayValue('560000')).toBeTruthy()
 
     // Change to Type C (RM 720,000)
-    fireEvent.change(modelSelect, { target: { value: 'model-c' } })
+    fireEvent.click(modelSelect)
+    fireEvent.click(await screen.findByRole('option', { name: /Type C/i }))
     expect(screen.getByDisplayValue('720000')).toBeTruthy()
   })
 
   it('allows changing panel law firm per case row', async () => {
     renderDirectImport()
-    await screen.findByText(/Direct Case Import Ledger/i)
+    await screen.findByText(/Type Bookings In/i)
 
     const lawFirmSelect = screen.getByRole('combobox', { name: /Panel Law Firm/i })
     expect(lawFirmSelect).toBeTruthy()
-    expect((lawFirmSelect as HTMLSelectElement).value).toBe('Teh & Partners')
+    expect(lawFirmSelect.textContent).toContain('Teh & Partners')
 
     // Change to Cheah & Associates
-    fireEvent.change(lawFirmSelect, { target: { value: 'Cheah & Associates' } })
-    expect((lawFirmSelect as HTMLSelectElement).value).toBe('Cheah & Associates')
+    fireEvent.click(lawFirmSelect)
+    fireEvent.click(await screen.findByRole('option', { name: /Cheah & Associates/i }))
+    expect(lawFirmSelect.textContent).toContain('Cheah & Associates')
 
     const unitInput = screen.getByPlaceholderText(/A-12-08/i)
     const nameInput = screen.getByPlaceholderText(/Nurul Huda Binti Ahmad/i)
@@ -114,7 +118,7 @@ describe('DirectTableImport', () => {
     fireEvent.change(unitInput, { target: { value: 'A-20-08' } })
     fireEvent.change(nameInput, { target: { value: 'Norazlan Bin Hashim' } })
 
-    const importButton = screen.getByRole('button', { name: /Import 1 Case/i })
+    const importButton = screen.getByRole('button', { name: /Import 1 Booking/i })
     fireEvent.click(importButton)
 
     await waitFor(() => expect(importBookings).toHaveBeenCalledTimes(1))
@@ -124,7 +128,7 @@ describe('DirectTableImport', () => {
 
   it('validates unit against range and existing held units', async () => {
     renderDirectImport()
-    await screen.findByText(/Direct Case Import Ledger/i)
+    await screen.findByText(/Type Bookings In/i)
 
     const unitInput = screen.getByPlaceholderText(/A-12-08/i)
     const nameInput = screen.getByPlaceholderText(/Nurul Huda Binti Ahmad/i)
@@ -141,12 +145,12 @@ describe('DirectTableImport', () => {
 
     // Valid unit
     fireEvent.change(unitInput, { target: { value: 'A-15-05' } })
-    expect(await screen.findByRole('button', { name: /Import 1 Case/i })).toBeTruthy()
+    expect(await screen.findByRole('button', { name: /Import 1 Booking/i })).toBeTruthy()
   })
 
   it('submits valid row to importBookings with auto-assigned staff and law firm', async () => {
     const { onImported } = renderDirectImport()
-    await screen.findByText(/Direct Case Import Ledger/i)
+    await screen.findByText(/Type Bookings In/i)
 
     const unitInput = screen.getByPlaceholderText(/A-12-08/i)
     const nameInput = screen.getByPlaceholderText(/Nurul Huda Binti Ahmad/i)
@@ -154,7 +158,7 @@ describe('DirectTableImport', () => {
     fireEvent.change(unitInput, { target: { value: 'A-20-08' } })
     fireEvent.change(nameInput, { target: { value: 'Norazlan Bin Hashim' } })
 
-    const importButton = screen.getByRole('button', { name: /Import 1 Case/i })
+    const importButton = screen.getByRole('button', { name: /Import 1 Booking/i })
     expect(importButton).toBeTruthy()
     fireEvent.click(importButton)
 

@@ -2,10 +2,12 @@
 
 Mortar is our entry to YEI 3.0, answering a challenge that Chin Hin Group set on
 the Kabel DXP platform. This brief covers the competition, the challenge in the
-sponsor's own words, and the evidence rules we work under.
+sponsor's own words, a plain-language reading of it, how Mortar answers it, and
+the evidence rules we work under.
 
-The headings, bold labels and short lead-in sentences are ours, while the
-challenge text itself is quoted word for word.
+From Problem Overview to How Do You Know It Worked?, the headings, bold labels
+and short lead-in sentences are ours, while the challenge text itself is quoted
+word for word. The two sections after it are entirely our own words.
 
 Contents:
 
@@ -15,6 +17,8 @@ Contents:
 1.  [Tension](#tension)
 1.  [Constraints](#constraints)
 1.  [How Do You Know It Worked?](#how-do-you-know-it-worked)
+1.  [The Challenge In Plain Terms](#the-challenge-in-plain-terms)
+1.  [How Mortar Answers The Brief](#how-mortar-answers-the-brief)
 1.  [The Practitioner Interview](#the-practitioner-interview)
 1.  [See Also](#see-also)
 
@@ -147,12 +151,120 @@ The brief defines success as a single number.
 - **A Real Outcome:** It must represent a real business outcome, behaviour, or
   cash movement — not a dashboard or a report that someone has to open.
 
+## The Challenge In Plain Terms
+
+This section restates the brief in our own words for anyone new to the project.
+The quoted sections above remain the source of truth.
+
+### The Core Problem
+
+A booking is a promise to buy, not a sale, yet the developer forecasts cash as
+if it were one. The real sale is the signed SPA, often weeks later, and nobody
+watches the whole gap between the two.
+
+### Where Bookings Leak
+
+Each step between booking and SPA has a different owner, and two of them work
+outside the developer.
+
+```text
+Booking ──► Loan Applications ──► Letter Of Offer ──► SPA Signed
+ Sales       Loan Admin            Panel Banker         Legal And Panel
+                                   (External)           Solicitor (External)
+```
+
+A booking can fail at any step. Loan rejection is the cause practitioners name
+most, followed by buyer withdrawal and incomplete documents. Other cases sit
+with a slow banker or solicitor until they quietly die.
+
+### Why Nobody Can See It
+
+Each team holds part of the picture, and nothing joins the parts together.
+
+| Team       | What It Knows                 | Where That Knowledge Lives             |
+| ---------- | ----------------------------- | -------------------------------------- |
+| Sales      | Which buyers feel shaky       | Agents' memory and WhatsApp            |
+| Loan Admin | Which bankers are slow        | WhatsApp, spreadsheets and bank emails |
+| Legal      | Which cases have been sitting | Correspondence with panel law firms    |
+
+So no one can say how many live bookings will actually sign. That missing view
+is the "intelligence" in the challenge title.
+
+### Why The Obvious Fix Fails
+
+Screening buyers harder before booking looks like the answer, and most surveyed
+practitioners want an early financing check. But Sales resists any gate that
+slows a launch, and the brief rules out making one team the problem. The answer
+must manage bookings better after they happen, not block them.
+
+### What The Constraints Rule Out
+
+- **No New CRM:** the tool works beside existing systems, fed by spreadsheet
+  import.
+- **No Authority Over Banks Or Solicitors:** the tool is for our own staff to
+  chase them, not for them to use.
+- **Messy Evidence:** information arrives through WhatsApp, scans and staff
+  memory, so AI can read it and propose updates while people confirm them.
+
+## How Mortar Answers The Brief
+
+### Not A Buyer Screening Tool
+
+Mortar is often misread as a tool that predicts which buyers will pull out. A
+prediction alone changes nothing. Mortar accepts every booking, watches it until
+it signs or fails, and prompts action when it starts to slip.
+
+Knowing a booking is at risk leads to one of three outcomes.
+
+| Outcome           | What Mortar Provides                                                                   | Who Benefits           |
+| ----------------- | -------------------------------------------------------------------------------------- | ---------------------- |
+| Save It           | The stall reason in plain words, a suggested next action, an owned task and a playbook | Sales and Loan Admin   |
+| Release It        | Persistent stalls surfaced early, so an executive can cancel and resell the unit       | Inventory and pricing  |
+| Count It Honestly | A forecast that weights each booking by its stage's conversion rate, not face value    | Finance and management |
+
+The only screening is an advisory financing-risk chip on each booking, based on
+the debt service ratio and margin of financing. It says "watch this one
+closely", never "reject".
+
+### A Day In Mortar
+
+Each persona starts on its own desk and works one part of the same case record.
+
+| Who                  | Starts On   | Daily Loop                                                                                          |
+| -------------------- | ----------- | --------------------------------------------------------------------------------------------------- |
+| Intake               | `/import`   | Load bookings from the existing spreadsheet or system export, each becoming a case with a risk chip |
+| Sales Admin          | `/chase`    | Work only the cases that need a person today, create a task, follow the playbook, message the buyer |
+| Loan Admin           | `/bookings` | Track up to three bank applications per booking and chase any undecided past the bank's window      |
+| Legal Admin          | `/legal`    | Clear approved loans without a signed SPA, oldest first, split into never scheduled and unsigned    |
+| Finance / Management | `/forecast` | Read expected SPAs from live bookings, weighted by stage                                            |
+
+When a buyer or banker replies, staff paste the message into the case. AI
+proposes what it means, such as "payslip received", and nothing becomes a fact
+until a person confirms it. The loop is: booking, stall detected, case chased,
+then either saved or released early, with the forecast updating as cases move.
+
+The [product overview](/docs/PRODUCT.md#how-it-works-in-one-flow) follows one
+booking through this loop step by step.
+
+### The Brief's Deliverables, Mapped
+
+| Brief Asks For              | Mortar's Answer                                                                     |
+| --------------------------- | ----------------------------------------------------------------------------------- |
+| Rank The Causes             | Practitioner survey and industry research, ranked with counts                       |
+| Find Where Bookings Stall   | Stage tracking and stall rules on every case                                        |
+| Propose A Measurable Change | The daily chase queue, sized with a worked uplift example                           |
+| Show The Derivation         | The illustrative impact calculation in the product overview                         |
+| Join Up The Three Teams     | One case record with a desk for each of Sales, Loan Admin and Legal                 |
+| Place AI Honestly           | AI reads messages and proposes updates, people confirm, the forecast is statistical |
+| Build Something Usable      | Today, the Sales Admin's home screen                                                |
+| One Number                  | The 30-day verified SPA rate                                                        |
+
 ## The Practitioner Interview
 
 [The interview template](/docs/source/interview.md) holds field notes from one
-industry practitioner, and those notes serve as evidence for the proposal. The
-interview runs over WhatsApp, by text or voice note. The practitioner stays
-anonymous throughout.
+industry practitioner, and those notes were meant to serve as evidence for the
+proposal. The interview runs over WhatsApp, by text or voice note. The
+practitioner stays anonymous throughout.
 
 ### Interview Ground Rules
 
@@ -202,11 +314,12 @@ list records anything that still needs checking after the session.
 
 ### Where The Interview Stands
 
-As of 26 September 2026, the answers, notes, findings and key numbers in the
-template are still blank, so no figure in the proposal can cite this interview
-yet. The product documents draw their evidence from industry research, an
-anonymous [practitioner survey](/docs/research/practitioner-survey/README.md) of
-five respondents, and public regulatory data.
+As of 27 September 2026, the team has no property sales practitioner available
+to interview, so the template will stay blank through the preliminary round and
+no figure in the proposal cites it. The product documents draw their evidence
+from industry research, an anonymous
+[practitioner survey](/docs/research/practitioner-survey/README.md) of eight
+respondents, and public regulatory data.
 
 ## See Also
 
@@ -228,5 +341,5 @@ for the Mortar project.
 - The [project notes](/docs/agents/notes.md) give a file map, recipes and known
   gotchas for working in the code.
 - The [practitioner survey](/docs/research/practitioner-survey/README.md)
-  presents the findings of the anonymous practitioner survey of five
+  presents the findings of the anonymous practitioner survey of eight
   respondents.

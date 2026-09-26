@@ -6,11 +6,12 @@ It unifies fragmented data across Sales, Loan Administration and Legal into an
 evidence-backed case workflow with a daily chase queue, reviewed staff
 playbooks, and a stage-weighted conversion forecast. All numbers in this
 document derive from industry research, an anonymous practitioner survey (n =
-5), and public regulatory data, evaluated on synthetic bookings.
+8), and public regulatory data, evaluated on synthetic bookings.
 
 Contents:
 
 1.  [The Problem And Its Cost](#the-problem-and-its-cost)
+1.  [Target Users](#target-users)
 1.  [Who Uses Mortar](#who-uses-mortar)
 1.  [What Mortar Does](#what-mortar-does)
 1.  [How It Works In One Flow](#how-it-works-in-one-flow)
@@ -52,9 +53,10 @@ SPA is signed. In that case, booking to SPA took about 64 days, so every stalled
 week counts against the delivery clock.
 
 No public figure exists for Malaysian booking-to-SPA conversion. In our
-practitioner survey, three of five respondents said only 0 to 2 of every 10
-bookings reach a signed SPA, one said 7 to 8, and one was unsure: the leakage is
-real, and its size is exactly what nobody can currently see.
+practitioner survey, half of respondents (4 of 8) said only 0 to 2 of every 10
+bookings reach a signed SPA, another said 3 to 4, two said 5 to 8, and one was
+unsure: the leakage is real, and its size is exactly what nobody can currently
+see.
 
 This dynamic creates an acute organizational tension between departments. Sales
 fears that stricter buyer pre-qualification will dampen booking velocity and
@@ -67,6 +69,66 @@ every stalled case in a daily queue. It equips staff to chase salvageable
 bookings systematically while surfacing unsalvageable cases early so inventory
 can be re-released promptly.
 
+## Target Users
+
+Mortar is built for the back-office staff of a Malaysian property developer, not
+for buyers, agents or the developer's outside partners. This section sets out
+who adopts it, who uses it daily, who benefits without logging in, and who is
+deliberately left out.
+
+### Target Organisation
+
+A Malaysian property developer that launches projects in campaigns and sells
+most units to mortgage-financed buyers through panel banks and panel solicitors.
+The first target is the challenge sponsor, Chin Hin Group's property development
+business.
+
+The fit is strongest where one launch produces more live bookings than staff can
+track from memory. It also fits where booking status is already split across a
+CRM, spreadsheets and WhatsApp, as practitioners in our survey describe.
+
+### Daily Users
+
+Three internal administration roles use Mortar every working day. Each is
+described in full under [Who Uses Mortar](#who-uses-mortar).
+
+| Daily User  | Owns The Stretch                    | Opens Mortar To                                    |
+| ----------- | ----------------------------------- | -------------------------------------------------- |
+| Sales Admin | Booking to complete buyer documents | Work the Today queue of stuck bookings             |
+| Loan Admin  | Bank submission to Letter of Offer  | See which bank applications are late or incomplete |
+| Legal Admin | Letter of Offer to signed SPA       | See which approved cases have not been signed      |
+
+### Beneficiaries Who Do Not Log In Daily
+
+- **Finance:** receives a stage-weighted forecast of expected SPAs in place of
+  booking counts at face value.
+- **Sales Director:** keeps launch momentum, because Mortar advises on financing
+  risk without blocking bookings.
+- **Management:** sees persistent stalls early enough to decide whether to
+  release a unit for resale.
+
+### Deliberately Not Users
+
+Buyers, sales agents, panel bankers and panel solicitors never log in. The
+developer has no authority over most of them, so Mortar does not depend on their
+cooperation. Their updates reach a case when staff paste in a WhatsApp message
+or email and confirm what it says.
+
+### What The Daily Users Have In Common
+
+These traits come from the practitioner survey and the challenge brief. They
+decide how simple the product has to be.
+
+- **Not Technical:** their current tools are spreadsheets, email and WhatsApp,
+  so every screen must be clear at a glance with no training.
+- **Interrupt-Driven:** their day is a stream of buyer, banker and solicitor
+  messages, so Mortar must show the next action first and the detail on demand.
+- **Multilingual:** updates arrive in English, Malay, Chinese and Manglish, so
+  staff paste messages as they are instead of retyping them.
+- **Accountable For Outcomes They Do Not Control:** banks decide credit and
+  solicitors set appointments, so Mortar puts a clock on each wait and names who
+  holds the case, rather than judging the outside party.
+
 ## Who Uses Mortar
 
 Mortar provides a single operational environment tailored for three distinct
@@ -77,16 +139,15 @@ workspace.
 ### Sales Administration
 
 Sales administrators act as the primary operational engine for stalled bookings.
-In Mortar, Sales Admin Nurul Aina starts her working day on the Chase List
-(`/chase`).
+In Mortar, Sales Admin Nurul Aina starts her working day on Today (`/chase`).
 
-- **Morning Routine:** Opens the chase queue to review stalled bookings filtered
-  by urgency and financing risk.
+- **Morning Routine:** Opens Today to review stalled bookings filtered by
+  urgency and financing risk.
 - **Actionable Blockers:** Inspects plain-language blocker descriptions (for
   example, an income document overdue for five days or a banker waiting on
   clarification).
-- **Task Assignment:** Reviews Jev-generated next-action suggestions and creates
-  assigned follow-up tasks with one click.
+- **Task Assignment:** Reviews the rule-based next step and Jev's suggestion,
+  creating an assigned follow-up task with one click.
 - **Buyer Outreach:** Uses vetted playbooks to draft targeted buyer requests via
   existing WhatsApp communication channels.
 
@@ -125,7 +186,7 @@ manage directly. Legal Admin Arvind Raj anchors his workflow on the Legal desk
 
 | Persona     | Representative Staff | Home Route  | Core Responsibility                       | Primary Value Delivered                                         |
 | ----------- | -------------------- | ----------- | ----------------------------------------- | --------------------------------------------------------------- |
-| Sales Admin | Nurul Aina           | `/chase`    | Works daily chase list of stuck bookings  | Surfaces each stall reason with a suggested next action         |
+| Sales Admin | Nurul Aina           | `/chase`    | Works the Today queue of stuck bookings   | Surfaces each stall reason with an actionable next step         |
 | Loan Admin  | Tan Mei Ling         | `/bookings` | Oversees multi-bank mortgage applications | Flags applications undecided past the bank guideline window     |
 | Legal Admin | Arvind Raj           | `/legal`    | Runs the SPA execution queue              | Puts a clock on every case sitting between approval and signing |
 
@@ -159,6 +220,21 @@ solicitor or the developer's own staff. It also names what that party owes and
 the next move, on the bookings table and the case page alike, so staff can
 triage a whole list without opening each case.
 
+### The Shared Side Sheet
+
+Clicking a unit code on Today or a row in Bookings opens the same side sheet
+(`CaseQuickView`). It shows who the case waits on, the next step with Add Task,
+Record An Update, and Open Full Case, allowing staff to unblock cases without
+leaving their queue.
+
+### Ask Mortar
+
+The top bar's sparkle button opens Ask Mortar, an embedded assistant that
+answers natural-language questions from staff across any page in the app. It
+reads the live bookings snapshot using five read-only tools and returns grounded
+answers with booking citations. Ask Mortar never modifies data or makes credit,
+loan, or legal decisions.
+
 ### High-Density Ledger Design
 
 Mortar adheres to the strict interface rules defined in the
@@ -181,13 +257,13 @@ interface functions as a digital ledger:
 ┌────────────────────────────────────────────────────────────────────────┐
 │                        Mortar Workspace Engine                         │
 ├───────────────────┬───────────────────┬────────────────────────────────┤
-│    Case Ledger    │    Chase Queue    │       Forecast Engine          │
+│  Bookings Ledger  │    Today Queue    │       Forecast Engine          │
 │   (/bookings)     │     (/chase)      │         (/forecast)            │
 ├───────────────────┼───────────────────┼────────────────────────────────┤
 │ • Parallel tracks │ • Plain blockers  │ • 30-day conversion horizon    │
-│ • Evidence audits │ • Jev suggestions │ • Wilson 95% confidence bands  │
+│ • Evidence audits │ • Next-step verbs │ • Wilson 95% confidence bands  │
 │ • Document status │ • One-click tasks │ • Monte Carlo percentile range │
-│ • Multi-bank logs │ • Urgency sorting │ • Historical backtest audits   │
+│ • Multi-bank logs │ • Desk-based view │ • Historical backtest audits   │
 └───────────────────┴───────────────────┴────────────────────────────────┘
 ```
 
@@ -207,7 +283,7 @@ spanning initial deposit through to confirmed execution.
  RM 550,000        requests slip        payslip pending       status updates
      │                                                              │
      ▼                                                              ▼
-[8. Execution] ◄── [7. Live Clear] ◄── [6. Playbook] ◄─── [5. Chase Queue]
+[8. Execution] ◄── [7. Live Clear] ◄── [6. Playbook] ◄─── [5. Today Queue]
  SPA executed       Malay message        Staff follows         Stall flagged
  10% paid           sent & cleared       vetted rules          task created
 ```
@@ -228,11 +304,11 @@ spanning initial deposit through to confirmed execution.
     case evidence log. She clicks Confirm. Mortar records a confirmed event,
     updates the loan track to "Documents pending", and shows who reported and
     who verified it.
-5.  **Chase Queue Activation:** The bank application passes nine working days
+5.  **Today Queue Activation:** The bank application passes nine working days
     without a decision, so Mortar's stall rule flags the case. It surfaces at
-    the top of the Chase List (`/chase`). Jev suggests a next action: request
-    the payslip from the buyer, owner Sales, due today. Sales Admin Nurul Aina
-    clicks Create Task.
+    the top of Today (`/chase`). The rule-based next step leads — Ask For
+    Payslip, owner Sales Admin, due today — with Jev's suggestion displayed
+    alongside if it differs. Sales Admin Nurul Aina clicks Create Task.
 6.  **Playbook Guidance:** Nurul queries the playbooks panel for "slip gaji".
     Mortar returns the vetted "Missing Income Documents" playbook, which advises
     asking the buyer for the exact missing month's payslip through the company
@@ -257,16 +333,43 @@ it is never permitted to make operational or financial decisions.
 
 ### Division Of Operational Responsibility
 
-| Operational Domain     | AI Role (TypeSafe Jev)                                      | Human Or Deterministic Governance                                     |
+| Operational Domain     | AI Role                                                     | Human Or Deterministic Governance                                     |
 | ---------------------- | ----------------------------------------------------------- | --------------------------------------------------------------------- |
 | Message processing     | Extracts candidate dates, document types, and event classes | Staff confirm identity matches and verify material facts              |
 | Staff knowledge        | Retrieves and ranks vetted playbooks by contextual fit      | Experienced managers author, review, and approve playbook text        |
 | Task coordination      | Proposes next actions and estimates follow-up urgency       | Staff assign responsibilities, execute actions, and manage partners   |
+| Operational inquiries  | Ask Mortar reads snapshot to answer grounded questions      | Staff evaluate answers; model never writes or decides                 |
 | Buyer sentiment        | Evaluates message response gaps and hesitation patterns     | Sales agents interpret relationship context and buyer motives         |
 | Financing risk         | Computes nothing; deterministic rules evaluate debt ratios  | Credit staff evaluate documentation; commercial banks decide credit   |
 | Legal milestones       | Assembles chronological document trails for case review     | Panel solicitors confirm statutory execution of the agreement         |
 | Conversion forecasting | Explains underlying statistical distributions               | Mathematical algorithms compute rates; Finance owns assumptions       |
 | Inventory management   | Highlights persistent stalls exceeding policy limits        | Authorized executives review evidence and authorize unit cancellation |
+
+### The Ask Mortar Boundary
+
+Ask Mortar operates as an internal conversational assistant for staff, accessed
+via the sparkle button in the top bar. It connects to Google's Gemini API
+(`server/src/assistant/`) and is grounded by five read-only snapshot tools
+(`find_bookings`, `get_case`, `get_my_queue`, `get_forecast_summary`, and
+`search_playbooks`).
+
+The architectural boundary is absolute:
+
+- **Read-Only Operation:** Ask Mortar never executes database writes, state
+  transitions, or task creations. It cannot modify booking records.
+- **No Operational Authority:** The model never makes credit, underwriting,
+  loan, or legal decisions. It refuses off-topic requests and explicitly states
+  when available data does not contain the answer.
+- **Untrusted Context Isolation:** Buyer, banker, and solicitor message bodies
+  are provided to the model strictly fenced as untrusted data.
+- **Verifiable Citations:** Citations link exclusively to booking cases returned
+  by grounding tools during the turn.
+- **Safe Fallback:** If the Gemini API key is missing or an upstream call fails,
+  the endpoint returns 503 and the UI seamlessly degrades to scripted answers.
+- **Privacy Protection:** API keys, message contents, and user images are never
+  logged. On Gemini's free tier, prompts may be retained by Google for model
+  training; Ask Mortar is therefore restricted to simulated data until deployed
+  under an enterprise agreement.
 
 ### The Jev Boundary And Resilience
 
@@ -315,34 +418,40 @@ unsupported estimates.
 
 ### Industry Practitioner Survey Findings
 
-On 18 September 2026, five industry practitioners (n = 5) across mixed roles —
-sales and project marketing, project management, finance, construction, and one
-unstated — answered an anonymous survey on conversion bottlenecks. Full survey
-responses are documented in the
-[Practitioner Survey](research/practitioner-survey/README.md).
+Between 18 and 22 September 2026, eight industry practitioners (n = 8) across
+mixed roles — sales and project marketing, project management, finance,
+construction, sales administration, and legal conveyancing — answered an
+anonymous survey on conversion bottlenecks. Full survey responses are documented
+in the [Practitioner Survey](research/practitioner-survey/README.md).
 
 ```text
-Ranked Causes Of Booking Leakage (n = 5):
-1. Loan Rejection / Financing Failure ── [5 of 5: Single Biggest Cause]
-2. Buyer Withdrawal / Mind Change    ── [4 of 5: Named In Top Three]
-3. Incomplete Buyer Documentation    ── [3 of 5: Named In Top Three]
-4. Property Valuation Shortfall      ── [2 of 5: Named In Top Three]
+Ranked Causes Of Booking Leakage (n = 8):
+1. Loan Rejection / Financing Failure ── [7 of 8: Single Biggest Cause; 8 of 8: Top Three]
+2. Buyer Withdrawal / Mind Change    ── [5 of 8: Named In Top Three]
+3. Incomplete Buyer Documentation    ── [5 of 8: Named In Top Three]
+4. Property Valuation Shortfall      ── [3 of 8: Named In Top Three]
+5. Slow Bank / Banker Processing     ── [1 of 8: Single Biggest Cause; 1 of 8: Top Three]
 ```
 
 The survey established four critical operational realities:
 
-- **The Primary Bottleneck:** 5 of 5 respondents cited loan rejection or
-  insufficient financing as the single largest cause of leakage. 4 of 5
-  identified bank credit assessment as the specific stage where cases stall.
-- **Conversion Reality:** 3 of 5 practitioners estimated that only 0 to 2 out of
-  every 10 bookings reach a signed SPA; one put it at 7 to 8 and one was unsure.
-- **Dwell Durations:** The typical time from booking to SPA ran 3 to 4 weeks (2
-  of 5) or more than 8 weeks (2 of 5). A failed booking's unit took 3 to 4 weeks
-  to release for 2 of 5 respondents; one reported more than 12 weeks.
-- **Support For Automation:** Checking documents for missing items (3 of 5) and
-  suggesting next actions (2 of 5) were identified as safe areas for AI. Only 1
-  of 5 supported using AI for conversion risk, validating Mortar's reliance on
-  statistical forecasting over generative LLM predictions.
+- **The Primary Bottleneck:** 7 of 8 respondents cited loan rejection or
+  insufficient financing as the single largest cause of leakage (8 of 8 ranked
+  it in their top three). 5 of 8 identified bank credit assessment as the
+  specific stage where cases stall.
+- **Conversion Reality:** Half of practitioners (4 of 8) estimated that only 0
+  to 2 out of every 10 bookings reach a signed SPA; one reported 3 to 4, two
+  reported 5 to 8, and one was unsure.
+- **Dwell Durations:** The typical time from booking to SPA ran 3 to 4 weeks (4
+  of 8), 7 to 8 weeks (1 of 8), or more than 8 weeks (2 of 8, with 1 unsure). A
+  failed booking's unit took up to 2 weeks (2 of 8), 3 to 4 weeks (2 of 8), 5 to
+  6 weeks (1 of 8), 9 to 12 weeks (1 of 8), or more than 12 weeks (1 of 8) to
+  release.
+- **Support For Automation:** Suggesting next actions based on stage (4 of 8),
+  checking documents for missing items (3 of 8), and summarising WhatsApp or
+  banker updates (3 of 8) were identified as safe areas for AI assistance. Only
+  1 of 8 supported using AI to estimate conversion risk, validating Mortar's
+  reliance on statistical forecasting over generative LLM predictions.
 
 ### Official And Industry Benchmarks
 
@@ -391,9 +500,10 @@ This metric delivers three distinct operational advantages:
     to enroll an intake cohort between day 15 and day 44 of a quarter, conclude
     all observation by day 74, and reconcile legal audits by day 84.
 3.  **Halts Inventory Holding Drag:** Anecdotal buyer guides cite 14 to 21 days
-    for smooth conversions, while two of five surveyed practitioners put booking
-    to SPA at more than eight weeks. Enforcing a 30-day horizon forces early
-    unblocking or prompt unit release.
+    for smooth conversions, while two of eight surveyed practitioners put
+    booking to SPA at more than eight weeks (and three of eight put it at seven
+    weeks or more). Enforcing a 30-day horizon forces early unblocking or prompt
+    unit release.
 
 ### Illustrative Impact, Not A Finding
 
@@ -423,9 +533,10 @@ partners, Mortar defines clear functional boundaries:
 - **Not An Autonomous Decider:** Mortar never unilaterally cancels bookings,
   forfeits buyer deposits, or modifies official legal agreements. Human staff
   must confirm every milestone.
-- **Not A Generative Chatbot:** Mortar does not engage in free-form generative
-  conversations with external buyers. AI interactions are restricted to
-  structured classification and extraction.
+- **Not A Customer-Facing Chatbot:** Mortar does not engage in customer
+  conversations with external buyers. AI assistance is strictly internal: Jev
+  classifies events and scores structured fields, while Ask Mortar answers staff
+  inquiries grounded in the live snapshot without making operational decisions.
 - **Not A Customer-Facing Portal:** Mortar is an internal operational tool for
   developer personnel. Panel bankers and panel solicitors keep their existing
   channels; their participation does not require a new portal.
@@ -509,7 +620,7 @@ Weeks 9–12: Audit & Rollout  ◄── Weeks 5–8: Live Intervention
   legal notes, and rules for honest presentation of simulated data.
 - [Practitioner Survey](research/practitioner-survey/README.md): Empirical
   findings on conversion bottlenecks and leakage causes from Malaysian industry
-  professionals (n = 5).
+  professionals (n = 8).
 - [Feature Ideas](research/feature-ideas/README.md): Features written up but not
   built yet, with their worked figures and what each one rests on.
 - [Problem Statement](source/problem-statement.md): Original Chin Hin Group

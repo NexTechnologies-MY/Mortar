@@ -46,7 +46,7 @@ describe('FaqPage', () => {
       'Who Uses Mortar, And Where Does Each Role Start?',
       'Is The Data Real?',
       'What Do The Stage And Risk Labels Mean?',
-      'When Does A Booking Land On The Chase List?',
+      'When Does A Booking Land On Today?',
       'What Does Jev Do?',
       'Where Does The Data Come From, And How Is It Refreshed?',
       'How Does The Forecast Work?',
@@ -79,5 +79,21 @@ describe('FaqPage', () => {
     renderPage()
     expect(screen.getAllByText(/association of banks in malaysia/i).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/bank negara malaysia/i).length).toBeGreaterThan(0)
+  })
+
+  it('details persona pages, Today list, Ask Mortar, and stage labels', () => {
+    renderPage()
+    expect(screen.getByText(/Sales Admin: Today \(home\), Bookings, Add Bookings, Forecast, Settings/i)).toBeTruthy()
+    expect(screen.getByText(/Loan Admin: Bookings \(home\), Today, Forecast, Settings/i)).toBeTruthy()
+    expect(screen.getByText(/Legal Admin: Legal \(home\), Today, Bookings, Forecast, Settings/i)).toBeTruthy()
+    expect(
+      screen.getByText(/Who Holds Each Booking, filters the table by Buyer, Bank, Solicitor, Signed or Us/i)
+    ).toBeTruthy()
+    expect(screen.getByText(/Ask Mortar, the sparkle button in the top bar/i)).toBeTruthy()
+    expect(
+      screen.getByText(
+        /Stage labels read Booked, With Bank, Loan Approved, Loan Agreement, Disbursed, SPA Signed, Cancelled, Lapsed/i
+      )
+    ).toBeTruthy()
   })
 })

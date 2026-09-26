@@ -69,7 +69,7 @@ describe('ForecastPage', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Forecast' })).toBeTruthy()
     expect(screen.getByText('Expected Signings In 30 Days')).toBeTruthy()
     expect(screen.getByText('Forecast Range')).toBeTruthy()
-    expect(screen.getAllByText('Live Bookings').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Bookings In The Forecast').length).toBeGreaterThan(0)
     expect(screen.getByText('How Often Each Stage Reaches Signing')).toBeTruthy()
     expect(screen.getByText('An Accuracy Check On Simulated Data Proves The Method, Not The Business.')).toBeTruthy()
     expect(screen.getByText('Assumptions')).toBeTruthy()
@@ -101,9 +101,17 @@ describe('ForecastPage', () => {
     expect(screen.queryByText('Mean Squared Error, Lower Is Better')).toBeNull()
     expect(screen.queryByText(/Approval Falls As The Debt Service Ratio Rises/)).toBeNull()
 
-    for (const label of ['Live Bookings', 'Forecast Range', 'Accuracy Score', 'Rate', 'Likely Range']) {
+    for (const label of ['Bookings In The Forecast', 'Forecast Range', 'Rate', 'Likely Range']) {
       expect(infoTrigger(label)).toBeTruthy()
     }
+  })
+
+  it('displays a plain-language accuracy sentence on how close the forecast came', () => {
+    renderPage()
+    expect(
+      screen.getByText(/(The forecast matched actual signings exactly|The forecast came within \d+ signing)/)
+    ).toBeTruthy()
+    expect(screen.queryByText(/Accuracy Score/)).toBeNull()
   })
 
   it('Run It Again adds a browser-only run beside the canonical forecast', async () => {
@@ -117,7 +125,7 @@ describe('ForecastPage', () => {
   it('opens the info tooltip on keyboard focus, like every other tooltip', () => {
     renderPage()
     // React delegates onFocus to the bubbling focusin event; Radix opens on it.
-    fireEvent.focusIn(infoTrigger('Live Bookings'))
+    fireEvent.focusIn(infoTrigger('Bookings In The Forecast'))
     expect(screen.getByText('Unsigned and under 30 days old.')).toBeTruthy()
   })
 })

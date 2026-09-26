@@ -1,26 +1,24 @@
 /**
- * Chase page — the Sales Admin home desk. Every stalled live booking as a
- * chase card: its stall reasons, financing-risk chip and Jev's suggested next
- * action (cached first, re-run live). Above the queue, Suggested Next names
- * the most urgent stalled booking nobody is chasing yet; cards that already
- * have an open task say so. Below, the open tasks grouped by owner. Filters
- * narrow the queue by risk and by suggested owner.
+ * Today (`/chase`) — every persona's home desk. The header answers the only
+ * question the page opens with: how many bookings are stalled, and how many
+ * tasks are due today. Two stat tiles follow, the filter row, then the cards.
+ *
+ * Sales Admin coordinates every booking to a signed SPA, so their home opens
+ * on the whole chase — every desk, every owner. Loan Admin and Legal Admin open
+ * on their own desk. The header sentence and the first tile follow the owner
+ * filter rather than the persona, so choosing a desk relabels them instead of
+ * leaving one sentence describing a different list from the one on screen.
+ *
+ * Each card names the blocker in plain words and the one next step, which is
+ * the rule-based move from `ballInCourt` — the same move Waiting On and the
+ * table's Task column raise, so one click anywhere creates one task. Jev's
+ * cached answer appears only where it differs, as a single extra line. Clicking
+ * the unit and buyer opens the same side sheet a row opens on the ledger.
  */
 import { useMemo, useState, type Dispatch, type SetStateAction } from 'react'
-import { Link } from 'react-router-dom'
-import {
-  AlertTriangle,
-  Banknote,
-  BellRing,
-  Flame,
-  ListChecks,
-  Plus,
-  SearchX,
-  SlidersHorizontal,
-  Users
-} from 'lucide-react'
-import { ballInCourt } from '@mortar/core'
-import type { CaseSummary, NextActionSuggestion, OwnerRole, RiskLevel, Task } from '@mortar/core'
+import { AlertTriangle, Banknote, BellRing, ListChecks, SearchX, SlidersHorizontal, Users } from 'lucide-react'
+import { PERSONA_STAFF } from '@mortar/core'
+import type { CaseSummary, EventKind, NextActionSuggestion, OwnerRole, RiskLevel, Task } from '@mortar/core'
 import { useCases, useSnapshot } from '@/lib/data'
 import { ApiError, fetchNextAction, postTask, updateTask } from '@/lib/api'
 import { notify } from '@/components/ui/toastConfig'
@@ -33,11 +31,14 @@ import { InfoTooltip } from '@/components/ui/InfoTooltip'
 import { RefreshErrorBanner } from '@/components/ui/RefreshErrorBanner'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { CaseQuickView } from '@/components/bookings/CaseQuickView'
+import type { BookingRow } from '@/components/bookings/BookingsTable'
 import { ChaseCard } from '@/components/chase/ChaseCard'
 import { ChaseTasks } from '@/components/chase/ChaseTasks'
-import { NEXT_ACTION_LABELS, dueOnForUrgency, ownerName, taskTitle, urgencyFor } from '@/components/chase/chase'
-import { formatRm, formatRmCompact, MOVE_OWNER } from '@/components/case'
-import type { DocumentKind } from '@mortar/core'
+import { NEXT_ACTION_LABELS } from '@/components/chase/chase'
+import { OWNER_ROLE_LABELS, formatRm, formatRmCompact } from '@/components/case'
+import { nextStepFor, stepToTask, type NextStep } from '@/components/case/nextStep'
+import { PERSONA_DESK_ROLE, usePersona, type Persona } from '@/lib/persona'
 
 const RISK_OPTIONS: { value: 'all' | RiskLevel; label: string }[] = [
   { value: 'all', label: 'All Risk' },
@@ -47,21 +48,69 @@ const RISK_OPTIONS: { value: 'all' | RiskLevel; label: string }[] = [
 ]
 
 const OWNER_OPTIONS: { value: 'all' | OwnerRole; label: string }[] = [
-  { value: 'all', label: 'All Owners' },
+  { value: 'all', label: 'All Desks' },
   { value: 'sales', label: 'Sales' },
   { value: 'sales_admin', label: 'Sales Admin' },
   { value: 'loan_admin', label: 'Loan Admin' },
   { value: 'legal', label: 'Legal' }
 ]
 
-const QUEUE_PREVIEW = 6
+const QUEUE_PREVIEW = 9
+
+/**
+ * What the page opens on, per persona.
+ *
+ * Sales Admin coordinates every booking to a signed SPA, so their home is the
+ * whole chase: every desk, and every owner's tasks. Loan Admin and Legal Admin
+ * open on their own desk and their own work. One place decides all of it, so
+ * the owner filter, the header and Open Tasks cannot drift apart.
+ */
+function defaultsFor(persona: Persona): { owner: 'all' | OwnerRole; mineOnly: boolean } {
+  return persona === 'sales-admin'
+    ? { owner: 'all', mineOnly: false }
+    : { owner: PERSONA_DESK_ROLE[persona], mineOnly: true }
+}
+
+/**
+ * The header's count and the first tile, in the words a person would say.
+ *
+ * All desks count every stalled booking; one desk counts the cases waiting on
+ * it. Either way the number is the size of the list on screen, so the sentence
+ * and the queue can never describe different work. The tile drops the subject —
+ * a tile reads "Need A Move From You" under the figure — and the sentence keeps
+ * it, because a sentence with no subject is a headline. Every form reads
+ * correctly in the singular: "1 Stalled Booking", "1 Booking Needs A Move From
+ * You".
+ */
+function headlineFor(ownerFilter: 'all' | OwnerRole, ownDesk: OwnerRole, count: number) {
+  if (ownerFilter === 'all') {
+    return {
+      count,
+      sentence: `${count} ${count === 1 ? 'Stalled Booking' : 'Stalled Bookings'}`,
+      tileLabel: 'Stalled Bookings',
+      tileInfo: 'Every booking that has stopped moving, whichever desk holds it.'
+    }
+  }
+  const from = ownerFilter === ownDesk ? 'You' : OWNER_ROLE_LABELS[ownerFilter]
+  return {
+    count,
+    sentence: `${count} ${count === 1 ? 'Booking Needs' : 'Bookings Need'} A Move From ${from}`,
+    tileLabel: `${count === 1 ? 'Needs' : 'Need'} A Move From ${from}`,
+    tileInfo: 'Stalled bookings whose next step is on this desk.'
+  }
+}
 
 export function ChasePage() {
   const { snapshot, loading, error, refresh } = useSnapshot()
   const cases = useCases()
+  const { persona } = usePersona()
+  // The persona's own desk, as the owner role its staff member works under.
+  const deskRole = PERSONA_DESK_ROLE[persona]
   const [riskFilter, setRiskFilter] = useState<'all' | RiskLevel>('all')
-  const [ownerFilter, setOwnerFilter] = useState<'all' | OwnerRole>('all')
+  const [ownerFilter, setOwnerFilter] = useState<'all' | OwnerRole>(() => defaultsFor(persona).owner)
   const [queueExpanded, setQueueExpanded] = useState(false)
+  const [mineOnly, setMineOnly] = useState(() => defaultsFor(persona).mineOnly)
+  const [inspecting, setInspecting] = useState<string | null>(null)
 
   /** A changed filter re-folds the queue to its first few cards. */
   const applyFilters = (risk: 'all' | RiskLevel, owner: 'all' | OwnerRole) => {
@@ -81,52 +130,51 @@ export function ChasePage() {
     return map
   }, [snapshot, live])
 
-  /** The document a request_document suggestion refers to: outstanding, else Jev's proposed request. */
-  const documentFor = (bookingId: string): DocumentKind | undefined => {
-    const summary = cases.find((c) => c.bookingId === bookingId)
-    if (summary?.outstandingDocuments.length) return summary.outstandingDocuments[0]
-    const proposed = (snapshot?.events ?? []).filter(
-      (e) => e.bookingId === bookingId && e.kind === 'documents_requested' && e.status !== 'superseded' && e.document
-    )
-    return proposed[proposed.length - 1]?.document ?? undefined
-  }
-
-  /** The queue ranks by urgency. Evidence awaiting review can clear a stall with
-   * one confirmation, so it leads; then overdue, due-today and upcoming cards,
-   * urgent scores first; ties break on value at risk, then the stalest stall. */
-  const stalled = useMemo(() => {
-    const pending = new Set((snapshot?.events ?? []).filter((e) => e.status === 'provisional').map((e) => e.bookingId))
-    const toneOrder = { danger: 0, warning: 1, neutral: 2 } as const
-    const rank = (c: CaseSummary) => {
-      const urgency = urgencyFor(suggestions.get(c.bookingId), c.daysSinceEvidence)
-      return { pending: !pending.has(c.bookingId), tone: toneOrder[urgency.tone], score: urgency.score }
+  const steps = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof nextStepFor>>()
+    for (const summary of cases) {
+      const booking = bookings.get(summary.bookingId)
+      if (!booking) continue
+      map.set(summary.bookingId, nextStepFor(booking, summary, NEXT_ACTION_LABELS, suggestions.get(summary.bookingId)))
     }
-    // The owner filter's match for a case: Jev's cached suggestion when there
-    // is one, else the desk that would make Waiting On's next move — so a
-    // stalled case nobody has asked Jev about yet still shows under its
-    // rightful owner instead of disappearing from every specific filter
-    // (issue H7).
-    const ownerFor = (c: CaseSummary): OwnerRole =>
-      suggestions.get(c.bookingId)?.owner.value ?? MOVE_OWNER[ballInCourt(c).nextMove ?? 'wait']
+    return map
+  }, [cases, bookings, suggestions])
+
+  /** Bookings with evidence waiting for a person to confirm it. One
+   * confirmation can clear a stall outright, so they lead the queue. */
+  const awaitingReview = useMemo(
+    () => new Set((snapshot?.events ?? []).filter((e) => e.status === 'provisional').map((e) => e.bookingId)),
+    [snapshot]
+  )
+
+  /** The queue ranks by what clears a stall soonest: evidence awaiting review
+   * first, then how long each case has sat still, then by value at risk, then
+   * by age. Jev's urgency score is not in it — asking Jev must never move a
+   * card, or the queue reshuffles under the person reading it. */
+  const stalled = useMemo(() => {
+    // The owner filter's match for a case is the desk that makes its next step.
+    const ownerFor = (c: CaseSummary): OwnerRole | undefined => steps.get(c.bookingId)?.defaultStep.ownerRole
     return cases
       .filter((c) => c.stallReasons.length > 0)
       .filter((c) => riskFilter === 'all' || c.risk.level === riskFilter)
       .filter((c) => ownerFilter === 'all' || ownerFor(c) === ownerFilter)
-      .sort((a, b) => {
-        const ra = rank(a)
-        const rb = rank(b)
-        return (
-          Number(ra.pending) - Number(rb.pending) ||
-          ra.tone - rb.tone ||
-          rb.score - ra.score ||
+      .sort(
+        (a, b) =>
+          Number(awaitingReview.has(b.bookingId)) - Number(awaitingReview.has(a.bookingId)) ||
+          b.daysSinceEvidence - a.daysSinceEvidence ||
           (bookings.get(b.bookingId)?.priceRm ?? 0) - (bookings.get(a.bookingId)?.priceRm ?? 0) ||
-          b.daysSinceEvidence - a.daysSinceEvidence
-        )
-      })
-  }, [cases, riskFilter, ownerFilter, suggestions, bookings, snapshot])
+          b.bookingAgeDays - a.bookingAgeDays
+      )
+  }, [cases, riskFilter, ownerFilter, steps, bookings, awaitingReview])
 
   const allStalled = useMemo(() => cases.filter((c) => c.stallReasons.length > 0), [cases])
   const openTasks = useMemo(() => (snapshot?.tasks ?? []).filter((t) => t.status === 'open'), [snapshot])
+
+  const headline = headlineFor(ownerFilter, deskRole, stalled.length)
+  const dueToday = useMemo(() => {
+    if (!snapshot) return 0
+    return openTasks.filter((t) => t.dueOn <= snapshot.meta.referenceDate).length
+  }, [openTasks, snapshot])
 
   /** Each booking's open task due soonest. */
   const openTaskByBooking = useMemo(() => {
@@ -138,11 +186,40 @@ export function ChasePage() {
     return map
   }, [openTasks])
 
-  /** The most urgent stalled booking in the filtered queue that nobody is chasing yet. */
-  const suggestedNext = stalled.find((c) => !openTaskByBooking.has(c.bookingId))
-  const suggestedBooking = suggestedNext ? bookings.get(suggestedNext.bookingId) : undefined
   const valueAtRisk = allStalled.reduce((sum, c) => sum + (bookings.get(c.bookingId)?.priceRm ?? 0), 0)
-  const highRisk = allStalled.filter((c) => c.risk.level === 'high').length
+
+  /** The confirmed evidence kinds per booking, for the side sheet's journey. */
+  const confirmedKinds = useMemo(() => {
+    const map = new Map<string, Set<EventKind>>()
+    for (const event of snapshot?.events ?? []) {
+      if (event.status !== 'confirmed') continue
+      const set = map.get(event.bookingId) ?? new Set<EventKind>()
+      set.add(event.kind)
+      map.set(event.bookingId, set)
+    }
+    return map
+  }, [snapshot])
+
+  /** The row the side sheet shows, built the way `/bookings` builds it. */
+  const quickViewRow = useMemo((): BookingRow | null => {
+    if (!inspecting) return null
+    const booking = bookings.get(inspecting)
+    const summary = cases.find((c) => c.bookingId === inspecting)
+    if (!booking || !summary) return null
+    return {
+      booking,
+      summary,
+      signals: null,
+      confirmedKinds: confirmedKinds.get(booking.id) ?? new Set<EventKind>(),
+      openTask: openTaskByBooking.get(booking.id) ?? null
+    }
+  }, [inspecting, bookings, cases, confirmedKinds, openTaskByBooking])
+
+  /** Open Tasks defaults to the active persona's own work, with an all-owners widen. */
+  const shownTasks = useMemo(
+    () => (mineOnly ? openTasks.filter((t) => t.ownerName === PERSONA_STAFF[persona].name) : openTasks),
+    [openTasks, mineOnly, persona]
+  )
 
   const setFlag = (set: Dispatch<SetStateAction<ReadonlySet<string>>>, id: string, on: boolean) =>
     set((prev) => {
@@ -165,23 +242,19 @@ export function ChasePage() {
     }
   }
 
-  const createTask = async (bookingId: string) => {
+  /** Raises whichever step the person picked — the default or Jev's alternative. */
+  const createTask = async (bookingId: string, step: NextStep) => {
     const booking = bookings.get(bookingId)
-    const suggestion = suggestions.get(bookingId)
-    if (!booking || !suggestion || !snapshot) return
+    if (!booking || !snapshot) return
     setFlag(setCreating, bookingId, true)
     try {
-      const ownerRole = suggestion.owner.value
-      await postTask({
-        bookingId,
-        action: suggestion.action.value,
-        title: taskTitle(suggestion.action.value, booking, documentFor(bookingId)),
-        ownerRole,
-        ownerName: ownerName(ownerRole, booking),
-        dueOn: dueOnForUrgency(suggestion.urgency.score, snapshot.meta.referenceDate),
-        origin: suggestion.meta.source === 'unavailable' ? 'staff' : 'jev'
-      })
-      notify.success(`Task created for ${bookingId}: ${NEXT_ACTION_LABELS[suggestion.action.value]}`)
+      await postTask(
+        stepToTask(step, booking, snapshot.meta.referenceDate, {
+          daysUntilDue: 0,
+          origin: suggestions.get(bookingId)?.action.value === step.action ? 'jev' : 'staff'
+        })
+      )
+      notify.success(`Task created for ${bookingId}: ${step.label}`)
       await refresh()
     } catch (e) {
       notify.error(e instanceof ApiError ? e.message : 'Could Not Create The Task. Try Again.')
@@ -206,9 +279,9 @@ export function ChasePage() {
   return (
     <PageContainer>
       <PageHeaderCard>
-        <h1 className="text-[32px] font-semibold leading-[1.16] tracking-[-0.02em] text-foreground">Chase List</h1>
+        <h1 className="text-[32px] font-semibold leading-[1.16] tracking-[-0.02em] text-foreground">Today</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Every Stalled Booking, Its Blocker In Plain Words, And Who To Chase Today.
+          {headline.sentence} · {dueToday} {dueToday === 1 ? 'Task' : 'Tasks'} Due Today
         </p>
       </PageHeaderCard>
 
@@ -235,33 +308,18 @@ export function ChasePage() {
           {error ? <RefreshErrorBanner onRetry={() => void refresh()} /> : null}
           <div className="mt-4 flex flex-wrap gap-3">
             <StatCard
-              label="Stalled Bookings"
+              label={headline.tileLabel}
               icon={AlertTriangle}
-              value={String(allStalled.length)}
-              info="Live bookings with a stall reason."
+              value={String(headline.count)}
+              info={headline.tileInfo}
               exact="Click To Clear The Filters"
               onClick={() => applyFilters('all', 'all')}
-            />
-            <StatCard
-              label="High Risk"
-              icon={Flame}
-              value={String(highRisk)}
-              info="Stalled bookings flagged high financing risk."
-              exact={riskFilter === 'high' ? 'Filtered — Click To Clear' : 'Click To Filter The Queue'}
-              tone={highRisk > 0 ? 'alert' : 'default'}
-              onClick={() => applyFilters(riskFilter === 'high' ? 'all' : 'high', ownerFilter)}
-            />
-            <StatCard
-              label="Open Tasks"
-              icon={ListChecks}
-              value={String(openTasks.length)}
-              info="Open tasks across every owner below."
             />
             <StatCard
               label="Value At Risk"
               icon={Banknote}
               value={formatRmCompact(valueAtRisk)}
-              info="Sum of stalled booking prices."
+              info="Sum of every stalled booking's price."
               exact={formatRm(valueAtRisk)}
             />
           </div>
@@ -309,78 +367,28 @@ export function ChasePage() {
             </div>
           ) : (
             <section className="mt-6">
-              {suggestedNext && suggestedBooking ? (
-                <div
-                  aria-label="Suggested Next"
-                  className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border border-card-border bg-card px-4 py-3 shadow-card"
-                >
-                  <span className="flex items-center text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                    Suggested Next
-                    <InfoTooltip text="The Most Urgent Stalled Booking Below That Has No Open Task Yet." />
-                  </span>
-                  <span className="flex min-w-0 flex-wrap items-baseline gap-x-2">
-                    <Link
-                      to={`/bookings/${suggestedBooking.id}`}
-                      className="font-mono text-[13px] font-medium text-foreground hover:underline"
-                    >
-                      {suggestedBooking.unit}
-                    </Link>
-                    <span className="text-[13px] text-muted-foreground">
-                      {suggestedBooking.id} · {suggestedBooking.buyer.name}
-                    </span>
-                    <span className="text-sm font-medium text-foreground">
-                      {suggestedNext.stallReasons.join(' · ')}
-                    </span>
-                  </span>
-                  {suggestions.has(suggestedBooking.id) ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="ml-auto"
-                      disabled={creating.has(suggestedBooking.id)}
-                      onClick={() => void createTask(suggestedBooking.id)}
-                    >
-                      <Plus aria-hidden="true" />
-                      {creating.has(suggestedBooking.id) ? 'Creating…' : 'Create Task'}
-                    </Button>
-                  ) : (
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      className="ml-auto"
-                      disabled={suggesting.has(suggestedBooking.id)}
-                      onClick={() => void suggest(suggestedBooking.id)}
-                    >
-                      {suggesting.has(suggestedBooking.id) ? 'Asking Jev…' : 'Suggest Next Action'}
-                    </Button>
-                  )}
-                </div>
-              ) : (
-                <p className="mb-4 text-sm text-muted-foreground">
-                  Every Stalled Booking Here Already Has An Open Task.
-                </p>
-              )}
               <h2 className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                Action Today
-                <InfoTooltip text="Stalled Bookings, Ranked By Urgency." />
+                Bookings Needing A Move
+                <InfoTooltip text="Stalled Bookings, Most Overdue First." />
               </h2>
               <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-3">
                 {(queueExpanded ? stalled : stalled.slice(0, QUEUE_PREVIEW)).map((summary) => {
                   const booking = bookings.get(summary.bookingId)
-                  if (!booking) return null
+                  const next = steps.get(summary.bookingId)
+                  if (!booking || !next) return null
                   return (
                     <ChaseCard
                       key={summary.bookingId}
                       booking={booking}
                       summary={summary}
-                      suggestion={suggestions.get(summary.bookingId)}
-                      document={documentFor(summary.bookingId)}
+                      step={next.defaultStep}
+                      alternativeStep={next.alternativeStep}
                       openTask={openTaskByBooking.get(summary.bookingId) ?? null}
                       suggesting={suggesting.has(summary.bookingId)}
                       creating={creating.has(summary.bookingId)}
+                      onInspect={() => setInspecting(summary.bookingId)}
                       onSuggest={() => void suggest(summary.bookingId)}
-                      onCreateTask={() => void createTask(summary.bookingId)}
+                      onCreateTask={(step) => void createTask(summary.bookingId, step)}
                     />
                   )
                 })}
@@ -388,7 +396,7 @@ export function ChasePage() {
               {stalled.length > QUEUE_PREVIEW ? (
                 <div className="mt-4 flex justify-center">
                   <Button type="button" variant="secondary" onClick={() => setQueueExpanded((v) => !v)}>
-                    {queueExpanded ? 'Show Fewer' : `Show ${stalled.length - QUEUE_PREVIEW} More Stalled Bookings`}
+                    {queueExpanded ? 'Show Fewer' : `Show ${stalled.length - QUEUE_PREVIEW} More`}
                   </Button>
                 </div>
               ) : null}
@@ -397,15 +405,37 @@ export function ChasePage() {
 
           {openTasks.length > 0 ? (
             <section className="mt-8">
-              <h2 className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                Open Tasks
-                <InfoTooltip text="Grouped By Owner." />
-              </h2>
+              <div className="flex flex-wrap items-center gap-3">
+                <h2 className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                  <ListChecks aria-hidden="true" className="size-4 shrink-0" />
+                  Open Tasks
+                  <InfoTooltip text="Grouped By Owner." />
+                </h2>
+                <Button type="button" variant="ghost" size="sm" onClick={() => setMineOnly((v) => !v)}>
+                  {mineOnly ? 'Show All Owners' : 'Show Mine Only'}
+                </Button>
+              </div>
               <div className="mt-3">
-                <ChaseTasks tasks={openTasks} completing={completing} onComplete={(t) => void completeTask(t)} />
+                <ChaseTasks
+                  tasks={shownTasks}
+                  completing={completing}
+                  onComplete={(t) => void completeTask(t)}
+                  emptyLabel={`No Open Tasks For ${PERSONA_STAFF[persona].name}.`}
+                />
               </div>
             </section>
           ) : null}
+
+          {/* The same side sheet a row opens on the ledger, so what happened
+              can be recorded from Today without leaving it. A save in here
+              refreshes the queue behind the sheet, as it does there. */}
+          <CaseQuickView
+            row={quickViewRow}
+            referenceDate={snapshot?.meta.referenceDate ?? ''}
+            suggestion={inspecting ? suggestions.get(inspecting) : undefined}
+            onClose={() => setInspecting(null)}
+            onChanged={refresh}
+          />
         </>
       )}
     </PageContainer>

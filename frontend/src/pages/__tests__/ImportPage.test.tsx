@@ -72,7 +72,8 @@ describe('ImportPage', () => {
 
   it('reviews every row: ready, held by an open booking, or missing a value', async () => {
     renderImport()
-    await screen.findByRole('heading', { name: 'Import' })
+    await screen.findByRole('heading', { name: 'Add Bookings' })
+    expect(screen.getByText('Upload A Spreadsheet, Or Type Bookings In One By One.')).toBeTruthy()
     drop(SHEET)
 
     expect(await screen.findByText('3 Rows Read')).toBeTruthy()
@@ -85,7 +86,7 @@ describe('ImportPage', () => {
 
   it('imports only the ready rows and confirms what landed', async () => {
     renderImport()
-    await screen.findByRole('heading', { name: 'Import' })
+    await screen.findByRole('heading', { name: 'Add Bookings' })
     drop(SHEET)
 
     fireEvent.click(await screen.findByRole('button', { name: 'Import 1 Booking' }))
@@ -101,7 +102,7 @@ describe('ImportPage', () => {
 
   it('undoes the import from its confirmation, after asking', async () => {
     renderImport()
-    await screen.findByRole('heading', { name: 'Import' })
+    await screen.findByRole('heading', { name: 'Add Bookings' })
     drop(SHEET)
     fireEvent.click(await screen.findByRole('button', { name: 'Import 1 Booking' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Undo This Import' }))
@@ -121,7 +122,7 @@ describe('ImportPage', () => {
 
   it('names the required columns a sheet is missing', async () => {
     renderImport()
-    await screen.findByRole('heading', { name: 'Import' })
+    await screen.findByRole('heading', { name: 'Add Bookings' })
     drop('Unit,Buyer,Price\nD-1,X,600000')
 
     expect(await screen.findByText('Columns Not Found')).toBeTruthy()
@@ -130,7 +131,7 @@ describe('ImportPage', () => {
 
   it('refuses a file that is not XLSX or CSV', async () => {
     renderImport()
-    await screen.findByRole('heading', { name: 'Import' })
+    await screen.findByRole('heading', { name: 'Add Bookings' })
     drop('x', 'bookings.pdf')
 
     expect(await screen.findByText(/Only XLSX Or CSV Files Can Be Read/)).toBeTruthy()

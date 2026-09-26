@@ -26,9 +26,9 @@ const MOMENTS: Moment[] = [
     width: 1216,
     height: 490,
     title: 'The Stall Is Named',
-    body: 'Every morning the Chase List holds the stalled bookings — the blocker in plain words, the financing risk, and Jev’s suggested next action with its owner. Nothing waits to be noticed.',
-    alt: 'A stalled booking on the Chase List: unit, buyer, blocker and the suggested next action.',
-    caption: 'One stalled booking on the Chase List. Simulated data.'
+    body: 'Every morning the Today list holds the stalled bookings — the blocker in plain words, the financing risk, and Jev’s suggested next action with its owner. Nothing waits to be noticed.',
+    alt: 'A stalled booking on Today: unit, buyer, blocker and the suggested next action.',
+    caption: 'One stalled booking on Today. Simulated data.'
   },
   {
     base: 'message',
@@ -45,8 +45,8 @@ const MOMENTS: Moment[] = [
     height: 462,
     title: 'The Task Has An Owner',
     body: 'One click turns the suggestion into a task with an owner and a due date. The open tasks group by owner on the same desk, so who chases what is never ambiguous.',
-    alt: 'Open tasks on the Chase List grouped by owner, each with its booking and due date.',
-    caption: 'Open tasks on the Chase List, grouped by owner. Simulated data.'
+    alt: 'Open tasks on Today grouped by owner, each with its booking and due date.',
+    caption: 'Open tasks on Today, grouped by owner. Simulated data.'
   },
   {
     base: 'forecast',

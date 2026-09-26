@@ -105,7 +105,7 @@ describe('RecordUpdateForm', () => {
   it('asks for a submission first when a decision has no bank to name', async () => {
     renderForm([], [])
 
-    await choose('What Happened', 'Loan Approved (LO Issued)')
+    await choose('What Happened', 'Loan Approved')
     expect(screen.getByText('Record Submitted To A Bank First')).toBeTruthy()
     expect(recordButton().disabled).toBe(true)
   })
@@ -143,7 +143,7 @@ describe('RecordUpdateForm', () => {
       ]
     )
 
-    await choose('What Happened', 'Loan Approved (LO Issued)')
+    await choose('What Happened', 'Loan Approved')
     const bank = screen.getByRole('combobox', { name: 'Which Bank' })
     expect(bank.textContent).toContain('Crestline Bank')
     fireEvent.click(bank)
@@ -192,5 +192,68 @@ describe('RecordUpdateForm', () => {
         reportedBy: 'Tan Mei Ling'
       })
     )
+  })
+
+  it('opens closed behind a button when the caller collapses it', async () => {
+    render(
+      <RecordUpdateForm
+        booking={BOOKING}
+        applications={[]}
+        summary={summary([])}
+        referenceDate="2026-09-18"
+        reportedBy="Tan Mei Ling"
+        onRecorded={vi.fn(async () => {})}
+        collapsible
+      />
+    )
+
+    // Three forms open on load was the case page's 2,635 px wall.
+    expect(screen.queryByLabelText('What Happened')).toBeNull()
+    const toggle = screen.getByRole('button', { name: 'Record An Update' })
+    expect(toggle.getAttribute('aria-expanded')).toBe('false')
+
+    fireEvent.click(toggle)
+    expect(screen.getByLabelText('What Happened')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Close' }).getAttribute('aria-expanded')).toBe('true')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    expect(screen.queryByLabelText('What Happened')).toBeNull()
+  })
+
+  it('gives the collapsible form no heading, because the button already names it', () => {
+    render(
+      <RecordUpdateForm
+        booking={BOOKING}
+        applications={[]}
+        summary={summary([])}
+        referenceDate="2026-09-18"
+        reportedBy="Tan Mei Ling"
+        onRecorded={vi.fn(async () => {})}
+        collapsible
+      />
+    )
+
+    expect(screen.queryByRole('heading', { name: 'Record An Update' })).toBeNull()
+  })
+
+  it.each([
+    ['spa_signed', 'SPA Signed'],
+    ['documents_requested', 'Documents Requested']
+  ] as const)('opens preset to %s, so the choice is not made twice', async (initialKind, label) => {
+    render(
+      <RecordUpdateForm
+        booking={BOOKING}
+        applications={[]}
+        summary={summary([])}
+        referenceDate="2026-09-18"
+        reportedBy="Tan Mei Ling"
+        onRecorded={vi.fn(async () => {})}
+        initialKind={initialKind}
+      />
+    )
+
+    expect(screen.getByRole('combobox', { name: 'What Happened' }).textContent).toContain(label)
+    // Nothing extra was asked for, so the form is ready to save.
+    if (initialKind === 'spa_signed') expect(recordButton().disabled).toBe(false)
   })
 })

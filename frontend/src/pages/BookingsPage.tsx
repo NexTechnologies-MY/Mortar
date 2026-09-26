@@ -2,8 +2,8 @@
  * Bookings list route — the Loan Admin desk.
  * Every unit booking with its age, stage, who it is waiting on, financing
  * risk, buyer response and value. Stalled bookings sort first until the reader
- * sorts a column; filters cover stage, who holds the ball, risk and the
- * no-recent-update flag. The Waiting On cell opens a quick view of the case
+ * sorts a column; filters cover stage, who holds the ball, risk, stalled only
+ * and the no-recent-update flag. Clicking a row opens a quick view of the case
  * over the table.
  *
  * Active / Closed (issue #23): a closed booking (`disbursed`, `cancelled` or
@@ -15,8 +15,8 @@
  * same way an imported sheet row is.
  */
 
-import { useMemo, useRef, useState } from 'react'
-import { AlertTriangle, ClipboardList, FileSignature, HelpCircle, Plus } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { AlertTriangle, ClipboardList, HelpCircle, Plus } from 'lucide-react'
 import {
   ballInCourt,
   PERSONA_STAFF,
@@ -28,18 +28,18 @@ import {
   type Task
 } from '@mortar/core'
 import { useCases, useSnapshot } from '@/lib/data'
-import { usePersona } from '@/lib/persona'
+import { usePersona, type Persona } from '@/lib/persona'
 import { STAGE_LABELS } from '@/components/case/StagePill'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { PageHeaderCard } from '@/components/layout/PageHeaderCard'
-import { PersonaDeskLens } from '@/components/layout/PersonaDeskLens'
 import { StatCard } from '@/components/StatCard'
 import { AddBookingDialog } from '@/components/bookings/AddBookingDialog'
 import { BookingFilters, type BookingFilter } from '@/components/bookings/BookingFilters'
 import {
   BookingPipelineFlow,
   type PipelineCounts,
-  type PipelineSelection
+  type PipelineSelection,
+  type PipelineStageId
 } from '@/components/bookings/BookingPipelineFlow'
 import { BookingsTable, type BookingRow, type Sort, type SortKey } from '@/components/bookings/BookingsTable'
 import { CaseQuickView } from '@/components/bookings/CaseQuickView'
@@ -50,7 +50,6 @@ import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { RefreshErrorBanner } from '@/components/ui/RefreshErrorBanner'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { notify } from '@/components/ui/toastConfig'
 
 type View = 'active' | 'closed'
@@ -89,24 +88,37 @@ function mainProject(bookings: Booking[]): string {
   return best
 }
 
+/** Default holder filter in the pipeline strip based on active persona. */
+function defaultHolderForPersona(persona: Persona): PipelineStageId {
+  if (persona === 'sales-admin') return 'buyer'
+  if (persona === 'legal-admin') return 'solicitor'
+  return 'bank'
+}
+
 export function BookingsPage() {
   const { snapshot, loading, error, refresh } = useSnapshot()
   const cases = useCases()
   const { persona } = usePersona()
   const [filter, setFilter] = useState<BookingFilter>({
     stage: 'all',
-    waitingOn: 'all',
     risk: 'all',
+    stalledOnly: false,
     unknownOnly: false
   })
   const [inspecting, setInspecting] = useState<string | null>(null)
   const [view, setView] = useState<View>('active')
   const [addOpen, setAddOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
-  const [pipelineSelection, setPipelineSelection] = useState<PipelineSelection>({
-    stageId: null,
-    stalledOnly: false
-  })
+  const [stripHolder, setStripHolder] = useState<PipelineStageId | null>(() => defaultHolderForPersona(persona))
+  const lastPersonaRef = useRef(persona)
+
+  useEffect(() => {
+    if (lastPersonaRef.current !== persona) {
+      lastPersonaRef.current = persona
+      setStripHolder(defaultHolderForPersona(persona))
+    }
+  }, [persona])
+
   // Passed to AddBookingDialog so it can put focus back here once Escape, the
   // X or Cancel close it (issue #M12) — a successful add navigates away instead.
   const addButtonRef = useRef<HTMLButtonElement>(null)
@@ -187,7 +199,7 @@ export function BookingsPage() {
     }
 
     for (const r of activeRows) {
-      if (r.summary.stage === 'spa_signed') {
+      if (r.summary.spaSigned || r.summary.stage === 'spa_signed') {
         counts.spa.total++
         continue
       }
@@ -218,23 +230,22 @@ export function BookingsPage() {
     () =>
       viewRows.filter((r) => {
         if (filter.stage !== 'all' && r.summary.stage !== filter.stage) return false
-        if (filter.waitingOn !== 'all' && ballInCourt(r.summary).holder !== filter.waitingOn) return false
         if (filter.risk !== 'all' && r.summary.risk.level !== filter.risk) return false
+        if (filter.stalledOnly && !r.stalled) return false
         if (filter.unknownOnly && !r.summary.unknown) return false
 
-        if (view === 'active' && pipelineSelection.stageId) {
-          if (pipelineSelection.stageId === 'spa') {
-            if (r.summary.stage !== 'spa_signed') return false
+        if (view === 'active' && stripHolder) {
+          if (stripHolder === 'spa') {
+            if (!r.summary.spaSigned && r.summary.stage !== 'spa_signed') return false
           } else {
             const bic = ballInCourt(r.summary)
-            if (bic.holder !== pipelineSelection.stageId) return false
-            if (pipelineSelection.stalledOnly && !r.stalled) return false
+            if (bic.holder !== stripHolder) return false
           }
         }
 
         return true
       }),
-    [viewRows, filter, view, pipelineSelection]
+    [viewRows, filter, view, stripHolder]
   )
 
   // Applied after filtering so the sort acts on what the reader can see.
@@ -253,10 +264,8 @@ export function BookingsPage() {
 
   const stats = useMemo(
     () => ({
-      live: rows.filter((r) => r.live).length,
       stalled: rows.filter((r) => r.stalled).length,
-      unknown: rows.filter((r) => r.summary.unknown).length,
-      signed: rows.filter((r) => r.summary.stage === 'spa_signed').length
+      unknown: rows.filter((r) => r.summary.unknown).length
     }),
     [rows]
   )
@@ -281,17 +290,16 @@ export function BookingsPage() {
   const changeView = (next: View) => {
     setView(next)
     setFilter((prev) => (prev.stage === 'all' ? prev : { ...prev, stage: 'all' }))
-    setPipelineSelection({ stageId: null, stalledOnly: false })
     pagination.onPageChange(1)
   }
 
   const handlePipelineSelect = (next: PipelineSelection) => {
-    setPipelineSelection(next)
+    setStripHolder(next.stageId)
     pagination.onPageChange(1)
   }
 
   const handlePipelineClear = () => {
-    setPipelineSelection({ stageId: null, stalledOnly: false })
+    setStripHolder(null)
     pagination.onPageChange(1)
   }
 
@@ -379,8 +387,8 @@ export function BookingsPage() {
 
       {loading && !snapshot ? (
         <div className="mt-4 flex flex-col gap-3">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {[0, 1, 2, 3].map((i) => (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {[0, 1].map((i) => (
               <Skeleton key={i} className="h-24 rounded-md" />
             ))}
           </div>
@@ -400,18 +408,9 @@ export function BookingsPage() {
           {/* A mutation's own save can succeed while the refresh after it fails; the
               table stays on screen with a way to retry rather than vanishing behind it. */}
           {error ? <RefreshErrorBanner onRetry={() => void refresh()} /> : null}
-          {/* Active Role Desk Lens & Purview Boundaries */}
-          <div className="mt-4">
-            <PersonaDeskLens />
-          </div>
 
-          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard
-              label="Live Bookings"
-              icon={ClipboardList}
-              value={String(stats.live)}
-              info="Unresolved, booked within 30 days."
-            />
+          {/* Two Stat Tiles */}
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <StatCard
               label="Stalled"
               icon={AlertTriangle}
@@ -426,55 +425,38 @@ export function BookingsPage() {
               info="No confirmed evidence for 10 or more days."
               tone={stats.unknown > 0 ? 'alert' : 'default'}
             />
-            <StatCard
-              label="SPA Signed"
-              icon={FileSignature}
-              value={String(stats.signed)}
-              info="Reached SPA signing — legally sold."
-            />
           </div>
 
-          {/* Booking-to-SPA Conveyance Pipeline & Bottleneck Tracker */}
+          {/* Who Holds Each Booking — Pipeline Flow Strip */}
           {view === 'active' && (
             <div className="mt-4">
               <BookingPipelineFlow
                 counts={pipelineCounts}
-                selection={pipelineSelection}
+                selection={{ stageId: stripHolder }}
                 onSelect={handlePipelineSelect}
                 onClear={handlePipelineClear}
               />
             </div>
           )}
 
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-            <Tabs value={view} onValueChange={(next) => changeView(next as View)}>
-              <TabsList>
-                <TabsTrigger value="active">Active ({activeRows.length})</TabsTrigger>
-                <TabsTrigger value="closed">Closed ({closedRows.length})</TabsTrigger>
-              </TabsList>
-            </Tabs>
-            {view === 'closed' ? (
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                disabled={sorted.length === 0 || exporting}
-                onClick={() => void exportClosed()}
-              >
-                {exporting ? 'Exporting…' : 'Export To Excel'}
-              </Button>
-            ) : null}
-          </div>
-
-          <div className="mt-3">
+          {/* Single Filter Row including Active/Closed Tabs */}
+          <div className="mt-4">
             <BookingFilters
               filter={filter}
               onChange={applyFilter}
               shown={visible.length}
               total={viewRows.length}
               stages={STAGES_BY_VIEW[view]}
+              view={view}
+              onViewChange={changeView}
+              activeCount={activeRows.length}
+              closedCount={closedRows.length}
+              onExportClosed={exportClosed}
+              exporting={exporting}
+              exportDisabled={sorted.length === 0}
             />
           </div>
+
           <div className="mt-3 overflow-hidden rounded-md border border-border bg-card">
             {visible.length === 0 ? (
               <EmptyState
@@ -482,8 +464,8 @@ export function BookingsPage() {
                 title={view === 'closed' ? 'No Closed Bookings Match' : 'No Bookings Match'}
                 description={
                   view === 'closed'
-                    ? 'Loosen The Stage, Waiting On Or Risk Filters, Or Check The Active Tab.'
-                    : 'Loosen The Stage, Waiting On, Risk Or No Update 10+ Days Filters To See More Bookings.'
+                    ? 'Loosen The Stage Or Risk Filters, Or Check The Active Tab.'
+                    : 'Loosen The Stage, Risk, Stalled Only Or No Update 10+ Days Filters, Or Clear The Holder Filter.'
                 }
               />
             ) : (

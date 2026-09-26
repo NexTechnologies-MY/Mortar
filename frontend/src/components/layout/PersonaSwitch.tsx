@@ -14,15 +14,23 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/DropdownMenu'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { PERSONAS, usePersona } from '@/lib/persona'
+import { PERSONAS, usePersona, type PersonaMeta } from '@/lib/persona'
 
 /**
  * Renders a dropdown of the three personas and updates the global persona context.
+ * Switching to another persona also opens that persona's home desk, so the page
+ * changes with the sidebar instead of staying on the old desk.
  * Highlights the active persona while keeping the trigger compact for nav placement.
  */
 export function PersonaSwitch() {
   const { persona, meta, setPersona } = usePersona()
   const navigate = useNavigate()
+
+  const switchTo = (next: PersonaMeta) => {
+    if (next.id === persona) return
+    setPersona(next.id)
+    navigate(next.home)
+  }
 
   return (
     <DropdownMenu>
@@ -43,7 +51,7 @@ export function PersonaSwitch() {
         {PERSONAS.map((p) => (
           <DropdownMenuItem
             key={p.id}
-            onSelect={() => setPersona(p.id)}
+            onSelect={() => switchTo(p)}
             className={persona === p.id ? 'font-semibold text-foreground' : 'text-muted-foreground'}
           >
             <span className="flex w-full items-center justify-between gap-3">

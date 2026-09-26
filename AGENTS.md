@@ -21,8 +21,8 @@ in `localStorage` under `mortar.persona`:
 
 Routes: `/` (landing), `/sign-in` (no real auth), `/app` (redirects to the
 active persona's home), `/bookings` (list), `/bookings/:id` (detail), `/chase`
-(follow-ups), `/legal` (SPA execution queue), `/forecast` (projected signings),
-`/import` (spreadsheet intake).
+(Today), `/legal` (SPA execution queue), `/forecast` (projected signings),
+`/import` (Add Bookings).
 
 ## Stack
 
@@ -55,4 +55,5 @@ flat config at the root, Prettier, husky + lint-staged.
 | Choosing or installing an agent skill                           | [Skills](docs/agents/skills.md)                                 |
 | Writing or formatting Markdown                                  | [Markdown Style Guide](docs/markdown-style.md)                  |
 | Weighing feature ideas that are not built yet                   | [Feature Ideas](docs/research/feature-ideas/README.md)          |
+| Reviewing the UI triage and its redesign plan                   | [UI Triage](docs/research/ui-triage/README.md)                  |
 | Deleting data, or deploying with real buyer data                | [Data Retention](docs/TRD.md#data-retention)                    |

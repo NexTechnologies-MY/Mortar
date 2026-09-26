@@ -21,8 +21,8 @@ Contents:
 
 **The Problem:** Mortar works out an advisory financing-risk flag for every
 booking (PRD FR-3), but staff see it only after the booking is saved. In the
-[practitioner survey](/docs/research/practitioner-survey/README.md), four of
-five respondents chose an early eligibility check as the most helpful
+[practitioner survey](/docs/research/practitioner-survey/README.md), seven of
+eight respondents chose an early eligibility check as the most helpful
 improvement.
 
 **The Idea:** Show the debt service ratio, the margin of financing and the risk

@@ -6,12 +6,11 @@ import {
   PLAYBOOKS,
   REFERENCE_DATE,
   generate,
-  summarizeCases,
   type CaseEvent,
   type Booking,
   type Snapshot
 } from '@mortar/core'
-import { PersonaProvider } from '@/lib/persona'
+import { PersonaProvider, type Persona } from '@/lib/persona'
 import { SnapshotProvider } from '@/lib/data'
 import { fetchSnapshot, importBookings, postTask } from '@/lib/api'
 import { BookingsPage } from '@/pages/BookingsPage'
@@ -105,10 +104,10 @@ function clickTab(el: HTMLElement) {
   fireEvent.click(el)
 }
 
-function renderBookings() {
+function renderBookings(initialPersona: Persona = 'loan-admin') {
   return render(
     <MemoryRouter initialEntries={['/bookings']}>
-      <PersonaProvider>
+      <PersonaProvider initialPersona={initialPersona}>
         <SnapshotProvider>
           <Routes>
             <Route path="/bookings" element={<BookingsPage />} />
@@ -125,36 +124,44 @@ describe('BookingsPage', () => {
     window.localStorage.clear()
   })
 
-  it('renders the stats, the Active/Closed tabs and the first page of booking rows', async () => {
+  it('renders the two stat tiles, the Active/Closed tabs, the strip and the booking rows', async () => {
     renderBookings()
 
     expect(await screen.findByRole('heading', { name: 'Bookings' })).toBeTruthy()
-    expect(screen.getByText('Live Bookings')).toBeTruthy()
-    // The explanatory second line moved into a tooltip on the figure.
-    expect(screen.queryByText('Unresolved, Booked Within 30 Days')).toBeNull()
+    // Live Bookings and SPA Signed tiles are removed (Change 2)
+    expect(screen.queryByText('Live Bookings')).toBeNull()
+    // Stalled and No Update 10+ Days tiles remain
     expect(screen.getByText('Stalled')).toBeTruthy()
-    // The renamed stat label and the renamed checkbox both read "No Update 10+ Days" (issue #22).
+    // Stat label and checkbox both read "No Update 10+ Days"
     expect(screen.getAllByText('No Update 10+ Days').length).toBe(2)
-    expect(screen.getAllByText('SPA Signed').length).toBeGreaterThan(0)
+    // Who Holds Each Booking strip carries the Signed count
+    expect(screen.getByText('Who Holds Each Booking')).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Filter by Signed/i })).toBeTruthy()
+
     expect(screen.getByText('BK-9001')).toBeTruthy()
     expect(screen.getByText('A-12-03')).toBeTruthy()
     expect(screen.getByText('Raymond Tan Wei Hong')).toBeTruthy()
-    // 28 bookings in the fixture split 20 Active / 8 Closed (issue #23); the
-    // ledger and its count default to the Active tab.
+
+    // 28 bookings in fixture: 20 Active / 8 Closed
     expect(screen.getByRole('tab', { name: 'Active (20)' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'Closed (8)' })).toBeTruthy()
-    expect(screen.getByText('20 Bookings')).toBeTruthy()
-    expect(screen.getByText('Showing 1 To 20 Of 20')).toBeTruthy()
+
+    // Under Loan Admin preset (Bank), 13 of 20 bookings match
+    expect(screen.getByText('13 Of 20 Bookings')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Add Booking' })).toBeTruthy()
   })
 
-  it('sorts stalled bookings first', async () => {
+  it('sorts stalled bookings first and keeps Age calm when Waiting On is red (Change 7)', async () => {
     renderBookings()
     await screen.findByText('BK-9001')
 
     const firstRow = document.querySelector('tbody tr')!
-    // Age is column index 2 now that Booking ID was consolidated under Unit
-    expect(firstRow.children[2].className).toContain('text-status-danger-fg')
+    // Stalled booking BK-9007 sorts first
+    expect(firstRow.textContent).toContain('BK-9007')
+    // Waiting On has the red danger status pill
+    expect(within(firstRow).getByText(/12 d/)).toBeTruthy()
+    // Age does not turn red because Waiting On is already red
+    expect(firstRow.children[2].className).not.toContain('text-status-danger-fg')
   })
 
   it('keeps only unknown cases when the renamed filter is on (issue #22)', async () => {
@@ -195,6 +202,9 @@ describe('BookingsPage', () => {
 
     expect(await screen.findByRole('tab', { name: 'Active (27)' })).toBeTruthy()
     expect(screen.getByRole('tab', { name: 'Closed (18)' })).toBeTruthy()
+
+    // Clear preset Bank filter so all 27 Active bookings are shown
+    fireEvent.click(screen.getByRole('button', { name: /Filter by Bank/i }))
     expect(screen.getByText('Showing 1 To 25 Of 27')).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: 'Next Page' }))
@@ -213,6 +223,10 @@ describe('BookingsPage', () => {
     renderBookings()
     await screen.findByRole('tab', { name: 'Active (27)' })
 
+    // Clear the Bank preset to see all active stages
+    fireEvent.click(screen.getByRole('button', { name: /Filter by Bank/i }))
+    expect(await screen.findByText('27 Bookings')).toBeTruthy()
+
     // Active: Booked is a real Active-tab stage — filtering by it narrows, not empties.
     fireEvent.click(screen.getByLabelText('Filter By Stage'))
     fireEvent.click(screen.getByRole('option', { name: 'Booked' }))
@@ -230,21 +244,15 @@ describe('BookingsPage', () => {
     expect(screen.getByRole('option', { name: 'Disbursed' })).toBeTruthy()
   })
 
-  it('does not count a booking disbursed within 30 days as both Live and Closed (issue L13)', async () => {
+  it('does not count a booking disbursed within 30 days on the Active tab (issue L13)', async () => {
     const augmented = buildFreshDisbursedSnapshot()
-    // The ground truth: disbursed is resolved regardless of age, same as spa_signed/cancelled/lapsed.
-    const trulyResolved = new Set(['spa_signed', 'disbursed', 'cancelled', 'lapsed'])
-    const expectedLive = summarizeCases(
-      { bookings: augmented.bookings, applications: augmented.applications, events: augmented.events, tasks: [] },
-      augmented.meta.referenceDate
-    ).filter((c) => !trulyResolved.has(c.stage) && c.bookingAgeDays < 30).length
 
     vi.mocked(fetchSnapshot).mockResolvedValueOnce(augmented)
     renderBookings()
     await screen.findByRole('tab', { name: 'Closed (19)' })
 
-    const liveFigure = screen.getByText('Live Bookings').closest('div')!.querySelector('p.text-3xl')!.textContent
-    expect(liveFigure).toBe(String(expectedLive))
+    expect(screen.getByRole('tab', { name: 'Active (27)' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Closed (19)' })).toBeTruthy()
   })
 
   it('opens Add Booking and checks a typed unit against the real held units (issue #24)', async () => {
@@ -264,11 +272,14 @@ describe('BookingsPage', () => {
     expect(importBookings).not.toHaveBeenCalled()
   })
 
-  it('opens the case page when a row is clicked', async () => {
+  it('opens the quick view when a row is clicked (Change 7)', async () => {
     renderBookings()
     fireEvent.click(await screen.findByText('BK-9001'))
 
-    expect(screen.getByTestId('location').textContent).toBe('/bookings/BK-9001')
+    const sheet = document.querySelector<HTMLElement>('[role="dialog"]')!
+    expect(sheet).toBeTruthy()
+    expect(within(sheet).getByText('Waiting On')).toBeTruthy()
+    expect(screen.queryByTestId('location')).toBeNull()
   })
 
   it('opens a quick view from the Waiting On cell and stays on the table', async () => {
@@ -283,7 +294,7 @@ describe('BookingsPage', () => {
     expect(sheet).toBeTruthy()
     expect(screen.queryByTestId('location')).toBeNull()
     expect(within(sheet).getByText('Waiting On')).toBeTruthy()
-    expect(within(sheet).getByText('Next Move')).toBeTruthy()
+    expect(within(sheet).getByText('Next Step')).toBeTruthy()
     expect(within(sheet).getByRole('list', { name: 'Case Journey' })).toBeTruthy()
     expect(
       within(sheet)
@@ -349,38 +360,79 @@ describe('BookingsPage', () => {
 
     expect(postTask).toHaveBeenCalledTimes(1)
     expect(vi.mocked(postTask).mock.calls[0][0]).toMatchObject({ bookingId, origin: 'staff' })
-    // The row opens the case page; the button must not.
+    // The row click opens quick view; the button must not.
     expect(screen.queryByTestId('location')).toBeNull()
   })
-  it('renders the Booking-to-SPA pipeline tracker under the stat cards', async () => {
+
+  it('renders the Who Holds Each Booking pipeline tracker under the stat cards', async () => {
     renderBookings()
     await screen.findByText('BK-9001')
 
     expect(screen.getByTestId('booking-pipeline-flow')).toBeTruthy()
-    expect(screen.getByText('Booking-to-SPA Pipeline & Bottleneck Flow')).toBeTruthy()
-    expect(screen.getByRole('button', { name: /Filter by Panel Bank/i })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /Filter by Client \/ Buyer/i })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /Filter by Law Firm/i })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /Filter by SPA Signed/i })).toBeTruthy()
+    expect(screen.getByText('Who Holds Each Booking')).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Filter by Buyer/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Filter by Bank/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Filter by Solicitor/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Filter by Signed/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Filter by Us/i })).toBeTruthy()
   })
 
-  it('pressing Panel Bank in the pipeline shows all cases stalled by bank, and reset clears the filter', async () => {
+  it('clicking a step filters by that holder, and a second click clears it (Change 3)', async () => {
     renderBookings()
     await screen.findByText('BK-9001')
 
-    // Click Panel Bank step in the pipeline
-    const bankCard = screen.getByRole('button', { name: /Filter by Panel Bank/i })
-    fireEvent.click(bankCard)
+    // Starts preset on Bank for Loan Admin (13 bookings)
+    expect(screen.getByText('13 Of 20 Bookings')).toBeTruthy()
 
-    // Verify active filter indicator
-    expect(await screen.findByText('Filtered View Active')).toBeTruthy()
-    expect(screen.getByText(/Showing:/)).toBeTruthy()
-    expect(screen.getByText(/Stalled by Panel Bank/i)).toBeTruthy()
+    // Second click on Bank clears the filter back to all 20 active bookings
+    const bankStep = screen.getByRole('button', { name: /Filter by Bank/i })
+    fireEvent.click(bankStep)
+    expect(await screen.findByText('20 Bookings')).toBeTruthy()
 
-    // Reset filter
-    const resetBtn = screen.getByRole('button', { name: /Reset Pipeline Filter/i })
-    fireEvent.click(resetBtn)
+    // Clicking Buyer filters to Buyer cases (3 bookings)
+    const buyerStep = screen.getByRole('button', { name: /Filter by Buyer/i })
+    fireEvent.click(buyerStep)
+    expect(await screen.findByText('3 Of 20 Bookings')).toBeTruthy()
+    expect(screen.getByText('BK-0003')).toBeTruthy()
+    expect(screen.queryByText('BK-9001')).toBeNull()
+  })
 
-    expect(screen.queryByText('Filtered View Active')).toBeNull()
+  it('presets the holder filter to Buyer for Sales Admin and Solicitor for Legal Admin (Change 6)', async () => {
+    const { unmount } = renderBookings('sales-admin')
+    expect(await screen.findByText('3 Of 20 Bookings')).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Filter by Buyer/i }).getAttribute('aria-pressed')).toBe('true')
+    unmount()
+
+    renderBookings('legal-admin')
+    expect(await screen.findByText('1 Of 20 Bookings')).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Filter by Solicitor/i }).getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('sums the 5 pipeline step counts to equal the Active tab count (Change 4)', async () => {
+    renderBookings()
+    await screen.findByText('BK-9001')
+
+    // The strip displays the 5 counts: Buyer (3), Bank (13), Solicitor (1), Signed (1), Us (2)
+    // 3 + 13 + 1 + 1 + 2 = 20, exactly matching Active (20)
+    expect(screen.getByRole('button', { name: /Filter by Buyer: 3/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Filter by Bank: 13/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Filter by Solicitor: 1/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Filter by Signed: 1/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Filter by Us: 2/i })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Active (20)' })).toBeTruthy()
+  })
+
+  it('renders Low Risk as muted text rather than a pill (Change 7)', async () => {
+    renderBookings()
+    await screen.findByText('BK-9001')
+
+    // Find Low Risk cells
+    const lowRiskElements = screen.getAllByText('Low Risk')
+    expect(lowRiskElements.length).toBeGreaterThan(0)
+    for (const el of lowRiskElements) {
+      expect(el.className).toContain('text-muted-foreground')
+      // Must not be inside a StatusPill
+      expect(el.closest('[data-tone]')).toBeNull()
+    }
   })
 })

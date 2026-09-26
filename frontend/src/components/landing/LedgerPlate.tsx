@@ -52,7 +52,7 @@ const ROWS: Row[] = [
     unit: 'A-17-02',
     buyer: 'Harjit Singh',
     age: '8 d',
-    stage: { tone: 'info', label: 'LO Issued' },
+    stage: { tone: 'info', label: 'Loan Approved' },
     evidence: { tone: 'positive', label: 'Fresh' },
     risk: { tone: 'positive', label: 'Low Risk' }
   },

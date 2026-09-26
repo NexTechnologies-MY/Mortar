@@ -6,6 +6,7 @@
  */
 
 import { ArrowDown, ArrowUp, ChevronsUpDown } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { TableHead } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
 
@@ -35,18 +36,20 @@ export function SortHeader<K extends string>({
   const Icon = !active ? ChevronsUpDown : sort.dir === 'asc' ? ArrowUp : ArrowDown
   return (
     <TableHead className={className} aria-sort={!active ? 'none' : sort.dir === 'asc' ? 'ascending' : 'descending'}>
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        size="sm"
         onClick={() => onSort(columnKey)}
         className={cn(
-          'inline-flex items-center gap-1 rounded-sm text-[11px] font-semibold uppercase tracking-[0.08em] transition-colors duration-[var(--motion-fast)] hover:text-foreground',
+          'h-auto p-0 inline-flex items-center gap-1 rounded-sm text-[11px] font-semibold uppercase tracking-[0.08em] hover:bg-transparent [&_svg]:size-3',
           active ? 'text-foreground' : 'text-muted-foreground',
           className?.includes('text-right') && 'flex-row-reverse'
         )}
       >
         {label}
         <Icon aria-hidden="true" className="size-3 shrink-0" />
-      </button>
+      </Button>
     </TableHead>
   )
 }

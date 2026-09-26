@@ -84,8 +84,8 @@ toward SPA execution.
 
 **Job To Be Done 1 (Stall Resolution):** When a booking stalls or sits idle, I
 want to see the exact blocker, responsible party, and suggested next action on
-my daily chase list, so that I can unblock the buyer before the booking lapses
-or the unit sits off the market.
+Today, so that I can unblock the buyer before the booking lapses or the unit
+sits off the market.
 
 **Job To Be Done 2 (Message Intake):** When a buyer or sales agent sends an
 update via WhatsApp or email in English, Malay, or Manglish, I want Mortar to
@@ -126,112 +126,110 @@ one.
 
 ## User Stories Per Screen
 
-### Chase Queue (`/chase`)
+### Today (`/chase`)
 
-- **US-1 (View Stalled Bookings):** As a Sales Admin, I want to view all stalled
-  live bookings ordered by urgency and staleness, displaying stall reasons,
-  financing-risk chips, and Jev-suggested next actions, so that I know who to
-  chase today.
-- **US-2 (Suggest Next Action And Create Task):** As a Sales Admin, I want to
-  accept Jev's suggested next action or request a live suggestion, and create an
-  assigned task with one click, so that follow-up responsibilities are recorded.
-- **US-3 (Complete Follow-Up Tasks):** As an operations staff member, I want to
-  view open tasks grouped by owner role and mark them complete inline, so that
-  our team maintains operational momentum.
-- **US-4 (Filter Chase List):** As a Sales Admin, I want to filter the chase
-  list by financing risk level and owner role, so that I can prioritize
-  high-risk or department-specific bottlenecks.
+- **US-1 (View Stalled Bookings):** As a staff member on Today, I want a single
+  header summary, two stat tiles (stalled / Need A Move From You, and Value At
+  Risk), evidence-awaiting bookings listed first, and cards stating each blocker
+  in words.
+- **US-2 (Actionable Next Step And Create Task):** As a staff member, I want
+  each card to display one rule-based next step and owner as the default, with
+  Jev's suggestion shown as an alternative when it differs, and a Create Task
+  button that creates the selected step.
+- **US-3 (Quick View And Card Limits):** As a staff member, I want to view nine
+  cards before "Show N More", and click a card's unit code to open the
+  `CaseQuickView` side sheet without leaving the screen.
+- **US-4 (Desk Views):** As a Sales Admin, I want to see every desk's bookings
+  and tasks by default; as a Loan Admin or Legal Admin, I want to start on my
+  own desk and my own tasks ("Mine").
 
-### Bookings Ledger (`/bookings`)
+### Bookings (`/bookings`)
 
-- **US-5 (Pipeline Overview):** As a Loan Admin, I want a dense tabular ledger
-  of all bookings showing unit code, buyer name, booking age in days, stage,
-  evidence recency (Fresh or Unknown), financing risk, buyer signals, and open
-  tasks, so that I maintain complete pipeline visibility.
-- **US-6 (Stalled Prioritization And Filtering):** As a Loan Admin, I want
-  stalled bookings pinned to the top and filters for stage, risk, and unknown
-  status, so that I can isolate problematic applications instantly.
+- **US-5 (Bookings Pipeline And Strip Filter):** As a Loan Admin, I want two
+  stat tiles (Stalled, No Update 10+ Days), the "Who Holds Each Booking" filter
+  strip (Buyer, Bank, Solicitor, Signed, Us) opening preset to Bank, and a
+  single filter row (Active/Closed, Stage, Risk, No Update 10+ Days, Stalled).
+- **US-6 (Side Sheet Quick View):** As a staff member, I want clicking any row
+  in Bookings to open `CaseQuickView` showing who the case waits on, the next
+  step with Add Task, Record An Update, and a link to Open Full Case.
 
-### Case Detail (`/bookings/:id`)
+### Case Page (`/bookings/:id`)
 
-- **US-7 (Dual-Track Timeline):** As a staff member, I want to view loan and
-  legal progression timelines side by side, with stage pills reflecting
-  confirmed events only, so that I can see the independent advancement of each
-  track.
+- **US-7 (Single-Sentence Status Header):** As a staff member, I want the case
+  header to be one concise status sentence so that "Up To Date" never sits
+  beside a stall.
 - **US-8 (Multi-Bank Application Tracker):** As a Loan Admin, I want to inspect
-  one to three bank applications per booking with independent status indicators,
-  so that I know exactly which banks are evaluating the buyer.
-- **US-9 (Audit Evidence Log):** As an administrator, I want to view a
-  chronological log of all case events showing when occurred, when recorded,
-  reported by, verified by, and evidence status, so that every record is
-  auditable.
-- **US-10 (Review Proposed Updates):** As a staff member, I want to inspect
-  incoming messages with Jev proposals (event kind, document, owner,
-  probability, confidence, Needs Review) and confirm, dispute, or dismiss them,
-  so that no unverified update modifies case state.
-- **US-11 (Live Message Intake):** As a Sales Admin, I want to paste a new buyer
-  message in Malay, English, or Manglish and receive a structured Jev proposal
-  in under three seconds, so that ad-hoc communications update the system
-  immediately.
-- **US-12 (Playbook Knowledge Retrieval):** As a staff member, I want to search
-  approved procedural playbooks ranked by keyword relevance and Jev semantic
-  fit, so that I can apply reviewed organizational guidance to the case.
-- **US-13 (Buyer Signals Evaluation):** As a Sales Admin, I want to view
-  Jev-scored buyer responsiveness and hesitation indicators derived from message
-  patterns, so that I can gauge buyer commitment.
+  one to three bank applications per booking with independent status indicators.
+- **US-9 (Audit Evidence Log And Folded History):** As an administrator, I want
+  a chronological log of all case events, with full history folded behind "Show
+  Full History".
+- **US-10 (Review Proposed Updates Without Percentages):** As a staff member, I
+  want incoming message readings presented in one line in words ("Jev Suggests:
+  Documents Received · Payslip · Jev Is Sure") with Confirm, Dispute, and
+  Dismiss buttons, with no probabilities or percentages.
+- **US-11 (Action Buttons And Message Intake):** As a staff member, I want
+  Record An Update and Paste A Message to open from explicit action buttons,
+  with Jev freshness displayed only when it matters.
+- **US-12 (Playbook Knowledge Retrieval):** As a staff member, I want playbooks
+  to show the top fit ("Applies" or "May Apply") and the rest behind "Show N
+  More".
+- **US-13 (Risk In Plain Words):** As a user on any desk, I want the risk chip
+  to explain itself in plain words ("Monthly Repayments Compared With Income:
+  48%") for every persona, with no masking.
 
 ### Forecast (`/forecast`)
 
 - **US-14 (Risk-Weighted SPA Forecast):** As a user on any desk, I want to view
   projected SPA signings within 30 days of booking, with an expected figure,
-  10th to 90th percentile simulation range, and live count, so that cash
-  projections reflect realistic conversion.
-- **US-15 (Conversion Rates With Intervals):** As a user on any desk, I want to
-  inspect stage conversion rates with resolved sample sizes and Wilson 95%
-  confidence intervals, so that sample uncertainty is transparent.
+  10th to 90th percentile simulation range, and the "Bookings In The Forecast"
+  tile.
+- **US-15 (Conversion Rates And Accuracy):** As a user on any desk, I want stage
+  conversion rates with sample sizes and Wilson 95% intervals, and an accuracy
+  score stated as a complete sentence.
 - **US-16 (Historical Backtesting):** As a user on any desk, I want to inspect a
   backtest cut at reference date minus 30 days showing predicted versus observed
-  signings, Brier score, and calibration table, so that model performance is
-  verified.
+  signings, Brier score, and calibration table.
 - **US-17 (Assumptions Transparency):** As a user on any desk, I want an
-  assumptions panel detailing every simulation parameter with its value, unit,
-  source tag, and reference, so that all baseline figures are auditable.
+  assumptions table detailing simulation parameters, folded behind a control.
 - **US-18 (Client-Side Seed Variance):** As a user on any desk, I want a "Try
-  Another Seed" action that regenerates bookings in-browser to observe outcome
-  spread without modifying the shared database.
+  Another Seed" action that regenerates bookings in-browser.
 
 ### Legal (`/legal`)
 
-- **US-24 (SPA Execution Queue):** As a Legal Admin, I want every booking with
-  an approved loan and no signed SPA, ordered by how long it has waited, so that
-  the oldest case is the first thing I see rather than something I have to go
-  looking for.
-- **US-25 (Scheduled Versus Unscheduled):** As a Legal Admin, I want to tell a
-  case with no SPA appointment on the log apart from one whose appointment was
-  recorded and never signed, so that I chase the right party.
+- **US-24 (Two-Section SPA Execution Queue):** As a Legal Admin, I want two
+  clear sections: "No Appointment Yet" and "Appointment Set, Not Signed",
+  ordered by days since loan approval.
+- **US-25 (Inline Appointment And Signing Records):** As a Legal Admin, I want
+  each row to offer Record Appointment or Record Signing, opening Record An
+  Update preset in a dialog, with passed appointments marked "Was On <date>" in
+  red.
 - **US-26 (Panel Load):** As a Legal Admin, I want the count, median wait and
-  value sitting with each panel firm, so that I can see where the queue is
-  concentrated without inferring firm performance the data cannot support.
+  value sitting with each panel firm, stated as panel load rather than firm
+  performance.
 
 ### Settings And Administration (`/settings`)
 
-- **US-19 (Inspect Simulation Metadata):** As an operator, I want to view the
-  active simulation seed, reference date, last reset timestamp, and table record
-  counts, so that system state is verified.
+- **US-19 (Demo Data First):** As an operator, I want Settings to display Demo
+  Data first and fold unit layouts, showing the active seed, reference date,
+  record counts, and system status.
 - **US-20 (Reset Demo Data):** As a demonstrator, I want a button behind a
   confirmation dialog that restores the canonical demo dataset with a 30-second
-  cooldown, so that the prototype can be reset repeatedly.
+  cooldown.
 - **US-21 (Health Monitoring):** As an operator, I want to inspect database and
-  TypeSafe Jev service connectivity status reported from `/api/health`.
+  service connectivity status reported from `/api/health`.
 
-### Intake And Shell (`/import`, Site Shell)
+### Add Bookings (`/import`) And Site Shell
 
-- **US-22 (Spreadsheet Intake):** As an administrator, I want a drag-and-drop
-  zone accepting XLSX and CSV booking sheets with row parsing and validation, so
-  that existing team spreadsheets can be ingested.
-- **US-23 (Persona Switching And App Shell):** As a user, I want a persistent
-  top-bar persona switcher, role-based redirection from `/app`, simulated data
-  badge, and responsive navigation across light and dark modes.
+- **US-22 (Two-Tab Intake):** As a Sales Admin, I want two tabs: Upload A Sheet
+  (default drag-and-drop zone for XLSX/CSV) and Type Them In (submitting to the
+  main project with generated demo IC and income).
+- **US-23 (Persona Pages And Route Guard):** As a user, I want the sidebar and
+  route guard driven by `PERSONA_PAGES`, so each persona sees only its allowed
+  pages, while `/bookings/:id`, `/app`, `/faq`, and public pages remain
+  unguarded.
+- **US-27 (Ask Mortar Assistant):** As a staff member on any desk, I want to
+  open Ask Mortar from the sparkle button in the top bar to ask questions
+  grounded in the live snapshot via read-only tools.
 
 ## Functional Requirements
 
@@ -278,9 +276,9 @@ without storing transient state in database tables.
 - **AC-2.1:** A booking's current pipeline stage must derive strictly from
   confirmed events. Provisional, disputed, or superseded events must never
   advance case stage.
-- **AC-2.2:** Funnel stages must include `booked`, `loan_applied`, `lo_issued`,
-  `spa_signed`, `loan_agreement`, `disbursed`, and exit states `cancelled` and
-  `lapsed`.
+- **AC-2.2:** Funnel stages must include `booked`, `loan_applied`, `lo_issued`
+  (labeled "Loan Approved"), `spa_signed`, `loan_agreement`, `disbursed`, and
+  exit states `cancelled` and `lapsed`.
 - **AC-2.3:** Loan and legal progress must be maintained as independent tracks
   that can overlap in time.
 - **AC-2.4:** Outstanding documents must be computed as document kinds requested
@@ -347,24 +345,33 @@ provide a human verification workflow.
 - **AC-4.4:** Reviewer names must be populated from `PERSONA_STAFF` based on the
   active persona.
 
-### FR-5: Chase Queue And Task Management
+### FR-5: Today Desk And Task Management
 
-The system must present stalled live bookings in an actionable queue and support
-task assignment and completion.
+The system must present stalled live bookings in an actionable queue on Today
+(`/chase`) and support task assignment and completion.
 
-- **AC-5.1:** The chase list (`/chase`) must query live stalled bookings,
-  displaying stall reasons, financing-risk chip, and cached Jev next action.
-- **AC-5.2:** Clicking "Suggest Next Action" must trigger
-  `POST /api/bookings/:id/next-action` live-first.
-- **AC-5.3:** The user must be able to create a task via `POST /api/tasks`
-  specifying `bookingId`, `action`, `title`, `ownerRole`, `ownerName`, `dueOn`,
-  and `origin`.
-- **AC-5.4:** Open tasks must be displayed grouped by owner role with due date
-  status (`Overdue`, `Due today`, `Upcoming`).
-- **AC-5.5:** Marking a task complete via `PATCH /api/tasks/:id` must update
-  status to `done` and timestamp `completedAt`.
-- **AC-5.6:** The chase view must provide functional filters for risk level and
-  owner role.
+- **AC-5.1:** The Today screen (`/chase`) must title Today with one header
+  sentence (e.g. "26 Stalled Bookings · 3 Tasks Due Today") and two summary
+  tiles: stalled bookings (or "Need A Move From You") and Value At Risk.
+- **AC-5.2:** Bookings with evidence awaiting review must come first, followed
+  by bookings longest without evidence. Nine cards show before a "Show N More"
+  button.
+- **AC-5.3:** Each card must state the blocker in words, one next step and its
+  owner, one status pill (`Overdue` if past due, else `Task Open`), and a Create
+  Task button. Clicking a card's unit code must open the `CaseQuickView` side
+  sheet.
+- **AC-5.4:** Sales Admin sees every desk's bookings and every open task by
+  default. Loan Admin and Legal Admin start on their own desk and tasks
+  ("Mine"), with the ability to switch scope.
+- **AC-5.5:** Next steps must derive from `nextStep.ts`, making the rule-based
+  move from `ballInCourt` the default everywhere. When Jev's cached suggestion
+  differs, the card displays "Jev Suggests: <Step> Instead" with an alternate
+  action button.
+- **AC-5.6:** Creating a task via `POST /api/tasks` must raise the step chosen
+  by the user (`bookingId`, `action`, `title`, `ownerRole`, `ownerName`,
+  `dueOn`, `origin`), preventing conflicting duplicate tasks for multiple people
+  on one booking. Marking a task complete via `PATCH /api/tasks/:id` must update
+  status to `done` and record `completedAt`.
 
 ### FR-6: TypeSafe Jev Structured Message Extraction
 
@@ -501,9 +508,9 @@ AI service is unavailable.
   hash the answer was saved under. `extract` answers, keyed to an immutable
   message, must never be marked stale.
 
-### FR-13: Spreadsheet Intake And Validation
+### FR-13: Add Bookings Intake And Validation
 
-The system must support intake of operational spreadsheets.
+The system must support intake of operational spreadsheets and manual entries.
 
 **Status:** Built. The shipped `/import` flow goes beyond AC-13.1 to AC-13.3 in
 two respects: an import can be undone from its confirmation screen, provided
@@ -511,12 +518,16 @@ none of its bookings has since taken an update, message, or task; and a date
 column written month first is detected and parsed as month first across the
 whole column, with the row review stating the switch.
 
-- **AC-13.1:** The `/import` screen must provide a custom drag-and-drop zone
+- **AC-13.1:** The Add Bookings screen (`/import`) must offer two tabs: Upload A
+  Sheet (default) and Type Them In. Upload A Sheet provides a drag-and-drop zone
   accepting XLSX and CSV booking spreadsheets.
-- **AC-13.2:** The parser must extract unit codes, buyer names, ICs, phone
-  numbers, prices, and booking dates, reporting total rows parsed.
-- **AC-13.3:** Parsing must occur entirely in the client without transmitting
-  unverified files to third-party endpoints.
+- **AC-13.2:** Type Them In must direct typed-in bookings to the main project
+  matching Add Booking, explicitly noting that demo IC and gross income are
+  generated.
+- **AC-13.3:** The parser must extract unit codes, buyer names, ICs, phone
+  numbers, prices, and booking dates, reporting total rows parsed. Parsing must
+  occur entirely in the client without transmitting unverified files to
+  third-party endpoints.
 - **AC-13.4:** Undo Import must lock its own import's bookings before checking
   whether any has moved on, so a staff update that lands mid-undo cannot be
   deleted after its own request already succeeded. A booking number an import
@@ -524,25 +535,39 @@ whole column, with the row review stating the switch.
   `removed` snapshot (id, unit, project, buyer name, price — never IC or phone)
   on the import's own row, per the TRD's Data Retention section.
 
-### FR-14: Persona Navigation And Design System Compliance
+### FR-14: Persona Navigation And Page Routing
 
 The system must enforce persona routing and adhere to visual design standards.
 
 - **AC-14.1:** The active persona must persist in `localStorage` under key
-  `mortar.persona`.
-- **AC-14.2:** Navigating to `/app` must redirect to the persona's designated
-  home (`/chase` for Sales Admin, `/bookings` for Loan Admin, `/legal` for Legal
-  Admin). `/forecast` is the shared projection and is homed to no desk. A
-  `mortar.persona` value of `finance`, the retired identifier, must resolve to
-  `legal-admin` rather than falling back to the default.
-- **AC-14.3:** `/settings` must state plainly that the data is simulated, with
-  the seed and the reference date, and `/forecast` must keep its caption that a
-  backtest on simulated data proves the method, not the business.
-- **AC-14.4:** All UI elements must follow `docs/DESIGN.md`: monochrome ledger
+  `mortar.persona`. Navigating to `/app` or switching persona in the top bar
+  must navigate to the persona's designated home (`/chase` for Sales Admin,
+  `/bookings` for Loan Admin, `/legal` for Legal Admin). A retired identifier
+  `finance` must resolve to `legal-admin`.
+- **AC-14.2:** Page access must be defined centrally by `PERSONA_PAGES` in
+  `frontend/src/lib/persona.tsx` and guarded by `PersonaRoute.tsx`. Each persona
+  sees only its permitted pages in navigation:
+  - Sales Admin: Today (`/chase`, home), Bookings (`/bookings`), Add Bookings
+    (`/import`), Forecast (`/forecast`), Settings (`/settings`).
+  - Loan Admin: Bookings (`/bookings`, home), Today (`/chase`), Forecast
+    (`/forecast`), Settings (`/settings`).
+  - Legal Admin: Legal (`/legal`, home), Today (`/chase`), Bookings
+    (`/bookings`), Forecast (`/forecast`), Settings (`/settings`).
+- **AC-14.3:** Navigating to an unpermitted route redirects to the persona's
+  home route with a brief notice. Case detail (`/bookings/:id`), `/app`, `/faq`,
+  and public routes (`/`, `/sign-in`) are never guarded.
+- **AC-14.4:** Persona sets workflow defaults (such as landing route and queue
+  filters), not data access. No figures or cases are masked per persona; all
+  personas see identical underlying data.
+- **AC-14.5:** `/settings` must display Demo Data first and fold unit layouts,
+  stating plainly that data is simulated, with seed and reference date.
+  `/forecast` displays its accuracy score as a sentence, labels its summary tile
+  "Bookings In The Forecast", and notes that a backtest on simulated data proves
+  method, not business.
+- **AC-14.6:** All UI elements must follow `docs/DESIGN.md`: monochrome ledger
   styling on a white ground, 6px corner radius, 1px hairlines, Geist and Geist
-  Mono typefaces, six status tones with explicit words, zero emoji, and exactly
-  10 Lucide icons.
-- **AC-14.5:** All mutations must display a toast and trigger snapshot refresh.
+  Mono typefaces, status tones with explicit words, zero emoji, and exactly 10
+  Lucide icons. All mutations must display a toast and trigger snapshot refresh.
 
 ### FR-16: Leakage Analysis And Recovery Sizing
 
@@ -571,55 +596,61 @@ log rather than from opinion.
 The system must surface the stretch between loan approval and a signed SPA,
 which is otherwise measured nowhere.
 
-- **AC-15.1:** `/legal` must list every booking at stage `lo_issued`, ordered by
-  days since loan approval descending, breaking ties on booking value. Each row
-  must carry the booking, unit, buyer, panel firm, days since approval, the SPA
-  appointment note where one exists, and the value.
-- **AC-15.2:** Rows tripping a legal stall reason (AC-2.6 conditions 5 and 6)
+- **AC-15.1:** `/legal` must organize cases into two distinct sections: "No
+  Appointment Yet" and "Appointment Set, Not Signed". Each section lists every
+  booking at stage `loan_approved` (formerly `lo_issued`), ordered by days since
+  loan approval descending, breaking ties on booking value.
+- **AC-15.2:** Each row must provide direct inline action buttons: Record
+  Appointment or Record Signing. Clicking opens Record An Update in a dialog
+  preset to SPA Appointment Set or SPA Signed, allowing Legal Admin to record
+  updates without visiting the case page.
+- **AC-15.3:** An appointment date that has passed without signing must display
+  "Was On <date>" in red within the appointment column.
+- **AC-15.4:** Rows tripping a legal stall reason (AC-2.6 conditions 5 and 6)
   must be visually distinguished on the days-since-approval figure alone. No
   other column may carry a pill, per the Chip Economy rule in `docs/DESIGN.md`.
-- **AC-15.3:** The page must report awaiting count, the number past a stall
-  threshold, the longest wait in days, and the total value held.
-- **AC-15.4:** Panel load must group the queue by `legalFirm` with count, median
-  wait and value, and must state on the screen that it reports load rather than
-  firm performance, because firms are assigned by a uniform draw in the seeded
-  data and any difference between rows is the luck of the seed.
-- **AC-15.5:** `CaseSummary` must carry `daysSinceLoIssued` and
-  `daysSinceSpaSet`, both nullable, so the desk and the chase list read one
-  derivation rather than two.
+- **AC-15.5:** The page must report awaiting count, the number past a stall
+  threshold, the longest wait in days, and total value held. Panel load must
+  group the queue by `legalFirm` with count, median wait, and value, stating on
+  screen that it reports load rather than firm performance, because firms are
+  assigned by a uniform draw in the seeded data and any difference between rows
+  is the luck of the seed.
+- **AC-15.6:** `CaseSummary` must carry `daysSinceLoanApproved` and
+  `daysSinceSpaSet`, both nullable, so the desk and Today read one derivation
+  rather than two.
 
-### FR-17: Waiting On Party And Next Move
+### FR-17: Waiting On Party, Quick View Side Sheet, And Next Move
 
 The system must name who is holding up each open case, what they owe, and the
 next move, on the bookings ledger and on the case page alike.
 
-- **AC-17.1:** Every open case must record the party currently waited on (buyer,
-  bank, solicitor, or developer), what that party owes, and the next move
-  together with the desk that makes it.
-- **AC-17.2:** `/bookings` must show a Waiting On column in place of the retired
-  Last Update column, displaying the waiting party in plain text while the case
-  is moving and a red pill showing days since the last update once the case
-  stalls; a Waiting On filter must narrow the table to cases waiting on one
-  chosen party.
-- **AC-17.3:** Clicking a Waiting On cell must open a quick view beside the
-  table showing the five milestones with the stuck one marked, the blocker, the
-  next move, and a one-click Add Task action, without losing the table's active
-  filters or page.
-- **AC-17.4:** `/bookings/:id` must display the same Waiting On and Next Move
-  block under the case header.
-- **AC-17.5:** The party and next move must follow the case rules, not the stage
-  label alone:
-  1. A signed SPA means nobody is waited on, even if a loan agreement or
-     disbursement was recorded before the signing reached the log.
-  2. A case with only an SPA appointment on the log, and no approved bank, still
-     waits on that bank; the solicitor is named only once a real Letter of Offer
-     is on the log.
-  3. A buyer who withdrew waits on the developer for a release decision;
-     recording a bank submission on a later day brings the buyer back and clears
-     that wait.
-  4. Once a bank has approved, only that bank's own outstanding documents and
-     decision drive the wait; a declined or withdrawn bank's outstanding request
-     no longer holds the case up.
+- **AC-17.1:** Every open case must identify the party currently waited on
+  (buyer, bank, solicitor, signed, or us), what that party owes, and the next
+  move with its owner desk. Next action verbs must follow `nextStep.ts`: Ask For
+  Payslip, Call The Banker, Submit To Another Bank, Call The Buyer, Book The SPA
+  Signing, Ask The Solicitor For A Date, Decide Whether To Release The Unit, or
+  Wait For The Bank.
+- **AC-17.2:** `/bookings` must feature two metric tiles: Stalled and No Update
+  10+ Days. A "Who Holds Each Booking" filter strip must display segment counts:
+  Buyer, Bank, Solicitor, Signed, and Us. Clicking an item filters the ledger; a
+  second click clears it. The strip opens preset by persona: Buyer for Sales
+  Admin, Bank for Loan Admin, Solicitor for Legal Admin. Signed counts cases
+  with a signed SPA, summing across the strip to match the Active tab total.
+- **AC-17.3:** The ledger must provide a single filter row (Active and Closed
+  tabs, Stage, Risk, No Update 10+ Days, Stalled Only).
+- **AC-17.4:** Clicking any row in Bookings or a card's unit code on Today must
+  open the unified `CaseQuickView` side sheet. The sheet displays who the case
+  waits on, the recommended next step with Add Task, Record An Update, and an
+  Open Full Case link, preserving table filter and scroll state.
+- **AC-17.5:** `/bookings/:id` must display the same waiting party and next step
+  under the case header. The party and next move must follow case rules:
+  1. A signed SPA means nobody is waited on (Signed).
+  2. A case with an SPA appointment but without an approved bank continues to
+     wait on the bank; the solicitor is named only after loan approval.
+  3. A buyer withdrawal waits on the developer (Us) for a release decision;
+     submitting to a new bank re-engages the case and clears that wait.
+  4. Once a bank approves, only that bank's outstanding requirements drive the
+     wait.
 
 ### FR-18: Jev Through A Local Model Proxy
 
@@ -659,22 +690,22 @@ behavior can be demonstrated without a TypeSafe key.
 
 ### FR-19: Record An Update
 
-Staff can record what happened on a booking by hand from the case page, so the
-case moves at once without waiting for a message for Jev to read.
+Staff can record what happened on a booking by hand from the case page, the side
+sheet, or inline legal dialogs, so the case moves at once without waiting for a
+message for Jev to read.
 
 **Status:** Built.
 
-- **AC-19.1:** `RecordUpdateForm.tsx` on the case page must let staff choose an
-  update from a list grouped by track (Sales: Buyer Contacted, Buyer Hesitant,
-  Buyer Withdrew, Cancelled, Lapsed; Loan: Submitted To A Bank, Documents
-  Requested, Documents Received, Valuation Shortfall, Loan Approved (LO Issued),
-  Loan Rejected, Loan Agreement Signed, Disbursed; Legal: SPA Appointment Set,
-  SPA Signed), a date bounded between the booking date and the reference date,
-  an optional note, and, where relevant, which bank application and which
-  document. Loan Agreement Signed and Disbursed must be offered only once a
-  confirmed `spa_signed` event is on the booking's log; before that, the form
-  must leave both out of the list rather than offer an update the server will
-  refuse.
+- **AC-19.1:** Record An Update, opened from the case page, the `CaseQuickView`
+  side sheet, or inline on `/legal`, must let staff choose an update from a list
+  grouped by track (Sales: Buyer Contacted, Buyer Hesitant, Buyer Withdrew,
+  Cancelled, Lapsed; Loan: Submitted To A Bank, Documents Requested, Documents
+  Received, Valuation Shortfall, Loan Approved, Loan Rejected, Loan Agreement
+  Signed, Disbursed; Legal: SPA Appointment Set, SPA Signed), a date bounded
+  between the booking date and the reference date, an optional note, and, where
+  relevant, which bank application and which document. Loan Agreement Signed and
+  Disbursed must be offered only once a confirmed `spa_signed` event is on the
+  booking log.
 - **AC-19.2:** Selecting Submitted To A Bank must post to
   `POST /api/applications` with `bookingId`, `bank`, `banker`, `occurredOn`,
   `reportedBy`, and an optional `note`, creating the loan application and its
@@ -689,7 +720,8 @@ case moves at once without waiting for a message for Jev to read.
   `spa_signed` event is on the same booking's log.
 - **AC-19.5:** SPA Appointment Set must write its note as
   `Appointment On YYYY-MM-DD`, the form the Legal desk reads the appointment
-  date from.
+  date from. Inline buttons on `/legal` open Record An Update pre-set to SPA
+  Appointment Set or SPA Signed.
 - **AC-19.6:** Recording Cancelled, Lapsed, or Buyer Withdrew must ask for
   confirmation in a dialog, Cancel focused by default, before it is saved.
 - **AC-19.7:** A saved update must be written with `status: 'confirmed'`,
@@ -784,6 +816,44 @@ spreadsheet import row.
 - **AC-22.7:** Closing the dialog, whether by saving or cancelling, must return
   keyboard focus to the Add Booking button that opened it.
 
+### FR-23: Ask Mortar Grounded Assistant
+
+The system must provide an intelligent assistant accessible via a sparkle button
+in the top navigation bar, grounded strictly on live operations data.
+
+**Status:** Built.
+
+- **AC-23.1:** The top bar's sparkle button must open the Ask Mortar assistant
+  panel, replacing the legacy scripted panel.
+- **AC-23.2:** Submitting a query must call `POST /api/assistant` with payload
+  `{ question, persona, bookingId?, history?, image? }` and return
+  `{ answer, citations }`.
+- **AC-23.3:** The assistant service (`server/src/assistant/`) must invoke
+  Google's Gemini API over `fetch` using `GEMINI_API_KEY` and `GEMINI_MODEL`
+  (defaulting to `gemini-3.5-flash-lite`).
+- **AC-23.4:** The assistant must ground answers exclusively using five
+  read-only tools executed over the live database snapshot: `find_bookings`,
+  `get_case`, `get_my_queue`, `get_forecast_summary`, and `search_playbooks`. It
+  must allow at most four tool rounds under a single 30-second deadline.
+- **AC-23.5:** The system prompt must state the asker's persona desk. Untrusted
+  buyer, banker, and solicitor message bodies must reach the model fenced as
+  untrusted data. The assistant must never execute writes, never make credit,
+  loan, or legal decisions, refuse off-topic questions, and state clearly when
+  data does not contain the answer. Citations must link only bookings returned
+  by a tool.
+- **AC-23.6:** The assistant must accept one optional image (PNG, JPEG, or WebP
+  up to 4 MB). It must enforce limits: questions up to 1,000 characters, up to
+  the last 6 history turns, 8 requests per minute per IP address, 300 requests
+  per day per server instance, and answers targeting about 150 words.
+- **AC-23.7:** Without `GEMINI_API_KEY`, the endpoint must return 503
+  `{ fallback: true }`, prompting the client to fall back to scripted `askBrain`
+  responses. If a live model call fails or times out, the client must similarly
+  fall back.
+- **AC-23.8:** `GEMINI_API_KEY`, image data, and message bodies must never be
+  logged. On Gemini's free tier, prompts and responses may be used by Google to
+  improve products; Ask Mortar must only be used with simulated data unless
+  configured with a paid tier or Vertex AI under a Data Processing Agreement.
+
 ## Non-Functional Requirements
 
 ### Performance
@@ -826,10 +896,12 @@ spreadsheet import row.
   invented, rule-generated records describe no identifiable person, so the
   prototype holds no personal data under the Personal Data Protection Act. No
   real personal data, identity card numbers, or real company names may be
-  committed or stored.
-- **NFR-9 (Secret Isolation):** `DATABASE_URL` and `TYPESAFE_API_KEY` must
-  remain server-side only. No client-side environment variable (`VITE_*`) may
-  expose API keys.
+  committed or stored. On Gemini's free tier, Google may use prompts and answers
+  to improve products; Ask Mortar must process only synthetic data unless
+  configured on a paid tier or Vertex AI under a Data Processing Agreement.
+- **NFR-9 (Secret Isolation):** `DATABASE_URL`, `TEST_DATABASE_URL`,
+  `GEMINI_API_KEY`, and `TYPESAFE_API_KEY` must remain server-side only. No
+  client-side environment variable (`VITE_*`) may expose API keys.
 
 ### Accessibility And Design Standards
 
@@ -848,34 +920,43 @@ spreadsheet import row.
 The prototype build is accepted when the live deployed application executes the
 following six-step pitch video script without error or manual intervention:
 
-1.  **Sales Admin Opens `/chase`:**
-    - The Sales Admin lands on `/chase`.
+1.  **Sales Admin Opens Today (`/chase`):**
+    - The Sales Admin lands on Today (`/chase`).
     - Stalled live bookings are listed with stall reasons, financing-risk chips,
-      and Jev-suggested next actions.
-    - Booking `BK-9001` appears at the top: Jev suggests requesting the buyer's
-      missing payslip, owner Sales, due today.
-    - Clicking the action button creates the task with one click.
+      and recommended next actions from `nextStep.ts`.
+    - Booking `BK-9001` appears at the top: the rule-based next step suggests
+      requesting the buyer's missing payslip ("Ask For Payslip"), owner Sales,
+      due today.
+    - Clicking the action button creates the task with one click. Clicking the
+      unit code opens the `CaseQuickView` side sheet.
 2.  **Opens Case `BK-9001`:**
     - The user navigates to `/bookings/BK-9001`.
+    - The header displays one status sentence.
     - Loan and legal tracks are displayed side by side.
     - A Manglish banker message regarding the missing payslip displays Jev's
-      extraction proposal: Documents Requested, Payslip, Loan Admin, with
-      confidence score and probability.
+      extraction proposal in words: "Jev Suggests: Documents Requested · Payslip
+      · Jev Is Sure" with Confirm, Dispute, and Dismiss buttons. No percentages
+      or probabilities appear.
     - The Sales Admin clicks Confirm. The evidence log updates immediately,
       displaying who reported and who verified the event.
 3.  **Playbook Guidance:**
-    - The user opens the playbooks panel on `BK-9001`.
-    - The "Missing income documents" playbook ranks first by Jev fit score for
-      this case.
+    - The user opens the playbooks section on `BK-9001`.
+    - The top fitting playbook ("Missing income documents") is shown as
+      "Applies", with remaining playbooks folded behind "Show N More".
 4.  **The Live AI Moment:**
-    - The Sales Admin pastes a new buyer message in Malay: "Salam, saya dah
-      emailkan slip gaji 3 bulan terkini kepada banker semalam."
+    - The Sales Admin clicks the "Paste A Message" button and pastes a new buyer
+      message in Malay: "Salam, saya dah emailkan slip gaji 3 bulan terkini
+      kepada banker semalam."
     - TypeSafe Jev processes the message live and returns the structured
-      extraction in under three seconds: Documents Received, Payslip.
+      extraction in under three seconds: Documents Received · Payslip · Jev Is
+      Sure.
     - Once confirmed, the outstanding payslip requirement clears, and the
       booking's stall condition clears.
 5.  **Legal Admin Opens `/forecast`:**
-    - The user switches persona to Legal Admin and navigates to `/forecast`.
+    - The user switches persona to Legal Admin, which navigates to Legal
+      (`/legal`), then opens `/forecast`.
+    - The summary tile reads "Bookings In The Forecast" and the accuracy score
+      displays as a sentence.
     - The headline card displays expected SPA signings within 30 days of
       booking, with 10th to 90th percentile range, stage conversion rates,
       resolved sample sizes (n), and Wilson 95% confidence intervals.
@@ -885,7 +966,8 @@ following six-step pitch video script without error or manual intervention:
     - Clicking "Try Another Seed" generates a new in-browser forecast,
       displaying the outcome spread beside the canonical baseline.
 6.  **Settings Reset:**
-    - The user opens `/settings` and clicks "Reset Demo Data".
+    - The user opens `/settings` and clicks "Reset Demo Data" in the Demo Data
+      section shown first.
     - A confirmation dialog appears; confirming resets the database to the
       canonical state with a toast notification.
     - The 30-second cooldown is enforced.
@@ -1036,7 +1118,7 @@ benchmarks.
 - [Front-End Simulation](research/company-brain/simulation.md): simulation
   scope, seed values, and presentation principles.
 - [Practitioner Survey Findings](research/practitioner-survey/README.md): survey
-  evidence ranking loan rejection as the primary leakage cause (n = 5).
+  evidence ranking loan rejection as the primary leakage cause (n = 8).
 - [Problem Statement](source/problem-statement.md): the original Chin Hin
   challenge brief.
 - [Project Overview](README.md): architecture, stack summary, and repository

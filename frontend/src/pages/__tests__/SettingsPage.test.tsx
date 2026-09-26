@@ -43,7 +43,7 @@ describe('SettingsPage', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.fetchHealth.mockResolvedValue({ ok: true, db: true, jev: true, jevAnswers: 87 })
+    mocks.fetchHealth.mockResolvedValue({ ok: true, db: true, jev: true, assistant: true, jevAnswers: 87 })
     mocks.resetDemo.mockResolvedValue({
       seed: 20260918,
       referenceDate: '2026-09-18',
@@ -83,6 +83,26 @@ describe('SettingsPage', () => {
     const row = note.closest('div')!.parentElement!
     expect(within(row).getByText('Configured')).toBeTruthy()
     expect(within(row).queryByText('Connected')).toBeNull()
+  })
+
+  it('says whether Ask Mortar has a Gemini key, in the Jev row’s own words', async () => {
+    renderPage()
+    const note = await screen.findByText('Whether A Gemini Key Is Configured')
+    const row = note.closest('div')!.parentElement!
+    // The panel falls back to its own answers without a key, so the row says
+    // so rather than reporting a failure.
+    expect(within(row).getByText('Configured')).toBeTruthy()
+    expect(within(row).queryByText('Connected')).toBeNull()
+  })
+
+  it('reports a missing Gemini key as Missing, beside a working Jev', async () => {
+    mocks.fetchHealth.mockResolvedValue({ ok: true, db: true, jev: true, assistant: false, jevAnswers: 87 })
+    renderPage()
+
+    const jevRow = (await screen.findByText('Whether A TypeSafe API Key Is Configured')).closest('div')!.parentElement!
+    const askRow = (await screen.findByText('Whether A Gemini Key Is Configured')).closest('div')!.parentElement!
+    expect(within(jevRow).getByText('Configured')).toBeTruthy()
+    expect(within(askRow).getByText('Missing')).toBeTruthy()
   })
 
   it('re-checks health after a reset', async () => {

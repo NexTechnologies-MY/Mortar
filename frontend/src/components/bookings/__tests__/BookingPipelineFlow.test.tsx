@@ -1,6 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { PersonaProvider } from '@/lib/persona'
 import { BookingPipelineFlow, type PipelineCounts } from '../BookingPipelineFlow'
 
 const MOCK_COUNTS: PipelineCounts = {
@@ -12,7 +11,7 @@ const MOCK_COUNTS: PipelineCounts = {
 }
 
 describe('BookingPipelineFlow', () => {
-  it('renders all four conveyance milestones with big numbers and stall badges', () => {
+  it('renders all five conveyance milestones with title Who Holds Each Booking', () => {
     const onSelect = vi.fn()
     const onClear = vi.fn()
 
@@ -26,32 +25,69 @@ describe('BookingPipelineFlow', () => {
     )
 
     // Heading
-    expect(screen.getByText('Booking-to-SPA Pipeline & Bottleneck Flow')).toBeTruthy()
+    expect(screen.getByText('Who Holds Each Booking')).toBeTruthy()
 
-    // 4 stages
-    expect(screen.getByRole('button', { name: /Filter by Client \/ Buyer/i })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /Filter by Panel Bank/i })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /Filter by Law Firm/i })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /Filter by SPA Signed/i })).toBeTruthy()
+    // 5 steps as buttons
+    expect(screen.getByRole('button', { name: /Filter by Buyer/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Filter by Bank/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Filter by Solicitor/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Filter by Signed/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Filter by Us/i })).toBeTruthy()
 
     // Big figures
     expect(screen.getByText('11')).toBeTruthy()
     expect(screen.getByText('26')).toBeTruthy()
     expect(screen.getByText('16')).toBeTruthy()
     expect(screen.getByText('5')).toBeTruthy()
+    expect(screen.getByText('7')).toBeTruthy()
 
-    // Stall badges
+    // Stall badges, on every step that can stall
     expect(screen.getByText('6 Stalled')).toBeTruthy()
     expect(screen.getByText('12 Stalled')).toBeTruthy()
     expect(screen.getByText('5 Stalled')).toBeTruthy()
-    expect(screen.getByText('Legally Sold')).toBeTruthy()
-
-    // Developer desk
-    expect(screen.getByText(/Developer Desk:/)).toBeTruthy()
-    expect(screen.getByText('7 cases')).toBeTruthy()
+    expect(screen.getByText('2 Stalled')).toBeTruthy()
   })
 
-  it('clicking Panel Bank card triggers onSelect with stalledOnly: true by default', () => {
+  it('carries no description line under any step, because every one of them truncated', () => {
+    render(
+      <BookingPipelineFlow
+        counts={MOCK_COUNTS}
+        selection={{ stageId: null, stalledOnly: false }}
+        onSelect={vi.fn()}
+        onClear={vi.fn()}
+      />
+    )
+
+    const strip = screen.getByTestId('booking-pipeline-flow')
+    for (const prose of [
+      'Awaiting payslips',
+      'Submitted applications awaiting',
+      'Letter Of Offer accepted',
+      'Contract executed',
+      'Actions & booking releases'
+    ]) {
+      expect(strip.textContent).not.toContain(prose)
+    }
+  })
+
+  it('reads the signed step as a count alone, with no second Signed pill under it', () => {
+    render(
+      <BookingPipelineFlow
+        counts={MOCK_COUNTS}
+        selection={{ stageId: null, stalledOnly: false }}
+        onSelect={vi.fn()}
+        onClear={vi.fn()}
+      />
+    )
+
+    const signed = screen.getByRole('button', { name: /Filter by Signed/i })
+    // The step reads as its title and its count, "Signed 5 signed". A second
+    // "Signed" pill under it said the same thing twice.
+    expect(signed.textContent).toBe('Signed5signed')
+    expect(within(signed).queryByText(/Stalled/)).toBeNull()
+  })
+
+  it('clicking a step calls onSelect to filter to that holder', () => {
     const onSelect = vi.fn()
     const onClear = vi.fn()
 
@@ -64,72 +100,34 @@ describe('BookingPipelineFlow', () => {
       />
     )
 
-    const bankCard = screen.getByRole('button', { name: /Filter by Panel Bank/i })
+    const bankCard = screen.getByRole('button', { name: /Filter by Bank/i })
     fireEvent.click(bankCard)
 
     expect(onSelect).toHaveBeenCalledTimes(1)
-    expect(onSelect).toHaveBeenCalledWith({ stageId: 'bank', stalledOnly: true })
-  })
-
-  it('clicking an active stage toggles it off and calls onClear', () => {
-    const onSelect = vi.fn()
-    const onClear = vi.fn()
-
-    render(
-      <BookingPipelineFlow
-        counts={MOCK_COUNTS}
-        selection={{ stageId: 'bank', stalledOnly: true }}
-        onSelect={onSelect}
-        onClear={onClear}
-      />
-    )
-
-    const bankCard = screen.getByRole('button', { name: /Filter by Panel Bank/i })
-    fireEvent.click(bankCard)
-
-    expect(onClear).toHaveBeenCalledTimes(1)
-  })
-
-  it('lets user toggle between Stalled Only and All Cases when a stage is active', () => {
-    const onSelect = vi.fn()
-    const onClear = vi.fn()
-
-    render(
-      <BookingPipelineFlow
-        counts={MOCK_COUNTS}
-        selection={{ stageId: 'bank', stalledOnly: true }}
-        onSelect={onSelect}
-        onClear={onClear}
-      />
-    )
-
-    // Sub-buttons on the active card
-    const allCasesBtn = screen.getByRole('button', { name: /All Cases \(26\)/i })
-    fireEvent.click(allCasesBtn)
-
     expect(onSelect).toHaveBeenCalledWith({ stageId: 'bank', stalledOnly: false })
   })
 
-  it('clicking Reset Pipeline Filter calls onClear', () => {
+  it('clicking an active step toggles it off and calls onClear', () => {
     const onSelect = vi.fn()
     const onClear = vi.fn()
 
     render(
       <BookingPipelineFlow
         counts={MOCK_COUNTS}
-        selection={{ stageId: 'bank', stalledOnly: true }}
+        selection={{ stageId: 'bank', stalledOnly: false }}
         onSelect={onSelect}
         onClear={onClear}
       />
     )
 
-    const resetBtn = screen.getByRole('button', { name: /Reset Pipeline Filter/i })
-    fireEvent.click(resetBtn)
+    const bankCard = screen.getByRole('button', { name: /Filter by Bank/i })
+    fireEvent.click(bankCard)
 
     expect(onClear).toHaveBeenCalledTimes(1)
+    expect(onSelect).not.toHaveBeenCalled()
   })
 
-  it('supports keyboard navigation with Enter key', () => {
+  it('clicking the Us step filters to developer cases', () => {
     const onSelect = vi.fn()
     const onClear = vi.fn()
 
@@ -142,58 +140,45 @@ describe('BookingPipelineFlow', () => {
       />
     )
 
-    const clientCard = screen.getByRole('button', { name: /Filter by Client \/ Buyer/i })
-    fireEvent.keyDown(clientCard, { key: 'Enter' })
+    const usCard = screen.getByRole('button', { name: /Filter by Us/i })
+    fireEvent.click(usCard)
 
-    expect(onSelect).toHaveBeenCalledWith({ stageId: 'buyer', stalledOnly: true })
-  })
-  it('highlights Client/Buyer as primary desk for Sales Admin', () => {
-    render(
-      <PersonaProvider initialPersona="sales-admin">
-        <BookingPipelineFlow
-          counts={MOCK_COUNTS}
-          selection={{ stageId: null, stalledOnly: false }}
-          onSelect={vi.fn()}
-          onClear={vi.fn()}
-        />
-      </PersonaProvider>
-    )
-
-    const clientCard = screen.getByRole('button', { name: /Filter by Client \/ Buyer/i })
-    expect(clientCard.textContent).toContain('Your Desk')
+    expect(onSelect).toHaveBeenCalledWith({ stageId: 'developer', stalledOnly: false })
   })
 
-  it('highlights Panel Bank as primary desk for Loan Admin', () => {
+  it('clicking the Signed step filters to signed cases', () => {
+    const onSelect = vi.fn()
+    const onClear = vi.fn()
+
     render(
-      <PersonaProvider initialPersona="loan-admin">
-        <BookingPipelineFlow
-          counts={MOCK_COUNTS}
-          selection={{ stageId: null, stalledOnly: false }}
-          onSelect={vi.fn()}
-          onClear={vi.fn()}
-        />
-      </PersonaProvider>
+      <BookingPipelineFlow
+        counts={MOCK_COUNTS}
+        selection={{ stageId: null, stalledOnly: false }}
+        onSelect={onSelect}
+        onClear={onClear}
+      />
     )
 
-    const bankCard = screen.getByRole('button', { name: /Filter by Panel Bank/i })
-    expect(bankCard.textContent).toContain('Your Desk')
+    const signedCard = screen.getByRole('button', { name: /Filter by Signed/i })
+    fireEvent.click(signedCard)
+
+    expect(onSelect).toHaveBeenCalledWith({ stageId: 'spa', stalledOnly: false })
   })
 
-  it('highlights Law Firm and SPA as primary desk for Legal Admin', () => {
+  it('sets aria-pressed on the selected step', () => {
     render(
-      <PersonaProvider initialPersona="legal-admin">
-        <BookingPipelineFlow
-          counts={MOCK_COUNTS}
-          selection={{ stageId: null, stalledOnly: false }}
-          onSelect={vi.fn()}
-          onClear={vi.fn()}
-        />
-      </PersonaProvider>
+      <BookingPipelineFlow
+        counts={MOCK_COUNTS}
+        selection={{ stageId: 'buyer', stalledOnly: false }}
+        onSelect={vi.fn()}
+        onClear={vi.fn()}
+      />
     )
 
-    const lawFirmCard = screen.getByRole('button', { name: /Filter by Law Firm/i })
-    expect(lawFirmCard.textContent).toContain('Your Desk')
-    const spaCard = screen.getByRole('button', { name: /Filter by SPA Signed/i })
-    expect(spaCard.textContent).toContain('Your Desk')
+    const buyerCard = screen.getByRole('button', { name: /Filter by Buyer/i })
+    expect(buyerCard.getAttribute('aria-pressed')).toBe('true')
+
+    const bankCard = screen.getByRole('button', { name: /Filter by Bank/i })
+    expect(bankCard.getAttribute('aria-pressed')).toBe('false')
   })
 })

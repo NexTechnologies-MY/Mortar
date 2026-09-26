@@ -38,6 +38,7 @@ import type {
 } from '@mortar/core'
 import { EventSettledError, ImportMovedOnError, OpenApplicationError, UnitHeldError, type Database } from '../db/index'
 import { isoDateTime, withMaskedContact } from '../db/mappers'
+import { createAssistant } from './assistant/index'
 import {
   body,
   detectLanguage,
@@ -71,6 +72,13 @@ export interface AppOptions {
    * route then refuses with 403 (docs/TRD.md, Data Retention).
    */
   resetEnabled?: boolean
+  /**
+   * `POST /api/assistant`: the key from `GEMINI_API_KEY` and the model from
+   * `GEMINI_MODEL`. Without a key the route answers 503 with `fallback: true`
+   * and the panel falls back to its scripted answers, so a server without one
+   * still serves every desk.
+   */
+  assistant?: { apiKey: string | null; model?: string; timeoutMs?: number; fetchImpl?: typeof fetch }
 }
 
 export interface App {
@@ -280,6 +288,11 @@ export function createApp(options: AppOptions): App {
 
   const routes: [string, string, Handler][] = [
     [
+      'POST',
+      '/api/assistant',
+      options.assistant ? createAssistant({ db, ...options.assistant }) : createAssistant({ db, apiKey: null })
+    ],
+    [
       'GET',
       '/api/health',
       async () => {
@@ -295,6 +308,9 @@ export function createApp(options: AppOptions): App {
           ok: dbOk,
           db: dbOk,
           jev: Boolean(options.jevAvailable),
+          // Whether Ask Mortar can reach a model at all. Only the fact is
+          // reported, never the key itself.
+          assistant: Boolean(options.assistant?.apiKey),
           jevAnswers,
           jevLastError: options.jevLastError?.() ?? null
         })

@@ -11,6 +11,7 @@ import { PageContainer } from '@/components/layout/PageContainer'
 import { PageHeaderCard } from '@/components/layout/PageHeaderCard'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Skeleton } from '@/components/ui/skeleton'
+import { mainProject } from '@/pages/ImportPage'
 import { DemoDataCard } from '@/components/settings/DemoDataCard'
 import { ProjectSettingsCard } from '@/components/settings/ProjectSettingsCard'
 import { HealthCard } from '@/components/settings/HealthCard'
@@ -70,12 +71,12 @@ export function SettingsPage() {
         </div>
       ) : snapshot ? (
         <div className="grid items-start gap-4 py-4 lg:grid-cols-3">
-          <div className="lg:col-span-2">
-            <ProjectSettingsCard />
-          </div>
           <div className="flex flex-col gap-4">
             <DemoDataCard snapshot={snapshot} jevAnswers={health?.jevAnswers ?? null} onReset={onReset} />
             <HealthCard health={health} failed={healthFailed} />
+          </div>
+          <div className="lg:col-span-2">
+            <ProjectSettingsCard defaultProjectName={mainProject(snapshot.bookings)} />
           </div>
         </div>
       ) : null}

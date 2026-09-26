@@ -1,26 +1,35 @@
 /**
  * Case header — the booking's identity and current state at a glance:
- * unit and buyer as the title, project, price and booking date beneath,
- * stage, evidence freshness, financing risk, outstanding documents, stall
- * reasons and the three owners as pills.
+ * unit and buyer as the title, project, price and booking date beneath, then
+ * one status sentence in words (stage, who holds it, how long, and whether it
+ * has stalled). Outstanding documents stay as pills, because a reader acts on
+ * them; the stage, freshness and stall reasons do not, so they live in the
+ * sentence instead of three more pills. Financing risk is shown at every
+ * level, because a case that reads as carrying no risk signal at all is a
+ * worse reading than one that reads Low. Owners are one muted line.
  */
 
 import type { Booking, CaseSummary } from '@mortar/core'
-import { EvidencePill } from '@/components/case/EvidencePill'
-import { OwnerBadge } from '@/components/case/OwnerBadge'
+import { ballInCourt } from '@mortar/core'
 import { RiskChip } from '@/components/case/RiskChip'
-import { StagePill } from '@/components/case/StagePill'
-import { formatDate, formatDaysLong, formatRm } from '@/components/case/format'
+import { STAGE_LABELS } from '@/components/case/StagePill'
+import { formatDate, formatRm } from '@/components/case/format'
 import { DOCUMENT_LABELS } from './labels'
 import { StatusPill } from '@/components/ui/status-pill'
-import { usePersonaSafe } from '@/lib/persona'
-import { cn } from '@/lib/utils'
 
 export function CaseHeader({ booking, summary }: { booking: Booking; summary: CaseSummary }) {
-  const { persona } = usePersonaSafe()
-  const isSalesDesk = persona === 'sales-admin'
-  const isLoanDesk = persona === 'loan-admin'
-  const isLegalDesk = persona === 'legal-admin'
+  const { waitingFor, stalled } = ballInCourt(summary)
+  // The case is closed: a signed SPA or a booking that lapsed. There is no
+  // party to wait on and no clock running against anybody.
+  const closed = summary.stage === 'spa_signed' || summary.stage === 'cancelled' || summary.stage === 'lapsed'
+
+  // The status sentence is one Title Case line, so the age reads "16 Days
+  // Old" beside "With Bank" rather than the sentence case a clause would take.
+  const age = `${summary.bookingAgeDays} ${summary.bookingAgeDays === 1 ? 'Day' : 'Days'} Old`
+  const party = closed ? null : `Waiting On ${waitingFor.charAt(0).toUpperCase()}${waitingFor.slice(1)}`
+  const clauses = [STAGE_LABELS[summary.stage], party, age].filter(Boolean)
+  if (stalled) clauses.push('Stalled')
+
   return (
     <header className="flex flex-col gap-3">
       <div>
@@ -30,47 +39,34 @@ export function CaseHeader({ booking, summary }: { booking: Booking; summary: Ca
           {booking.buyer.name}
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {booking.project} · {formatRm(booking.priceRm)} · Booked {formatDate(booking.bookingDate)} ·{' '}
-          {formatDaysLong(summary.bookingAgeDays)} Ago
+          {booking.project} · {formatRm(booking.priceRm)} · Booked {formatDate(booking.bookingDate)}
+        </p>
+        <p className="mt-1 text-sm">
+          {clauses.map((clause, i) => (
+            <span key={clause}>
+              {i > 0 && <span className="text-muted-foreground"> · </span>}
+              <span className={clause === 'Stalled' ? 'text-status-danger-fg' : undefined}>{clause}</span>
+            </span>
+          ))}
+        </p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {booking.salesOwner} (Sales) · {booking.loanOwner} (Loan) · {booking.legalFirm} (Legal)
         </p>
       </div>
+      {/* Financing risk is the signal staff rank above every other, so it is
+          here at every level: Low as the muted word the Bookings table uses,
+          Medium and High as the chip with its explanation. */}
       <div className="flex flex-wrap items-center gap-1.5">
-        <StagePill stage={summary.stage} />
-        <EvidencePill status={summary.unknown ? 'unknown' : 'fresh'} />
-        <RiskChip risk={summary.risk} />
+        {summary.risk.level === 'low' ? (
+          <span className="text-[13px] text-muted-foreground">Low Risk</span>
+        ) : (
+          <RiskChip risk={summary.risk} />
+        )}
         {summary.outstandingDocuments.map((doc) => (
           <StatusPill key={doc} tone="warning">
             {DOCUMENT_LABELS[doc]} Outstanding
           </StatusPill>
         ))}
-        {summary.stallReasons.map((reason) => (
-          <StatusPill key={reason} tone="danger">
-            {reason}
-          </StatusPill>
-        ))}
-      </div>
-      <div className="flex flex-wrap items-center gap-1.5">
-        <div className="relative inline-flex items-center">
-          <OwnerBadge
-            role="sales"
-            name={isSalesDesk ? `${booking.salesOwner} (Your Desk)` : booking.salesOwner}
-            className={cn(isSalesDesk && 'ring-2 ring-primary/70 font-semibold bg-primary/10 text-foreground')}
-          />
-        </div>
-        <div className="relative inline-flex items-center">
-          <OwnerBadge
-            role="loan_admin"
-            name={isLoanDesk ? `${booking.loanOwner} (Your Desk)` : booking.loanOwner}
-            className={cn(isLoanDesk && 'ring-2 ring-primary/70 font-semibold bg-primary/10 text-foreground')}
-          />
-        </div>
-        <div className="relative inline-flex items-center">
-          <OwnerBadge
-            role="legal"
-            name={isLegalDesk ? `${booking.legalFirm} (Your Desk)` : booking.legalFirm}
-            className={cn(isLegalDesk && 'ring-2 ring-primary/70 font-semibold bg-primary/10 text-foreground')}
-          />
-        </div>
       </div>
     </header>
   )
