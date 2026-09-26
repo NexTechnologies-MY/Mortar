@@ -120,17 +120,27 @@ const app = createApp({
   reset: () => resetDatabase(sql),
   jevAvailable,
   jevLastError: () => jevLastError,
-  resetEnabled
+  resetEnabled,
+  // The Ask panel's model. With no key the route answers 503 and the panel falls
+  // back to its scripted answers, so the server still serves every desk. The
+  // key reaches this call and nothing else — not the browser, not the log.
+  // `||`, not `??`, because .env.example ships GEMINI_MODEL empty.
+  assistant: {
+    apiKey: process.env.GEMINI_API_KEY || null,
+    model: process.env.GEMINI_MODEL || undefined
+  }
 })
 const serveStatic = staticHandler(path.resolve(import.meta.dir, '../../frontend/dist'))
 
 Bun.serve({
   port,
-  // The default 10s kills slow requests; a reset can outlive it.
+  // The default 10s kills slow requests; a reset can outlive it, and so can a
+  // model call, which is why the assistant's own 30s budget is the tight one.
   idleTimeout: 120,
-  // A launch sheet import is the largest legitimate body; 2MB comfortably
-  // covers it with room to spare, and refuses anything wildly oversized.
-  maxRequestBodySize: 2 * 1024 * 1024,
+  // A launch sheet import is the largest legitimate body, and a photographed
+  // bank letter runs to 5.6MB as base64; 8MB covers both and refuses anything
+  // wildly oversized.
+  maxRequestBodySize: 8 * 1024 * 1024,
   async fetch(req) {
     return (await app.fetch(req)) ?? serveStatic(req)
   }

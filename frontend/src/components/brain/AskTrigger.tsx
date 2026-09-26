@@ -1,5 +1,5 @@
 /**
- * The Ask button in the top bar, plus its Cmd/Ctrl-K shortcut.
+ * The Ask Mortar button in the top bar, plus its Cmd/Ctrl-K shortcut.
  *
  * It holds nothing but the open flag on purpose. Every data hook lives in
  * `AskPanel`, which Radix only mounts once the dialog opens, so carrying Ask
@@ -32,14 +32,14 @@ export function AskTrigger() {
             <DialogTrigger asChild>
               <button
                 type="button"
-                aria-label="Ask Jev"
+                aria-label="Ask Mortar"
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
               >
                 <Sparkles className="h-5 w-5" />
               </button>
             </DialogTrigger>
           </TooltipTrigger>
-          <TooltipContent>Ask Jev</TooltipContent>
+          <TooltipContent>Ask Mortar</TooltipContent>
         </Tooltip>
       </TooltipProvider>
       <DialogContent className="max-w-2xl">
