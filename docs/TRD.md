@@ -266,7 +266,7 @@ no third-party schema validation libraries are loaded.
 
 | Method  | Path                            | Request Body                                                          | Response Body                                                            | Execution Pattern    |
 | ------- | ------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------ | -------------------- |
-| `GET`   | `/api/health`                   | None                                                                  | `{ ok, db, jev, jevAnswers, jevLastError }`                              | Direct Check         |
+| `GET`   | `/api/health`                   | None                                                                  | `{ ok, db, jev, assistant, jevAnswers, jevLastError }`                   | Direct Check         |
 | `GET`   | `/api/snapshot`                 | None                                                                  | `Snapshot`                                                               | Database Query       |
 | `POST`  | `/api/assistant`                | `{ question, persona, bookingId?, history?, image? }`                 | `{ answer, citations }`                                                  | Live Gemini Tool-Use |
 | `POST`  | `/api/messages`                 | `{ bookingId, senderRole, senderName, body }`                         | `{ message: Message, extraction: Extraction, event: CaseEvent \| null }` | Live-First Jev       |
@@ -288,10 +288,12 @@ no third-party schema validation libraries are loaded.
 - `GET /api/health`: `ok` and `db` report a live database ping (`false` on
   failure, alongside `jevAnswers: null`); `jev` is whether a live Jev service
   (TypeSafe key or proxy) is wired at all, not whether its last call succeeded;
-  `jevLastError` carries the message from the last failed live Jev call when the
-  proxy client is wired, or `null` otherwise. TypeSafe API-key mode does not
-  track `jevLastError`, since doing so would need `@typesafe-ai/sdk` as a
-  dependency of the server package rather than `@mortar/jev`'s.
+  `assistant` is whether the server started with a Gemini key for Ask Mortar
+  (the key itself is never returned); `jevLastError` carries the message from
+  the last failed live Jev call when the proxy client is wired, or `null`
+  otherwise. TypeSafe API-key mode does not track `jevLastError`, since doing so
+  would need `@typesafe-ai/sdk` as a dependency of the server package rather
+  than `@mortar/jev`'s.
 - `GET /api/snapshot`: Assembles the full dataset required by the frontend
   workspace: `bookings`, `loan_applications`, `events`, `messages`, `playbooks`,
   `tasks`, and the latest `extractions`, `signals`, and `nextActions` from
