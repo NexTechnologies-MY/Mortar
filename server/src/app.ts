@@ -308,6 +308,9 @@ export function createApp(options: AppOptions): App {
           ok: dbOk,
           db: dbOk,
           jev: Boolean(options.jevAvailable),
+          // Whether Ask Mortar can reach a model at all. Only the fact is
+          // reported, never the key itself.
+          assistant: Boolean(options.assistant?.apiKey),
           jevAnswers,
           jevLastError: options.jevLastError?.() ?? null
         })

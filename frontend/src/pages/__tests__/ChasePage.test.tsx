@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { CaseSummary, Snapshot, Task } from '@mortar/core'
@@ -138,6 +138,20 @@ describe('ChasePage', () => {
     expect(card.textContent).toContain('Application Undecided For 10 Working Days')
     // The rule-based move is the default; Jev's differs and rides one line under it.
     expect(card.textContent).toContain('Jev Suggests: Ask For The Missing Document Instead')
+  })
+
+  it('names the desk that owns a card’s next step, and leaves it out on that desk', () => {
+    // Sales Admin reads every desk's stalled bookings, so a move they cannot
+    // make says whose move it is.
+    renderPage()
+    const asSales = screen.getByTestId('chase-card-BK-9001')
+    expect(within(asSales).getByText('· Loan Admin')).toBeTruthy()
+
+    window.localStorage.clear()
+    window.localStorage.setItem(PERSONA_STORAGE_KEY, 'loan-admin')
+    cleanup()
+    renderPage()
+    expect(within(screen.getByTestId('chase-card-BK-9001')).queryByText('· Loan Admin')).toBeNull()
   })
 
   it('creates the default step’s task with one click, not Jev’s', async () => {

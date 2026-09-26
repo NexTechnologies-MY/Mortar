@@ -5,6 +5,7 @@ import type { Booking, CaseSummary, NextAction, Task } from '@mortar/core'
 import { ChaseCard } from '@/components/chase/ChaseCard'
 import { NEXT_ACTION_LABELS } from '@/components/chase/chase'
 import { nextStepFor, type NextStep } from '@/components/case/nextStep'
+import { PersonaProvider, type Persona } from '@/lib/persona'
 
 // Radix tooltips position with floating-ui, which needs observers jsdom lacks.
 for (const observer of ['ResizeObserver', 'IntersectionObserver'] as const) {
@@ -96,21 +97,23 @@ function jevMove(action: NextAction) {
   }
 }
 
-function renderCard(task: Task | null, alternative?: NextStep, caseSummary = summary()) {
+function renderCard(task: Task | null, alternative?: NextStep, caseSummary = summary(), persona?: Persona) {
   const next = nextStepFor(booking(), caseSummary, NEXT_ACTION_LABELS, jevMove('call_buyer'))
   const onCreateTask = vi.fn()
   render(
     <MemoryRouter>
-      <ChaseCard
-        booking={booking()}
-        summary={caseSummary}
-        step={next.defaultStep}
-        alternativeStep={alternative ?? next.alternativeStep}
-        openTask={task}
-        onInspect={vi.fn()}
-        onSuggest={vi.fn()}
-        onCreateTask={onCreateTask}
-      />
+      <PersonaProvider initialPersona={persona}>
+        <ChaseCard
+          booking={booking()}
+          summary={caseSummary}
+          step={next.defaultStep}
+          alternativeStep={alternative ?? next.alternativeStep}
+          openTask={task}
+          onInspect={vi.fn()}
+          onSuggest={vi.fn()}
+          onCreateTask={onCreateTask}
+        />
+      </PersonaProvider>
     </MemoryRouter>
   )
   return onCreateTask
@@ -138,6 +141,32 @@ describe('ChaseCard', () => {
     expect(screen.getByText('Call The Banker')).toBeTruthy()
   })
 
+  it('names the desk that owns the step whenever it is not the reader’s own', () => {
+    // Today is read as Sales Admin, and "Call The Banker" is Loan Admin's move.
+    renderCard(null, undefined, summary(), 'sales-admin')
+
+    const step = screen.getByText('Call The Banker').parentElement!
+    const desk = within(step).getByText('· Loan Admin')
+    expect(desk.className).toContain('text-muted-foreground')
+  })
+
+  it('leaves the desk out when the step is the reader’s own to make', () => {
+    renderCard(null, undefined, summary(), 'loan-admin')
+
+    const step = screen.getByText('Call The Banker').parentElement!
+    expect(within(step).queryByText(/Loan Admin/)).toBeNull()
+  })
+
+  it('reads the viewer’s own desk as the Sales desk, not the Sales Agent’s', () => {
+    // A closed case owes nobody a move, so the step is the wait: Loan Admin's
+    // by the rules, and named as such for someone reading as Sales Admin.
+    const caseSummary = summary({ stage: 'spa_signed', spaSigned: true, stallReasons: [] })
+    renderCard(null, undefined, caseSummary, 'sales-admin')
+
+    const step = screen.getByText('Wait For The Bank').parentElement!
+    expect(within(step).getByText('· Loan Admin')).toBeTruthy()
+  })
+
   it('offers Jev’s differing move as one muted line with its own button', () => {
     const onCreateTask = renderCard(null)
 
@@ -162,13 +191,15 @@ describe('ChaseCard', () => {
     const caseSummary = summary({ daysSinceEvidence: 14, risk: { ...summary().risk, level: 'high' } })
     render(
       <MemoryRouter>
-        <ChaseCard
-          booking={booking()}
-          summary={caseSummary}
-          step={nextStepFor(booking(), caseSummary, NEXT_ACTION_LABELS).defaultStep}
-          onSuggest={vi.fn()}
-          onCreateTask={vi.fn()}
-        />
+        <PersonaProvider>
+          <ChaseCard
+            booking={booking()}
+            summary={caseSummary}
+            step={nextStepFor(booking(), caseSummary, NEXT_ACTION_LABELS).defaultStep}
+            onSuggest={vi.fn()}
+            onCreateTask={vi.fn()}
+          />
+        </PersonaProvider>
       </MemoryRouter>
     )
 
@@ -211,14 +242,16 @@ describe('ChaseCard', () => {
     const caseSummary = summary()
     render(
       <MemoryRouter>
-        <ChaseCard
-          booking={booking()}
-          summary={caseSummary}
-          step={nextStepFor(booking(), caseSummary, NEXT_ACTION_LABELS).defaultStep}
-          onInspect={onInspect}
-          onSuggest={vi.fn()}
-          onCreateTask={vi.fn()}
-        />
+        <PersonaProvider>
+          <ChaseCard
+            booking={booking()}
+            summary={caseSummary}
+            step={nextStepFor(booking(), caseSummary, NEXT_ACTION_LABELS).defaultStep}
+            onInspect={onInspect}
+            onSuggest={vi.fn()}
+            onCreateTask={vi.fn()}
+          />
+        </PersonaProvider>
       </MemoryRouter>
     )
 

@@ -10,6 +10,9 @@
  * and the two long headers wrap, so a header never runs into its neighbour at
  * either desktop width.
  *
+ * The appointment cell carries the date alone: the column header already says
+ * SPA Appointment, so the cell never repeats it.
+ *
  * Days Since Loan Approved is the column the desk is really reading, so it
  * carries the only emphasis in the row: past the stall threshold it turns
  * danger-coloured. In the set-but-unsigned queue, an appointment whose date
@@ -33,21 +36,27 @@ import {
 import { LEGAL_FIRST_DIR, isLegalStall, sortLegalRows, type LegalRow, type LegalSortKey } from './legal'
 
 /**
- * Column widths in px, cell padding included; Buyer takes what is left. The
- * two long headers wrap onto two lines rather than widening the table, which
- * is what used to run "Days Since Loan Approved" into "SPA Appointment" at
- * 1440 px.
+ * Column widths in px, cell padding included; Buyer takes what is left. The two
+ * long headers wrap onto two lines rather than widening the table, which is what
+ * used to run "Days Since Loan Approved" into "SPA Appointment" at 1440 px.
+ *
+ * Firm, action and appointment are sized to their widest real content, so no
+ * cell in them truncates or spills at either desktop width: `Kuan & Teh
+ * Advocates` and `Wong Rahman Chambers` are both 20 characters and need 172px
+ * of 14px text, and `Record Appointment` needs 152px inside a button that
+ * carries its own 24px of padding. The appointment cell carries the date alone,
+ * so it needs far less room than the note it used to repeat. Buyer is the
+ * column that used to hold a wide empty gap, so the slack went to the columns
+ * that were cutting their text.
  */
-const WIDTHS = { booking: 88, unit: 92, firm: 168, days: 132, appointment: 172, action: 152, value: 112 } as const
+const WIDTHS = { booking: 88, unit: 88, firm: 200, days: 132, appointment: 176, action: 208, value: 112 } as const
 
-/** The note's raw `YYYY-MM-DD` reads as the house date format, e.g. `Appointment
- * On 2026-07-29` becomes `Appointment On 29 Jul 2026`; a note with no date, or
- * none at all, reads as-is (or "Not Set"). */
-function displayAppointmentNote(note: string | null): string {
-  if (!note) return 'Not Set'
-  const isoDate = /\d{4}-\d{2}-\d{2}/.exec(note)?.[0]
-  return isoDate ? note.replace(isoDate, formatDate(isoDate)) : note
-}
+/** Every fixed column except Buyer, whose width is whatever is left over. */
+const FIXED_WIDTH = Object.values(WIDTHS).reduce((total, width) => total + width, 0)
+
+/** The narrowest the table may be: every fixed column plus a Buyer worth reading. */
+const MIN_BUYER_WIDTH = 160
+const TABLE_MIN_WIDTH = FIXED_WIDTH + MIN_BUYER_WIDTH
 
 /** The appointment's date as the note carries it, `null` when none is set. */
 function appointmentDate(note: string | null): string | null {
@@ -89,7 +98,7 @@ export function LegalQueueTable({
 
   return (
     <>
-      <Table className="min-w-[1100px] table-fixed [&_td]:px-3 [&_th]:px-3">
+      <Table className="table-fixed [&_td]:px-3 [&_th]:px-3" style={{ minWidth: TABLE_MIN_WIDTH }}>
         <colgroup>
           <col style={{ width: WIDTHS.booking }} />
           <col style={{ width: WIDTHS.unit }} />
@@ -154,10 +163,8 @@ export function LegalQueueTable({
                 >
                   {summary.daysSinceLoIssued ?? '—'}
                 </TableCell>
-                <TableCell
-                  className={cn('truncate', passed ? 'font-semibold text-status-danger-fg' : 'text-muted-foreground')}
-                >
-                  {passed ? `Was On ${formatDate(appointment!)}` : displayAppointmentNote(appointmentNote)}
+                <TableCell className={cn(passed ? 'font-semibold text-status-danger-fg' : 'text-muted-foreground')}>
+                  {passed ? `Was On ${formatDate(appointment!)}` : appointment ? formatDate(appointment) : 'Not Set'}
                 </TableCell>
                 <TableCell>
                   {/* The row's own action, so a legal admin never has to open
