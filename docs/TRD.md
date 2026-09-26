@@ -63,6 +63,19 @@ asynchronous classification workflows:
 - **Server-Side Intelligence:** `@mortar/jev` wraps the TypeSafe SDK to run
   probabilistic classifications server-side. The TypeSafe API key is restricted
   to the server process and is never sent to the browser.
+- **Grounded Operational Assistant:** Ask Mortar (`POST /api/assistant`)
+  provides LLM-driven operational answers via Google Gemini
+  (`gemini-3.5-flash-lite`), code in `server/src/assistant/`. It grounds answers
+  over the live memory snapshot using five read-only tools, with fenced
+  untrusted message bodies, returning structured answers and booking citations
+  with zero write access.
+- **Persona Navigation And Route Guarding:** `frontend/src/lib/persona.tsx`
+  defines permitted page mappings (`PERSONA_PAGES`) and
+  `frontend/src/components/layout/PersonaRoute.tsx` guards routes client-side,
+  redirecting unauthorized routes to persona homes without masking data.
+- **Unified Next Step Derivation:** `frontend/src/components/case/nextStep.ts`
+  establishes single rule-based moves from `ballInCourt` as the default across
+  cards and side sheets, surfacing Jev alternatives when they differ.
 - **Client Snapshot Provider:** The React client loads the entire operational
   dataset via `GET /api/snapshot`, fetched lazily on the first `useSnapshot()`
   call so public pages never hit the API. The browser's `SnapshotProvider`
@@ -101,12 +114,24 @@ Key files within each package include:
   reviewed knowledge articles (`playbooks.ts`).
 - `server/src/index.ts`: Application bootstrap, static file serving, and route
   dispatching.
+- `server/src/assistant/`: Ask Mortar Gemini service, tools (`tools.ts`),
+  schemas, and untrusted message prompt fencing.
 - `server/db/schema.sql`: PostgreSQL table definitions applied idempotently on
   server start.
+- `server/db/__tests__/integration.test.ts`: Database integration suite running
+  against isolated `TEST_DATABASE_URL` (`mortar-test`).
 - `server/fixtures/jev-cache.json`: Precomputed model responses for offline and
   resilient demo operation.
 - `frontend/src/lib/data.tsx`: React context providing `useSnapshot()` and
   `useCases()`.
+- `frontend/src/lib/persona.tsx`: Persona definitions and `PERSONA_PAGES` route
+  permissions map.
+- `frontend/src/components/layout/PersonaRoute.tsx`: Route guard enforcing
+  persona page boundaries with redirection.
+- `frontend/src/components/case/nextStep.ts`: Unified rule-based next step
+  derivation and verb resolution.
+- `frontend/src/components/case/CaseQuickView.tsx`: Shared quick view side sheet
+  opened from Today and Bookings.
 
 ## Data Model And Schema
 
@@ -239,23 +264,24 @@ The Bun server exposes a RESTful JSON API. Request bodies and responses conform
 directly to contract types. Validation is implemented with explicit type guards;
 no third-party schema validation libraries are loaded.
 
-| Method  | Path                            | Request Body                                                          | Response Body                                                            | Execution Pattern |
-| ------- | ------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------ | ----------------- |
-| `GET`   | `/api/health`                   | None                                                                  | `{ ok, db, jev, jevAnswers, jevLastError }`                              | Direct Check      |
-| `GET`   | `/api/snapshot`                 | None                                                                  | `Snapshot`                                                               | Database Query    |
-| `POST`  | `/api/messages`                 | `{ bookingId, senderRole, senderName, body }`                         | `{ message: Message, extraction: Extraction, event: CaseEvent \| null }` | Live-First Jev    |
-| `POST`  | `/api/messages/:id/extract`     | None                                                                  | `{ extraction: Extraction, event: CaseEvent \| null }`                   | Live-First Jev    |
-| `POST`  | `/api/events`                   | `{ bookingId, track, kind, document?, note?, reportedBy }`            | `CaseEvent`                                                              | Transaction Write |
-| `POST`  | `/api/applications`             | `{ bookingId, bank, banker, note?, occurredOn?, reportedBy }`         | `{ application: LoanApplication, event: CaseEvent }`                     | Transaction Write |
-| `POST`  | `/api/events/:id/review`        | `{ decision: 'confirm' \| 'dispute' \| 'dismiss', reviewer: string }` | `CaseEvent`                                                              | Transaction Write |
-| `POST`  | `/api/bookings/:id/next-action` | None                                                                  | `NextActionSuggestion`                                                   | Live-First Jev    |
-| `GET`   | `/api/bookings/:id/playbooks`   | Optional Query `q`                                                    | `PlaybookRanking`                                                        | Cache-First Jev   |
-| `GET`   | `/api/bookings/:id/signals`     | None                                                                  | `BuyerSignals`                                                           | Cache-First Jev   |
-| `POST`  | `/api/bookings/import`          | `{ bookings: BookingDraft[], reportedBy, source? }`                   | `{ importId, bookings: Booking[] }`                                      | Transaction Write |
-| `POST`  | `/api/imports/:id/undo`         | `{ reportedBy }`                                                      | `{ removed: string[] }`                                                  | Transaction Write |
-| `POST`  | `/api/tasks`                    | `{ bookingId, action, title, ownerRole, ownerName, dueOn, origin }`   | `Task`                                                                   | Database Insert   |
-| `PATCH` | `/api/tasks/:id`                | `{ status: 'open' \| 'done' \| 'cancelled' }`                         | `Task`                                                                   | Database Update   |
-| `POST`  | `/api/admin/reset`              | None                                                                  | `SimulationMeta`                                                         | Database Truncate |
+| Method  | Path                            | Request Body                                                          | Response Body                                                            | Execution Pattern    |
+| ------- | ------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------ | -------------------- |
+| `GET`   | `/api/health`                   | None                                                                  | `{ ok, db, jev, jevAnswers, jevLastError }`                              | Direct Check         |
+| `GET`   | `/api/snapshot`                 | None                                                                  | `Snapshot`                                                               | Database Query       |
+| `POST`  | `/api/assistant`                | `{ question, persona, bookingId?, history?, image? }`                 | `{ answer, citations }`                                                  | Live Gemini Tool-Use |
+| `POST`  | `/api/messages`                 | `{ bookingId, senderRole, senderName, body }`                         | `{ message: Message, extraction: Extraction, event: CaseEvent \| null }` | Live-First Jev       |
+| `POST`  | `/api/messages/:id/extract`     | None                                                                  | `{ extraction: Extraction, event: CaseEvent \| null }`                   | Live-First Jev       |
+| `POST`  | `/api/events`                   | `{ bookingId, track, kind, document?, note?, reportedBy }`            | `CaseEvent`                                                              | Transaction Write    |
+| `POST`  | `/api/applications`             | `{ bookingId, bank, banker, note?, occurredOn?, reportedBy }`         | `{ application: LoanApplication, event: CaseEvent }`                     | Transaction Write    |
+| `POST`  | `/api/events/:id/review`        | `{ decision: 'confirm' \| 'dispute' \| 'dismiss', reviewer: string }` | `CaseEvent`                                                              | Transaction Write    |
+| `POST`  | `/api/bookings/:id/next-action` | None                                                                  | `NextActionSuggestion`                                                   | Live-First Jev       |
+| `GET`   | `/api/bookings/:id/playbooks`   | Optional Query `q`                                                    | `PlaybookRanking`                                                        | Cache-First Jev      |
+| `GET`   | `/api/bookings/:id/signals`     | None                                                                  | `BuyerSignals`                                                           | Cache-First Jev      |
+| `POST`  | `/api/bookings/import`          | `{ bookings: BookingDraft[], reportedBy, source? }`                   | `{ importId, bookings: Booking[] }`                                      | Transaction Write    |
+| `POST`  | `/api/imports/:id/undo`         | `{ reportedBy }`                                                      | `{ removed: string[] }`                                                  | Transaction Write    |
+| `POST`  | `/api/tasks`                    | `{ bookingId, action, title, ownerRole, ownerName, dueOn, origin }`   | `Task`                                                                   | Database Insert      |
+| `PATCH` | `/api/tasks/:id`                | `{ status: 'open' \| 'done' \| 'cancelled' }`                         | `Task`                                                                   | Database Update      |
+| `POST`  | `/api/admin/reset`              | None                                                                  | `SimulationMeta`                                                         | Database Truncate    |
 
 ### Endpoint Details
 
@@ -276,6 +302,24 @@ no third-party schema validation libraries are loaded.
   `extract` is keyed to an immutable message and is never stale. This is a
   separate staleness check from the per-route fallback ladder described under
   "Fallback And Caching Ladder" below.
+- `POST /api/assistant`: Grounded assistant powered by Google's Gemini API
+  (`server/src/assistant/`, default model `gemini-3.5-flash-lite` configured via
+  `GEMINI_API_KEY` and `GEMINI_MODEL`). It grounds answers against the live
+  memory snapshot using five read-only tools: `find_bookings`, `get_case`,
+  `get_my_queue`, `get_forecast_summary`, and `search_playbooks`. Executes up to
+  four tool rounds under a single 30-second deadline. The system prompt reflects
+  the asker's persona desk. Buyer, banker, and solicitor message bodies are
+  fenced as untrusted data. The assistant never performs database writes, never
+  makes credit, loan, or legal decisions, refuses off-topic queries, and states
+  clearly when data does not contain the answer. Citations link only bookings
+  returned by tools. Accepts optional image attachments (PNG, JPEG, WebP up to 4
+  MB). Limits: questions up to 1,000 characters, up to 6 history turns, 8
+  requests per minute per IP address, 300 requests per day per server instance,
+  and answers targeting about 150 words. Returns `400` on invalid payloads or
+  limit breaches, `429` on rate limits, and `503` `{ fallback: true }` when
+  `GEMINI_API_KEY` is missing or when calls fail or time out, prompting client
+  fallback to scripted `askBrain` answers. API keys, images, and message bodies
+  are never logged.
 - `POST /api/messages`: Persists an incoming message, computes an input hash,
   and invokes Jev extraction. If the extraction yields an event proposal, the
   system stages a provisional `CaseEvent` linked to the message.
@@ -334,8 +378,9 @@ server-side, so a stale screen or a hand-made request cannot skip them:
   that is no longer pending.
 - Request bodies are capped at 2MB (`Bun.serve`'s `maxRequestBodySize`); free
   text fields are capped and rejected with a plain `400` past their limit:
-  message body at 5,000 characters, names/notes/bank/banker/task titles at 300,
-  and the playbooks `q` query at 200.
+  message body at 5,000 characters, assistant question at 1,000,
+  names/notes/bank/banker/task titles at 300, and the playbooks `q` query
+  at 200.
 - Any Postgres error the routes above do not already turn into a specific
   message is mapped by its SQLSTATE class: class `22` (data exception, e.g. a
   value Postgres itself rejects) becomes `400`; class `23` (integrity constraint
@@ -426,8 +471,8 @@ Rules governing summary derivation include:
 
 - **Stage Derivation:** Determined solely by confirmed events. Provisional,
   disputed, or superseded events never advance case stage. Funnel progression is
-  monotonic: `booked` &rarr; `loan_applied` &rarr; `lo_issued` &rarr;
-  `spa_signed` &rarr; `loan_agreement` &rarr; `disbursed`.
+  monotonic: `booked` &rarr; `loan_applied` &rarr; `lo_issued` (Loan Approved)
+  &rarr; `spa_signed` &rarr; `loan_agreement` &rarr; `disbursed`.
 - **Application State:** Derived from specific application event histories:
   `'submitted'`, `'documents_pending'`, `'approved'`, `'rejected'`, or
   `'withdrawn'`.
@@ -716,13 +761,20 @@ The system strictly handles synthetic data:
 ### Secret Management
 
 - **Isolated Credentials:** Production and development credentials
-  (`DATABASE_URL`, `TYPESAFE_API_KEY`) are stored in `.env`, which is symlinked
-  locally and git-ignored.
-- **Client Boundary:** The TypeSafe API key is used exclusively by the Bun
-  server runtime. No client environment variables (`VITE_*`) expose API tokens
-  to the browser.
+  (`DATABASE_URL`, `TEST_DATABASE_URL`, `GEMINI_API_KEY`, `TYPESAFE_API_KEY`)
+  are stored in `.env`, which is git-ignored. `TEST_DATABASE_URL` is dedicated
+  to the database integration suite pointing to an isolated Neon test database
+  (`mortar-test`), and is never pointed at production.
+- **Client Boundary:** Server keys are used exclusively by the Bun server
+  runtime. No client environment variables (`VITE_*`) expose API tokens to the
+  browser.
 - **Cloud Delivery:** Cloud Run receives database credentials and API keys via
-  secure environment variables populated from GitHub Secrets during deployment.
+  secure environment variables populated from GitHub Secrets during deployment
+  (`deploy.yml`).
+- **Free-Tier Gemini Caveat:** On Gemini's free tier, Google may use prompts and
+  responses to improve products. Ask Mortar must only process simulated data;
+  processing real buyer data requires a paid tier or Vertex AI under a Data
+  Processing Agreement.
 
 ### Statutory Compliance: PDPA
 
@@ -739,9 +791,10 @@ architected for future corporate data onboarding:
   will apply once the forecast scores real buyers. The design already keeps AI
   outputs advisory: human officers must explicitly verify all status transitions
   and legal filings.
-- **Data Minimization:** Role-based views restrict loan document visibility.
-  Sales administrators view case blocker classifications without accessing
-  detailed personal financial documentation.
+- **Data Minimization:** Every persona sees the same figures and underlying case
+  data; persona sets workflow defaults, not access to data. Personal financial
+  documents and unneeded PII are excluded from client payloads by design,
+  keeping data minimized across all desks.
 
 ### Data Retention
 
@@ -834,14 +887,16 @@ The workflow (`.github/workflows/deploy.yml`) runs on merges to `main`:
 3. **Cloud Run Rollout:** Deploys the container to Cloud Run in the
    `asia-southeast1` (Singapore) region with continuous health verification.
 4. **Environment Configuration:** Injects `DATABASE_URL` (Neon production
-   branch) and `TYPESAFE_API_KEY` directly from GitHub repository secrets.
+   branch), `TYPESAFE_API_KEY`, and `GEMINI_API_KEY` directly from GitHub
+   repository secrets.
 
 ### Continuous Integration (CI)
 
 Every proposed change must satisfy local and remote verification gates:
 
 - `bun run check`: Executes ESLint validation, TypeScript workspace
-  typechecking, and the Vitest suites across all modules.
+  typechecking, and the Vitest suites across all modules. CI passes the
+  `TEST_DATABASE_URL` repository secret to `bun run check`.
 - `bun run format`: Formats code and documentation with Prettier (enforcing an
   80-column limit on Markdown files).
 - `bun run test`: Executes unit and integration test suites using Vitest.
@@ -873,8 +928,18 @@ Located in `packages/core/src/__tests__/`:
 
 ### Service And Integration Tests
 
-Located in `packages/jev/src/__tests__/` and `server/src/__tests__/`:
+Located in `packages/jev/src/__tests__/`, `server/src/__tests__/`, and
+`server/db/__tests__/`:
 
+- **Database Integration Suite:** `server/db/__tests__/integration.test.ts`
+  reads `TEST_DATABASE_URL` and skips cleanly when it is not set. It never reads
+  `DATABASE_URL`, preventing accidental execution against production. An empty
+  test database is seeded once by the suite on first run, mirroring server boot.
+  The team's test database is an isolated Neon project, `mortar-test`.
+- **Assistant Service And Tools:** Tests `server/src/assistant/` tool execution,
+  read-only boundary enforcement, prompt fencing of untrusted messages, and
+  graceful fallback to `askBrain` when the Gemini API key is missing or calls
+  fail.
 - **Jev Client Mocking:** Tests question generation, fan-out assembly, and
   response parsing against recorded TypeSafe API fixtures.
 - **Fallback Ladder Verification:** Simulates API failures and network timeouts
@@ -924,7 +989,7 @@ that may evolve as the parallel build completes.
 - [Company-Brain Platform Concept](research/company-brain/README.md): Platform
   architecture evaluation and open-source benchmarks.
 - [Practitioner Survey Findings](research/practitioner-survey/README.md):
-  Empirical survey evidence from industry practitioners (n = 5).
+  Empirical survey evidence from industry practitioners (n = 8).
 - [Problem Statement](source/problem-statement.md): Original Chin Hin challenge
   brief and mission requirements.
 - [Project README](README.md): Project overview and setup instructions.

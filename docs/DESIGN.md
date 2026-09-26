@@ -723,8 +723,8 @@ control, and none appears. Do not "fix" this by removing the input.
 
 ### Chase Card
 
-- **Purpose:** Action card in Sales Admin Chase List directing staff to unblock
-  stuck bookings.
+- **Purpose:** Action card in Sales Admin Today directing staff to unblock stuck
+  bookings.
 - **Anatomy:** Width 360px, padding 16px, gap 12px, background `--card`
   (`#FFFFFF` / `#141414`), 1px `--card-border`, corner radius 6px
   (`--radius-md`), `Elevation/Card`. No coloured strip, bar or rule runs down
@@ -965,7 +965,7 @@ Landing content copy binds to the following specification:
 | Call to action    | Open Mortar (the page's one Primary button and its only link, to `/sign-in`)                                                |
 | Ledger caption    | Bookings — 148 live · 19 stalled · 5 signed this month                                                                      |
 | Ledger figcaption | An example of the Bookings desk. These figures are illustrative. (`sr-only`)                                                |
-| Desk: Chase List  | Every stuck booking, the blocker in plain words, and who to chase today.                                                    |
+| Desk: Today       | Every stuck booking, the blocker in plain words, and who to chase today.                                                    |
 | Desk: Bookings    | Each unit from booking to SPA, with the days it has sat in every stage.                                                     |
 | Desk: Forecast    | The SPAs you can bank on, not the bookings you hope will convert.                                                           |
 
@@ -1011,7 +1011,7 @@ it, and the footer emits its own `<footer>` element, so it is the page's
   24px row, which is also the WCAG 2.5.8 target height, going `--foreground` on
   hover across `--motion-fast`; keyboard focus is carried by the standard ring.
   Every destination is real — there is no Changelog and no Status.
-  - Product: "Chase List" (`/chase`), "Bookings" (`/bookings`), "Forecast"
+  - Product: "Today" (`/chase`), "Bookings" (`/bookings`), "Forecast"
     (`/forecast`).
   - Company: "FAQ" (`/faq`), "Dashboard" (`/app`), "Design" (Figma, new tab).
   - Code: "GitHub" (GitHub, new tab).
