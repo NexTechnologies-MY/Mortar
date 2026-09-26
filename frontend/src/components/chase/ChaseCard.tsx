@@ -9,6 +9,10 @@
  * financing risk is High, because a chip true of every card on the page is not
  * a warning any more.
  *
+ * Sales Admin's Today shows every desk's stalled bookings, so a card names the
+ * desk that owns its next step whenever that is not the reader's own: a move
+ * marked "Loan Admin" is not one the person reading it can make.
+ *
  * There is one next step. It is the rule-based move from `ballInCourt`, which
  * every screen leads with, so the same click here, in Waiting On and in the
  * table raises the same task. When Jev's cached answer names a different move,
@@ -19,7 +23,9 @@
 
 import type { Booking, CaseSummary, Task } from '@mortar/core'
 import { RiskChip, STAGE_LABELS, formatDate, formatDaysLong, formatRm } from '@/components/case'
+import { OWNER_ROLE_LABELS } from '@/components/case/OwnerBadge'
 import type { NextStep } from '@/components/case/nextStep'
+import { PERSONA_DESK_ROLE, usePersona } from '@/lib/persona'
 import type { LucideIcon } from 'lucide-react'
 import { Plus, RefreshCw } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -61,6 +67,12 @@ export function ChaseCard({
   /** Raises the task for the step the person picked. */
   onCreateTask: (step: NextStep) => void
 }) {
+  // Today is read as one persona, so the card asks the same question its
+  // reader would: is this move mine to make, or another desk's?
+  const { persona } = usePersona()
+  const desk = PERSONA_DESK_ROLE[persona]
+  const deskLabel = step.ownerRole === desk ? null : OWNER_ROLE_LABELS[step.ownerRole]
+
   const urgency = urgencyFor(undefined, summary.daysSinceEvidence)
   // One pill per card: the overdue date when the card is late, otherwise
   // whether a task is already open. Due-today is the queue's norm, so it says
@@ -115,6 +127,7 @@ export function ChaseCard({
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <Glyph icon={actionIcon(step.action)} />
           <span className="font-medium text-foreground">{documentStepLabel(step.label, step.document)}</span>
+          {deskLabel ? <span className="text-muted-foreground">· {deskLabel}</span> : null}
         </div>
         {alternativeStep ? (
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground">

@@ -4,7 +4,9 @@
  * one status sentence in words (stage, who holds it, how long, and whether it
  * has stalled). Outstanding documents stay as pills, because a reader acts on
  * them; the stage, freshness and stall reasons do not, so they live in the
- * sentence instead of three more pills. Owners are one muted line.
+ * sentence instead of three more pills. Financing risk is shown at every
+ * level, because a case that reads as carrying no risk signal at all is a
+ * worse reading than one that reads Low. Owners are one muted line.
  */
 
 import type { Booking, CaseSummary } from '@mortar/core'
@@ -51,16 +53,21 @@ export function CaseHeader({ booking, summary }: { booking: Booking; summary: Ca
           {booking.salesOwner} (Sales) · {booking.loanOwner} (Loan) · {booking.legalFirm} (Legal)
         </p>
       </div>
-      {(summary.outstandingDocuments.length > 0 || summary.risk.level !== 'low') && (
-        <div className="flex flex-wrap items-center gap-1.5">
-          {summary.risk.level !== 'low' && <RiskChip risk={summary.risk} />}
-          {summary.outstandingDocuments.map((doc) => (
-            <StatusPill key={doc} tone="warning">
-              {DOCUMENT_LABELS[doc]} Outstanding
-            </StatusPill>
-          ))}
-        </div>
-      )}
+      {/* Financing risk is the signal staff rank above every other, so it is
+          here at every level: Low as the muted word the Bookings table uses,
+          Medium and High as the chip with its explanation. */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        {summary.risk.level === 'low' ? (
+          <span className="text-[13px] text-muted-foreground">Low Risk</span>
+        ) : (
+          <RiskChip risk={summary.risk} />
+        )}
+        {summary.outstandingDocuments.map((doc) => (
+          <StatusPill key={doc} tone="warning">
+            {DOCUMENT_LABELS[doc]} Outstanding
+          </StatusPill>
+        ))}
+      </div>
     </header>
   )
 }

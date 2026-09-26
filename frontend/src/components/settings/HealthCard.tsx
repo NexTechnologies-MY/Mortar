@@ -1,7 +1,8 @@
 /**
  * Status card — the server's own health report: the API itself, the database
- * connection, and whether a TypeSafe key is configured for Jev. The page owns
- * the `GET /api/health` fetch and re-checks after a reset.
+ * connection, whether a TypeSafe key is configured for Jev, and whether the
+ * Ask Mortar assistant has a Gemini key to work with. The page owns the
+ * `GET /api/health` fetch and re-checks after a reset.
  */
 
 import type { Health } from '@/lib/api'
@@ -40,6 +41,10 @@ export function HealthCard({ health, failed }: { health: Health | null; failed: 
         {row('API', failed ? false : health ? health.ok : null, 'The Bun Server And Its Routes')}
         {row('Database', failed ? false : health ? health.db : null, 'Where Your Bookings Are Stored')}
         {row('Jev', failed ? false : health ? health.jev : null, 'Whether A TypeSafe API Key Is Configured', {
+          up: 'Configured',
+          down: 'Missing'
+        })}
+        {row('Ask Mortar', failed ? false : health ? health.assistant : null, 'Whether A Gemini Key Is Configured', {
           up: 'Configured',
           down: 'Missing'
         })}

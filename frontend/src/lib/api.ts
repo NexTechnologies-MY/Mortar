@@ -85,6 +85,8 @@ export interface Health {
   ok: boolean
   db: boolean
   jev: boolean
+  /** Whether the server was started with a Gemini key for Ask Mortar. */
+  assistant: boolean
   /** Stored `jev_answers` rows; `null` when the database is unreachable. */
   jevAnswers: number | null
 }

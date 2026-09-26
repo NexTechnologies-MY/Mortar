@@ -2,17 +2,21 @@
  * Who Holds Each Booking — Pipeline and holder filter strip.
  *
  * Visualizes the 5 milestones and holders:
- * 1. Buyer: Reservation & pending documents
- * 2. Bank: Bank review & credit approval
- * 3. Solicitor: SPA drafting & execution scheduling
- * 4. Signed: Signed milestone (legally sold)
- * 5. Us: Actions & booking releases
+ * 1. Buyer
+ * 2. Bank
+ * 3. Solicitor
+ * 4. Signed
+ * 5. Us
+ *
+ * Each step carries its count and, unless the case is closed, how many of them
+ * have stalled. There is no description line under a step: at five across, one
+ * line of prose only ever read half-truncated.
  *
  * Each step acts as a filter: clicking a step filters the table below to that
  * holder, and a second click clears the filter back to all holders.
  */
 
-import { AlertTriangle, Building2, CheckCircle2, FileSignature, Landmark, Scale, User } from 'lucide-react'
+import { AlertTriangle, Building2, FileSignature, Landmark, Scale, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 
@@ -49,45 +53,14 @@ interface StepConfig {
   title: string
   icon: typeof User
   holderLabel: string
-  description: string
 }
 
 const STEPS: StepConfig[] = [
-  {
-    id: 'buyer',
-    title: 'Buyer',
-    icon: User,
-    holderLabel: 'Buyer',
-    description: 'Awaiting payslips, EPF statements, or buyer documents'
-  },
-  {
-    id: 'bank',
-    title: 'Bank',
-    icon: Landmark,
-    holderLabel: 'Bank',
-    description: 'Submitted applications awaiting credit review & Letter Of Offer'
-  },
-  {
-    id: 'solicitor',
-    title: 'Solicitor',
-    icon: Scale,
-    holderLabel: 'Solicitor',
-    description: 'Letter Of Offer accepted, drafting SPA & coordinating signing'
-  },
-  {
-    id: 'spa',
-    title: 'Signed',
-    icon: FileSignature,
-    holderLabel: 'Signed',
-    description: 'Contract executed & legally binding sale completed'
-  },
-  {
-    id: 'developer',
-    title: 'Us',
-    icon: Building2,
-    holderLabel: 'Us',
-    description: 'Actions & booking releases'
-  }
+  { id: 'buyer', title: 'Buyer', icon: User, holderLabel: 'Buyer' },
+  { id: 'bank', title: 'Bank', icon: Landmark, holderLabel: 'Bank' },
+  { id: 'solicitor', title: 'Solicitor', icon: Scale, holderLabel: 'Solicitor' },
+  { id: 'spa', title: 'Signed', icon: FileSignature, holderLabel: 'Signed' },
+  { id: 'developer', title: 'Us', icon: Building2, holderLabel: 'Us' }
 ]
 
 export function BookingPipelineFlow({ counts, selection, onSelect, onClear, className }: BookingPipelineFlowProps) {
@@ -178,29 +151,23 @@ export function BookingPipelineFlow({ counts, selection, onSelect, onClear, clas
                   <span className="text-xs text-muted-foreground font-medium">{isSpa ? 'signed' : 'bookings'}</span>
                 </div>
 
-                {/* Stall indicator pill or Completed badge */}
-                <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                  {isSpa ? (
-                    <span className="inline-flex items-center gap-1 rounded-sm bg-status-positive-bg px-2 py-0.5 text-[11px] font-medium text-status-positive-fg border border-status-positive/25">
-                      <CheckCircle2 className="size-3" />
-                      Signed
-                    </span>
-                  ) : stalledCount > 0 ? (
-                    <span className="inline-flex items-center gap-1 rounded-sm bg-status-danger-bg px-2 py-0.5 text-[11px] font-medium text-status-danger-fg border border-status-danger/25">
-                      <AlertTriangle className="size-3 shrink-0" />
-                      {stalledCount} Stalled
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 rounded-sm bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-                      0 Stalled
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Bottom: Context Note */}
-              <div className="border-t border-border/60 pt-2.5">
-                <p className="text-[11px] text-muted-foreground line-clamp-1 leading-snug">{step.description}</p>
+                {/* Stall indicator, or nothing on the signed step: its count
+                    already reads "21 signed" and it is the one stage that
+                    cannot stall. */}
+                {isSpa ? null : (
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                    {stalledCount > 0 ? (
+                      <span className="inline-flex items-center gap-1 rounded-sm bg-status-danger-bg px-2 py-0.5 text-[11px] font-medium text-status-danger-fg border border-status-danger/25">
+                        <AlertTriangle className="size-3 shrink-0" />
+                        {stalledCount} Stalled
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 rounded-sm bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                        0 Stalled
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             </Button>
           )

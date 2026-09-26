@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { BookingPipelineFlow, type PipelineCounts } from '../BookingPipelineFlow'
 
@@ -41,12 +41,50 @@ describe('BookingPipelineFlow', () => {
     expect(screen.getByText('5')).toBeTruthy()
     expect(screen.getByText('7')).toBeTruthy()
 
-    // Stall badges
+    // Stall badges, on every step that can stall
     expect(screen.getByText('6 Stalled')).toBeTruthy()
     expect(screen.getByText('12 Stalled')).toBeTruthy()
     expect(screen.getByText('5 Stalled')).toBeTruthy()
-    expect(screen.getAllByText('Signed').length).toBeGreaterThan(0)
     expect(screen.getByText('2 Stalled')).toBeTruthy()
+  })
+
+  it('carries no description line under any step, because every one of them truncated', () => {
+    render(
+      <BookingPipelineFlow
+        counts={MOCK_COUNTS}
+        selection={{ stageId: null, stalledOnly: false }}
+        onSelect={vi.fn()}
+        onClear={vi.fn()}
+      />
+    )
+
+    const strip = screen.getByTestId('booking-pipeline-flow')
+    for (const prose of [
+      'Awaiting payslips',
+      'Submitted applications awaiting',
+      'Letter Of Offer accepted',
+      'Contract executed',
+      'Actions & booking releases'
+    ]) {
+      expect(strip.textContent).not.toContain(prose)
+    }
+  })
+
+  it('reads the signed step as a count alone, with no second Signed pill under it', () => {
+    render(
+      <BookingPipelineFlow
+        counts={MOCK_COUNTS}
+        selection={{ stageId: null, stalledOnly: false }}
+        onSelect={vi.fn()}
+        onClear={vi.fn()}
+      />
+    )
+
+    const signed = screen.getByRole('button', { name: /Filter by Signed/i })
+    // The step reads as its title and its count, "Signed 5 signed". A second
+    // "Signed" pill under it said the same thing twice.
+    expect(signed.textContent).toBe('Signed5signed')
+    expect(within(signed).queryByText(/Stalled/)).toBeNull()
   })
 
   it('clicking a step calls onSelect to filter to that holder', () => {

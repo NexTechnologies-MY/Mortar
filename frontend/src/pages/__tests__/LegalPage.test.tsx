@@ -127,10 +127,40 @@ describe('LegalPage', () => {
     // to chase, so the cell says what happened rather than reading as a plan.
     const passed = within(screen.getByRole('row', { name: /BK-0024/ })).getByText('Was On 29 Jul 2026')
     expect(passed.className).toContain('text-status-danger-fg')
-    expect(within(screen.getByRole('row', { name: /BK-0024/ })).queryByText('Appointment On 29 Jul 2026')).toBeNull()
+    expect(within(screen.getByRole('row', { name: /BK-0024/ })).queryByText('29 Jul 2026')).toBeNull()
 
-    const upcoming = within(screen.getByRole('row', { name: /BK-0113/ })).getByText('Appointment On 5 Oct 2026')
+    const upcoming = within(screen.getByRole('row', { name: /BK-0113/ })).getByText('5 Oct 2026')
     expect(upcoming.className).not.toContain('text-status-danger-fg')
+  })
+
+  it('carries the appointment date alone, never the note it was written into', () => {
+    renderPage()
+    // The column header already says SPA Appointment, so repeating it in the
+    // cell only ever left less room for the date.
+    const appointmentCells = screen
+      .getAllByRole('row', { name: /Open Booking/ })
+      .map((row) => within(row).getAllByRole('cell')[5].textContent)
+    expect(appointmentCells).toEqual(['Not Set', 'Not Set', 'Was On 29 Jul 2026', '5 Oct 2026'])
+  })
+
+  it('sizes the columns so no cell text truncates at 1280 or 1440', () => {
+    renderPage()
+    const table = screen.getAllByRole('columnheader', { name: 'Booking' })[0].closest('table') as HTMLTableElement
+
+    // Every fixed column is declared, and the widths are the ones the longest
+    // real cell in each column needs: the slack lands on Buyer rather than
+    // truncating somebody else's text.
+    const widths = [...table.querySelectorAll('col')].map((col) => parseInt((col as HTMLTableElement).style.width, 10))
+    expect(widths.slice(0, 2)).toEqual([88, 88])
+    expect(widths[3]).toBe(200) // Firm: "Kuan & Teh Advocates", 172px of 14px text
+    expect(widths[5]).toBe(176) // Appointment: "Was On 29 Jul 2026"
+    expect(widths[6]).toBe(208) // Record: "Record Appointment", 152px plus the button's 24px
+    expect(200 - 24).toBeGreaterThanOrEqual(172)
+    expect(176 - 24).toBeGreaterThanOrEqual(124)
+    expect(208 - 24).toBeGreaterThanOrEqual(152)
+    // The table is no wider than the narrowest desktop it has to fit, so
+    // nothing scrolls sideways at 1280 either.
+    expect(parseInt(table.style.minWidth, 10)).toBeLessThanOrEqual(1184)
   })
 
   it('splits the queue into No Appointment Yet and Appointment Set, Not Signed sections', () => {
