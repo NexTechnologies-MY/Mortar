@@ -414,7 +414,21 @@ export function createApp(options: AppOptions): App {
     [
       'GET',
       '/api/health',
-      async () => {
+      async ({ req, url }) => {
+        // TEMPORARY (Task 3 probe): logs which headers Render sends. Remove before merge.
+        if (url.searchParams.has('probe'))
+          console.log(
+            'probe',
+            JSON.stringify({
+              names: [...req.headers.keys()],
+              values: Object.fromEntries(
+                ['x-forwarded-for', 'cf-connecting-ip', 'true-client-ip', 'x-real-ip', 'x-forwarded-proto'].map((h) => [
+                  h,
+                  req.headers.get(h)
+                ])
+              )
+            })
+          )
         let dbOk = true
         let jevAnswers: number | null = null
         try {
