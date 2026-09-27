@@ -19,6 +19,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { auditCapture, REQUIRED_BEATS } from './contract.mjs'
+import { openDemoSession } from './session.mjs'
 
 const DIR = process.env.DEMO_DIR || join(tmpdir(), 'mortar-demo')
 const WEB = process.env.DEMO_WEB
@@ -58,14 +59,15 @@ const beat = (page, ms) => page.waitForTimeout(ms)
 const channel = process.env.DEMO_CHANNEL || undefined
 const browser = await chromium.launch({ channel })
 const { walk } = await import('./walk.mjs')
-const initial = await fetch(`${WEB}/api/snapshot`)
+const setupFetch = await openDemoSession(WEB)
+const initial = await setupFetch(`${WEB}/api/snapshot`)
 if (!initial.ok) {
   await browser.close()
   throw new Error(`recording snapshot unavailable: HTTP ${initial.status}`)
 }
 const initialSnapshot = await initial.json()
 if ((initialSnapshot.bookings ?? []).length === 0) {
-  const added = await fetch(`${WEB}/api/admin/demo/add`, { method: 'POST' })
+  const added = await setupFetch(`${WEB}/api/admin/demo/add`, { method: 'POST' })
   if (!added.ok) {
     await browser.close()
     throw new Error(`could not add demo data: HTTP ${added.status}`)

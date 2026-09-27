@@ -61,7 +61,7 @@ The prior presentation is recorded in
 ## Automated Verification
 
 Final local results: 935 tests passed (438 frontend, 216 core, 31 Jev, 208
-server-source and 42 database/mapping tests), plus 16 demo-script tests. Lint,
+server-source and 42 database/mapping tests), plus 18 demo-script tests. Lint,
 workspace typechecks, formatting and the production build passed.
 
 Run `bun run check` with `TEST_DATABASE_URL` pointing at a disposable database,

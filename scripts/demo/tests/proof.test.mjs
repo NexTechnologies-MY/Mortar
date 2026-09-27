@@ -24,7 +24,10 @@ const cleanEvents = [
   }
 ]
 
-const fetchJson = (payload) => async () => ({ ok: true, json: async () => payload })
+const fetchJson = (payload) => async (url) =>
+  url.endsWith('/api/session')
+    ? new Response('{}', { headers: { 'set-cookie': 'mortar_session=demo-test; HttpOnly' } })
+    : { ok: true, json: async () => payload }
 
 const cleanSnapshot = () => ({ messages: SEEDED_MESSAGES, events: cleanEvents, tasks: [] })
 
