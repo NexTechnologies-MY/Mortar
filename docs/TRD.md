@@ -270,7 +270,7 @@ no third-party schema validation libraries are loaded.
 
 | Method   | Path                            | Request Body                                                          | Response Body                                                            | Execution Pattern    |
 | -------- | ------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------ | -------------------- |
-| `GET`    | `/api/health`                   | None                                                                  | `{ ok, db, jev, assistant, jevAnswers, jevLastError }`                   | Direct Check         |
+| `GET`    | `/api/health`                   | None                                                                  | `{ ok, db, jev, assistant, jevAnswers, jevLastError, commit }`           | Direct Check         |
 | `GET`    | `/api/snapshot`                 | None                                                                  | `Snapshot`                                                               | Database Query       |
 | `POST`   | `/api/assistant`                | `{ question, persona, bookingId?, history?, image? }`                 | `{ answer, citations }`                                                  | Live Gemini Tool-Use |
 | `POST`   | `/api/assistant/stream`         | Same assistant request                                                | SSE tool progress and answer events                                      | Live Gemini Tool-Use |
@@ -300,7 +300,9 @@ no third-party schema validation libraries are loaded.
   the last failed live Jev call when the proxy client is wired, or `null`
   otherwise. TypeSafe API-key mode does not track `jevLastError`, since doing so
   would need `@typesafe-ai/sdk` as a dependency of the server package rather
-  than `@mortar/jev`'s.
+  than `@mortar/jev`'s. `commit` is the Git commit the running server was built
+  from (`RENDER_GIT_COMMIT`, which Render sets on every deploy), or `null`
+  locally, so anyone can tell whether a merge is live.
 - `GET /api/snapshot`: Assembles the full dataset required by the frontend
   workspace: `bookings`, `loan_applications`, `events`, `messages`, `playbooks`,
   `tasks`, and the latest `extractions`, `signals`, and `nextActions` from

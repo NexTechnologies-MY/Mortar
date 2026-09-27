@@ -86,6 +86,8 @@ export interface AppOptions {
    * can see it (see `server/src/index.ts`).
    */
   jevLastError?: () => string | null
+  /** The commit this server was built from, reported by `/api/health`, or `null`. */
+  commit?: string | null
   /**
    * Whether demo data may be managed. On for the public
    * demo; a server holding real data sets `MORTAR_DEMO_RESET=off`, and the
@@ -429,7 +431,8 @@ export function createApp(options: AppOptions): App {
           // reported, never the key itself.
           assistant: Boolean(options.assistant?.apiKey),
           jevAnswers,
-          jevLastError: options.jevLastError?.() ?? null
+          jevLastError: options.jevLastError?.() ?? null,
+          commit: options.commit ?? null
         })
       }
     ],

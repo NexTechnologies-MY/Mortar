@@ -524,8 +524,15 @@ describe('createApp', () => {
       jev: false,
       assistant: false,
       jevAnswers: 87,
-      jevLastError: null
+      jevLastError: null,
+      commit: null
     })
+  })
+
+  test('GET /api/health reports the commit it was built from', async () => {
+    const app = createApp({ db: new FakeDb(), jev: fakeJev(), jevAvailable: false, commit: 'abc1234' })
+    const res = await app.fetch(new Request('http://test/api/health'))
+    expect(((await res?.json()) as { commit: string | null }).commit).toBe('abc1234')
   })
 
   test('GET /api/health stays public for deployment probes', async () => {
@@ -546,7 +553,8 @@ describe('createApp', () => {
       jev: false,
       assistant: false,
       jevAnswers: null,
-      jevLastError: null
+      jevLastError: null,
+      commit: null
     })
   })
 

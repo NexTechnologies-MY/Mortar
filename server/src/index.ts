@@ -98,6 +98,8 @@ const app = createApp({
   jevAvailable,
   jevLastError: () => jevLastError,
   resetEnabled,
+  // Render sets RENDER_GIT_COMMIT on every deploy, so a merge can be seen to be live.
+  commit: process.env.RENDER_GIT_COMMIT || null,
   // The Ask panel's model. With no key the route answers 503 and the panel falls
   // back to its scripted answers, so the server still serves every desk. The
   // key reaches this call and nothing else — not the browser, not the log.
