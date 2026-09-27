@@ -1168,15 +1168,27 @@ This intake supersedes the earlier shared-data persona behavior and forecast
 statistics document presentation.
 
 - Named Sales Admin profiles see only their own bookings throughout the app.
-  Loan and Legal Admin represent shared departmental desks. Manager can open
-  every desk and query every booking.
-- Manager opens a concise Overview with supporting details collapsed and a
-  Suggestions tab. Suggestions show elapsed and expected waiting durations and
-  flag cases at or beyond 150% of the expected wait, as clarified by the
-  requester. Forecast offers the same suggestions.
+  Loan and Legal Admin see only current assigned cases or cases with an open
+  task assigned to their internal identity. Previous responsibility does not
+  retain access after handoff. Manager can open every desk and query every
+  booking.
+- Manager opens Suggestions first; Overview is second. Compact case rows stay
+  visible, with evidence folded inside each case and no Forecast Detail in
+  Overview. Rows show unit/buyer, overdue duration and percentage, and current
+  Jev action confidence when available. The percentage is not a sale
+  probability. Suggestions flag cases at or beyond 150% of the expected wait;
+  ten expected days qualifies at day fifteen, five days and 50% overdue.
 - Managers can flag bookings and create follow-up tasks for the relevant sales,
-  loan or legal department. Recipients see the manager flag and an in-app
-  notification; repeated clicks must not duplicate open escalations.
+  loan or legal recipient, resolved from confirmed responsibility on the server.
+  The button identifies that recipient; an external solicitor firm is not an
+  internal assignee. Recipients see the manager flag and an in-app notification.
+  Existing equivalent open tasks are flagged rather than duplicated.
+- Admin Today leads with assigned tasks, then actionable recommendations that
+  are not already covered by an open task. Recent Bookings is secondary and
+  initially folded; its seven-day window uses creation time, not booking date.
+  Unknown legacy creation times are excluded. Manager's Today route returns to
+  Suggestions so there is one decision queue.
+- Sign In As selects a named demo profile with its department and access scope.
 - Project and unit range settings are shared, editable only by Manager, and
   disabled for other profiles. Projects support several blocks; booking entry
   shows remaining units filtered by block, excluding held and draft-selected

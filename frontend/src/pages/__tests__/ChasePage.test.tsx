@@ -1,5 +1,5 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, useLocation } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { CaseSummary, Snapshot, Task } from '@mortar/core'
 import { PERSONA_STORAGE_KEY, PersonaProvider } from '@/lib/persona'
@@ -108,6 +108,10 @@ function renderPage() {
   )
 }
 
+function LocationProbe() {
+  return <output data-testid="route-location">{useLocation().pathname}</output>
+}
+
 describe('ChasePage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -125,14 +129,76 @@ describe('ChasePage', () => {
 
     // The Sales Administration Executive coordinates every booking to a
     // signed SPA, so their home is the whole queue, not one desk of it.
-    expect(screen.getByText(/2 Stalled Bookings · 0 Tasks Due Today/)).toBeTruthy()
+    expect(screen.getByText(/0 Assigned Tasks · 0 Due Today/)).toBeTruthy()
     expect(screen.getByText('Stalled Bookings')).toBeTruthy()
     expect(screen.getAllByTestId(/chase-card-/)).toHaveLength(2)
+  })
+
+  it('redirects Manager away from the admin Today route', async () => {
+    window.localStorage.setItem(PERSONA_STORAGE_KEY, 'manager')
+    render(
+      <MemoryRouter initialEntries={['/chase']}>
+        <PersonaProvider>
+          <LocationProbe />
+          <ChasePage />
+        </PersonaProvider>
+      </MemoryRouter>
+    )
+
+    await waitFor(() => expect(screen.getByTestId('route-location').textContent).toBe('/manager'))
   })
 
   it('counts the cards it is showing under the headline figure', () => {
     renderPage()
     expect(screen.getAllByTestId(/chase-card-/)).toHaveLength(2)
+  })
+
+  it('suppresses a proposed action when an equivalent task is already open', () => {
+    SNAP = snapshot({
+      bookings: SNAP.bookings,
+      nextActions: [],
+      tasks: [task('BK-9001', { action: 'chase_banker', ownerName: 'Tan Mei Ling', ownerRole: 'loan_admin' })]
+    })
+    CASES = [stalledCase('BK-9001', { applications: [{ id: 'APP-1', bank: 'Crestline', status: 'submitted' }] })]
+    renderPage()
+
+    expect(screen.queryByTestId('chase-card-BK-9001')).toBeNull()
+    expect(screen.getByText('Open Tasks Already Cover These Recommended Actions.')).toBeTruthy()
+  })
+
+  it('keeps the recommendation when the same action is assigned to another recipient', () => {
+    SNAP = snapshot({
+      bookings: SNAP.bookings,
+      nextActions: [],
+      tasks: [task('BK-9001', { action: 'chase_banker', ownerName: 'Someone Else', ownerRole: 'loan_admin' })]
+    })
+    CASES = [stalledCase('BK-9001', { applications: [{ id: 'APP-1', bank: 'Crestline', status: 'submitted' }] })]
+    renderPage()
+
+    expect(screen.getByTestId('chase-card-BK-9001')).toBeTruthy()
+  })
+
+  it('shows only bookings created during the trailing seven calendar days', () => {
+    const bookings = [
+      booking('BK-TODAY', { createdAt: '2026-09-18T20:00:00+08:00', bookingDate: '2026-01-01' }),
+      booking('BK-FIRST-DAY', { createdAt: '2026-09-12T00:00:00+08:00' }),
+      booking('BK-OLD', { createdAt: '2026-09-11T23:59:59+08:00' }),
+      booking('BK-FUTURE', { createdAt: '2026-09-19T00:00:00+08:00' }),
+      booking('BK-UNKNOWN', { createdAt: null, bookingDate: '2026-09-18' })
+    ]
+    SNAP = snapshot({ bookings, nextActions: [] })
+    CASES = []
+    renderPage()
+
+    const recent = screen.getByRole('region', { name: 'Recent bookings' })
+    expect(within(recent).queryByText('BK-TODAY')).toBeNull()
+    fireEvent.click(within(recent).getByRole('button', { name: 'Show Recent Bookings' }))
+    expect(within(recent).getByText('BK-TODAY')).toBeTruthy()
+    expect(within(recent).getByText('BK-FIRST-DAY')).toBeTruthy()
+    expect(within(recent).queryByText('BK-OLD')).toBeNull()
+    expect(within(recent).queryByText('BK-FUTURE')).toBeNull()
+    expect(within(recent).queryByText('BK-UNKNOWN')).toBeNull()
+    expect(within(recent).getByText('(2)')).toBeTruthy()
   })
 
   it('lists a card leading with the rule-based move, with Jev’s differing move beneath it', () => {
@@ -340,21 +406,44 @@ describe('ChasePage', () => {
     })
   })
 
-  describe('Open Tasks', () => {
-    it('opens every owner for Sales Admin, who coordinates the whole chase', () => {
+  describe('Assigned Tasks', () => {
+    it('opens only the exact profile and role, then can widen to every returned task', () => {
       SNAP = snapshot({
         bookings: SNAP.bookings,
         nextActions: [],
-        tasks: [task('BK-9001'), task('BK-0040', { id: 'TASK-2', ownerName: 'Arvind Raj', ownerRole: 'legal' })]
+        tasks: [
+          task('BK-9001', { id: 'TASK-1', ownerName: 'Nurul Aina', ownerRole: 'sales_admin' }),
+          task('BK-9001', {
+            id: 'TASK-1-LEGACY',
+            title: 'Legacy Sales Task',
+            ownerName: 'Nurul Aina',
+            ownerRole: 'sales'
+          }),
+          task('BK-9001', {
+            id: 'TASK-WRONG-ROLE',
+            title: 'Wrong Role Task',
+            ownerName: 'Nurul Aina',
+            ownerRole: 'legal'
+          }),
+          task('BK-9001', {
+            id: 'TASK-WRONG-NAME',
+            title: 'Wrong Name Task',
+            ownerName: 'Farah Izzati',
+            ownerRole: 'sales_admin'
+          }),
+          task('BK-0040', { id: 'TASK-2', ownerName: 'Nurul Aina', ownerRole: 'loan_admin' }),
+          task('BK-0040', { id: 'TASK-3', ownerName: 'Arvind Raj', ownerRole: 'legal' })
+        ]
       })
       renderPage()
 
-      // Nurul Aina, the Sales Admin seat, owns neither of these.
       expect(screen.getByText('Call The Banker About BK-9001')).toBeTruthy()
-      expect(screen.getByText('Call The Banker About BK-0040')).toBeTruthy()
-      // The toggle stays, and narrows to hers.
-      fireEvent.click(screen.getByRole('button', { name: 'Show Mine Only' }))
-      expect(screen.getByText('No Open Tasks For Nurul Aina.')).toBeTruthy()
+      expect(screen.getByText('Legacy Sales Task')).toBeTruthy()
+      expect(screen.queryByText('Wrong Role Task')).toBeNull()
+      expect(screen.queryByText('Wrong Name Task')).toBeNull()
+      expect(screen.queryByText('Call The Banker About BK-0040')).toBeNull()
+      fireEvent.click(screen.getByRole('button', { name: 'Show All Owners' }))
+      expect(screen.getAllByText('Call The Banker About BK-0040')).toHaveLength(2)
     })
 
     it('opens Loan Admin on their own tasks and widens to every owner', () => {
@@ -378,11 +467,11 @@ describe('ChasePage', () => {
       SNAP = snapshot({
         bookings: SNAP.bookings,
         nextActions: [],
-        tasks: [task('BK-9001', { ownerName: 'Nurul Aina', dueOn: '2026-09-18' })]
+        tasks: [task('BK-9001', { ownerName: 'Nurul Aina', ownerRole: 'sales_admin', dueOn: '2026-09-18' })]
       })
       renderPage()
 
-      expect(screen.getByText(/1 Task Due Today/)).toBeTruthy()
+      expect(screen.getByText(/1 Assigned Task · 1 Due Today/)).toBeTruthy()
     })
   })
 
@@ -391,7 +480,7 @@ describe('ChasePage', () => {
       window.localStorage.setItem(PERSONA_STORAGE_KEY, 'loan-admin')
       renderPage()
 
-      expect(screen.getByText('2 Bookings Need A Move From You · 0 Tasks Due Today')).toBeTruthy()
+      expect(screen.getByText(/0 Assigned Tasks · 0 Due Today/)).toBeTruthy()
       expect(screen.getAllByTestId(/chase-card-/)).toHaveLength(2)
     })
 
@@ -400,7 +489,7 @@ describe('ChasePage', () => {
       fireEvent.click(screen.getByRole('combobox', { name: 'Filter by owner' }))
       fireEvent.click(screen.getByRole('option', { name: 'Loan Admin' }))
 
-      expect(screen.getByText(/2 Bookings Need A Move From Loan Admin · 0 Tasks Due Today/)).toBeTruthy()
+      expect(screen.getByText(/0 Assigned Tasks · 0 Due Today/)).toBeTruthy()
       expect(screen.getByText('Need A Move From Loan Admin')).toBeTruthy()
       expect(screen.getAllByTestId(/chase-card-/)).toHaveLength(2)
     })
@@ -410,7 +499,7 @@ describe('ChasePage', () => {
       renderPage()
 
       expect(screen.getByText('Need A Move From You')).toBeTruthy()
-      expect(screen.getByText(/2 Bookings Need A Move From You · 0 Tasks Due Today/)).toBeTruthy()
+      expect(screen.getByText(/0 Assigned Tasks · 0 Due Today/)).toBeTruthy()
     })
 
     it('reads one stalled booking in the singular over all desks', () => {
@@ -418,7 +507,7 @@ describe('ChasePage', () => {
       CASES = [stalledCase('BK-9001', { applications: [{ id: 'A1', bank: 'B', status: 'submitted' }] })]
       renderPage()
 
-      expect(screen.getByText(/1 Stalled Booking · 0 Tasks Due Today/)).toBeTruthy()
+      expect(screen.getByText(/0 Assigned Tasks · 0 Due Today/)).toBeTruthy()
     })
 
     it('says a lone case on a desk in the singular too', () => {
@@ -429,7 +518,7 @@ describe('ChasePage', () => {
 
       // The tile drops the subject and the count, which the figure carries.
       expect(screen.getByText('Needs A Move From You')).toBeTruthy()
-      expect(screen.getByText(/1 Booking Needs A Move From You · 0 Tasks Due Today/)).toBeTruthy()
+      expect(screen.getByText(/0 Assigned Tasks · 0 Due Today/)).toBeTruthy()
     })
   })
 })

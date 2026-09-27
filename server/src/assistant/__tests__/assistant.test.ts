@@ -21,6 +21,7 @@ import type {
 import { PLAYBOOKS } from '@mortar/core'
 import { createApp, type App } from '../../app'
 import { MAX_TOOL_ROUNDS } from '../index'
+import { runTool } from '../tools'
 import { RateLimiter } from '../guardrails'
 import type { JevAnswerRow, StoredMeta } from '../../../db/mappers'
 
@@ -279,6 +280,28 @@ const answerOf = async (res: Response) => ((await res.json()) as { answer: strin
 const errorOf = async (res: Response) => ((await res.json()) as { error?: string }).error
 
 describe('POST /api/assistant', () => {
+  test('Copilot tools hide cases from legal unless an open task names the internal profile', async () => {
+    const db = new FakeDb()
+    const legal = { id: 'legal-admin', name: 'Legal Admin', persona: 'legal-admin' as const }
+    expect(await runTool('get_case', { bookingId: 'BK-9002' }, legal, db as never)).toContain('not in Mortar')
+    db.tasks.push({
+      id: 'TSK-LEGAL-2',
+      bookingId: 'BK-9002',
+      action: 'schedule_spa',
+      title: 'Review signed case follow-up',
+      ownerRole: 'legal',
+      ownerName: 'Legal Admin',
+      dueOn: '2026-09-19',
+      status: 'open',
+      origin: 'staff',
+      createdAt: '2026-09-18T12:00:00+08:00',
+      completedAt: null
+    })
+    expect(await runTool('get_case', { bookingId: 'BK-9002' }, legal, db as never)).toContain('BK-9002')
+    db.tasks[0]!.ownerName = 'Khor & Associates'
+    expect(await runTool('get_case', { bookingId: 'BK-9002' }, legal, db as never)).toContain('not in Mortar')
+  })
+
   test('streams plain-language tool events, filtered citations, and four follow-ups', async () => {
     const gemini = scriptedFetch([
       { call: { name: 'get_case', args: { bookingId: 'BK-9001' } } },

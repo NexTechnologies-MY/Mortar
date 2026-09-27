@@ -21,6 +21,8 @@ create table if not exists bookings (
   demo_seed boolean not null default false
 );
 alter table bookings add column if not exists demo_seed boolean not null default false;
+-- Do not mark legacy bookings as newly created when applying the migration.
+alter table bookings add column if not exists created_at timestamptz;
 
 create table if not exists loan_applications (
   id text primary key,

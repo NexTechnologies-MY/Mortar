@@ -5,10 +5,7 @@ import { PageContainer } from '@/components/layout/PageContainer'
 import { PageHeaderCard } from '@/components/layout/PageHeaderCard'
 import { StatCard } from '@/components/StatCard'
 import { ManagerCases } from '@/components/manager/ManagerCases'
-import { Disclosure } from '@/components/ui/Disclosure'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Button } from '@/components/ui/button'
-import { Link } from 'react-router-dom'
 
 export function ManagerPage() {
   const { snapshot, error, loading } = useSnapshot()
@@ -21,7 +18,7 @@ export function ManagerPage() {
   return (
     <PageContainer>
       <PageHeaderCard tourTarget="manager-header">
-        <h1 className="text-2xl font-semibold">Overview</h1>
+        <h1 className="text-2xl font-semibold">Manager</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           The bookings that need your attention, across every department.
         </p>
@@ -34,40 +31,33 @@ export function ManagerPage() {
         <p className="mt-4">Loading Your Overview…</p>
       ) : (
         <>
-          <div className="my-5 flex flex-wrap gap-3">
-            <StatCard
-              label="Need Your Attention"
-              value={String(suggested.length)}
-              info="Cases at least 50% past their expected wait."
-            />
-            <StatCard
-              label="Expected Signings"
-              value={result ? String(Math.round(result.expectedSignings)) : '0'}
-              info="Expected signed sale agreements within 30 days of booking."
-            />
-            <StatCard
-              label="Manager Tasks Open"
-              value={String(snapshot?.tasks.filter((t) => t.status === 'open' && t.managerFlaggedBy).length ?? 0)}
-              info="Follow-ups flagged by a manager and not yet completed."
-            />
-          </div>
-          <Tabs defaultValue="overview">
+          <Tabs defaultValue="suggestions" className="mt-5">
             <TabsList>
-              <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="suggestions">Suggestions</TabsTrigger>
+              <TabsTrigger value="overview">Overview</TabsTrigger>
             </TabsList>
             <TabsContent value="overview" className="space-y-4">
-              <Disclosure title={`Bookings Needing A Move (${cases.filter((c) => c.stallReasons.length > 0).length})`}>
-                <ManagerCases />
-              </Disclosure>
-              <Disclosure title="Forecast Detail">
-                <p className="text-sm">
-                  Expected range: {result?.rangeLow ?? 0}–{result?.rangeHigh ?? 0} signings.
-                </p>
-                <Button asChild variant="secondary" className="mt-3">
-                  <Link to="/forecast">Open Forecast</Link>
-                </Button>
-              </Disclosure>
+              <div className="my-5 flex flex-wrap gap-3">
+                <StatCard
+                  label="Overdue Cases"
+                  value={String(suggested.length)}
+                  info="Cases at least 50% past their expected wait."
+                />
+                <StatCard
+                  label="Expected Signings"
+                  value={result ? String(Math.round(result.expectedSignings)) : '0'}
+                  info="Expected signed sale agreements within 30 days of booking."
+                />
+                <StatCard
+                  label="Manager Tasks Open"
+                  value={String(snapshot?.tasks.filter((t) => t.status === 'open' && t.managerFlaggedBy).length ?? 0)}
+                  info="Follow-ups flagged by a manager and not yet completed."
+                />
+              </div>
+              <h2 className="text-base font-semibold">
+                Bookings Needing A Move ({cases.filter((c) => c.stallReasons.length > 0).length})
+              </h2>
+              <ManagerCases />
             </TabsContent>
             <TabsContent value="suggestions">
               <ManagerCases suggestionsOnly />

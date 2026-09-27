@@ -55,6 +55,7 @@ export function rowToBooking(row: Row): Booking {
     unit: String(row.unit),
     priceRm: Number(row.price_rm),
     bookingDate: isoDate(row.booking_date),
+    createdAt: row.created_at == null ? null : isoDateTime(row.created_at),
     buyer: jsonb<Booking['buyer']>(row.buyer),
     salesOwner: String(row.sales_owner),
     loanOwner: String(row.loan_owner),

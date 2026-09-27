@@ -21,6 +21,7 @@ import {
   ImportMovedOnError,
   OpenApplicationError,
   UnitHeldError,
+  TaskAssignmentChangedError,
   createDatabase
 } from '../index'
 import { addDemoData, applySchema, deleteDemoData } from '../reset'
@@ -88,12 +89,15 @@ describe.skipIf(!TEST_DATABASE_URL)('database integration', () => {
   })
 
   test('manager flags persist, deduplicate atomically, and remain on the task history', async () => {
+    await sql`insert into bookings (id, project, unit, price_rm, booking_date, buyer, sales_owner, loan_owner, legal_firm)
+      select 'W2TEST-FLAG-CASE', project, 'W2TEST-FLAG-UNIT', price_rm, booking_date, buyer, sales_owner, loan_owner, legal_firm
+      from bookings where id = 'BK-9001'`
     const task: Task = {
       id: 'W2TEST-FLAG-1',
-      bookingId: 'BK-9001',
-      action: 'call_buyer',
+      bookingId: 'W2TEST-FLAG-CASE',
+      action: 'request_document',
       title: 'Manager follow-up',
-      ownerRole: 'sales',
+      ownerRole: 'sales_admin',
       ownerName: 'Nurul Aina',
       dueOn: '2026-09-20',
       status: 'open',
@@ -103,16 +107,24 @@ describe.skipIf(!TEST_DATABASE_URL)('database integration', () => {
       managerFlaggedBy: 'Project Manager'
     }
     try {
-      const first = await db.flagManagerTask(task)
-      const duplicate = await db.flagManagerTask({ ...task, id: 'W2TEST-FLAG-2', title: 'Duplicate flag' })
+      const ordinary = await db.insertTask({ ...task, managerFlaggedBy: null })
+      const [first, duplicate] = await Promise.all([
+        db.flagManagerTask({ ...task, id: 'W2TEST-FLAG-2', title: 'Flag existing ordinary task' }),
+        db.insertTask({ ...task, id: 'W2TEST-FLAG-3', managerFlaggedBy: null })
+      ])
+      expect(first.id).toBe(ordinary.id)
       expect(duplicate.id).toBe(first.id)
       expect(first.managerFlaggedBy).toBe('Project Manager')
       await db.updateTaskStatus(first.id, 'done', '2026-09-18T13:00:00+08:00')
       expect((await db.snapshot()).tasks.find((candidate) => candidate.id === first.id)?.managerFlaggedBy).toBe(
         'Project Manager'
       )
+      const rejected = await db
+        .flagManagerTask({ ...task, ownerRole: 'legal', ownerName: 'Legal Admin' })
+        .catch((e: unknown) => e)
+      expect(rejected).toBeInstanceOf(TaskAssignmentChangedError)
     } finally {
-      await sql`delete from tasks where id like 'W2TEST-FLAG-%'`
+      await sql`delete from bookings where id = 'W2TEST-FLAG-CASE'`
     }
   })
 
@@ -623,6 +635,9 @@ describe.skipIf(!TEST_DATABASE_URL)('database integration', () => {
         .map((id: string) => Number(id.slice(3)))
       const next = Math.max(140, ...numbers) + 1
       const bookings = await db.importBookings(batch('A'), [draft('T-01'), draft('T-02')], booked('A'))
+      expect(bookings[0].createdAt).toBe(batch('A').createdAt)
+      expect((await db.getBooking(bookings[0].id))?.createdAt).toBe(batch('A').createdAt)
+      expect(bookings[0].bookingDate).not.toBe(bookings[0].createdAt?.slice(0, 10))
       expect(bookings.map((b) => b.id)).toEqual([next, next + 1].map((n) => `BK-${String(n).padStart(4, '0')}`))
       const events =
         await sql`select booking_id, kind, status from events where booking_id in ${sql(bookings.map((b) => b.id))}`

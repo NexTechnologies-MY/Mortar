@@ -19,7 +19,7 @@ describe('ManagerPage', () => {
     window.localStorage.setItem('mortar.profile', 'manager')
   })
 
-  it('opens on the all-department overview with counts and folded details', () => {
+  it('opens Suggestions first and keeps Overview cases visible without forecast detail', () => {
     render(
       <MemoryRouter>
         <PersonaProvider>
@@ -28,16 +28,13 @@ describe('ManagerPage', () => {
       </MemoryRouter>
     )
 
-    expect(screen.getByRole('heading', { level: 1, name: 'Overview' })).toBeTruthy()
+    expect(screen.getByRole('heading', { level: 1, name: 'Manager' })).toBeTruthy()
     expect(screen.getByText('The bookings that need your attention, across every department.')).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Suggestions' }).getAttribute('aria-selected')).toBe('true')
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Overview' }), { button: 0, ctrlKey: false })
     expect(screen.getByText('Manager Tasks Open')).toBeTruthy()
-    expect(screen.getByRole('tab', { name: 'Suggestions' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Bookings Needing A Move (0)' })).toBeTruthy()
-    expect(screen.queryByText('No Bookings Need A Move.')).toBeNull()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Bookings Needing A Move (0)' }))
+    expect(screen.getByRole('heading', { name: 'Bookings Needing A Move (0)' })).toBeTruthy()
     expect(screen.getByText('No Bookings Need A Move.')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Forecast Detail' }))
-    expect(screen.getByRole('link', { name: 'Open Forecast' }).getAttribute('href')).toBe('/forecast')
+    expect(screen.queryByText('Forecast Detail')).toBeNull()
   })
 })

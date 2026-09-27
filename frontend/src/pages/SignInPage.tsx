@@ -1,7 +1,7 @@
 /**
  * Sign-in route.
  * A drawn page, not a gate: the fields are disabled and the only working control
- * signs in as a guest under the chosen persona, then lands on that persona's home.
+ * signs in under the chosen demo profile, then lands on that profile's home.
  */
 import { useId, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
@@ -10,26 +10,29 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { PERSONAS, usePersona, type Persona } from '@/lib/persona'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { DEMO_PROFILES, profileFor } from '@mortar/core'
+import { PERSONAS, usePersona } from '@/lib/persona'
 
 export function SignInPage() {
-  const { persona, setPersona } = usePersona()
-  const [chosen, setChosen] = useState<Persona>(persona)
+  const { profile, setProfile } = usePersona()
+  const [chosen, setChosen] = useState(profile.id)
   const navigate = useNavigate()
 
   const emailId = useId()
   const passwordId = useId()
   const keepSignedInId = useId()
-  const personaLabelId = useId()
+  const profileId = useId()
+  const scopeId = useId()
+  const selected = profileFor(chosen) ?? profile
 
   const signInAsGuest = () => {
-    setPersona(chosen)
-    navigate(PERSONAS.find((p) => p.id === chosen)?.home ?? '/')
+    setProfile(selected)
+    navigate(PERSONAS.find((p) => p.id === selected.persona)?.home ?? '/')
   }
 
   return (
-    <main className="grid min-h-dvh bg-background min-[900px]:grid-cols-[minmax(420px,1fr)_1fr]">
+    <main className="grid min-h-dvh grid-cols-1 bg-background min-[900px]:grid-cols-[minmax(420px,1fr)_1fr]">
       <section className="flex flex-col justify-center px-6 pt-12 pb-16 min-[900px]:px-16">
         <div className="mx-auto flex w-full max-w-[520px] flex-col gap-6">
           <Link
@@ -67,25 +70,23 @@ export function SignInPage() {
               Sign In
             </Button>
             <div className="flex flex-col gap-2">
-              <Label id={personaLabelId} className="text-muted-foreground">
-                Signing In As
-              </Label>
-              <RadioGroup
-                aria-labelledby={personaLabelId}
-                value={chosen}
-                onValueChange={(value) => setChosen(value as Persona)}
-                className="grid grid-cols-2 gap-1 rounded-md bg-muted p-1"
-              >
-                {PERSONAS.map((p) => (
-                  <RadioGroupItem
-                    key={p.id}
-                    value={p.id}
-                    className="h-8 flex-1 aspect-auto rounded-sm border-transparent px-3 text-[13px] font-medium text-muted-foreground shadow-none transition-colors duration-[120ms] hover:text-foreground data-[state=checked]:border-border data-[state=checked]:bg-card data-[state=checked]:text-foreground [&_[data-slot=radio-group-indicator]]:hidden"
-                  >
-                    {p.label}
-                  </RadioGroupItem>
-                ))}
-              </RadioGroup>
+              <Label htmlFor={profileId}>Sign In As</Label>
+              <Select value={chosen} onValueChange={setChosen}>
+                <SelectTrigger id={profileId} aria-describedby={scopeId} className="w-full min-w-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  {DEMO_PROFILES.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name} · {PERSONAS.find((role) => role.id === p.persona)?.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p id={scopeId} className="text-xs text-muted-foreground">
+                {selected.persona === 'manager' ? 'Access to all cases.' : 'Access to your assigned cases only.'} Demo
+                profiles use sample data.
+              </p>
             </div>
             <Button type="button" className="w-full" onClick={signInAsGuest}>
               Sign In As Guest

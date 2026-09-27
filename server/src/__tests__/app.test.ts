@@ -277,8 +277,18 @@ class FakeDb implements Database {
     this.events.push(proposal)
     return proposal
   }
-  async insertTask(task: Task) {
+  async insertTask(task: Task): Promise<Task> {
+    const existing = this.tasks.find(
+      (candidate) =>
+        candidate.status === 'open' &&
+        candidate.bookingId === task.bookingId &&
+        candidate.action === task.action &&
+        candidate.ownerRole === task.ownerRole &&
+        candidate.ownerName === task.ownerName
+    )
+    if (existing) return existing
     this.tasks.push(task)
+    return task
   }
   async flagManagerTask(task: Task) {
     const existing = this.tasks.find(
@@ -287,10 +297,12 @@ class FakeDb implements Database {
         candidate.bookingId === task.bookingId &&
         candidate.action === task.action &&
         candidate.ownerRole === task.ownerRole &&
-        candidate.ownerName === task.ownerName &&
-        candidate.managerFlaggedBy
+        candidate.ownerName === task.ownerName
     )
-    if (existing) return existing
+    if (existing) {
+      existing.managerFlaggedBy ??= task.managerFlaggedBy
+      return existing
+    }
     this.tasks.push(task)
     return task
   }
@@ -1525,6 +1537,59 @@ describe('createApp', () => {
   })
 
   describe('POST /api/tasks', () => {
+    test('a legal profile cannot self-grant an unrelated booking, while an assigned open task grants it', async () => {
+      const db = new FakeDb()
+      const loanCase = realCore.STORIES[0]!
+      db.bookings = [loanCase.booking]
+      db.applications = loanCase.applications
+      db.events = loanCase.events
+      db.messages = loanCase.messages
+      const loanApp = makeApp(db)
+      expect(
+        (await call(loanApp, '/api/bookings/BK-9001/next-action', { method: 'POST' }, 'loan-tan-mei-ling'))?.status
+      ).toBe(200)
+      const legalApp = makeApp(db)
+      expect(
+        (await call(legalApp, '/api/bookings/BK-9001/next-action', { method: 'POST' }, 'legal-admin'))?.status
+      ).toBe(404)
+
+      const task: Task = {
+        id: 'TSK-LEGAL-REQUEST',
+        bookingId: 'BK-9001',
+        action: 'request_document',
+        title: 'Review case',
+        ownerRole: 'legal',
+        ownerName: 'Legal Admin',
+        dueOn: '2026-09-19',
+        origin: 'staff',
+        status: 'open',
+        createdAt: '2026-09-18T12:00:00+08:00',
+        completedAt: null
+      }
+      const app = legalApp
+      const refused = await call(app, '/api/tasks', post(task), 'legal-admin')
+      expect(refused?.status).toBe(404)
+      expect(db.tasks).toHaveLength(0)
+
+      db.tasks.push({
+        ...task,
+        id: 'TSK-LEGAL-1',
+        createdAt: '2026-09-18T12:00:00+08:00',
+        completedAt: null
+      })
+      const allowed = await call(app, '/api/snapshot', undefined, 'legal-admin')
+      expect(((await allowed?.json()) as Snapshot).bookings.map((booking) => booking.id)).toEqual(['BK-9001'])
+      expect((await call(app, '/api/bookings/BK-9001/next-action', { method: 'POST' }, 'legal-admin'))?.status).toBe(
+        200
+      )
+      db.tasks[0]!.status = 'done'
+      const revoked = await call(app, '/api/snapshot', undefined, 'legal-admin')
+      expect(((await revoked?.json()) as Snapshot).bookings).toHaveLength(0)
+      expect((await call(app, '/api/bookings/BK-9001/next-action', { method: 'POST' }, 'legal-admin'))?.status).toBe(
+        404
+      )
+    })
+
     const valid = {
       bookingId: 'BK-9001',
       action: 'request_document',
@@ -1550,6 +1615,8 @@ describe('createApp', () => {
       const sales = await call(makeApp(db), '/api/tasks', post({ ...valid, managerFlaggedBy: 'Project Manager' }))
       expect(sales?.status).toBe(403)
       const app = makeApp(db)
+      const ordinary = await call(makeApp(db), '/api/tasks', post(valid))
+      const originalTask = (await ordinary?.json()) as Task
       const request = post({ ...valid, managerFlaggedBy: 'spoofed name' })
       const first = await call(app, '/api/tasks', request, 'manager')
       const second = await call(app, '/api/tasks', request, 'manager')
@@ -1557,7 +1624,20 @@ describe('createApp', () => {
       expect(second?.status).toBe(200)
       expect(((await first?.json()) as Task).managerFlaggedBy).toBe('Project Manager')
       expect(((await second?.json()) as Task).id).toBe(db.tasks[0]?.id)
+      expect(db.tasks[0]?.id).toBe(originalTask.id)
       expect(db.tasks).toHaveLength(1)
+    })
+
+    test('refuses a stale or manually overridden manager recipient before saving a task', async () => {
+      const db = new FakeDb()
+      const response = await call(
+        makeApp(db),
+        '/api/tasks',
+        post({ ...valid, ownerRole: 'legal', ownerName: 'Legal Admin', managerFlaggedBy: 'Project Manager' }),
+        'manager'
+      )
+      expect(response?.status).toBe(409)
+      expect(db.tasks).toHaveLength(0)
     })
 
     test.each([

@@ -14,7 +14,8 @@ export interface WaitingSuggestion {
 /** Uses the same confirmed-event clocks and expected waits as the stall rules. */
 export function managerSuggestions(
   snapshot: Snapshot,
-  assumptions: Assumption[] = DEFAULT_ASSUMPTIONS
+  assumptions: Assumption[] = DEFAULT_ASSUMPTIONS,
+  minimumWaitRatio = 1.5
 ): WaitingSuggestion[] {
   const today = snapshot.meta.referenceDate
   const result: WaitingSuggestion[] = []
@@ -29,7 +30,7 @@ export function managerSuggestions(
     const waits: WaitingSuggestion[] = []
     const add = (reason: string, elapsed: number, key: string, unit: WaitingSuggestion['unit'] = 'days') => {
       const expected = assumptionValue(assumptions, key)
-      if (expected > 0 && elapsed >= expected * 1.5)
+      if (expected > 0 && elapsed >= expected * minimumWaitRatio)
         waits.push({ bookingId: booking.id, reason, elapsed, expected, unit })
     }
     add('No Confirmed Update', facts.daysSinceEvidence, 'staleEvidenceDays')

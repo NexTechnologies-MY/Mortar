@@ -10,7 +10,7 @@
  */
 import type { Database } from '../../db/index'
 import type { StaffProfile } from '@mortar/core'
-import { canAccessBooking } from '@mortar/core'
+import { canAccessBooking, createAssignmentAccessContext, REFERENCE_DATE } from '@mortar/core'
 import { scopeSnapshot } from '@mortar/core'
 import { clientIp, readAssistantRequest, RateLimiter, type AssistantRequest } from './guardrails'
 import { ASSISTANT_TIMEOUT_MS, callGemini, modelErrorResponse, type GeminiContent } from './gemini'
@@ -64,6 +64,12 @@ export type AssistantStreamEvent =
 
 export function createAssistant(options: AssistantOptions) {
   const limiter = new RateLimiter()
+  const canAccess = async (bookingId: string, profile: StaffProfile): Promise<boolean> => {
+    const booking = await options.db.getBooking(bookingId)
+    if (!booking) return false
+    const context = createAssignmentAccessContext(await options.db.caseData(), REFERENCE_DATE)
+    return canAccessBooking(booking, profile, context)
+  }
 
   /** One round trip: the model, its tool calls, the results, and the answer. */
   async function ask(
@@ -168,8 +174,7 @@ export function createAssistant(options: AssistantOptions) {
     const parsed = readAssistantRequest(posted ? { ...posted, persona: profile.persona } : null)
     if (parsed instanceof Response) return parsed
     if (parsed.bookingId) {
-      const booking = await options.db.getBooking(parsed.bookingId)
-      if (!booking || !canAccessBooking(booking, profile)) return json({ error: 'booking not found' }, 404)
+      if (!(await canAccess(parsed.bookingId, profile))) return json({ error: 'booking not found' }, 404)
     }
     if (!options.apiKey) return json({ fallback: true }, 503)
     const limited = limiter.check(clientIp(req))
@@ -192,8 +197,7 @@ export function createAssistant(options: AssistantOptions) {
     const parsed = readAssistantRequest(posted ? { ...posted, persona: profile.persona } : null)
     if (parsed instanceof Response) return parsed
     if (parsed.bookingId) {
-      const booking = await options.db.getBooking(parsed.bookingId)
-      if (!booking || !canAccessBooking(booking, profile)) return json({ error: 'booking not found' }, 404)
+      if (!(await canAccess(parsed.bookingId, profile))) return json({ error: 'booking not found' }, 404)
     }
     if (!options.apiKey) return json({ fallback: true }, 503)
     const limited = limiter.check(clientIp(req))

@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import {
   canAccessBooking,
+  createAssignmentAccessContext,
   DEFAULT_PROJECT_SETTINGS,
   DEMO_PROFILES,
   normalizeProjectSettings,
@@ -45,14 +46,98 @@ describe('staff profiles and snapshot scope', () => {
     expect(profileFor('manager')?.persona).toBe('manager')
   })
 
-  test('restricts sales to assigned ownership while manager and department profiles see their work', () => {
+  test('restricts sales to assigned ownership while manager sees all bookings', () => {
     const sales = profileFor('sales-nurul-aina')!
     const manager = profileFor('manager')!
     expect(canAccessBooking(booking, sales)).toBe(true)
     expect(canAccessBooking(other, sales)).toBe(false)
     expect(scopeSnapshot(snapshot, sales).bookings.map((row) => row.id)).toEqual([booking.id])
     expect(scopeSnapshot(snapshot, manager).bookings).toHaveLength(2)
-    expect(scopeSnapshot(snapshot, profileFor('legal-admin')!).bookings).toHaveLength(2)
+    expect(scopeSnapshot(snapshot, profileFor('legal-admin')!).bookings).toHaveLength(0)
+  })
+
+  test('uses current confirmed responsibility, exact internal ownership and open task assignment', () => {
+    const story = STORIES[0]!
+    const legalStory = STORIES.find((candidate) => candidate.booking.id === 'BK-9006')!
+    const data = {
+      bookings: [story.booking, legalStory.booking],
+      applications: [...story.applications, ...legalStory.applications],
+      events: [...story.events, ...legalStory.events],
+      tasks: [] as NonNullable<Snapshot['tasks']>
+    }
+    const context = createAssignmentAccessContext(data, '2026-09-18')
+    const loan = profileFor('loan-tan-mei-ling')!
+    const legal = profileFor('legal-admin')!
+    expect(canAccessBooking(story.booking, loan, context)).toBe(true)
+    expect(canAccessBooking(story.booking, { ...loan, id: 'loan-other', name: 'Other Loan Admin' }, context)).toBe(
+      false
+    )
+    expect(canAccessBooking(story.booking, legal, context)).toBe(false)
+    expect(canAccessBooking(legalStory.booking, legal, context)).toBe(true)
+    expect(
+      canAccessBooking(legalStory.booking, { ...legal, id: 'legal-other', name: 'Other Legal Admin' }, context)
+    ).toBe(false)
+
+    const handedOff = createAssignmentAccessContext(
+      {
+        ...data,
+        events: [
+          ...story.events,
+          {
+            ...story.events.find((event) => event.kind === 'loan_submitted')!,
+            id: 'EV-HANDOFF',
+            kind: 'loan_approved',
+            track: 'loan',
+            occurredAt: '2026-09-17T12:00:00+08:00',
+            recordedAt: '2026-09-17T12:00:00+08:00'
+          },
+          ...legalStory.events
+        ],
+        tasks: []
+      },
+      '2026-09-18'
+    )
+    expect(canAccessBooking(story.booking, loan, handedOff)).toBe(false)
+    expect(canAccessBooking(story.booking, legal, handedOff)).toBe(true)
+
+    const provisional = createAssignmentAccessContext(
+      {
+        ...data,
+        events: [
+          ...story.events,
+          { ...story.events[0]!, id: 'EV-PENDING', kind: 'loan_approved', status: 'provisional' }
+        ]
+      },
+      '2026-09-18'
+    )
+    expect(canAccessBooking(story.booking, loan, provisional)).toBe(true)
+    expect(canAccessBooking(story.booking, legal, provisional)).toBe(false)
+
+    const taskContext = {
+      ...context,
+      tasks: [
+        {
+          id: 'TSK-1',
+          bookingId: legalStory.booking.id,
+          ownerRole: 'legal' as const,
+          ownerName: legal.name,
+          status: 'open' as const
+        },
+        {
+          id: 'TSK-2',
+          bookingId: legalStory.booking.id,
+          ownerRole: 'legal' as const,
+          ownerName: legal.name,
+          status: 'done' as const
+        }
+      ] as Snapshot['tasks']
+    }
+    expect(canAccessBooking(legalStory.booking, legal, taskContext)).toBe(true)
+    expect(
+      canAccessBooking(legalStory.booking, { ...legal, name: 'Different Name' }, { ...taskContext, summaries: [] })
+    ).toBe(false)
+    expect(canAccessBooking(legalStory.booking, legal, { ...taskContext, summaries: [] })).toBe(true)
+    expect(canAccessBooking(legalStory.booking, legal)).toBe(false)
   })
 
   test('filters every booking-linked collection through the same allowed booking set', () => {

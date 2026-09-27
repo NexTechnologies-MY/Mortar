@@ -32,9 +32,9 @@ export function AppLayout({ children, minimalNav }: AppLayoutProps) {
         persona === 'sales-admin'
           ? task.ownerName === profile?.name && (task.ownerRole === 'sales_admin' || task.ownerRole === 'sales')
           : persona === 'loan-admin'
-            ? task.ownerRole === 'loan_admin'
+            ? task.ownerRole === 'loan_admin' && task.ownerName === profile.name
             : persona === 'legal-admin'
-              ? task.ownerRole === 'legal'
+              ? task.ownerRole === 'legal' && task.ownerName === profile.name
               : false
       if (relevant && task.status === 'open' && task.managerFlaggedBy) notificationStore.managerTask(task)
     }

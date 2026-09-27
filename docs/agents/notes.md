@@ -113,21 +113,28 @@ pointing at a disposable database. Recording requires an explicit disposable
 - **Named Profiles Define Data Access.** The synthetic demo offers named sales
   staff, shared loan/legal desks, and Manager. A server session determines
   access: sales gets only its owned bookings and linked records; departmental
-  desks cover their queues; Manager covers every department. Direct case APIs,
-  writes, Copilot tools, forecasts and scripted fallback use the same boundary.
-  The profile id header must match the session, preventing a second browser
-  tab's role switch from widening the first tab's response. The public demo
-  selector is not production credential authentication.
+  desks see current assignments or exact-name/role open tasks, with no
+  historical entitlement after assignment ends; Manager covers every department.
+  Direct case APIs, writes, Copilot tools, forecasts and scripted fallback use
+  the same boundary. The profile id header must match the session, preventing a
+  second browser tab's role switch from widening the first tab's response. The
+  public demo selector is not production credential authentication.
 - **Profile Switches Clear The Workspace.** `ProfileWorkspace` keys the snapshot
   provider and routed app by profile id. Copilot cancels pending streams on
   unmount and its panel is also keyed by profile. Notifications have a separate
   browser storage namespace per profile.
-- **Manager Workflows.** `/manager` shows concise counts, collapsed booking
-  detail and Suggestions. The same suggestions appear in Forecast. They use
+- **Manager Workflows.** `/manager` opens Suggestions before Overview, with the
+  case list visible and supporting detail folded inside each case. Overview has
+  no Forecast Detail. The same suggestions appear in Forecast. They use
   confirmed-event clocks and the existing stall-wait assumptions, triggering at
   or beyond 150% of expected duration (50% overdue), with working days for bank
   decisions. Flagged department tasks persist and appear in the recipient's
-  notification bell, refreshed every 30 seconds while visible.
+  notification bell, refreshed every 30 seconds while visible. The server
+  resolves recipients using `currentCaseAssignee` and revalidates before
+  sending; manager flags reuse equivalent ordinary open tasks. `/chase`
+  redirects managers to `/manager`. Admin Today leads with assigned tasks, then
+  recommendations and folded recent bookings using `Booking.createdAt`, never
+  `bookingDate`.
 - **Shared Settings And Inventory.** Project settings live on the server and
   only Manager can change them. `blocks` supports multiple blocks while old
   `blockPrefix` records remain readable. The inventory API exposes held

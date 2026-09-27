@@ -52,7 +52,7 @@ export type PersonaPage = {
 }
 
 export const PERSONA_PAGES: readonly PersonaPage[] = [
-  { to: '/manager', label: 'Overview', group: 'primary', personas: ['manager'], home: 'manager' },
+  { to: '/manager', label: 'Manager', group: 'primary', personas: ['manager'], home: 'manager' },
   {
     to: '/chase',
     label: 'Today',

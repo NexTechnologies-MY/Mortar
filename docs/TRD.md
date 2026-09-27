@@ -805,7 +805,8 @@ architected for future corporate data onboarding:
   outputs advisory: human officers must explicitly verify all status transitions
   and legal filings.
 - **Data Minimization:** Sales profiles receive only their own bookings and
-  linked records. Shared loan/legal desks receive departmental case data;
+  linked records. Loan/legal access requires current confirmed responsibility
+  matched to the internal profile, or an exact-role/name open task assignment;
   Manager has cross-department access. Server sessions authorize direct reads,
   writes and Copilot tool calls. The public synthetic profile selector remains a
   demo capability, not production identity verification.
@@ -823,6 +824,24 @@ manager-only. `GET /api/inventory` exposes held project/unit pairs without buyer
 names or booking identifiers. Existing import transaction locks continue to
 reject duplicate occupied units atomically. Manager flags are stored on tasks;
 the recipient's desk derives notifications from those persisted tasks.
+
+`currentCaseAssignee` resolves bank/buyer-document responsibility to the named
+loan owner, solicitor responsibility to the internal legal desk, and general
+developer responsibility to the sales owner. `scopeSnapshot` and direct routes
+derive permission from confirmed case data, not AI suggestions or law-firm
+names. An old assignment alone does not retain access after handoff/task
+completion.
+
+Manager task creation rechecks action and recipient on the server and under a
+booking row lock before persistence. Task writes share a natural-key advisory
+lock, reuse equivalent open tasks, and preserve manager flags on completion.
+Reviewing an event takes the same booking lock before changing confirmed status.
+
+`bookings.created_at` stores entry/import time. Migration leaves legacy unknown
+values null; new imports use the server's batch creation timestamp. Demo
+fixtures use their original recorded booking event. Demo-data rehoming preserves
+this timestamp. Today uses the last seven calendar dates of the snapshot's
+clock.
 
 ### Data Retention
 

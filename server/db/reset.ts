@@ -88,6 +88,8 @@ export async function addDemoData(sql: SQL): Promise<SimulationMeta> {
         unit: b.unit,
         price_rm: b.priceRm,
         booking_date: b.bookingDate,
+        // Synthetic creation times follow the fixture's original recorded booking event.
+        created_at: events.find((e) => e.bookingId === b.id && e.kind === 'booked')?.recordedAt ?? null,
         buyer: b.buyer,
         sales_owner: b.salesOwner,
         loan_owner: b.loanOwner,
@@ -242,8 +244,8 @@ export async function deleteDemoData(sql: SQL): Promise<void> {
     if (rehomes.length) {
       await tx`create temporary table demo_booking_rehomes (old_id text primary key, new_id text not null) on commit drop`
       await tx`insert into demo_booking_rehomes ${tx(rehomes)}`
-      await tx`insert into bookings (id, project, unit, price_rm, booking_date, buyer, sales_owner, loan_owner, legal_firm, demo_seed)
-        select r.new_id, b.project, b.unit, b.price_rm, b.booking_date, b.buyer, b.sales_owner, b.loan_owner, b.legal_firm, false
+      await tx`insert into bookings (id, project, unit, price_rm, booking_date, created_at, buyer, sales_owner, loan_owner, legal_firm, demo_seed)
+        select r.new_id, b.project, b.unit, b.price_rm, b.booking_date, b.created_at, b.buyer, b.sales_owner, b.loan_owner, b.legal_firm, false
         from demo_booking_rehomes r join bookings b on b.id = r.old_id`
       for (const app of visitorApps) {
         const rehome = rehomes.find((row: { old_id: string; new_id: string }) => row.old_id === app.booking_id)

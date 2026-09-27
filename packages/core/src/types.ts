@@ -60,6 +60,8 @@ export interface Booking {
   unit: string
   priceRm: number
   bookingDate: IsoDate
+  /** When entered into Mortar; absent for legacy records whose creation time is unknown. */
+  createdAt?: IsoDateTime | null
   buyer: Buyer
   salesOwner: string
   loanOwner: string

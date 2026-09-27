@@ -17,6 +17,9 @@ import {
   DEMO_PROFILES,
   profileFor,
   scopeSnapshot,
+  createAssignmentAccessContext,
+  currentCaseAssignee,
+  ballInCourt,
   canAccessBooking,
   normalizeProjectSettings,
   DEFAULT_PROJECT_SETTINGS
@@ -49,6 +52,7 @@ import {
   ImportMovedOnError,
   OpenApplicationError,
   UnitHeldError,
+  TaskAssignmentChangedError,
   type Database
 } from '../db/index'
 import { isoDateTime, withMaskedContact } from '../db/mappers'
@@ -381,6 +385,9 @@ export function createApp(options: AppOptions): App {
     return summaries.find((s) => s.bookingId === bookingId) ?? null
   }
 
+  const canAccess = async (booking: Booking, profile: StaffProfile): Promise<boolean> =>
+    canAccessBooking(booking, profile, createAssignmentAccessContext(await db.caseData(), REFERENCE_DATE))
+
   /**
    * Turns a Jev extraction into a provisional event, or `null` for `no_update`
    * and on a closed booking, which takes no more updates.
@@ -479,7 +486,7 @@ export function createApp(options: AppOptions): App {
           return error(400, 'sentAt must be a date-time with an offset, e.g. 2026-09-17T21:05:00+08:00')
         const booking = await db.getBooking(b.bookingId)
         if (!booking) return error(404, `booking ${b.bookingId} not found`)
-        if (!canAccessBooking(booking, profile)) return error(404, `booking ${b.bookingId} not found`)
+        if (!(await canAccess(booking, profile))) return error(404, `booking ${b.bookingId} not found`)
         // When the message was sent, not when it was pasted in: Jev reads reply
         // speed from the gaps between messages. Stored in +08:00 like the rest.
         const now = simNow(REFERENCE_DATE)
@@ -562,7 +569,7 @@ export function createApp(options: AppOptions): App {
         if (reportedByTooLong) return reportedByTooLong
         const booking = await db.getBooking(b.bookingId)
         if (!booking) return error(404, `booking ${b.bookingId} not found`)
-        if (!canAccessBooking(booking, profile)) return error(404, `booking ${b.bookingId} not found`)
+        if (!(await canAccess(booking, profile))) return error(404, `booking ${b.bookingId} not found`)
         const applicationId = (b.applicationId as string | undefined) ?? null
         if (applicationId !== null) {
           const application = await db.getApplication(applicationId)
@@ -631,7 +638,7 @@ export function createApp(options: AppOptions): App {
         if (reportedByTooLong) return reportedByTooLong
         const booking = await db.getBooking(b.bookingId)
         if (!booking) return error(404, `booking ${b.bookingId} not found`)
-        if (!canAccessBooking(booking, profile)) return error(404, `booking ${b.bookingId} not found`)
+        if (!(await canAccess(booking, profile))) return error(404, `booking ${b.bookingId} not found`)
         const occurredOn = (b.occurredOn as IsoDate | undefined) ?? null
         const problem = occurredOn === null ? null : occurredOnProblem(occurredOn, booking)
         if (problem) return error(400, problem)
@@ -692,7 +699,7 @@ export function createApp(options: AppOptions): App {
         const current = await db.getEvent(params.id)
         if (!current) return error(404, `event ${params.id} not found`)
         const booking = await db.getBooking(current.bookingId)
-        if (!booking || !canAccessBooking(booking, profile)) return error(404, `event ${params.id} not found`)
+        if (!booking || !(await canAccess(booking, profile))) return error(404, `event ${params.id} not found`)
         if (status === 'confirmed' && isPendingProposal(current)) {
           // Confirming writes the proposal into the case, so the case rules apply
           // as they do to an update recorded by hand.
@@ -718,7 +725,7 @@ export function createApp(options: AppOptions): App {
       '/api/bookings/:id/next-action',
       async ({ params, profile }) => {
         const booking = await db.getBooking(params.id)
-        if (!booking || !canAccessBooking(booking, profile)) return error(404, `booking ${params.id} not found`)
+        if (!booking || !(await canAccess(booking, profile))) return error(404, `booking ${params.id} not found`)
         const summary = await summaryFor(params.id)
         if (!summary) return error(500, `no case summary for ${params.id}`)
         const recentMessages = (await db.messagesForBooking(params.id)).slice(-3)
@@ -733,7 +740,7 @@ export function createApp(options: AppOptions): App {
         const rawQueryTooLong = tooLong('q', rawQuery, MAX_PLAYBOOK_QUERY)
         if (rawQueryTooLong) return rawQueryTooLong
         const booking = await db.getBooking(params.id)
-        if (!booking || !canAccessBooking(booking, profile)) return error(404, `booking ${params.id} not found`)
+        if (!booking || !(await canAccess(booking, profile))) return error(404, `booking ${params.id} not found`)
         const summary = await summaryFor(params.id)
         if (!summary) return error(500, `no case summary for ${params.id}`)
         const query = rawQuery || defaultPlaybookQuery(summary)
@@ -746,7 +753,7 @@ export function createApp(options: AppOptions): App {
       '/api/bookings/:id/signals',
       async ({ params, profile }) => {
         const booking = await db.getBooking(params.id)
-        if (!booking || !canAccessBooking(booking, profile)) return error(404, `booking ${params.id} not found`)
+        if (!booking || !(await canAccess(booking, profile))) return error(404, `booking ${params.id} not found`)
         const messages = await db.messagesForBooking(params.id)
         // Signals read the buyer's messages only; an empty history is not a
         // Jev job, so the route 404s instead of scoring silence as unresponsive.
@@ -766,7 +773,7 @@ export function createApp(options: AppOptions): App {
         const reportedByTooLong = tooLong('reportedBy', b.reportedBy, MAX_NAME)
         if (reportedByTooLong) return reportedByTooLong
         const booking = await db.getBooking(params.id)
-        if (!booking || !canAccessBooking(booking, profile)) return error(404, `booking ${params.id} not found`)
+        if (!booking || !(await canAccess(booking, profile))) return error(404, `booking ${params.id} not found`)
         try {
           const removed = await db.deleteBooking(params.id, profile.name, simNow(REFERENCE_DATE))
           if (!removed) return error(404, `booking ${params.id} not found`)
@@ -885,15 +892,37 @@ export function createApp(options: AppOptions): App {
         if (b.managerFlaggedBy && profile.persona !== 'manager')
           return error(403, 'manager profile required to flag a task')
         const booking = await db.getBooking(b.bookingId)
-        if (!booking || !canAccessBooking(booking, profile)) return error(404, `booking ${b.bookingId} not found`)
+        if (!booking || !(await canAccess(booking, profile))) return error(404, `booking ${b.bookingId} not found`)
         const managerFlaggedBy = b.managerFlaggedBy ? (profile.persona === 'manager' ? profile.name : null) : null
+        let ownerRole = b.ownerRole
+        let ownerName = b.ownerName.trim()
+        if (managerFlaggedBy) {
+          const summary = await summaryFor(booking.id)
+          const recipient = summary ? currentCaseAssignee(booking, summary) : null
+          const expectedRole =
+            recipient?.persona === 'legal-admin'
+              ? 'legal'
+              : recipient?.persona === 'loan-admin'
+                ? 'loan_admin'
+                : 'sales_admin'
+          if (
+            !recipient ||
+            !summary ||
+            b.action !== ballInCourt(summary).nextMove ||
+            ownerName !== recipient.name ||
+            (ownerRole === 'sales' ? 'sales_admin' : ownerRole) !== expectedRole
+          )
+            return error(409, 'Case responsibility changed. Refresh the case before sending this follow-up.')
+          ownerRole = expectedRole
+          ownerName = recipient.name
+        }
         const task: Task = {
           id: newId('TSK'),
           bookingId: b.bookingId,
           action: b.action,
           title: b.title.trim(),
-          ownerRole: b.ownerRole,
-          ownerName: b.ownerName.trim(),
+          ownerRole,
+          ownerName,
           dueOn: b.dueOn,
           status: 'open',
           origin: b.origin,
@@ -901,9 +930,12 @@ export function createApp(options: AppOptions): App {
           completedAt: null,
           managerFlaggedBy
         }
-        if (managerFlaggedBy) return json(await db.flagManagerTask(task))
-        await db.insertTask(task)
-        return json(task)
+        try {
+          return json(managerFlaggedBy ? await db.flagManagerTask(task) : await db.insertTask(task))
+        } catch (e) {
+          if (e instanceof TaskAssignmentChangedError) return error(409, e.message)
+          throw e
+        }
       }
     ],
     [
@@ -912,7 +944,7 @@ export function createApp(options: AppOptions): App {
       async ({ req, params, profile }) => {
         const current = (await db.snapshot()).tasks.find((candidate) => candidate.id === params.id)
         const booking = current ? await db.getBooking(current.bookingId) : null
-        if (!current || !booking || !canAccessBooking(booking, profile))
+        if (!current || !booking || !(await canAccess(booking, profile)))
           return error(404, `task ${params.id} not found`)
         const b = await body(req)
         if (!b) return error(400, 'expected a JSON object body')
@@ -976,7 +1008,7 @@ export function createApp(options: AppOptions): App {
           if (pattern === '/api/messages/:id/extract') {
             const message = await db.getMessage(params.id)
             const booking = message ? await db.getBooking(message.bookingId) : null
-            if (!booking || !canAccessBooking(booking, profile)) return error(404, 'message not found')
+            if (!booking || !(await canAccess(booking, profile))) return error(404, 'message not found')
           }
           return await handler({ req, url, params, profile })
         } catch (e) {

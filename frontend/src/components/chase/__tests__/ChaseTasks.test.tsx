@@ -56,4 +56,24 @@ describe('ChaseTasks', () => {
     expect(onComplete).toHaveBeenCalledWith(t)
     expect(screen.queryByTestId('location')).toBeNull()
   })
+
+  it('puts manager flagged follow-ups before tasks ordered only by due date', () => {
+    renderTasks(
+      [
+        task({ id: 'TASK-URGENT', title: 'Unflagged Urgent Task', dueOn: '2026-09-18' }),
+        task({
+          id: 'TASK-FLAGGED',
+          title: 'Manager Flagged Task',
+          dueOn: '2026-09-22',
+          managerFlaggedBy: 'Project Manager'
+        })
+      ],
+      vi.fn()
+    )
+
+    const rows = screen.getAllByRole('listitem')
+    expect(rows[0]?.textContent).toContain('Manager Flagged Task')
+    expect(rows[0]?.textContent).toContain('Manager Follow-up')
+    expect(rows[1]?.textContent).toContain('Unflagged Urgent Task')
+  })
 })
