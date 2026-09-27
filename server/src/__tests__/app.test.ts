@@ -158,6 +158,10 @@ const OTHER_APPLICATION: LoanApplication = {
 
 class FakeDb implements Database {
   projectSettings: realCore.ProjectSettings | null = null
+  snapshotsForgotten = 0
+  forgetSnapshot() {
+    this.snapshotsForgotten += 1
+  }
   bookings = [BOOKING]
   applications: LoanApplication[] = [APPLICATION]
   messages = [FIXTURE_MESSAGE]
@@ -1964,6 +1968,14 @@ describe('createApp', () => {
   })
 
   describe('demo data routes', () => {
+    test('Add and Delete Demo Data drop the cached snapshot, since they write outside the database methods', async () => {
+      const db = new FakeDb()
+      const app = makeApp(db)
+      expect((await call(app, '/api/admin/demo/add', post(), 'manager'))?.status).toBe(200)
+      expect(db.snapshotsForgotten).toBe(1)
+      expect((await call(app, '/api/admin/demo/delete', post(), 'manager'))?.status).toBe(200)
+      expect(db.snapshotsForgotten).toBe(2)
+    })
     test('a sales session cannot add or delete shared demo data', async () => {
       const app = makeApp()
       expect((await call(app, '/api/admin/demo/add', post()))?.status).toBe(403)

@@ -5,6 +5,7 @@
  * `mappers.ts` — handlers never see snake_case.
  */
 import { SQL } from 'bun'
+import { cacheSnapshot, forgetOnWrite } from './snapshot-cache'
 import {
   REFERENCE_DATE,
   summarizeCases,
@@ -50,6 +51,11 @@ import {
 export interface Database {
   /** `select 1`; throws when the connection is down. */
   ping(): Promise<void>
+  /**
+   * Drops the cached snapshot. The methods below that write do it themselves;
+   * a caller that writes with its own SQL (Add and Delete Demo Data) calls this.
+   */
+  forgetSnapshot(): void
   /** Simulation parameters, or `null` while the `seed` row is absent (pre-reset). */
   meta(): Promise<StoredMeta | null>
   getProjectSettings(): Promise<ProjectSettings | null>
@@ -249,6 +255,36 @@ function cached<T extends { meta?: JevMeta }>(answer: unknown, stale: boolean): 
   return { ...parsed, meta: { source: 'cache', stale, latencyMs: parsed.meta?.latencyMs ?? null } }
 }
 
+/**
+ * How long a cached snapshot may be served without a write through these
+ * methods. Only a write made elsewhere (another server on the same database)
+ * waits this long to show.
+ */
+export const SNAPSHOT_TTL_MS = 10_000
+
+/** Methods that only read; every other method forgets the cached snapshot once it settles. */
+const SNAPSHOT_READS: ReadonlySet<keyof Database> = new Set<keyof Database>([
+  'ping',
+  'forgetSnapshot',
+  'meta',
+  'caseData',
+  'getProjectSettings',
+  'sessionSecret',
+  'hasBookings',
+  'jevAnswerCount',
+  'snapshot',
+  'getBooking',
+  'getApplication',
+  'getMessage',
+  'getEvent',
+  'messagesForBooking',
+  'eventsForMessage',
+  'eventsForBooking',
+  'listPlaybooks',
+  'canUndoImport',
+  'jevGet'
+])
+
 export function createDatabase(sql: SQL): Database {
   const meta = async () => rowsToMeta(await sql`select key, value from meta`)
 
@@ -277,7 +313,67 @@ export function createDatabase(sql: SQL): Database {
     return rows.map(rowToJevAnswer)
   }
 
-  return {
+  const assembleSnapshot = async (): Promise<Snapshot> => {
+    const [metaRow, data, messageRows, playbooks, answers] = await Promise.all([
+      meta(),
+      caseData(),
+      sql`select * from messages order by sent_at, id`,
+      sql`select * from playbooks order by id`,
+      latestJevAnswers()
+    ])
+    const messages = messageRows.map(rowToMessage)
+
+    // One summarizeCases pass for the whole snapshot, then compare each
+    // next_action/signals answer's stored hash against the hash of the
+    // subject's current state — the same job state builders and question
+    // version the live jobs.ts path hashes, so a match here means the cached
+    // answer is still what Jev would say today. extract is keyed by an
+    // immutable message, so a cached extraction can never go stale.
+    const summaries = new Map<string, CaseSummary>(summarizeCases(data, REFERENCE_DATE).map((s) => [s.bookingId, s]))
+    const messagesByBooking = new Map<string, Message[]>()
+    for (const message of messages) {
+      const forBooking = messagesByBooking.get(message.bookingId)
+      if (forBooking) forBooking.push(message)
+      else messagesByBooking.set(message.bookingId, [message])
+    }
+
+    const extractions: Snapshot['extractions'] = []
+    const signals: Snapshot['signals'] = []
+    const nextActions: Snapshot['nextActions'] = []
+    for (const row of answers) {
+      if (row.kind === 'extract') {
+        extractions.push(cached(row.answer, false))
+      } else if (row.kind === 'next_action') {
+        const summary = summaries.get(row.subjectId)
+        const recentMessages = messagesByBooking.get(row.subjectId) ?? []
+        const currentHash = summary
+          ? jevInputHash('next_action', nextActionJob({ summary, recentMessages }).state, QUESTION_VERSION.next_action)
+          : null
+        nextActions.push(cached(row.answer, currentHash !== row.inputHash))
+      } else if (row.kind === 'signals') {
+        const bookingMessages = messagesByBooking.get(row.subjectId) ?? []
+        const currentHash = jevInputHash(
+          'signals',
+          signalsJob({ bookingId: row.subjectId, messages: bookingMessages }).state,
+          QUESTION_VERSION.signals
+        )
+        signals.push(cached(row.answer, currentHash !== row.inputHash))
+      }
+    }
+    return {
+      ...data,
+      bookings: data.bookings.map(withMaskedContact),
+      meta: metaRow ?? { seed: 0, referenceDate: REFERENCE_DATE, resetAt: null },
+      messages,
+      playbooks: playbooks.map(rowToPlaybook),
+      extractions,
+      signals,
+      nextActions
+    }
+  }
+  const snapshots = cacheSnapshot(assembleSnapshot, SNAPSHOT_TTL_MS)
+
+  const database: Database = {
     async ping() {
       await sql`select 1`
     },
@@ -310,68 +406,8 @@ export function createDatabase(sql: SQL): Database {
       return (rows[0]?.n as number | undefined) ?? 0
     },
 
-    async snapshot() {
-      const [metaRow, data, messageRows, playbooks, answers] = await Promise.all([
-        meta(),
-        caseData(),
-        sql`select * from messages order by sent_at, id`,
-        sql`select * from playbooks order by id`,
-        latestJevAnswers()
-      ])
-      const messages = messageRows.map(rowToMessage)
-
-      // One summarizeCases pass for the whole snapshot, then compare each
-      // next_action/signals answer's stored hash against the hash of the
-      // subject's current state — the same job state builders and question
-      // version the live jobs.ts path hashes, so a match here means the cached
-      // answer is still what Jev would say today. extract is keyed by an
-      // immutable message, so a cached extraction can never go stale.
-      const summaries = new Map<string, CaseSummary>(summarizeCases(data, REFERENCE_DATE).map((s) => [s.bookingId, s]))
-      const messagesByBooking = new Map<string, Message[]>()
-      for (const message of messages) {
-        const forBooking = messagesByBooking.get(message.bookingId)
-        if (forBooking) forBooking.push(message)
-        else messagesByBooking.set(message.bookingId, [message])
-      }
-
-      const extractions: Snapshot['extractions'] = []
-      const signals: Snapshot['signals'] = []
-      const nextActions: Snapshot['nextActions'] = []
-      for (const row of answers) {
-        if (row.kind === 'extract') {
-          extractions.push(cached(row.answer, false))
-        } else if (row.kind === 'next_action') {
-          const summary = summaries.get(row.subjectId)
-          const recentMessages = messagesByBooking.get(row.subjectId) ?? []
-          const currentHash = summary
-            ? jevInputHash(
-                'next_action',
-                nextActionJob({ summary, recentMessages }).state,
-                QUESTION_VERSION.next_action
-              )
-            : null
-          nextActions.push(cached(row.answer, currentHash !== row.inputHash))
-        } else if (row.kind === 'signals') {
-          const bookingMessages = messagesByBooking.get(row.subjectId) ?? []
-          const currentHash = jevInputHash(
-            'signals',
-            signalsJob({ bookingId: row.subjectId, messages: bookingMessages }).state,
-            QUESTION_VERSION.signals
-          )
-          signals.push(cached(row.answer, currentHash !== row.inputHash))
-        }
-      }
-      return {
-        ...data,
-        bookings: data.bookings.map(withMaskedContact),
-        meta: metaRow ?? { seed: 0, referenceDate: REFERENCE_DATE, resetAt: null },
-        messages,
-        playbooks: playbooks.map(rowToPlaybook),
-        extractions,
-        signals,
-        nextActions
-      }
-    },
+    snapshot: () => snapshots.get(),
+    forgetSnapshot: () => snapshots.forget(),
 
     async getBooking(id) {
       const rows = await sql`select * from bookings where id = ${id}`
@@ -746,4 +782,5 @@ export function createDatabase(sql: SQL): Database {
       })}`
     }
   }
+  return forgetOnWrite(database, SNAPSHOT_READS, snapshots.forget)
 }

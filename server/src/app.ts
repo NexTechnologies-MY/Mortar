@@ -42,6 +42,7 @@ import type {
   OwnerRole,
   SenderRole,
   SimulationMeta,
+  Snapshot,
   Task,
   Track,
   StaffProfile
@@ -56,6 +57,7 @@ import {
   type Database
 } from '../db/index'
 import { isoDateTime, withMaskedContact } from '../db/mappers'
+import { cacheBodies } from '../db/snapshot-cache'
 import { createAssistant } from './assistant/index'
 import {
   body,
@@ -311,6 +313,7 @@ export function createApp(options: AppOptions): App {
   const assistant = options.assistant
     ? createAssistant({ db, ...options.assistant })
     : createAssistant({ db, apiKey: null })
+  const snapshotBodies = cacheBodies<Snapshot>()
   const cookieName = 'mortar_session'
   const cookieOptions = (secure: boolean) => `Path=/; HttpOnly; SameSite=Lax; Max-Age=43200${secure ? '; Secure' : ''}`
   // Render terminates TLS before the container, so the request the app sees
@@ -971,7 +974,12 @@ export function createApp(options: AppOptions): App {
           return error(403, 'demo data is turned off on this server (MORTAR_DEMO_RESET=off)')
         }
         if (!options.addDemoData) return error(503, 'demo data is not configured on this server')
-        return json(await options.addDemoData())
+        try {
+          return json(await options.addDemoData())
+        } finally {
+          // Demo data is written with its own SQL, past the methods that forget the snapshot.
+          db.forgetSnapshot()
+        }
       }
     ],
     [
@@ -983,7 +991,11 @@ export function createApp(options: AppOptions): App {
           return error(403, 'demo data is turned off on this server (MORTAR_DEMO_RESET=off)')
         }
         if (!options.deleteDemoData) return error(503, 'demo data is not configured on this server')
-        await options.deleteDemoData()
+        try {
+          await options.deleteDemoData()
+        } finally {
+          db.forgetSnapshot()
+        }
         return json({ ok: true })
       }
     ]
@@ -1011,7 +1023,13 @@ export function createApp(options: AppOptions): App {
         const params = match(url.pathname, pattern)
         if (!params) continue
         try {
-          if (pattern === '/api/snapshot') return json(scopeSnapshot(await db.snapshot(), profile))
+          if (pattern === '/api/snapshot') {
+            // A burst of page loads for one profile scopes and serializes one snapshot once.
+            const body = await snapshotBodies(db.snapshot(), profile.id, (snapshot) =>
+              JSON.stringify(scopeSnapshot(snapshot, profile))
+            )
+            return new Response(body, { headers: { 'content-type': 'application/json;charset=utf-8' } })
+          }
           if (pattern === '/api/messages/:id/extract') {
             const message = await db.getMessage(params.id)
             const booking = message ? await db.getBooking(message.bookingId) : null

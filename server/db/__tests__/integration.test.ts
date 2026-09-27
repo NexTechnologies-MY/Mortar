@@ -128,6 +128,13 @@ describe.skipIf(!TEST_DATABASE_URL)('database integration', () => {
     }
   })
 
+  test('one snapshot is shared until a write through the database methods', async () => {
+    const first = await db.snapshot()
+    expect(await db.snapshot()).toBe(first)
+    await db.setProjectSettings({ ...DEFAULT_PROJECT_SETTINGS, blocks: ['A', 'B'] })
+    expect(await db.snapshot()).not.toBe(first)
+  })
+
   test('Add Demo Data does not create duplicate seed rows', async () => {
     const before = await sql`select count(*)::int as n from bookings where demo_seed`
     await addDemoData(sql)
