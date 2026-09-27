@@ -84,15 +84,17 @@ export function BookingPipelineFlow({ counts, selection, onSelect, onClear, clas
       data-testid="booking-pipeline-flow"
     >
       <div className="flex items-center justify-between gap-3">
-        <button
+        <Button
           type="button"
-          className="flex items-center gap-1 text-left"
+          variant="ghost"
+          size="sm"
+          className="h-8 -ml-2 gap-1 text-left"
           aria-expanded={expanded}
           onClick={() => setExpanded((value) => !value)}
         >
           <ChevronDown aria-hidden="true" className={cn('size-4 transition-transform', expanded && 'rotate-180')} />
           <h2 className="text-sm font-semibold text-foreground">Who Holds Each Booking</h2>
-        </button>
+        </Button>
         <div className="flex items-center gap-2">
           <InfoTooltip text="Click A Holder To Filter The Bookings Below." />
           {!expanded && (

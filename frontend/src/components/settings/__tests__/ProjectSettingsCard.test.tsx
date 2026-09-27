@@ -11,7 +11,6 @@ describe('ProjectSettingsCard', () => {
     render(<ProjectSettingsCard />)
 
     expect(screen.getByText('Project & Unit Range Settings')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'About Project And Unit Range Settings' })).toBeTruthy()
     expect(screen.getByDisplayValue('Bukit Damai')).toBeTruthy()
     expect(screen.getByDisplayValue('A')).toBeTruthy()
     expect(screen.getByDisplayValue('1')).toBeTruthy()

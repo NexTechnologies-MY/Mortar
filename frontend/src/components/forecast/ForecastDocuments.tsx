@@ -1,4 +1,5 @@
 import { useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react'
+import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
 export interface ForecastDocument {
@@ -79,45 +80,43 @@ export function ForecastDocuments({ documents }: { documents: ForecastDocument[]
             />
           )
         })}
-        <button
+        <Button
           type="button"
+          variant="outline"
           aria-current="true"
           aria-label={`${active.title}. ${active.summary}. Open document`}
           onClick={() => setOpen(true)}
-          className="absolute inset-x-0 top-0 z-10 flex h-44 flex-col justify-between rounded-md border border-card-border bg-card p-6 text-left shadow-card transition-transform duration-200 hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="absolute inset-x-0 top-0 z-10 flex h-44 flex-col items-stretch justify-between rounded-md border-card-border bg-card p-6 text-left whitespace-normal font-normal shadow-card transition-transform duration-200 hover:-translate-y-1 hover:bg-card"
         >
           <span className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-            Document {activeIndex + 1} of {documents.length}
+            Document {activeIndex + 1} Of {documents.length}
           </span>
           <span>
             <span className="block text-xl font-semibold tracking-tight text-foreground">{active.title}</span>
             <span className="mt-2 block text-sm text-muted-foreground">{active.summary}</span>
           </span>
           <span className="text-xs font-medium text-foreground">
-            Open document <span aria-hidden="true">↗</span>
+            Open Document <span aria-hidden="true">↗</span>
           </span>
-        </button>
+        </Button>
       </div>
 
       <div className="mt-5 flex flex-wrap justify-center gap-2" aria-label="Choose a forecast document">
         {documents.map((document, index) => (
-          <button
+          <Button
             key={document.title}
             type="button"
+            variant={index === activeIndex ? 'default' : 'outline'}
+            size="sm"
             aria-current={index === activeIndex ? 'true' : undefined}
             aria-label={document.title}
             onClick={() => {
               setActiveIndex(index)
               setOpen(true)
             }}
-            className={`rounded-sm border px-3 py-2 text-sm transition-colors ${
-              index === activeIndex
-                ? 'border-foreground bg-foreground text-background'
-                : 'border-border bg-card text-foreground hover:bg-accent'
-            }`}
           >
             {document.title}
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -126,7 +125,7 @@ export function ForecastDocuments({ documents }: { documents: ForecastDocument[]
           <div className="border-b border-border px-8 pb-5 pt-8 sm:px-12 sm:pt-10">
             <DialogHeader>
               <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                Forecast document {activeIndex + 1} of {documents.length}
+                Forecast Document {activeIndex + 1} Of {documents.length}
               </p>
               <DialogTitle className="pt-2 text-2xl">{active.title}</DialogTitle>
               <DialogDescription>{active.summary}</DialogDescription>

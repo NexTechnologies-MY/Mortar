@@ -48,14 +48,16 @@ export function TourStepBar({
         <ol className="mt-2 flex flex-wrap gap-1">
           {steps.map((step, i) => (
             <li key={`${step.label}-${i}`}>
-              <button
+              <Button
                 type="button"
+                variant="ghost"
+                size="sm"
                 aria-current={i === index ? 'step' : undefined}
                 onClick={() => onGoTo(i)}
-                className="rounded px-2 py-1 text-xs hover:bg-accent aria-[current=step]:font-semibold"
+                className="h-auto px-2 py-1 text-xs aria-[current=step]:font-semibold"
               >
                 {i + 1}. {step.label}
-              </button>
+              </Button>
             </li>
           ))}
         </ol>

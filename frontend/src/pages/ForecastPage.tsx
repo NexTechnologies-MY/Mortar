@@ -78,7 +78,7 @@ export function ForecastPage() {
         <>
           <section className="mt-5" aria-label="Forecast answer">
             <p className="mb-3 text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-              Expected within {result.forecast.horizonDays} days
+              Expected Within {result.forecast.horizonDays} Days
             </p>
             <div className="flex flex-wrap gap-3">
               <StatCard

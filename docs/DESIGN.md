@@ -39,15 +39,15 @@ Contents:
 Seven core decisions were settled during design system research. All seven are
 binding, and nothing below reopens them.
 
-| Question        | Decision                                                                                                                                                                                                                                                                                                                                                                                        |
-| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Look            | Flat ledger: white ground, white cards lifted off it by `Elevation/Card`, 6px radius. No glass. Shared modal overlays and the sidebar scrim use the scrim blur token. No gradient or glow blob in the application; the landing's chromatic panel is the one sanctioned gradient. A card is separated from the page by its shadow, never by a coloured edge strip and never by a grey page band. |
-| Status colour   | Ink is the action colour everywhere, the landing included; the application carries no chromatic accent. The landing panel is the one chromatic surface, scoped to public pages. Six status tones carry every state, each always with a word.                                                                                                                                                    |
-| Type            | Geist for UI, Geist Mono for unit codes and IDs. Nine text styles. No third family.                                                                                                                                                                                                                                                                                                             |
-| Density         | Controls 36px, table rows 44px, body 14px. Built for a working day in lists.                                                                                                                                                                                                                                                                                                                    |
-| Native controls | None. Select, date picker, menu, tooltip, file drop, checkbox and scrollbar are Mortar components (Radix/shadcn restyled). No alert/confirm/prompt.                                                                                                                                                                                                                                             |
-| Modes           | Light and dark from one token set (Color collection has Light and Dark modes).                                                                                                                                                                                                                                                                                                                  |
-| Icons           | Lucide (lucide-react), 16px, stroke 2, coloured like adjacent text. 20px in empty states.                                                                                                                                                                                                                                                                                                       |
+| Question        | Decision                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Look            | Flat ledger: white ground, white cards lifted off it by `Elevation/Card`, 6px radius. The Bookings bulk-action island is the one sanctioned glass surface (a minimalistic island with glassmorphism background floating at the bottom center of the screen while rows are selected); no other glass exists. Shared modal overlays and the sidebar scrim use the scrim blur token. No gradient or glow blob in the application; the landing's chromatic panel is the one sanctioned gradient. A card is separated from the page by its shadow, never by a coloured edge strip and never by a grey page band. |
+| Status colour   | Ink is the action colour everywhere, the landing included; the application carries no chromatic accent. The landing panel is the one chromatic surface, scoped to public pages. Six status tones carry every state, each always with a word.                                                                                                                                                                                                                                                                                                                                                                |
+| Type            | Geist for UI, Geist Mono for unit codes and IDs. Nine text styles. No third family.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| Density         | Controls 36px, table rows 44px, body 14px. Built for a working day in lists.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| Native controls | None. Select, date picker, menu, tooltip, file drop, checkbox and scrollbar are Mortar components (Radix/shadcn restyled). No alert/confirm/prompt.                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| Modes           | Light and dark from one token set (Color collection has Light and Dark modes).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| Icons           | Lucide (lucide-react), 16px, stroke 2, coloured like adjacent text. 20px in empty states.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 
 Mortar is an internal operations tool for developer staff tracking property unit
 bookings from initial deposit through loan submission, loan approval, and final
@@ -771,6 +771,13 @@ control, and none appears. Do not "fix" this by removing the input.
   (`#FFFFFF` / `#141414`), 1px `--border`, corner radius 6px (`--radius-md`),
   `Elevation/Overlay` shadow. Backdrop overlay uses `--scrim` in both themes
   with `--scrim-blur` behind it.
+- **Variants:**
+  - `Standard`: Centered modal panel, maximum width 480px.
+  - `Forecast Document Sheet`: Long forecast documents and methodology reading.
+    Rises from the bottom centre (`bottom-0 sm:bottom-6`), sliding in from the
+    bottom, up to 860px wide (`w-[min(860px,calc(100vw-2rem))]`), maximum height
+    `min(90vh, 900px)` with a scrollable content area, bordered header, and 6px
+    corner radius (`rounded-t-md sm:rounded-md`).
 - **Rules:** Traps keyboard focus, Esc dismisses, autofocuses the secondary
   cancel button on destructive dialogs. Replaces all native browser `alert()`,
   `confirm()`, and `prompt()` calls.
@@ -1141,11 +1148,14 @@ and dark modes:
 ### Do Not
 
 - **Do not** introduce glass fills, extra backdrop blurs, gradients or glow
-  blobs anywhere in the application. Shared modal overlays and the sidebar scrim
-  use `--scrim-blur`. The landing's chromatic panel is the one sanctioned
-  gradient and no desk may reference it. Card shadows are not on this list:
-  cards carry `--shadow-card`, and nothing invents a shadow of its own outside
-  that token and `--shadow-overlay`.
+  blobs anywhere in the application. The Bookings bulk-action island is the one
+  sanctioned glass surface (a minimalistic island with glassmorphism background
+  floating at the bottom center of the screen while rows are selected); no other
+  surface may use glass or extra backdrop blurs. Shared modal overlays and the
+  sidebar scrim use `--scrim-blur`. The landing's chromatic panel is the one
+  sanctioned gradient and no desk may reference it. Card shadows are not on this
+  list: cards carry `--shadow-card`, and nothing invents a shadow of its own
+  outside that token and `--shadow-overlay`.
 - **Do not** run a coloured strip, bar, rule or accent edge along any border of
   a card, stat tile or panel, in any tone, at any width, on any side. Urgency,
   risk and status are carried by the pill and its word. The only edges a card
