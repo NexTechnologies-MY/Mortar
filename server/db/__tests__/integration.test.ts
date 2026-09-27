@@ -86,65 +86,96 @@ describe.skipIf(!TEST_DATABASE_URL)('database integration', () => {
     expect(after[0]?.n).toBe(before[0]?.n)
   })
 
-  test('deleting demo rows preserves visitor content and its demo booking parent', async () => {
+  test('deleting demo data wipes the demo bookings and everything attached, keeping visitor bookings', async () => {
     try {
+      // A booking of the visitor's own, with the rows that hang off it.
+      await sql`insert into bookings (id, project, unit, price_rm, booking_date, buyer, sales_owner, loan_owner, legal_firm)
+        values ('W2TEST-VISITOR-BK', 'W2TEST Project', 'V-01-01', 500000, '2026-09-01',
+          ${{ name: 'Test Visitor', ic: 'x', phone: 'x', age: 30, grossMonthlyIncomeRm: 5000, monthlyCommitmentsRm: 100, propertiesOwned: 0 }},
+          'Sales', 'Loan', 'Firm')`
       await sql`insert into messages (id, booking_id, sender_role, sender_name, language, sent_at, body, origin)
-        values ('W2TEST-VISITOR-MSG', 'BK-9001', 'buyer', 'Test Visitor', 'en', now(), 'Visitor message', 'live')`
+        values ('W2TEST-VISITOR-MSG', 'W2TEST-VISITOR-BK', 'buyer', 'Test Visitor', 'en', now(), 'Visitor message', 'live')`
       await sql`insert into tasks (id, booking_id, action, title, owner_role, owner_name, due_on, status, origin, created_at)
-        values ('W2TEST-VISITOR-TASK', 'BK-9001', 'Call buyer', 'Visitor task', 'sales', 'Test Visitor', '2026-09-20', 'open', 'staff', now())`
-      await sql`insert into events (id, booking_id, track, kind, occurred_at, recorded_at, reported_by, status, source)
-        values ('W2TEST-VISITOR-EVENT', 'BK-9001', 'sales', 'buyer_contacted', now(), now(), 'Test Visitor', 'confirmed', 'staff')`
-      await sql`insert into events (id, booking_id, application_id, track, kind, occurred_at, recorded_at, reported_by, status, source)
-        values ('W2TEST-VISITOR-BANK-EVENT', 'BK-9001', 'APP-9001-1', 'loan', 'documents_received', now(), now(), 'Test Visitor', 'confirmed', 'staff')`
+        values ('W2TEST-VISITOR-TASK', 'W2TEST-VISITOR-BK', 'Call buyer', 'Visitor task', 'sales', 'Test Visitor', '2026-09-20', 'open', 'staff', now())`
+      await sql`insert into loan_applications (id, booking_id, bank, banker)
+        values ('W2TEST-VISITOR-APP', 'W2TEST-VISITOR-BK', 'Harbour Bank', 'Lim Wei Jie')`
+      // Work the visitor did *on* a demo booking: a task, and a live Jev answer.
+      await sql`insert into tasks (id, booking_id, action, title, owner_role, owner_name, due_on, status, origin, created_at)
+        values ('W2TEST-ON-DEMO-TASK', 'BK-9001', 'Call buyer', 'Visitor task on a demo case', 'sales', 'Test Visitor', '2026-09-20', 'open', 'staff', now())`
+      await sql`insert into jev_answers (kind, subject_id, input_hash, answer, source, latency_ms)
+        values ('signals', 'BK-9001', 'w2test', '{"responsive":1}', 'live', 12)`
+      // A review of a demo proposal: the trail goes with the demo case.
       await sql`insert into event_reviews (event_id, from_status, to_status, reviewer, at)
         values ('EV-9001-3', 'provisional', 'confirmed', 'W2TEST Visitor', now())`
-      const [sourceMessage] = await sql`select m.id, m.body from messages m
-        join events e on e.message_id = m.id where e.id = 'EV-9001-3'`
-      expect(sourceMessage).toBeDefined()
+      // An update the visitor recorded on a demo case, reviewed and read by Jev.
+      await sql`insert into events (id, booking_id, track, kind, occurred_at, recorded_at, reported_by, status, source)
+        values ('W2TEST-ON-DEMO-EV', 'BK-9001', 'sales', 'note', now(), now(), 'Test Visitor', 'provisional', 'staff')`
+      await sql`insert into event_reviews (event_id, from_status, to_status, reviewer, at)
+        values ('W2TEST-ON-DEMO-EV', 'provisional', 'confirmed', 'W2TEST Visitor', now())`
+      await sql`insert into jev_answers (kind, subject_id, input_hash, answer, source, latency_ms)
+        values ('extract', 'W2TEST-ON-DEMO-EV', 'w2test', '{}', 'live', 12)`
+      await sql`insert into meta (key, value) values ('sessionSecret', to_jsonb('W2TEST-secret'::text))
+        on conflict (key) do update set value = excluded.value`
 
       await deleteDemoData(sql)
 
-      const [message] = await sql`select booking_id from messages where id = 'W2TEST-VISITOR-MSG'`
-      expect(message?.booking_id).not.toBe('BK-9001')
-      expect(await sql`select id from bookings where id = ${message?.booking_id} and not demo_seed`).toHaveLength(1)
+      // The visitor's own booking and everything attached to it survive.
+      expect(await sql`select id from bookings where id = 'W2TEST-VISITOR-BK' and not demo_seed`).toHaveLength(1)
       expect(
-        await sql`select id from tasks where id = 'W2TEST-VISITOR-TASK' and booking_id = ${message?.booking_id}`
+        await sql`select id from messages where id = 'W2TEST-VISITOR-MSG' and booking_id = 'W2TEST-VISITOR-BK'`
       ).toHaveLength(1)
       expect(
-        await sql`select id from events where id = 'W2TEST-VISITOR-EVENT' and booking_id = ${message?.booking_id}`
+        await sql`select id from tasks where id = 'W2TEST-VISITOR-TASK' and booking_id = 'W2TEST-VISITOR-BK'`
       ).toHaveLength(1)
-      const [bankEvent] = await sql`select application_id from events where id = 'W2TEST-VISITOR-BANK-EVENT'
-        and booking_id = ${message?.booking_id}`
-      expect(bankEvent?.application_id).toBeTruthy()
-      expect(bankEvent?.application_id).not.toBe('APP-9001-1')
       expect(
-        await sql`select id from loan_applications where id = ${bankEvent?.application_id}
-        and booking_id = ${message?.booking_id} and not demo_seed`
+        await sql`select id from loan_applications where id = 'W2TEST-VISITOR-APP' and booking_id = 'W2TEST-VISITOR-BK'`
       ).toHaveLength(1)
-      expect(await sql`select id from messages where demo_seed`).toHaveLength(0)
+      // Everything on a demo booking goes with it, visitor-authored or not.
       expect(await sql`select id from bookings where demo_seed`).toHaveLength(0)
-      const preservedEvidence = () => sql`select m.id, m.body, m.booking_id from messages m
-        join events e on e.message_id = m.id join event_reviews r on r.event_id = e.id
-        where r.reviewer = 'W2TEST Visitor' and not m.demo_seed`
-      const [evidence] = await preservedEvidence()
-      expect(evidence?.body).toBe(sourceMessage.body)
-      expect(evidence?.id).not.toBe(sourceMessage.id)
-      expect(evidence?.booking_id).toBe(message?.booking_id)
-      await deleteDemoData(sql)
-      expect(await preservedEvidence()).toEqual([evidence])
-      await addDemoData(sql)
-      expect(await preservedEvidence()).toEqual([evidence])
-      expect(await sql`select id from messages where id = ${sourceMessage.id} and demo_seed`).toHaveLength(1)
-      expect(await sql`select id from loan_applications where id = 'APP-9001-1' and demo_seed`).toHaveLength(1)
-      expect(await sql`select id from events where id = 'W2TEST-VISITOR-BANK-EVENT'`).toHaveLength(1)
-      const [review] = await sql`select event_id from event_reviews where reviewer = 'W2TEST Visitor'`
-      expect(review?.event_id).not.toBe('EV-9001-3')
-      expect(await sql`select id from events where id = ${review?.event_id} and not demo_seed`).toHaveLength(1)
+      expect(await sql`select id from messages where demo_seed`).toHaveLength(0)
+      expect(await sql`select id from events where demo_seed`).toHaveLength(0)
+      expect(
+        await sql`select id from loan_applications where booking_id in (select id from bookings where demo_seed)`
+      ).toHaveLength(0)
+      expect(await sql`select id from tasks where id = 'W2TEST-ON-DEMO-TASK'`).toHaveLength(0)
+      expect(await sql`select id from tasks where booking_id = 'BK-9001'`).toHaveLength(0)
+      expect(await sql`select id from events where booking_id = 'BK-9001'`).toHaveLength(0)
+      expect(await sql`select id from jev_answers where subject_id = 'BK-9001'`).toHaveLength(0)
+      expect(await sql`select id from event_reviews where reviewer = 'W2TEST Visitor'`).toHaveLength(0)
+      expect(await sql`select id from jev_answers where subject_id = 'W2TEST-ON-DEMO-EV'`).toHaveLength(0)
+      // Only the demo meta keys go; the app's own keys stay.
+      const metaKeys = (await sql`select key from meta order by key`).map((row: Record<string, unknown>) =>
+        String(row.key)
+      )
+      expect(metaKeys).toEqual(['sessionSecret'])
     } finally {
       await sql`delete from event_reviews where reviewer = 'W2TEST Visitor'`
-      await sql`delete from bookings where id in (select booking_id from events where id = 'W2TEST-VISITOR-EVENT')`
+      await sql`delete from jev_answers where input_hash = 'w2test'`
+      await sql`delete from meta where key = 'sessionSecret'`
+      await sql`delete from bookings where id = 'W2TEST-VISITOR-BK'`
       await addDemoData(sql)
     }
+  })
+
+  test('deleting demo data twice is safe, and Add Demo Data restores the whole dataset', async () => {
+    const seeded = async () => (await sql`select count(*)::int as n from bookings where demo_seed`)[0]?.n
+    const before = await seeded()
+    expect(before).toBe(148)
+
+    await deleteDemoData(sql)
+    await deleteDemoData(sql)
+    expect(await seeded()).toBe(0)
+
+    await addDemoData(sql)
+    expect(await seeded()).toBe(148)
+    expect(await sql`select id from events where demo_seed`).not.toHaveLength(0)
+    expect(
+      await sql`select key from meta where key in ('seed', 'referenceDate', 'resetAt', 'resetAtWall')`
+    ).toHaveLength(4)
+
+    // Adding again while the dataset is in place changes nothing.
+    await addDemoData(sql)
+    expect(await seeded()).toBe(148)
   })
 
   test('booking insert maps jsonb and dates back to the contract', async () => {

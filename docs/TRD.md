@@ -363,12 +363,14 @@ no third-party schema validation libraries are loaded.
 - `POST /api/admin/demo/add`: Inserts the canonical generated 140 bookings,
   story fixtures, playbooks and precomputed Jev cache without duplicating
   existing seed rows. A fresh database has no demo rows until this action.
-- `POST /api/admin/demo/delete`: Removes seed-owned rows and rehomes visitor
-  activity on demo cases to preserved bookings. A visitor event referencing a
-  seeded application receives a preserved application with a fresh ID. Reviewed
-  seed events and their source messages are also preserved under fresh IDs,
-  keeping their evidence links while freeing fixture IDs for the next add. Both
-  actions are disabled with 403 when `MORTAR_DEMO_RESET=off`.
+- `POST /api/admin/demo/delete`: Removes the whole demo dataset in one
+  transaction: every demo booking with the rows attached to it (applications,
+  messages, events, their reviews, tasks, and the Jev answers about them), the
+  demo playbooks and the four demo `meta` keys. Bookings a visitor added, and
+  anything attached to one, are untouched, as is any other `meta` key. Work a
+  visitor did on a demo booking goes with the demo case, so the fixtures are
+  always restored whole by a later add. Both actions are disabled with 403 when
+  `MORTAR_DEMO_RESET=off`.
 
 ### Write Rules And Error Codes
 
@@ -846,10 +848,10 @@ What Mortar does today:
   has moved on, and a booking number is never reused. The import's own row keeps
   a `removed` snapshot of what went, without IC or phone.
 - **Demo Data:** Fresh guest storage starts empty. Settings can add canonical
-  seed rows once and remove only seed-owned rows. Visitor-created records on
-  demo cases are preserved on new booking IDs. A server holding real data must
-  set `MORTAR_DEMO_RESET` to `off`, `false`, `0` or `no`; both admin demo
-  endpoints then refuse with 403.
+  seed rows once and then delete them. Deletion removes every demo booking with
+  everything on it and only the demo `meta` keys; bookings a visitor created are
+  left alone. A server holding real data must set `MORTAR_DEMO_RESET` to `off`,
+  `false`, `0` or `no`; both admin demo endpoints then refuse with 403.
 - **Backups:** The database host keeps days of history, not years. A 7-year
   guarantee needs regular database exports, kept for 7 years outside the app,
   which is a hosting task.
@@ -965,8 +967,9 @@ Located in `packages/jev/src/__tests__/`, `server/src/__tests__/`, and
   cache &rarr; unavailable state.
 - **Database Row Mappers:** Validates bidirectional mapping between PostgreSQL
   snake_case columns and TypeScript camelCase domain entities.
-- **Demo Provenance:** Confirms Add Demo Data is idempotent and Delete Demo Data
-  preserves visitor activity and permits a later add.
+- **Demo Provenance:** Confirms Add Demo Data is idempotent, and that Delete
+  Demo Data wipes the demo bookings with everything on them, leaves visitor
+  bookings and non-demo `meta` keys alone, and permits a later add.
 
 ### User Interface Verification
 
