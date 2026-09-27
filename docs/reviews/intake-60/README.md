@@ -68,8 +68,21 @@ Validated against a disposable local PostgreSQL database using Chromium:
   rejected unassigned loan/legal API and Copilot requests. The local synthetic
   dataset showed 151 Manager cases, 15 legal cases and 38 loan cases.
 - A synthetic backdated import appeared in Recent Bookings because its creation
-  timestamp was new; the test import was then undone. Manager's Today route
-  redirects to the single manager decision queue.
+  timestamp was new; the test import was then undone. Manager's Today route now
+  stays at `/chase` with compact decisions instead of redirecting to Manager.
+
+### Manager Today Navigation Correction
+
+The Today sidebar item previously redirected Manager straight back to Manager,
+making the tab appear unresponsive. Today now opens its own page with the shared
+manager decision queue: key overdue information, automatically routed follow-up
+actions, and folded case detail. Manager's Suggestions and Overview remain
+available separately. The regression test checks that `/chase` stays selected
+and renders manager decisions; it previously asserted the unwanted redirect.
+
+| Before                                           | After Desktop                                      | After Mobile                                      |
+| ------------------------------------------------ | -------------------------------------------------- | ------------------------------------------------- |
+| [Redirects To Manager](manager-today-before.png) | [Today Decisions](manager-today-after-desktop.png) | [Today Decisions](manager-today-after-mobile.png) |
 
 The model transport/tool loop is covered by deterministic test doubles. No live
 external model call was used for browser verification.

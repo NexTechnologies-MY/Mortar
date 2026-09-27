@@ -16,7 +16,6 @@
  * the unit and buyer opens the same side sheet a row opens on the ledger.
  */
 import { useMemo, useState, type Dispatch, type SetStateAction } from 'react'
-import { Navigate } from 'react-router-dom'
 import { AlertTriangle, Banknote, BellRing, ListChecks, SearchX, SlidersHorizontal, Users } from 'lucide-react'
 import { PERSONA_STAFF } from '@mortar/core'
 import type { Booking, CaseSummary, EventKind, NextActionSuggestion, OwnerRole, RiskLevel, Task } from '@mortar/core'
@@ -36,6 +35,7 @@ import { CaseQuickView } from '@/components/bookings/CaseQuickView'
 import type { BookingRow } from '@/components/bookings/BookingsTable'
 import { ChaseCard } from '@/components/chase/ChaseCard'
 import { ChaseTasks } from '@/components/chase/ChaseTasks'
+import { ManagerCases } from '@/components/manager/ManagerCases'
 import { NEXT_ACTION_LABELS, ownerName as resolveOwnerName } from '@/components/chase/chase'
 import { OWNER_ROLE_LABELS, formatRm, formatRmCompact } from '@/components/case'
 import { nextStepFor, stepToTask, type NextStep } from '@/components/case/nextStep'
@@ -545,7 +545,33 @@ function AdminToday() {
   )
 }
 
+/** Manager's daily decisions share the same thresholds and task routing as Suggestions. */
+function ManagerToday() {
+  const { snapshot, loading, error, refresh } = useSnapshot()
+  return (
+    <PageContainer>
+      <PageHeaderCard tourTarget="today-header">
+        <h1 className="text-2xl font-semibold">Today</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          The overdue cases that need your decision, across every department.
+        </p>
+      </PageHeaderCard>
+      {error && <RefreshErrorBanner message={error} onRetry={() => void refresh()} />}
+      {loading && !snapshot ? (
+        <p className="mt-4" role="status">
+          Loading Your Decisions…
+        </p>
+      ) : snapshot ? (
+        <section className="mt-5 space-y-4" aria-label="Manager decisions">
+          <h2 className="text-base font-semibold">Decisions For You</h2>
+          <ManagerCases suggestionsOnly />
+        </section>
+      ) : null}
+    </PageContainer>
+  )
+}
+
 export function ChasePage() {
   const { persona } = usePersona()
-  return persona === 'manager' ? <Navigate to="/manager" replace /> : <AdminToday />
+  return persona === 'manager' ? <ManagerToday /> : <AdminToday />
 }

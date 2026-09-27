@@ -131,10 +131,11 @@ pointing at a disposable database. Recording requires an explicit disposable
   decisions. Flagged department tasks persist and appear in the recipient's
   notification bell, refreshed every 30 seconds while visible. The server
   resolves recipients using `currentCaseAssignee` and revalidates before
-  sending; manager flags reuse equivalent ordinary open tasks. `/chase`
-  redirects managers to `/manager`. Admin Today leads with assigned tasks, then
-  recommendations and folded recent bookings using `Booking.createdAt`, never
-  `bookingDate`.
+  sending; manager flags reuse equivalent ordinary open tasks. Manager Today
+  stays on `/chase` and shows the same compact decision queue as Suggestions,
+  with case details folded. Manager retains Suggestions and Overview at
+  `/manager`. Admin Today leads with assigned tasks, then recommendations and
+  folded recent bookings using `Booking.createdAt`, never `bookingDate`.
 - **Shared Settings And Inventory.** Project settings live on the server and
   only Manager can change them. `blocks` supports multiple blocks while old
   `blockPrefix` records remain readable. The inventory API exposes held

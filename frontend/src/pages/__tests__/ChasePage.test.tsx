@@ -134,7 +134,7 @@ describe('ChasePage', () => {
     expect(screen.getAllByTestId(/chase-card-/)).toHaveLength(2)
   })
 
-  it('redirects Manager away from the admin Today route', async () => {
+  it('keeps Manager on Today with compact decisions instead of redirecting to Manager', () => {
     window.localStorage.setItem(PERSONA_STORAGE_KEY, 'manager')
     render(
       <MemoryRouter initialEntries={['/chase']}>
@@ -145,7 +145,11 @@ describe('ChasePage', () => {
       </MemoryRouter>
     )
 
-    await waitFor(() => expect(screen.getByTestId('route-location').textContent).toBe('/manager'))
+    expect(screen.getByTestId('route-location').textContent).toBe('/chase')
+    expect(screen.getByRole('heading', { level: 1, name: 'Today' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Decisions For You' })).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: 'Assigned Tasks' })).toBeNull()
+    expect(screen.queryByRole('tab', { name: 'Overview' })).toBeNull()
   })
 
   it('counts the cards it is showing under the headline figure', () => {
