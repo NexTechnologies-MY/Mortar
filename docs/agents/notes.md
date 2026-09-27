@@ -159,7 +159,8 @@ clean recording seed.
   `process.env.TEST_DATABASE_URL` and skips entirely when unset; it never reads
   `DATABASE_URL` (which often points at production). An empty test database is
   seeded once on first boot. NEVER point `TEST_DATABASE_URL` at production. The
-  team test database is the separate Neon project `mortar-test`.
+  team test database is the separate Neon project `mortar-test`; CI runs the
+  suite against its own Postgres container instead.
 - **Keyword Score Alone Does Not Gate A Question.** "What is the weather"
   out-scores a correct paraphrase, so `matchQuestion` ranks on how much of the
   query was covered and treats the score as a floor. Widen `tags` rather than

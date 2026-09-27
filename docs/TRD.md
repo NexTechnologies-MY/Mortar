@@ -30,7 +30,7 @@ the browser, a unified Bun HTTP API server, and a managed PostgreSQL database
 hosted on Neon.
 
 ```text
-Browser (React 19 SPA)               Bun Server (Cloud Run)             Neon PostgreSQL
+Browser (React 19 SPA)               Bun Server (Render)                Neon PostgreSQL
 ┌─────────────────────────┐         ┌─────────────────────────┐         ┌───────────────────┐
 │ SnapshotProvider        │         │ Bun.serve API           │         │ bookings          │
 │ GET /api/snapshot ──────┼────────►│ map rows to contract ◄──┼────────►│ loan_applications │
@@ -48,8 +48,8 @@ Browser (React 19 SPA)               Bun Server (Cloud Run)             Neon Pos
 The system topology separates high-frequency client interactions from
 asynchronous classification workflows:
 
-- **Single HTTP Server:** One Bun process running on Google Cloud Run serves the
-  compiled static assets (`frontend/dist`) with client-side SPA routing
+- **Single HTTP Server:** One Bun process running on a Render web service serves
+  the compiled static assets (`frontend/dist`) with client-side SPA routing
   fallbacks, while handling all `/api/*` endpoints. This runtime replaces
   traditional reverse proxies such as Nginx.
 - **Relational Storage:** Neon PostgreSQL holds relational state. The server
@@ -780,14 +780,16 @@ The system strictly handles synthetic data:
 - **Isolated Credentials:** Production and development credentials
   (`DATABASE_URL`, `TEST_DATABASE_URL`, `GEMINI_API_KEY`, `TYPESAFE_API_KEY`)
   are stored in `.env`, which is git-ignored. `TEST_DATABASE_URL` is dedicated
-  to the database integration suite pointing to an isolated Neon test database
-  (`mortar-test`), and is never pointed at production.
+  to the database integration suite: locally it points to an isolated Neon test
+  database (`mortar-test`), and in CI to a fresh Postgres container for each
+  run. It is never pointed at production.
 - **Client Boundary:** Server keys are used exclusively by the Bun server
   runtime. No client environment variables (`VITE_*`) expose API tokens to the
   browser.
-- **Cloud Delivery:** Cloud Run receives database credentials and API keys via
-  secure environment variables populated from GitHub Secrets during deployment
-  (`deploy.yml`).
+- **Cloud Delivery:** The Render service holds `DATABASE_URL`,
+  `TYPESAFE_API_KEY` and `GEMINI_API_KEY` as environment variables, entered in
+  its Environment tab in the Render dashboard. They never pass through GitHub or
+  a command line.
 - **Free-Tier Gemini Caveat:** On Gemini's free tier, Google may use prompts and
   responses to improve products. Ask MortarAI must only process simulated data;
   processing real buyer data requires a paid tier or Vertex AI under a Data
@@ -898,8 +900,8 @@ it with the company's lawyer.
 
 ## Deploy And CI
 
-The deployment pipeline is fully automated via GitHub Actions, containerizing
-the application for serverless hosting on Google Cloud Run.
+Render builds the root `Dockerfile` and deploys every push to `main` once its CI
+checks pass. GitHub Actions runs CI only, and no deploy key lives in GitHub.
 
 ### Containerization
 
@@ -934,25 +936,41 @@ allowing one container instance to serve both web traffic and backend queries.
 
 ### Deployment Workflow
 
-The workflow (`.github/workflows/deploy.yml`) runs on merges to `main`:
+Production is one Render web service, `mortar`, alone in its own Hobby
+workspace. Render gives each workspace 750 free instance hours a month and
+suspends every free service in a workspace that runs out, so Mortar shares its
+hours with nothing else.
 
-1. **Authentication:** Authenticates to Google Cloud using Workload Identity
-   Federation (no service account keys stored in GitHub).
-2. **Container Build:** Compiles and tags the Docker image in Google Artifact
-   Registry.
-3. **Cloud Run Rollout:** Deploys the container to Cloud Run in the
-   `asia-southeast1` (Singapore) region with continuous health verification.
-4. **Environment Configuration:** Injects `DATABASE_URL` (Neon production
-   branch), `TYPESAFE_API_KEY`, and `GEMINI_API_KEY` directly from GitHub
-   repository secrets.
+| Setting      | Value                                                    |
+| ------------ | -------------------------------------------------------- |
+| Runtime      | Docker, from the root `Dockerfile`                       |
+| Region       | Singapore, next to the Neon database in `ap-southeast-1` |
+| Instance     | Free (512 MB, 0.1 CPU)                                   |
+| Branch       | `main`, with Auto-Deploy set to After CI Checks Pass     |
+| Health check | `/api/health`                                            |
+| Secrets      | `DATABASE_URL`, `TYPESAFE_API_KEY` and `GEMINI_API_KEY`  |
+
+1. **CI Gate:** GitHub Actions runs `ci.yml` on every push. Render deploys a
+   push to `main` only after its checks pass, whoever merged it.
+2. **Build And Start:** Render builds the image from the `Dockerfile` and starts
+   it. The deploy counts as live once `/api/health` answers.
+3. **Secrets:** `DATABASE_URL` (the Neon production branch), `TYPESAFE_API_KEY`
+   and `GEMINI_API_KEY` live in the service's Environment tab, and never pass
+   through GitHub or a command line.
+4. **Staying Awake:** A free service sleeps after 15 idle minutes. The
+   keepwarmer on the owner's Raspberry Pi calls `/api/health` every 10 minutes,
+   which keeps Mortar awake for about 720 to 744 of its 750 hours.
+5. **Is It Live:** `/api/health` reports `commit`, the commit the running server
+   was built from, so anyone can see a merge go live.
 
 ### Continuous Integration (CI)
 
 Every proposed change must satisfy local and remote verification gates:
 
 - `bun run check`: Executes ESLint validation, TypeScript workspace
-  typechecking, and the Vitest suites across all modules. CI passes the
-  `TEST_DATABASE_URL` repository secret to `bun run check`.
+  typechecking, and the Vitest suites across all modules. In CI,
+  `TEST_DATABASE_URL` points at a Postgres 17 service container that each run
+  starts empty, so two runs never share a database.
 - `bun run format`: Formats code and documentation with Prettier (enforcing an
   80-column limit on Markdown files).
 - `bun run test`: Executes unit and integration test suites using Vitest.

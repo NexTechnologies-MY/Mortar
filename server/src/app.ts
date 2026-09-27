@@ -313,7 +313,7 @@ export function createApp(options: AppOptions): App {
     : createAssistant({ db, apiKey: null })
   const cookieName = 'mortar_session'
   const cookieOptions = (secure: boolean) => `Path=/; HttpOnly; SameSite=Lax; Max-Age=43200${secure ? '; Secure' : ''}`
-  // Cloud Run terminates TLS before the container, so the request the app sees
+  // Render terminates TLS before the container, so the request the app sees
   // is plain http. The proxy's own header is what tells us the client is on https.
   const isSecureRequest = (req: Request) =>
     req.headers.get('x-forwarded-proto') === 'https' || new URL(req.url).protocol === 'https:'

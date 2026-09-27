@@ -1,6 +1,6 @@
 // Prime the deployment before Playwright creates a recorded page: verify the
 // snapshot is the clean seed the walk expects, then open the three surfaces it
-// films so a cold Cloud Run start never lands on camera. The warm-up performs
+// films so a cold start never lands on camera. The warm-up performs
 // no mutations -- reads only.
 
 import { verifyCleanSeed } from './proof.mjs'
