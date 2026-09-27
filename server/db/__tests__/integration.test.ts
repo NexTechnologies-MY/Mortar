@@ -1,7 +1,7 @@
 /**
  * Integration tests against a dedicated test database, named by
- * `TEST_DATABASE_URL` and skipped when it is absent (CI passes the repository
- * secret of the same name). They never read `DATABASE_URL`: the server's test
+ * `TEST_DATABASE_URL` and skipped when it is absent (CI points it at a Postgres
+ * service container). They never read `DATABASE_URL`: the server's test
  * script loads `../.env`, which often points at production, and these tests
  * write and delete rows. The suite explicitly adds demo data to an empty test
  * database. It covers `applySchema`, the Add/Delete Demo Data actions,
@@ -126,6 +126,13 @@ describe.skipIf(!TEST_DATABASE_URL)('database integration', () => {
     } finally {
       await sql`delete from bookings where id = 'W2TEST-FLAG-CASE'`
     }
+  })
+
+  test('one snapshot is shared until a write through the database methods', async () => {
+    const first = await db.snapshot()
+    expect(await db.snapshot()).toBe(first)
+    await db.setProjectSettings({ ...DEFAULT_PROJECT_SETTINGS, blocks: ['A', 'B'] })
+    expect(await db.snapshot()).not.toBe(first)
   })
 
   test('Add Demo Data does not create duplicate seed rows', async () => {

@@ -1,6 +1,6 @@
 # Mortar Demo Recorder
 
-Records the deployed Mortar site (`https://mortar-ppdggwxxjq-as.a.run.app`),
+Records the deployed Mortar site (`https://mortar-d18f.onrender.com`),
 interleaves it with rendered pitch-deck slides, dubs the result with synthesized
 or supplied narration, burns synchronized subtitles, adds a ducked music bed,
 and muxes everything into a 1920x1080 H.264/AAC MP4 for the submission video.

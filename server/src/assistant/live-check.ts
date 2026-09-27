@@ -61,7 +61,8 @@ const db = {
   undoImport: noWrites('undo an import'),
   updateTaskStatus: noWrites('close a task'),
   jevGet: async () => null,
-  jevPut: async () => {}
+  jevPut: async () => {},
+  forgetSnapshot: () => {}
 } as unknown as Database
 
 const jev = {

@@ -17,6 +17,22 @@ jobs:
     name: Lint, typecheck, unit tests, build
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # Each run gets its own empty Postgres, so two runs never share a test
+    # database. Render deploys main only after this job passes.
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: mortar
+          POSTGRES_PASSWORD: mortar
+          POSTGRES_DB: mortar_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mortar -d mortar_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
@@ -25,5 +41,5 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run check
         env:
-          TEST_DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+          TEST_DATABASE_URL: postgres://mortar:mortar@localhost:5432/mortar_test
       - run: bun run build

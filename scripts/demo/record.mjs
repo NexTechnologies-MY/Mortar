@@ -24,7 +24,10 @@ import { openDemoSession } from './session.mjs'
 const DIR = process.env.DEMO_DIR || join(tmpdir(), 'mortar-demo')
 const WEB = process.env.DEMO_WEB
 if (!WEB) throw new Error('DEMO_WEB must name a disposable recording deployment')
-if (new URL(WEB).hostname === 'mortar-ppdggwxxjq-as.a.run.app') {
+// Both addresses reach the shared production database: Render, and the old Cloud
+// Run service until the Google Cloud trial closes.
+const SHARED_HOSTS = new Set(['mortar-d18f.onrender.com', 'mortar-ppdggwxxjq-as.a.run.app'])
+if (SHARED_HOSTS.has(new URL(WEB).hostname)) {
   throw new Error('The shared Mortar deployment cannot be used for a recording that writes visitor data')
 }
 const OUT = join(DIR, 'capture')

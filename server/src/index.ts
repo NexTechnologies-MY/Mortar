@@ -1,7 +1,7 @@
 /**
  * The one process: applies the schema, starts with an empty guest account,
- * then serves `/api/*` plus `frontend/dist` on `PORT` (8787
- * locally, 8080 on Cloud Run). `DATABASE_URL` is required. Jev runs one of
+ * then serves `/api/*` plus `frontend/dist` on `PORT` (8787 locally; the
+ * Docker image defaults to 8080). `DATABASE_URL` is required. Jev runs one of
  * three ways: with `TYPESAFE_API_KEY` against the real TypeSafe API; with no
  * key but `JEV_PROXY_URL` set, against a local Anthropic-Messages-compatible
  * model proxy (see `.env.example`); or, with neither, cache-only. Whichever
@@ -98,6 +98,8 @@ const app = createApp({
   jevAvailable,
   jevLastError: () => jevLastError,
   resetEnabled,
+  // Render sets RENDER_GIT_COMMIT on every deploy, so a merge can be seen to be live.
+  commit: process.env.RENDER_GIT_COMMIT || null,
   // The Ask panel's model. With no key the route answers 503 and the panel falls
   // back to its scripted answers, so the server still serves every desk. The
   // key reaches this call and nothing else — not the browser, not the log.

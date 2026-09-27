@@ -30,7 +30,7 @@ the browser, a unified Bun HTTP API server, and a managed PostgreSQL database
 hosted on Neon.
 
 ```text
-Browser (React 19 SPA)               Bun Server (Cloud Run)             Neon PostgreSQL
+Browser (React 19 SPA)               Bun Server (Render)                Neon PostgreSQL
 ┌─────────────────────────┐         ┌─────────────────────────┐         ┌───────────────────┐
 │ SnapshotProvider        │         │ Bun.serve API           │         │ bookings          │
 │ GET /api/snapshot ──────┼────────►│ map rows to contract ◄──┼────────►│ loan_applications │
@@ -48,8 +48,8 @@ Browser (React 19 SPA)               Bun Server (Cloud Run)             Neon Pos
 The system topology separates high-frequency client interactions from
 asynchronous classification workflows:
 
-- **Single HTTP Server:** One Bun process running on Google Cloud Run serves the
-  compiled static assets (`frontend/dist`) with client-side SPA routing
+- **Single HTTP Server:** One Bun process running on a Render web service serves
+  the compiled static assets (`frontend/dist`) with client-side SPA routing
   fallbacks, while handling all `/api/*` endpoints. This runtime replaces
   traditional reverse proxies such as Nginx.
 - **Relational Storage:** Neon PostgreSQL holds relational state. The server
@@ -119,7 +119,8 @@ Key files within each package include:
 - `server/db/schema.sql`: PostgreSQL table definitions applied idempotently on
   server start.
 - `server/db/__tests__/integration.test.ts`: Database integration suite running
-  against isolated `TEST_DATABASE_URL` (`mortar-test`).
+  against isolated `TEST_DATABASE_URL` (`mortar-test` locally, a Postgres
+  container in CI).
 - `server/fixtures/jev-cache.json`: Precomputed model responses for offline and
   resilient demo operation.
 - `frontend/src/lib/data.tsx`: React context providing `useSnapshot()` and
@@ -270,7 +271,7 @@ no third-party schema validation libraries are loaded.
 
 | Method   | Path                            | Request Body                                                          | Response Body                                                            | Execution Pattern    |
 | -------- | ------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------ | -------------------- |
-| `GET`    | `/api/health`                   | None                                                                  | `{ ok, db, jev, assistant, jevAnswers, jevLastError }`                   | Direct Check         |
+| `GET`    | `/api/health`                   | None                                                                  | `{ ok, db, jev, assistant, jevAnswers, jevLastError, commit }`           | Direct Check         |
 | `GET`    | `/api/snapshot`                 | None                                                                  | `Snapshot`                                                               | Database Query       |
 | `POST`   | `/api/assistant`                | `{ question, persona, bookingId?, history?, image? }`                 | `{ answer, citations }`                                                  | Live Gemini Tool-Use |
 | `POST`   | `/api/assistant/stream`         | Same assistant request                                                | SSE tool progress and answer events                                      | Live Gemini Tool-Use |
@@ -300,7 +301,9 @@ no third-party schema validation libraries are loaded.
   the last failed live Jev call when the proxy client is wired, or `null`
   otherwise. TypeSafe API-key mode does not track `jevLastError`, since doing so
   would need `@typesafe-ai/sdk` as a dependency of the server package rather
-  than `@mortar/jev`'s.
+  than `@mortar/jev`'s. `commit` is the Git commit the running server was built
+  from (`RENDER_GIT_COMMIT`, which Render sets on every deploy), or `null`
+  locally, so anyone can tell whether a merge is live.
 - `GET /api/snapshot`: Assembles the full dataset required by the frontend
   workspace: `bookings`, `loan_applications`, `events`, `messages`, `playbooks`,
   `tasks`, and the latest `extractions`, `signals`, and `nextActions` from
@@ -310,7 +313,13 @@ no third-party schema validation libraries are loaded.
   hash the answer was saved under, returning `stale: true` on a mismatch;
   `extract` is keyed to an immutable message and is never stale. This is a
   separate staleness check from the per-route fallback ladder described under
-  "Fallback And Caching Ladder" below.
+  "Fallback And Caching Ladder" below. The server builds one snapshot and shares
+  it between requests: every `Database` method that writes, and Add and Delete
+  Demo Data, drop it, so a write through this server shows on the next request.
+  A write made through another server on the same database shows within 10
+  seconds (`SNAPSHOT_TTL_MS`). Each profile's scoped body is rendered once per
+  built snapshot. On Render's Free instance this keeps a burst of page loads
+  from starving the process past its health check.
 - `POST /api/assistant`: Grounded assistant powered by Google's Gemini API
   (`server/src/assistant/`, default model `gemini-3.5-flash-lite` configured via
   `GEMINI_API_KEY` and `GEMINI_MODEL`). It grounds answers against the live
@@ -323,7 +332,8 @@ no third-party schema validation libraries are loaded.
   clearly when data does not contain the answer. Citations link only bookings
   returned by tools. Accepts optional image attachments (PNG, JPEG, WebP up to 4
   MB). Limits: questions up to 1,000 characters, up to 6 history turns, 8
-  requests per minute per IP address, 300 requests per day per server instance,
+  requests per minute per IP address (the `CF-Connecting-IP` that Render's edge
+  sets, which a client cannot forge), 300 requests per day per server instance,
   and answers targeting about 150 words. Returns `400` on invalid payloads or
   limit breaches, `429` on rate limits, and `503` `{ fallback: true }` when
   `GEMINI_API_KEY` is missing or when calls fail or time out, prompting client
@@ -778,14 +788,16 @@ The system strictly handles synthetic data:
 - **Isolated Credentials:** Production and development credentials
   (`DATABASE_URL`, `TEST_DATABASE_URL`, `GEMINI_API_KEY`, `TYPESAFE_API_KEY`)
   are stored in `.env`, which is git-ignored. `TEST_DATABASE_URL` is dedicated
-  to the database integration suite pointing to an isolated Neon test database
-  (`mortar-test`), and is never pointed at production.
+  to the database integration suite: locally it points to an isolated Neon test
+  database (`mortar-test`), and in CI to a fresh Postgres container for each
+  run. It is never pointed at production.
 - **Client Boundary:** Server keys are used exclusively by the Bun server
   runtime. No client environment variables (`VITE_*`) expose API tokens to the
   browser.
-- **Cloud Delivery:** Cloud Run receives database credentials and API keys via
-  secure environment variables populated from GitHub Secrets during deployment
-  (`deploy.yml`).
+- **Cloud Delivery:** The Render service holds `DATABASE_URL`,
+  `TYPESAFE_API_KEY` and `GEMINI_API_KEY` as environment variables, entered in
+  its Environment tab in the Render dashboard. They never pass through GitHub or
+  a command line.
 - **Free-Tier Gemini Caveat:** On Gemini's free tier, Google may use prompts and
   responses to improve products. Ask MortarAI must only process simulated data;
   processing real buyer data requires a paid tier or Vertex AI under a Data
@@ -896,8 +908,8 @@ it with the company's lawyer.
 
 ## Deploy And CI
 
-The deployment pipeline is fully automated via GitHub Actions, containerizing
-the application for serverless hosting on Google Cloud Run.
+Render builds the root `Dockerfile` and deploys every push to `main` once its CI
+checks pass. GitHub Actions runs CI only, and no deploy key lives in GitHub.
 
 ### Containerization
 
@@ -932,25 +944,47 @@ allowing one container instance to serve both web traffic and backend queries.
 
 ### Deployment Workflow
 
-The workflow (`.github/workflows/deploy.yml`) runs on merges to `main`:
+Production is one Render web service, `mortar`, alone in its own Hobby
+workspace. Render gives each workspace 750 free instance hours a month and
+suspends every free service in a workspace that runs out, so Mortar shares its
+hours with nothing else.
 
-1. **Authentication:** Authenticates to Google Cloud using Workload Identity
-   Federation (no service account keys stored in GitHub).
-2. **Container Build:** Compiles and tags the Docker image in Google Artifact
-   Registry.
-3. **Cloud Run Rollout:** Deploys the container to Cloud Run in the
-   `asia-southeast1` (Singapore) region with continuous health verification.
-4. **Environment Configuration:** Injects `DATABASE_URL` (Neon production
-   branch), `TYPESAFE_API_KEY`, and `GEMINI_API_KEY` directly from GitHub
-   repository secrets.
+| Setting      | Value                                                    |
+| ------------ | -------------------------------------------------------- |
+| Runtime      | Docker, from the root `Dockerfile`                       |
+| Region       | Singapore, next to the Neon database in `ap-southeast-1` |
+| Instance     | Free (512 MB, 0.1 CPU)                                   |
+| Branch       | `main`, with Auto-Deploy set to After CI Checks Pass     |
+| Health check | `/api/health`                                            |
+| Secrets      | `DATABASE_URL`, `TYPESAFE_API_KEY` and `GEMINI_API_KEY`  |
+
+1. **CI Gate:** GitHub Actions runs `ci.yml` on every push. Render deploys a
+   push to `main` only after its checks pass, whoever merged it.
+2. **Build And Start:** Render builds the image from the `Dockerfile` and starts
+   it. The deploy counts as live once `/api/health` answers.
+3. **Secrets:** `DATABASE_URL` (the Neon production branch), `TYPESAFE_API_KEY`
+   and `GEMINI_API_KEY` live in the service's Environment tab, and never pass
+   through GitHub or a command line.
+4. **Staying Awake:** A free service sleeps after 15 idle minutes. The
+   keepwarmer on the owner's Raspberry Pi calls `/api/health` every 10 minutes,
+   which keeps Mortar awake for about 720 to 744 of its 750 hours.
+5. **Is It Live:** `/api/health` reports `commit`, the commit the running server
+   was built from, so anyone can see a merge go live.
+
+The service lives at
+[mortar-d18f.onrender.com](https://mortar-d18f.onrender.com) and was created in
+the Render dashboard with the settings above. The old Cloud Run service no
+longer receives deploys. It serves its last build, against the same database,
+until the Google Cloud trial closes.
 
 ### Continuous Integration (CI)
 
 Every proposed change must satisfy local and remote verification gates:
 
 - `bun run check`: Executes ESLint validation, TypeScript workspace
-  typechecking, and the Vitest suites across all modules. CI passes the
-  `TEST_DATABASE_URL` repository secret to `bun run check`.
+  typechecking, and the Vitest suites across all modules. In CI,
+  `TEST_DATABASE_URL` points at a Postgres 17 service container that each run
+  starts empty, so two runs never share a database.
 - `bun run format`: Formats code and documentation with Prettier (enforcing an
   80-column limit on Markdown files).
 - `bun run test`: Executes unit and integration test suites using Vitest.
@@ -989,8 +1023,8 @@ Located in `packages/jev/src/__tests__/`, `server/src/__tests__/`, and
   reads `TEST_DATABASE_URL` and skips cleanly when it is not set. It never reads
   `DATABASE_URL`, preventing accidental execution against production. An empty
   test database receives demo rows explicitly during suite setup; server boot
-  creates only the schema. The team's test database is an isolated Neon project,
-  `mortar-test`.
+  creates only the schema. Locally the team's test database is an isolated Neon
+  project, `mortar-test`; CI starts an empty Postgres 17 container for each run.
 - **Assistant Service And Tools:** Tests `server/src/assistant/` tool execution,
   read-only boundary enforcement, prompt fencing of untrusted messages, and
   graceful fallback to `askBrain` when the Gemini API key is missing or calls

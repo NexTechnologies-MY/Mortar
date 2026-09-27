@@ -22,7 +22,7 @@ import { PLAYBOOKS } from '@mortar/core'
 import { createApp, type App } from '../../app'
 import { MAX_TOOL_ROUNDS } from '../index'
 import { runTool } from '../tools'
-import { RateLimiter } from '../guardrails'
+import { clientIp, RateLimiter } from '../guardrails'
 import type { JevAnswerRow, StoredMeta } from '../../../db/mappers'
 
 const TODAY = '2026-09-18'
@@ -706,6 +706,17 @@ describe('RateLimiter', () => {
     // 300 questions, spread over four minutes so the minute limit never fires.
     for (let i = 0; i < 300; i += 1) expect(limiter.check(`ip-${i}`, at + i * 1_000)).toBeNull()
     expect(limiter.check('one-more', at + 300_000)?.status ?? 0).toBe(429)
+  })
+})
+
+describe('clientIp', () => {
+  test('a forged X-Forwarded-For does not choose its own rate-limit key', () => {
+    const forged = new Request('http://test', {
+      headers: { 'x-forwarded-for': '203.0.113.9, 198.51.100.4', 'cf-connecting-ip': '198.51.100.4' }
+    })
+    expect(clientIp(forged)).toBe('198.51.100.4')
+    expect(clientIp(new Request('http://test', { headers: { 'x-forwarded-for': '10.0.0.7' } }))).toBe('10.0.0.7')
+    expect(clientIp(new Request('http://test'))).toBe('local')
   })
 })
 

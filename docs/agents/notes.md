@@ -159,7 +159,15 @@ clean recording seed.
   `process.env.TEST_DATABASE_URL` and skips entirely when unset; it never reads
   `DATABASE_URL` (which often points at production). An empty test database is
   seeded once on first boot. NEVER point `TEST_DATABASE_URL` at production. The
-  team test database is the separate Neon project `mortar-test`.
+  team test database is the separate Neon project `mortar-test`; CI runs the
+  suite against its own Postgres container instead.
+- **The Snapshot Is Cached; Raw SQL Writers Must Forget It.** `createDatabase`
+  shares one built snapshot until a write, and treats every `Database` method
+  not listed in `SNAPSHOT_READS` (`server/db/index.ts`) as a write that drops
+  it. A new read method belongs on that list, or it drops the cache needlessly.
+  Code that writes with its own SQL, as Add and Delete Demo Data do, must call
+  `db.forgetSnapshot()` afterwards, or its change stays hidden for up to 10
+  seconds.
 - **Keyword Score Alone Does Not Gate A Question.** "What is the weather"
   out-scores a correct paraphrase, so `matchQuestion` ranks on how much of the
   query was covered and treats the score as a floor. Widen `tags` rather than

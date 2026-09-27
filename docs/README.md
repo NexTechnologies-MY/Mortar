@@ -22,7 +22,7 @@
 ![Vitest](https://img.shields.io/badge/Vitest_3-6E9F18?style=for-the-badge&logo=vitest&logoColor=white)
 ![MIT](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)
 
-[Live Prototype](https://mortar-ppdggwxxjq-as.a.run.app) ·
+[Live Prototype](https://mortar-d18f.onrender.com) ·
 [Figma](https://www.figma.com/design/CTy3FDK15W2QLQmB3h5f1I/Mortar-Design-System?node-id=0-1&t=BmfrHmxUj0uuvRDc-1)
 · [Design Spec](DESIGN.md) · [Problem Statement](source/problem-statement.md) ·
 [Interview](source/interview.md) · [AGENTS](../AGENTS.md)
@@ -207,7 +207,7 @@ Browser — React 19 SPA
         |
         |  GET /api/snapshot  ·  POST /api/* writes
         v
-Google Cloud Run (asia-southeast1)
+Render web service (Singapore)
         |
         v
 Bun.serve — one process, server/src/index.ts
@@ -233,13 +233,13 @@ open it at [draw.io](https://app.diagrams.net) and re-export the `.svg` and
 | Piece            | Runs                     | Job                                                       |
 | ---------------- | ------------------------ | --------------------------------------------------------- |
 | `frontend/`      | Built to `frontend/dist` | React 19 + Vite SPA, served by the Bun process            |
-| `server/`        | Cloud Run                | `Bun.serve`: static assets, `/api/*`, SQL schema on boot  |
+| `server/`        | Render                   | `Bun.serve`: static assets, `/api/*`, SQL schema on boot  |
 | `packages/core/` | Browser and server       | `@mortar/core`: contract types, domain rules, forecasting |
 | `packages/jev/`  | Server only              | `@mortar/jev`: TypeSafe Jev client, questions, fallbacks  |
 | `docs/`          | Repo                     | This file, the design spec, sources, agent notes          |
 
-Every push to `main` deploys automatically through GitHub Actions to Cloud Run
-in `asia-southeast1`, with keyless Workload Identity Federation.
+Every push to `main` deploys automatically to Render, in Singapore, once its CI
+checks pass.
 
 <p align="right"><a href="#readme-top">&uarr;</a></p>
 
@@ -259,7 +259,7 @@ in `asia-southeast1`, with keyless Workload Identity Federation.
 | Tests    | Vitest, Testing Library, jsdom                             |
 | Serving  | One Bun process serves `/api/*` and `frontend/dist`        |
 | AI       | Jev (TypeSafe SDK); Ask MortarAI (Gemini via assistant/)   |
-| Hosting  | Google Cloud Run (`asia-southeast1`)                       |
+| Hosting  | Render web service, Free instance (Singapore)              |
 
 <p align="right"><a href="#readme-top">&uarr;</a></p>
 
@@ -353,7 +353,7 @@ packages/jev/    @mortar/jev: proposals, playbooks, answer cache
 server/          Bun API over Postgres; also serves frontend/dist
   db/            Schema, seed, and row mappers
   src/           Routes, Jev cache, static handler, assistant/
-.github/         CI and Cloud Run deploy workflows
+.github/         CI workflow, contributor guide and templates
 Dockerfile       Bun build → Bun alpine runtime
 AGENTS.md        Agent instructions: stack, routes, rules
 ```

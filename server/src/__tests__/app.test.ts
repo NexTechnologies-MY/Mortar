@@ -158,6 +158,10 @@ const OTHER_APPLICATION: LoanApplication = {
 
 class FakeDb implements Database {
   projectSettings: realCore.ProjectSettings | null = null
+  snapshotsForgotten = 0
+  forgetSnapshot() {
+    this.snapshotsForgotten += 1
+  }
   bookings = [BOOKING]
   applications: LoanApplication[] = [APPLICATION]
   messages = [FIXTURE_MESSAGE]
@@ -524,8 +528,15 @@ describe('createApp', () => {
       jev: false,
       assistant: false,
       jevAnswers: 87,
-      jevLastError: null
+      jevLastError: null,
+      commit: null
     })
+  })
+
+  test('GET /api/health reports the commit it was built from', async () => {
+    const app = createApp({ db: new FakeDb(), jev: fakeJev(), jevAvailable: false, commit: 'abc1234' })
+    const res = await app.fetch(new Request('http://test/api/health'))
+    expect(((await res?.json()) as { commit: string | null }).commit).toBe('abc1234')
   })
 
   test('GET /api/health stays public for deployment probes', async () => {
@@ -546,7 +557,8 @@ describe('createApp', () => {
       jev: false,
       assistant: false,
       jevAnswers: null,
-      jevLastError: null
+      jevLastError: null,
+      commit: null
     })
   })
 
@@ -1956,6 +1968,14 @@ describe('createApp', () => {
   })
 
   describe('demo data routes', () => {
+    test('Add and Delete Demo Data drop the cached snapshot, since they write outside the database methods', async () => {
+      const db = new FakeDb()
+      const app = makeApp(db)
+      expect((await call(app, '/api/admin/demo/add', post(), 'manager'))?.status).toBe(200)
+      expect(db.snapshotsForgotten).toBe(1)
+      expect((await call(app, '/api/admin/demo/delete', post(), 'manager'))?.status).toBe(200)
+      expect(db.snapshotsForgotten).toBe(2)
+    })
     test('a sales session cannot add or delete shared demo data', async () => {
       const app = makeApp()
       expect((await call(app, '/api/admin/demo/add', post()))?.status).toBe(403)
