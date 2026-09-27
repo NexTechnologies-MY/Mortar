@@ -54,7 +54,7 @@ const FAQS: { question: string; answer: string[] }[] = [
     question: 'Where Does The Data Come From, And How Is It Refreshed?',
     answer: [
       'In this prototype, from the seeded simulation — no files are loaded. Add Bookings is the placeholder for the real intake: the bookings spreadsheet the team already exports, refreshed whenever a new export lands. Today is a daily tool, so a daily refresh is the working assumption.',
-      'For the demo, Reset Demo Data in Settings restores the original dataset in one click.'
+      'For the demo, Settings can add the example dataset to an empty account or remove it again. Removing it wipes every example booking and everything on it; the bookings you created yourself stay.'
     ]
   },
   {

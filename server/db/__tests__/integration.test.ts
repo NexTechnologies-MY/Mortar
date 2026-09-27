@@ -3,8 +3,8 @@
  * `TEST_DATABASE_URL` and skipped when it is absent (CI passes the repository
  * secret of the same name). They never read `DATABASE_URL`: the server's test
  * script loads `../.env`, which often points at production, and these tests
- * write and delete rows. An empty test database is seeded once, as the server
- * does on first boot. Covers `applySchema`, `resetDatabase` on that first run,
+ * write and delete rows. The suite explicitly adds demo data to an empty test
+ * database. It covers `applySchema`, the Add/Delete Demo Data actions,
  * and the round-trip of every writable path in `db/index.ts`; test rows carry
  * `W2TEST-` ids (imported bookings, which take real `BK-nnnn` numbers, carry
  * the `W2TEST Project`; the bank application tests use `CITEST-` ids) and are
@@ -15,8 +15,15 @@ import { SQL } from 'bun'
 import { REFERENCE_DATE, summarizeCases } from '@mortar/core'
 import type { Booking, BookingDraft, CaseEvent, Message } from '@mortar/core'
 import { QUESTION_VERSION, jevInputHash, nextActionJob, signalsJob } from '@mortar/jev'
-import { EventSettledError, ImportMovedOnError, OpenApplicationError, UnitHeldError, createDatabase } from '../index'
-import { applySchema, resetDatabase } from '../reset'
+import {
+  BookingMovedOnError,
+  EventSettledError,
+  ImportMovedOnError,
+  OpenApplicationError,
+  UnitHeldError,
+  createDatabase
+} from '../index'
+import { addDemoData, applySchema, deleteDemoData } from '../reset'
 
 const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL
 
@@ -30,12 +37,10 @@ describe.skipIf(!TEST_DATABASE_URL)('database integration', () => {
   const sql = TEST_DATABASE_URL ? new SQL(TEST_DATABASE_URL) : (null as unknown as SQL)
   const db = createDatabase(sql)
 
-  // A fresh test database has no tables or seed yet. Seed it once, the way the
-  // server does on first boot, so the fixture-dependent tests below hold.
+  // Demo fixtures are added explicitly; production boot leaves the account empty.
   beforeAll(async () => {
     await applySchema(sql)
-    const [seeded] = await sql`select 1 from meta limit 1`
-    if (!seeded) await resetDatabase(sql)
+    await addDemoData(sql)
   })
 
   afterAll(async () => {
@@ -44,6 +49,8 @@ describe.skipIf(!TEST_DATABASE_URL)('database integration', () => {
     await sql`delete from tasks where booking_id = 'W2TEST-BK'`
     await sql`delete from messages where booking_id = 'W2TEST-BK'`
     await sql`delete from bookings where id = 'W2TEST-BK'`
+    await sql`delete from booking_removals where booking_id like 'BK-%' and project = 'W2TEST Project'`
+    await sql`delete from imports where id like 'W2TEST-%'`
     await sql`delete from jev_answers where subject_id like 'W2TEST-%'`
     await sql.end()
   })
@@ -61,16 +68,115 @@ describe.skipIf(!TEST_DATABASE_URL)('database integration', () => {
       'playbooks',
       'tasks',
       'jev_answers',
-      'event_reviews'
+      'event_reviews',
+      'booking_removals'
     ]) {
       expect(tables).toContain(table)
     }
   })
 
   test('hasBookings is true once any booking exists', async () => {
-    // beforeAll seeds the test database, so this only pins the happy path;
-    // the empty-database branch is exercised at boot in server/src/index.ts.
     expect(await db.hasBookings()).toBe(true)
+  })
+
+  test('Add Demo Data does not create duplicate seed rows', async () => {
+    const before = await sql`select count(*)::int as n from bookings where demo_seed`
+    await addDemoData(sql)
+    const after = await sql`select count(*)::int as n from bookings where demo_seed`
+    expect(after[0]?.n).toBe(before[0]?.n)
+  })
+
+  test('deleting demo data wipes the demo bookings and everything attached, keeping visitor bookings', async () => {
+    try {
+      // A booking of the visitor's own, with the rows that hang off it.
+      await sql`insert into bookings (id, project, unit, price_rm, booking_date, buyer, sales_owner, loan_owner, legal_firm)
+        values ('W2TEST-VISITOR-BK', 'W2TEST Project', 'V-01-01', 500000, '2026-09-01',
+          ${{ name: 'Test Visitor', ic: 'x', phone: 'x', age: 30, grossMonthlyIncomeRm: 5000, monthlyCommitmentsRm: 100, propertiesOwned: 0 }},
+          'Sales', 'Loan', 'Firm')`
+      await sql`insert into messages (id, booking_id, sender_role, sender_name, language, sent_at, body, origin)
+        values ('W2TEST-VISITOR-MSG', 'W2TEST-VISITOR-BK', 'buyer', 'Test Visitor', 'en', now(), 'Visitor message', 'live')`
+      await sql`insert into tasks (id, booking_id, action, title, owner_role, owner_name, due_on, status, origin, created_at)
+        values ('W2TEST-VISITOR-TASK', 'W2TEST-VISITOR-BK', 'Call buyer', 'Visitor task', 'sales', 'Test Visitor', '2026-09-20', 'open', 'staff', now())`
+      await sql`insert into loan_applications (id, booking_id, bank, banker)
+        values ('W2TEST-VISITOR-APP', 'W2TEST-VISITOR-BK', 'Harbour Bank', 'Lim Wei Jie')`
+      // Work the visitor did *on* a demo booking: a task, and a live Jev answer.
+      await sql`insert into tasks (id, booking_id, action, title, owner_role, owner_name, due_on, status, origin, created_at)
+        values ('W2TEST-ON-DEMO-TASK', 'BK-9001', 'Call buyer', 'Visitor task on a demo case', 'sales', 'Test Visitor', '2026-09-20', 'open', 'staff', now())`
+      await sql`insert into jev_answers (kind, subject_id, input_hash, answer, source, latency_ms)
+        values ('signals', 'BK-9001', 'w2test', '{"responsive":1}', 'live', 12)`
+      // A review of a demo proposal: the trail goes with the demo case.
+      await sql`insert into event_reviews (event_id, from_status, to_status, reviewer, at)
+        values ('EV-9001-3', 'provisional', 'confirmed', 'W2TEST Visitor', now())`
+      // An update the visitor recorded on a demo case, reviewed and read by Jev.
+      await sql`insert into events (id, booking_id, track, kind, occurred_at, recorded_at, reported_by, status, source)
+        values ('W2TEST-ON-DEMO-EV', 'BK-9001', 'sales', 'note', now(), now(), 'Test Visitor', 'provisional', 'staff')`
+      await sql`insert into event_reviews (event_id, from_status, to_status, reviewer, at)
+        values ('W2TEST-ON-DEMO-EV', 'provisional', 'confirmed', 'W2TEST Visitor', now())`
+      await sql`insert into jev_answers (kind, subject_id, input_hash, answer, source, latency_ms)
+        values ('extract', 'W2TEST-ON-DEMO-EV', 'w2test', '{}', 'live', 12)`
+      await sql`insert into meta (key, value) values ('sessionSecret', to_jsonb('W2TEST-secret'::text))
+        on conflict (key) do update set value = excluded.value`
+
+      await deleteDemoData(sql)
+
+      // The visitor's own booking and everything attached to it survive.
+      expect(await sql`select id from bookings where id = 'W2TEST-VISITOR-BK' and not demo_seed`).toHaveLength(1)
+      expect(
+        await sql`select id from messages where id = 'W2TEST-VISITOR-MSG' and booking_id = 'W2TEST-VISITOR-BK'`
+      ).toHaveLength(1)
+      expect(
+        await sql`select id from tasks where id = 'W2TEST-VISITOR-TASK' and booking_id = 'W2TEST-VISITOR-BK'`
+      ).toHaveLength(1)
+      expect(
+        await sql`select id from loan_applications where id = 'W2TEST-VISITOR-APP' and booking_id = 'W2TEST-VISITOR-BK'`
+      ).toHaveLength(1)
+      // Everything on a demo booking goes with it, visitor-authored or not.
+      expect(await sql`select id from bookings where demo_seed`).toHaveLength(0)
+      expect(await sql`select id from messages where demo_seed`).toHaveLength(0)
+      expect(await sql`select id from events where demo_seed`).toHaveLength(0)
+      expect(
+        await sql`select id from loan_applications where booking_id in (select id from bookings where demo_seed)`
+      ).toHaveLength(0)
+      expect(await sql`select id from tasks where id = 'W2TEST-ON-DEMO-TASK'`).toHaveLength(0)
+      expect(await sql`select id from tasks where booking_id = 'BK-9001'`).toHaveLength(0)
+      expect(await sql`select id from events where booking_id = 'BK-9001'`).toHaveLength(0)
+      expect(await sql`select id from jev_answers where subject_id = 'BK-9001'`).toHaveLength(0)
+      expect(await sql`select id from event_reviews where reviewer = 'W2TEST Visitor'`).toHaveLength(0)
+      expect(await sql`select id from jev_answers where subject_id = 'W2TEST-ON-DEMO-EV'`).toHaveLength(0)
+      // Only the demo meta keys go; the app's own keys stay.
+      const metaKeys = (await sql`select key from meta order by key`).map((row: Record<string, unknown>) =>
+        String(row.key)
+      )
+      expect(metaKeys).toContain('sessionSecret')
+      for (const key of ['seed', 'referenceDate', 'resetAt', 'resetAtWall']) expect(metaKeys).not.toContain(key)
+    } finally {
+      await sql`delete from event_reviews where reviewer = 'W2TEST Visitor'`
+      await sql`delete from jev_answers where input_hash = 'w2test'`
+      await sql`delete from meta where key = 'sessionSecret'`
+      await sql`delete from bookings where id = 'W2TEST-VISITOR-BK'`
+      await addDemoData(sql)
+    }
+  })
+
+  test('deleting demo data twice is safe, and Add Demo Data restores the whole dataset', async () => {
+    const seeded = async () => (await sql`select count(*)::int as n from bookings where demo_seed`)[0]?.n
+    const before = await seeded()
+    expect(before).toBe(148)
+
+    await deleteDemoData(sql)
+    await deleteDemoData(sql)
+    expect(await seeded()).toBe(0)
+
+    await addDemoData(sql)
+    expect(await seeded()).toBe(148)
+    expect(await sql`select id from events where demo_seed`).not.toHaveLength(0)
+    expect(
+      await sql`select key from meta where key in ('seed', 'referenceDate', 'resetAt', 'resetAtWall')`
+    ).toHaveLength(4)
+
+    // Adding again while the dataset is in place changes nothing.
+    await addDemoData(sql)
+    expect(await seeded()).toBe(148)
   })
 
   test('booking insert maps jsonb and dates back to the contract', async () => {
@@ -454,6 +560,43 @@ describe.skipIf(!TEST_DATABASE_URL)('database integration', () => {
         document: null,
         note: 'Imported From W2TEST'
       })
+    test('deleteBooking keeps a minimal trace and refuses progressed bookings', async () => {
+      const [untouched, progressed] = await db.importBookings(
+        { id: 'W2TEST-DELETE', source: null, reportedBy: 'Test Staff', createdAt: '2026-09-18T10:00:00+08:00' },
+        [draft('DELETE-1'), draft('DELETE-2')],
+        (booking) => ({ ...booked('DELETE')(booking), note: null })
+      )
+      expect(await db.deleteBooking(untouched.id, 'Test Staff', '2026-09-18T10:10:00+08:00')).toBe(true)
+      expect(await db.getBooking(untouched.id)).toBeNull()
+      const [trace] = await sql`select booking_id, unit, project, buyer_name, price_rm, removed_by, removed_at
+        from booking_removals where booking_id = ${untouched.id}`
+      expect(trace).toMatchObject({
+        booking_id: untouched.id,
+        unit: untouched.unit,
+        project,
+        buyer_name: 'Test Buyer',
+        price_rm: 600000,
+        removed_by: 'Test Staff'
+      })
+      expect(JSON.stringify(trace)).not.toContain('900514-00-0001')
+      expect(JSON.stringify(trace)).not.toContain('+60 00-000 0001')
+
+      await db.insertEvent({
+        ...booked('PROGRESS')(progressed),
+        id: 'W2TEST-DELETE-PROGRESS',
+        kind: 'buyer_contacted',
+        note: null
+      })
+      // `expect(...).rejects` hangs Bun 1.3.14's runner; settle the rejection directly.
+      const outcome = await db.deleteBooking(progressed.id, 'Test Staff', '2026-09-18T10:11:00+08:00').then(
+        () => 'removed',
+        (e: unknown) => (e instanceof BookingMovedOnError ? 'moved-on' : `other: ${String(e)}`)
+      )
+      expect(outcome).toBe('moved-on')
+      expect(await db.getBooking(progressed.id)).not.toBeNull()
+      await sql`delete from booking_removals where booking_id = ${untouched.id}`
+      await sql`delete from bookings where id = ${progressed.id}`
+    })
     const batch = (id: string) => ({
       id: `W2TEST-${id}`,
       source: 'w2test.csv',
@@ -466,10 +609,14 @@ describe.skipIf(!TEST_DATABASE_URL)('database integration', () => {
       await sql`delete from imports where id like 'W2TEST-%'`
     })
 
-    test('numbers after the highest BK-nnnn, records the batch, and undoes it', async () => {
-      const before = await sql`select coalesce(max(substring(id from 4)::int), 0)::int as n
-        from bookings where id ~ '^BK-[0-8][0-9]{3}$'`
-      const next = (before[0].n as number) + 1
+    test('numbers after every used BK-nnnn, records the batch, and undoes it', async () => {
+      // Deleted bookings still reserve their numbers through the import trail.
+      const used = await sql`select id from bookings union select unnest(booking_ids) as id from imports`
+      const numbers = used
+        .map((row: { id: string }) => row.id)
+        .filter((id: string) => /^BK-[0-8][0-9]{3}$/.test(id))
+        .map((id: string) => Number(id.slice(3)))
+      const next = Math.max(140, ...numbers) + 1
       const bookings = await db.importBookings(batch('A'), [draft('T-01'), draft('T-02')], booked('A'))
       expect(bookings.map((b) => b.id)).toEqual([next, next + 1].map((n) => `BK-${String(n).padStart(4, '0')}`))
       const events =

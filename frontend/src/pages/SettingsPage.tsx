@@ -1,8 +1,4 @@
-/**
- * Settings page — available to every persona. Holds the demo-data card (seed,
- * reference date, last reset, record counts), the Reset Demo Data flow, and
- * the server's health report.
- */
+/** Settings page — demo data actions, project defaults and server status. */
 import { useCallback, useEffect, useState } from 'react'
 import { SearchX } from 'lucide-react'
 import { useSnapshot } from '@/lib/data'
@@ -46,7 +42,7 @@ export function SettingsPage() {
     }
   }, [])
 
-  const onReset = async () => {
+  const onDemoDataChange = async () => {
     await refresh()
     await checkHealth()
   }
@@ -55,9 +51,6 @@ export function SettingsPage() {
     <PageContainer flex>
       <PageHeaderCard>
         <h1 className="text-[32px] font-semibold leading-[1.16] tracking-[-0.02em] text-foreground">Settings</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          The Simulated Dataset Behind Every Screen, And The Services Serving It.
-        </p>
       </PageHeaderCard>
 
       {error ? (
@@ -70,13 +63,11 @@ export function SettingsPage() {
           <Skeleton className="h-72" />
         </div>
       ) : snapshot ? (
-        <div className="grid items-start gap-4 py-4 lg:grid-cols-3">
-          <div className="flex flex-col gap-4">
-            <DemoDataCard snapshot={snapshot} jevAnswers={health?.jevAnswers ?? null} onReset={onReset} />
-            <HealthCard health={health} failed={healthFailed} />
-          </div>
+        <div className="grid items-stretch gap-4 py-4 lg:grid-cols-2">
+          <DemoDataCard snapshot={snapshot} jevAnswers={health?.jevAnswers ?? null} onChange={onDemoDataChange} />
+          <ProjectSettingsCard defaultProjectName={mainProject(snapshot.bookings)} />
           <div className="lg:col-span-2">
-            <ProjectSettingsCard defaultProjectName={mainProject(snapshot.bookings)} />
+            <HealthCard health={health} failed={healthFailed} />
           </div>
         </div>
       ) : null}

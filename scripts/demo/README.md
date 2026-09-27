@@ -25,9 +25,9 @@ slides/render.mjs ──► slide-sXX.png ─────────┘
   for more than `DEMO_MUTE_SEG_MS`.
 - **No dead air**: The mux rejects any gap between spoken lines over
   `DEMO_MAX_GAP_MS` (1s).
-- **Production-safe**: The walk mutates production (one task, two confirmed Jev
-  proposals, one buyer message). `record.mjs` verifies the clean seed before
-  filming and restores it from `/settings` afterwards.
+- **Disposable target**: The walk creates a task, confirms two Jev proposals and
+  posts a message. `record.mjs` requires an explicit disposable deployment; demo
+  deletion preserves those visitor edits, so the target is used once.
 - **Swappable voice**: The pipeline runs end to end on the placeholder Kokoro
   voice. Another lane can replace the audio by dropping wavs into
   `$DEMO_DIR/seg/` and re-running with `DEMO_SEGMENTS=external`.
@@ -86,7 +86,7 @@ The capture's beat sequence (see `contract.mjs`):
 | ------------------- | -------------------------------------------------------------------- | ----------------------------------- |
 | **`walk.mjs`**      | Camera choreography for the eight-step walkthrough; `mark()` beats   | App UI, routing, or the cut changes |
 | **`narration.txt`** | Script lines keyed to beat names: `beat \| offset_ms \| text`        | The script or the cut changes       |
-| `record.mjs`        | Browser runner; records `capture.webm` + `beats.json`, then resets   | Rarely                              |
+| `record.mjs`        | Browser runner; prepares an empty target and records video           | Demo-data workflow                  |
 | `contract.mjs`      | Exact required beat sequence and capture-completeness audit          | When the walkthrough changes        |
 | `warmup.mjs`        | Clean-seed check + off-camera warm-up of `/chase`, case, `/forecast` | When the seed or routes change      |
 | `proof.mjs`         | `/api/snapshot` clean-seed verification (27 messages, 0 tasks, ...)  | When the fixture changes            |
@@ -160,17 +160,17 @@ command -v ffmpeg && command -v ffprobe   # libass support is required for the s
 
 ```bash
 export DEMO_DIR="${TMPDIR:-/tmp}/mortar-demo"
+export DEMO_WEB="https://your-disposable-mortar.example"
 node scripts/demo/record.mjs
 ```
 
-`record.mjs` first calls `/api/snapshot` and refuses to film unless the seed is
-clean (exactly 27 messages, 0 tasks, the four `MSG-9001-*` fixtures on BK-9001,
-one provisional payslip proposal, no `documents_received`, no confirmed Jev
-events). It then warms `/chase`, `/bookings/BK-9001` and `/forecast` off-camera
-(retrying once), records the walk at 1440x900, and finally drives the
-`Reset Demo Data` dialog on `/settings` in a second, unrecorded context and
-re-verifies the seed. Set `DEMO_RESET_AFTER=0` only when filming a throwaway
-deployment.
+`record.mjs` adds demo data if the disposable target is empty, then refuses to
+film unless the seed is clean (exactly 27 messages, 0 tasks, the four
+`MSG-9001-*` fixtures on BK-9001, one provisional payslip proposal, no
+`documents_received`, no confirmed Jev events). It then warms `/chase`,
+`/bookings/BK-9001` and `/forecast` off-camera (retrying once), and records the
+walk at 1440x900. Discard the disposable deployment after capture; Delete Demo
+Data intentionally keeps the edits made during filming.
 
 Outputs `$DEMO_DIR/capture.webm` and `$DEMO_DIR/beats.json`. The runner exits
 non-zero unless every required beat was marked in order.
@@ -244,38 +244,37 @@ python3 -m unittest discover -s tests -p 'test_*.py'   # pipeline tests (need ff
 
 ## Environment Configuration
 
-| Variable             | Default                                         | Description                                                       |
-| -------------------- | ----------------------------------------------- | ----------------------------------------------------------------- |
-| `DEMO_DIR`           | `$TMPDIR/mortar-demo`                           | Scratch directory for captures, segments, slides and the MP4      |
-| `DEMO_WEB`           | `https://mortar-ppdggwxxjq-as.a.run.app`        | Target deployment to film                                         |
-| `DEMO_WARMUP`        | `1`                                             | Set `0` to skip the clean-seed check and off-camera warm-up       |
-| `DEMO_RESET_AFTER`   | `1`                                             | Set `0` to skip restoring the seed from `/settings` after capture |
-| `DEMO_CHANNEL`       | unset (bundled Chromium)                        | Browser channel for Playwright, e.g. `chrome`                     |
-| `DEMO_SLIDES`        | `""`                                            | `name:seconds` tokens; `@capture` marks where the capture sits    |
-| `DEMO_DECK`          | `docs/demo/mortar-pitch-deck.html`              | Pitch-deck HTML for `slides/render.mjs`                           |
-| `DEMO_SCRIPT`        | `scripts/demo/narration.txt`                    | Narration source: `beat \| offset_ms \| text` per line            |
-| `DEMO_SEGMENTS`      | `synthesize`                                    | `external` to use supplied `seg/N.wav` instead of synthesis       |
-| `DEMO_TTS`           | `kokoro` when installed, else `chatterbox`      | TTS engine for the placeholder voice                              |
-| `DEMO_SPEAK`         | `scripts/demo/speak.py`                         | Speaker entry point used by `narrate.sh`                          |
-| `DEMO_PYTHON`        | `$KOKORO_HOME/.venv/bin/python`, else `python3` | Interpreter for `speak.py`                                        |
-| `DEMO_VOICE`         | `jf_nezumi`                                     | Kokoro voice ID                                                   |
-| `DEMO_SPEED`         | `1.15` Kokoro / `1.0` Chatterbox                | Narration playback speed factor                                   |
-| `KOKORO_HOME`        | `~/.local/share/mortar-demo`                    | Kokoro model and voices directory                                 |
-| `CHATTERBOX_HOME`    | `~/.local/share/mortar-demo/chatterbox`         | Chatterbox virtualenv and model cache                             |
-| `CHATTERBOX_REF`     | `$CHATTERBOX_HOME/reference.wav`                | Reference audio for voice cloning                                 |
-| `CHATTERBOX_VARIANT` | `nano`                                          | Chatterbox model (`nano`, `turbo`, or `base`)                     |
-| `CHATTERBOX_CACHE`   | `$CHATTERBOX_HOME/cache`                        | Content-addressed cache of synthesized lines                      |
-| `DEMO_PAD`           | `#ffffff`                                       | Pillarbox pad color for the 16:10→16:9 capture canvas             |
-| `DEMO_BGM`           | `""`                                            | Music file; looped, faded, ducked under the voice when set        |
-| `DEMO_BGM_GAIN_DB`   | `-20`                                           | Music gain before speech-triggered ducking                        |
-| `DEMO_FIT_TAIL_MS`   | `250`                                           | Picture kept after a segment's last narrated line                 |
-| `DEMO_MUTE_SEG_MS`   | `900`                                           | Max picture kept for a beat with no narration                     |
-| `DEMO_MAX_GAP_MS`    | `1000`                                          | Max allowed gap between consecutive spoken lines (dead-air rule)  |
-| `DEMO_MIN_DURATION`  | `240`                                           | Reject a deliverable shorter than this many seconds               |
-| `DEMO_MAX_DURATION`  | `300`                                           | Reject a deliverable longer than this many seconds                |
-| `DEMO_OUT`           | `$DEMO_DIR/demo.mp4`                            | Target path of the muxed deliverable                              |
-| `DEMO_FFMPEG`        | `ffmpeg` on `PATH`                              | ffmpeg executable                                                 |
-| `DEMO_FFPROBE`       | `ffprobe` on `PATH`                             | ffprobe executable                                                |
+| Variable             | Default                                         | Description                                                      |
+| -------------------- | ----------------------------------------------- | ---------------------------------------------------------------- |
+| `DEMO_DIR`           | `$TMPDIR/mortar-demo`                           | Scratch directory for captures, segments, slides and the MP4     |
+| `DEMO_WEB`           | required                                        | Disposable deployment to film                                    |
+| `DEMO_WARMUP`        | `1`                                             | Set `0` to skip the clean-seed check and off-camera warm-up      |
+| `DEMO_CHANNEL`       | unset (bundled Chromium)                        | Browser channel for Playwright, e.g. `chrome`                    |
+| `DEMO_SLIDES`        | `""`                                            | `name:seconds` tokens; `@capture` marks where the capture sits   |
+| `DEMO_DECK`          | `docs/demo/mortar-pitch-deck.html`              | Pitch-deck HTML for `slides/render.mjs`                          |
+| `DEMO_SCRIPT`        | `scripts/demo/narration.txt`                    | Narration source: `beat \| offset_ms \| text` per line           |
+| `DEMO_SEGMENTS`      | `synthesize`                                    | `external` to use supplied `seg/N.wav` instead of synthesis      |
+| `DEMO_TTS`           | `kokoro` when installed, else `chatterbox`      | TTS engine for the placeholder voice                             |
+| `DEMO_SPEAK`         | `scripts/demo/speak.py`                         | Speaker entry point used by `narrate.sh`                         |
+| `DEMO_PYTHON`        | `$KOKORO_HOME/.venv/bin/python`, else `python3` | Interpreter for `speak.py`                                       |
+| `DEMO_VOICE`         | `jf_nezumi`                                     | Kokoro voice ID                                                  |
+| `DEMO_SPEED`         | `1.15` Kokoro / `1.0` Chatterbox                | Narration playback speed factor                                  |
+| `KOKORO_HOME`        | `~/.local/share/mortar-demo`                    | Kokoro model and voices directory                                |
+| `CHATTERBOX_HOME`    | `~/.local/share/mortar-demo/chatterbox`         | Chatterbox virtualenv and model cache                            |
+| `CHATTERBOX_REF`     | `$CHATTERBOX_HOME/reference.wav`                | Reference audio for voice cloning                                |
+| `CHATTERBOX_VARIANT` | `nano`                                          | Chatterbox model (`nano`, `turbo`, or `base`)                    |
+| `CHATTERBOX_CACHE`   | `$CHATTERBOX_HOME/cache`                        | Content-addressed cache of synthesized lines                     |
+| `DEMO_PAD`           | `#ffffff`                                       | Pillarbox pad color for the 16:10→16:9 capture canvas            |
+| `DEMO_BGM`           | `""`                                            | Music file; looped, faded, ducked under the voice when set       |
+| `DEMO_BGM_GAIN_DB`   | `-20`                                           | Music gain before speech-triggered ducking                       |
+| `DEMO_FIT_TAIL_MS`   | `250`                                           | Picture kept after a segment's last narrated line                |
+| `DEMO_MUTE_SEG_MS`   | `900`                                           | Max picture kept for a beat with no narration                    |
+| `DEMO_MAX_GAP_MS`    | `1000`                                          | Max allowed gap between consecutive spoken lines (dead-air rule) |
+| `DEMO_MIN_DURATION`  | `240`                                           | Reject a deliverable shorter than this many seconds              |
+| `DEMO_MAX_DURATION`  | `300`                                           | Reject a deliverable longer than this many seconds               |
+| `DEMO_OUT`           | `$DEMO_DIR/demo.mp4`                            | Target path of the muxed deliverable                             |
+| `DEMO_FFMPEG`        | `ffmpeg` on `PATH`                              | ffmpeg executable                                                |
+| `DEMO_FFPROBE`       | `ffprobe` on `PATH`                             | ffprobe executable                                               |
 
 ---
 
@@ -311,9 +310,9 @@ python3 -m unittest discover -s tests -p 'test_*.py'   # pipeline tests (need ff
 - **Slide subtitle clearance**: `slides/render.mjs` scales the deck canvas so no
   slide content can reach below `SUBTITLE_TOP` (852px) — the deck's own
   foot-lines would otherwise sit under the burned captions.
-- **Production mutation**: The walk creates a task, confirms two proposals and
-  posts a message. Never run it with `DEMO_RESET_AFTER=0` against the shared
-  deployment, and never narrate beats that the audit marked `NOT FILMED`.
+- **Recording writes**: The walk creates a task, confirms two proposals and
+  posts a message. Use a fresh disposable deployment for each capture, and never
+  narrate beats that the audit marked `NOT FILMED`.
 - **Synthetic data only**: The buyer reply, banker message and all on-screen
   records are seeded fixtures. No real people or brands appear in the narration
   or the capture.

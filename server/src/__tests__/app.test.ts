@@ -74,6 +74,7 @@ mock.module('@mortar/core', () => ({
 
 import { createApp, type App } from '../app'
 import {
+  BookingMovedOnError,
   EventSettledError,
   ImportMovedOnError,
   OpenApplicationError,
@@ -270,6 +271,7 @@ class FakeDb implements Database {
     this.tasks.push(task)
   }
   imports = new Map<string, { ids: string[]; undoneBy: string | null; undoneAt: string | null }>()
+  removals: { id: string; removedBy: string; removedAt: string }[] = []
   /** Mirrors the SQL: an open booking (no confirmed cancelled or lapsed) holds its unit. */
   async importBookings(batch: ImportBatch, drafts: BookingDraft[], bookedEvent: (booking: Booking) => CaseEvent) {
     const closed = new Set(
@@ -304,6 +306,22 @@ class FakeDb implements Database {
     this.events = this.events.filter((e) => !ids.includes(e.bookingId))
     this.imports.set(id, { ...record, undoneBy, undoneAt })
     return { removed: ids }
+  }
+  async deleteBooking(id: string, removedBy: string, removedAt: string) {
+    const booking = this.bookings.find((b) => b.id === id)
+    if (!booking) return false
+    if (
+      this.events.filter((e) => e.bookingId === id).length > 1 ||
+      this.events.some((e) => e.bookingId === id && e.kind !== 'booked') ||
+      this.tasks.some((t) => t.bookingId === id) ||
+      this.messages.some((m) => m.bookingId === id) ||
+      this.applications.some((a) => a.bookingId === id)
+    )
+      throw new BookingMovedOnError(id)
+    this.removals.push({ id, removedBy, removedAt })
+    this.bookings = this.bookings.filter((b) => b.id !== id)
+    this.events = this.events.filter((e) => e.bookingId !== id)
+    return true
   }
   async updateTaskStatus(id: string, status: Task['status'], completedAt: string | null) {
     const task = this.tasks.find((t) => t.id === id)
@@ -358,17 +376,47 @@ const fakeJev = (overrides: Partial<JevService> = {}): JevService => ({
   ...overrides
 })
 
-const makeApp = (db = new FakeDb(), jev = fakeJev(), reset?: () => Promise<SimulationMeta>): App =>
+const makeApp = (db = new FakeDb(), jev = fakeJev(), addDemoData?: () => Promise<SimulationMeta>): App =>
   createApp({
     db,
     jev,
-    reset:
-      reset ?? (async () => ({ seed: 20260918, referenceDate: '2026-09-18', resetAt: '2026-09-18T12:00:00+08:00' })),
+    addDemoData:
+      addDemoData ??
+      (async () => ({ seed: 20260918, referenceDate: '2026-09-18', resetAt: '2026-09-18T12:00:00+08:00' })),
+    deleteDemoData: async () => {},
     jevAvailable: false
   })
 
 const call = (app: App, path: string, init?: RequestInit) => app.fetch(new Request(`http://test${path}`, init))
 const post = (body?: unknown) => ({ method: 'POST', body: body === undefined ? undefined : JSON.stringify(body) })
+
+describe('DELETE /api/bookings/:id', () => {
+  test('removes an untouched booking and records the actor and removal time', async () => {
+    const db = new FakeDb()
+    db.applications = []
+    db.messages = []
+    const res = await call(makeApp(db), '/api/bookings/BK-9001', {
+      method: 'DELETE',
+      body: JSON.stringify({ reportedBy: 'Loan Admin' })
+    })
+    expect(res?.status).toBe(200)
+    expect(await res?.json()).toEqual({ removed: 'BK-9001' })
+    expect(db.bookings).toHaveLength(0)
+    expect(db.removals).toEqual([{ id: 'BK-9001', removedBy: 'Loan Admin', removedAt: NOON }])
+  })
+
+  test('refuses a booking with progression data and leaves it present', async () => {
+    const db = new FakeDb()
+    const res = await call(makeApp(db), '/api/bookings/BK-9001', {
+      method: 'DELETE',
+      body: JSON.stringify({ reportedBy: 'Loan Admin' })
+    })
+    expect(res?.status).toBe(409)
+    expect(await res?.json()).toMatchObject({ error: expect.stringContaining('must be retained') })
+    expect(db.bookings).toHaveLength(1)
+    expect(db.removals).toHaveLength(0)
+  })
+})
 const errorOf = async (res: Response | null) => ((await res?.json()) as { error?: string } | undefined)?.error
 
 /** A confirmed staff update on BK-9001, for the case-rule tests to build a case from. */
@@ -1632,83 +1680,49 @@ describe('createApp', () => {
     })
   })
 
-  describe('POST /api/admin/reset', () => {
-    test('is refused while the reset is switched off, and runs nothing', async () => {
+  describe('demo data routes', () => {
+    test('Add Demo Data is refused while demo management is switched off', async () => {
       let ran = false
       const app = createApp({
         db: new FakeDb(),
         jev: fakeJev(),
-        reset: async () => {
+        addDemoData: async () => {
           ran = true
           return { seed: 20260918, referenceDate: '2026-09-18', resetAt: '2026-09-18T12:00:00+08:00' }
         },
+        deleteDemoData: async () => {},
         resetEnabled: false
       })
-      const res = await call(app, '/api/admin/reset', post())
+      const res = await call(app, '/api/admin/demo/add', post())
       expect(res?.status).toBe(403)
       expect(await errorOf(res)).toContain('MORTAR_DEMO_RESET=off')
       expect(ran).toBe(false)
     })
 
-    test('runs the reset and returns SimulationMeta', async () => {
-      const res = await call(makeApp(), '/api/admin/reset', post())
+    test('adds demo data and returns SimulationMeta', async () => {
+      const res = await call(makeApp(), '/api/admin/demo/add', post())
       expect(res?.status).toBe(200)
       const meta = (await res?.json()) as SimulationMeta
       expect(meta.seed).toBe(20260918)
     })
 
-    test('a second reset inside 30 seconds is a 429', async () => {
-      const db = new FakeDb()
-      const app = makeApp(db, fakeJev(), async () => {
-        db.resetAt = new Date().toISOString()
-        return { seed: 20260918, referenceDate: '2026-09-18', resetAt: db.resetAt }
+    test('deletes demo data through its separate endpoint', async () => {
+      let deleted = false
+      const app = createApp({
+        db: new FakeDb(),
+        jev: fakeJev(),
+        addDemoData: async () => ({
+          seed: 20260918,
+          referenceDate: '2026-09-18',
+          resetAt: '2026-09-18T12:00:00+08:00'
+        }),
+        deleteDemoData: async () => {
+          deleted = true
+        }
       })
-      expect((await call(app, '/api/admin/reset', post()))?.status).toBe(200)
-      const second = await call(app, '/api/admin/reset', post())
-      expect(second?.status).toBe(429)
-      expect(await errorOf(second)).toContain('30 seconds')
-    })
-
-    test('the cooldown still bites when resetAt is sim time', async () => {
-      const db = new FakeDb()
-      const app = makeApp(db, fakeJev(), async () => {
-        // `resetDatabase` stamps `resetAt` with `simNow`: the reference date and
-        // the real time of day, which `Date.now()` can be days ahead of.
-        db.resetAt = '2026-09-18T00:00:00+08:00'
-        return { seed: 20260918, referenceDate: '2026-09-18', resetAt: db.resetAt }
-      })
-      expect((await call(app, '/api/admin/reset', post()))?.status).toBe(200)
-      expect((await call(app, '/api/admin/reset', post()))?.status).toBe(429)
-    })
-
-    test('a reset recorded in meta by another path still cools down, by the real clock', async () => {
-      for (const offsetMs of [-1000, 5000]) {
-        const db = new FakeDb()
-        db.resetAt = '2026-09-18T11:59:59+08:00'
-        // Another process's clock may run a few seconds ahead.
-        db.resetAtWall = new Date(Date.now() + offsetMs).toISOString()
-        const res = await call(makeApp(db), '/api/admin/reset', post())
-        expect(res?.status).toBe(429)
-      }
-    })
-
-    test('a stale reset does not block a fresh one', async () => {
-      const db = new FakeDb()
-      db.resetAt = '2026-09-18T11:59:59+08:00'
-      db.resetAtWall = new Date(Date.now() - 60_000).toISOString()
-      const res = await call(makeApp(db), '/api/admin/reset', post())
+      const res = await call(app, '/api/admin/demo/delete', post())
       expect(res?.status).toBe(200)
-    })
-
-    test('a reset last evening does not block one the next morning', async () => {
-      const db = new FakeDb()
-      // Sim time keeps the reference date: last evening's 20:00 reads as later
-      // than this morning's 08:00.
-      db.resetAt = '2026-09-18T20:00:00+08:00'
-      db.resetAtWall = new Date(Date.now() - 12 * 3_600_000).toISOString()
-      clock.now = '2026-09-18T08:00:00+08:00'
-      const res = await call(makeApp(db), '/api/admin/reset', post())
-      expect(res?.status).toBe(200)
+      expect(deleted).toBe(true)
     })
   })
 })

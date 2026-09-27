@@ -7,7 +7,7 @@ import { PersonaProvider } from '@/lib/persona'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { AskPanel } from '../AskPanel'
 
-const mocks = vi.hoisted(() => ({ refresh: vi.fn(), postTask: vi.fn(), askAssistant: vi.fn() }))
+const mocks = vi.hoisted(() => ({ refresh: vi.fn(), postTask: vi.fn(), askAssistantStream: vi.fn() }))
 
 // The canonical dataset, so the answers under test are the real ones rather
 // than a fixture that could disagree with what ships.
@@ -30,7 +30,7 @@ vi.mock('@/lib/data', () => ({
   useCases: () => []
 }))
 
-vi.mock('@/lib/api', () => ({ askAssistant: mocks.askAssistant, postTask: mocks.postTask }))
+vi.mock('@/lib/api', () => ({ askAssistantStream: mocks.askAssistantStream, postTask: mocks.postTask }))
 
 vi.mock('@/components/ui/toastConfig', () => ({
   notify: { success: vi.fn(), error: vi.fn(), warning: vi.fn(), info: vi.fn() }
@@ -66,7 +66,13 @@ describe('AskPanel', () => {
   beforeEach(() => {
     mocks.refresh.mockReset()
     mocks.postTask.mockReset().mockResolvedValue({})
-    mocks.askAssistant.mockReset().mockResolvedValue({ answer: 'Nothing to add.', citations: [] })
+    mocks.askAssistantStream.mockReset().mockImplementation(async (_input, onEvent) => {
+      onEvent({ type: 'answer', answer: { answer: 'Nothing to add.', citations: [] } })
+      onEvent({
+        type: 'follow_ups',
+        questions: ['Who owns the next step?', 'What is blocked?', 'Which booking is oldest?', 'What needs follow up?']
+      })
+    })
   })
 
   it('is titled Ask Mortar, and says where the answers come from', () => {
@@ -82,14 +88,15 @@ describe('AskPanel', () => {
     // A design-system Button, not a bare element: the panel has no controls of
     // its own shape.
     expect(chip.closest('button')?.className).toContain('border-input')
+    expect(screen.getAllByRole('button').filter((button) => button.textContent?.includes('?'))).toHaveLength(4)
   })
 
   it('sends the question, the desk, and the last few exchanges', async () => {
     renderPanel()
     ask('Which bookings are stuck with the bank?')
     submit()
-    await waitFor(() => expect(mocks.askAssistant).toHaveBeenCalledTimes(1))
-    expect(mocks.askAssistant.mock.calls[0][0]).toMatchObject({
+    await waitFor(() => expect(mocks.askAssistantStream).toHaveBeenCalledTimes(1))
+    expect(mocks.askAssistantStream.mock.calls[0][0]).toMatchObject({
       question: 'Which bookings are stuck with the bank?',
       persona: 'sales-admin',
       history: []
@@ -97,9 +104,20 @@ describe('AskPanel', () => {
   })
 
   it('shows the answer the server gave, with every booking it named as a link', async () => {
-    mocks.askAssistant.mockResolvedValue({
-      answer: 'BK-0001 is with Apex Bank and BK-0002 is waiting on a payslip.',
-      citations: ['BK-0001', 'BK-0002']
+    mocks.askAssistantStream.mockImplementation(async (_input, onEvent) => {
+      onEvent({ type: 'tool_call', label: 'Looking Up Bookings' })
+      onEvent({ type: 'tool_result', label: 'Looking Up Bookings' })
+      onEvent({
+        type: 'answer',
+        answer: {
+          answer: 'BK-0001 is with Apex Bank and BK-0002 is waiting on a payslip.',
+          citations: ['BK-0001', 'BK-0002']
+        }
+      })
+      onEvent({
+        type: 'follow_ups',
+        questions: ['Which booking is oldest?', 'Who owns the next step?', 'What is blocked?', 'What needs follow up?']
+      })
     })
     renderPanel()
     ask('what is stuck?')
@@ -109,23 +127,26 @@ describe('AskPanel', () => {
     const links = screen.getAllByRole('link').filter((a) => a.textContent?.startsWith('BK-'))
     expect(links.map((a) => a.textContent)).toEqual(['BK-0001', 'BK-0002'])
     expect(links[0].getAttribute('href')).toBe('/bookings/BK-0001')
+    expect(screen.getAllByRole('button').filter((button) => button.textContent?.includes('?'))).toHaveLength(4)
+    fireEvent.click(screen.getByRole('button', { name: /checks completed/i }))
+    expect(screen.getByText('Looking Up Bookings')).toBeTruthy()
   })
 
   it('reads the next question in the light of the last one', async () => {
     renderPanel()
     ask('which bookings are stuck with the bank?')
     submit()
-    await waitFor(() => expect(mocks.askAssistant).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(mocks.askAssistantStream).toHaveBeenCalledTimes(1))
     ask('and the oldest one?')
     submit()
-    await waitFor(() => expect(mocks.askAssistant).toHaveBeenCalledTimes(2))
-    expect(mocks.askAssistant.mock.calls[1][0].history).toEqual([
+    await waitFor(() => expect(mocks.askAssistantStream).toHaveBeenCalledTimes(2))
+    expect(mocks.askAssistantStream.mock.calls[1][0].history).toEqual([
       { question: 'which bookings are stuck with the bank?', answer: 'Nothing to add.' }
     ])
   })
 
   it('falls back to the scripted answer when the server has no model', async () => {
-    mocks.askAssistant.mockImplementation(noModel)
+    mocks.askAssistantStream.mockImplementation(noModel)
     renderPanel()
     chip('Which Documents Are We Still Chasing?')
     await waitFor(() => expect(screen.getByText(/are waiting on a document/)).toBeTruthy())
@@ -136,7 +157,7 @@ describe('AskPanel', () => {
   })
 
   it('falls back the same way when the request never lands', async () => {
-    mocks.askAssistant.mockImplementation(noModel)
+    mocks.askAssistantStream.mockImplementation(noModel)
     renderPanel()
     ask('Which documents are we still chasing?')
     submit()
@@ -152,7 +173,7 @@ describe('AskPanel', () => {
   })
 
   it('says so plainly when neither the model nor the script has an answer', async () => {
-    mocks.askAssistant.mockImplementation(noModel)
+    mocks.askAssistantStream.mockImplementation(noModel)
     renderPanel()
     ask('what is the weather')
     submit()
@@ -167,7 +188,7 @@ describe('AskPanel', () => {
     const pdf = new File(['%PDF-1.4'], 'letter.pdf', { type: 'application/pdf' })
     fireEvent.change(input, { target: { files: [pdf] } })
     await waitFor(() => expect(screen.getByText(/is not an image/i)).toBeTruthy())
-    expect(mocks.askAssistant).not.toHaveBeenCalled()
+    expect(mocks.askAssistantStream).not.toHaveBeenCalled()
   })
 
   it('sends a photo with the question when one is attached', async () => {
@@ -191,8 +212,8 @@ describe('AskPanel', () => {
       await waitFor(() => expect(screen.getByText('bank-letter.jpg')).toBeTruthy())
       ask('what does this letter say?')
       submit()
-      await waitFor(() => expect(mocks.askAssistant).toHaveBeenCalled())
-      expect(mocks.askAssistant.mock.calls[0][0].image).toEqual({ mimeType: 'image/jpeg', data: '/9j/4AAQ' })
+      await waitFor(() => expect(mocks.askAssistantStream).toHaveBeenCalled())
+      expect(mocks.askAssistantStream.mock.calls[0][0].image).toEqual({ mimeType: 'image/jpeg', data: '/9j/4AAQ' })
       // Sent with the question, and cleared afterwards so it is not sent twice.
       await waitFor(() => expect(screen.queryByText('bank-letter.jpg')).toBeNull())
     } finally {
@@ -201,7 +222,7 @@ describe('AskPanel', () => {
   })
 
   it('raises one chase per booking a scripted answer named, then refreshes', async () => {
-    mocks.askAssistant.mockImplementation(noModel)
+    mocks.askAssistantStream.mockImplementation(noModel)
     renderPanel()
     chip('Which Documents Are We Still Chasing?')
     await waitFor(() => expect(screen.getByText(/are waiting on a document/)).toBeTruthy())
@@ -213,7 +234,7 @@ describe('AskPanel', () => {
   })
 
   it('keeps the answer still once it has been given', async () => {
-    mocks.askAssistant.mockImplementation(noModel)
+    mocks.askAssistantStream.mockImplementation(noModel)
     renderPanel()
     chip('Which Documents Are We Still Chasing?')
     await waitFor(() => expect(screen.getByText(/are waiting on a document/)).toBeTruthy())

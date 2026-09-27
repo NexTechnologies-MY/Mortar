@@ -7,6 +7,8 @@
 import { useState, type ReactNode } from 'react'
 import { AppNav } from './AppNav'
 import { AppSidebar } from './AppSidebar'
+import { TourProvider } from '@/tour/TourProvider'
+import { TourButton } from '@/tour/TourButton'
 
 type AppLayoutProps = {
   children: ReactNode
@@ -25,7 +27,10 @@ export function AppLayout({ children, minimalNav }: AppLayoutProps) {
     <div className="relative flex min-h-dvh flex-col">
       <AppSidebar mobileOpen={mobileSidebarOpen} onMobileClose={() => setMobileSidebarOpen(false)} />
       <AppNav minimal={minimalNav} onMenuClick={() => setMobileSidebarOpen(true)} />
-      <main className="flex-1 pt-14 lg:ml-16">{children}</main>
+      <TourProvider>
+        <main className="flex-1 pt-14 lg:ml-16">{children}</main>
+        <TourButton />
+      </TourProvider>
     </div>
   )
 }

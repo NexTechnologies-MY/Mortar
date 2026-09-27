@@ -19,6 +19,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
 import { notify } from '@/components/ui/toastConfig'
 import { cn } from '@/lib/utils'
 
@@ -126,11 +127,12 @@ export function ProjectSettingsCard({ defaultProjectName }: { defaultProjectName
             <div className="flex size-8 items-center justify-center rounded-md border border-border bg-accent text-foreground">
               <Building2 className="size-4" />
             </div>
-            <div>
+            <div className="flex items-center gap-2">
               <h2 className="text-sm font-semibold text-foreground">Project & Unit Range Settings</h2>
-              <p className="text-xs text-muted-foreground">
-                Set Project Unit Inventory Boundaries, Unit Layout Models, And The Default Panel Law Firm.
-              </p>
+              <InfoTooltip
+                label="About Project And Unit Range Settings"
+                text="Set Project Unit Inventory Boundaries, Unit Layout Models, And The Default Panel Law Firm."
+              />
             </div>
           </div>
         </div>

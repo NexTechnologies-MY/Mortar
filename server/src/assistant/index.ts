@@ -52,11 +52,23 @@ export interface AssistantAnswer {
   citations: string[]
 }
 
+export type AssistantStreamEvent =
+  | { type: 'tool_call'; label: string }
+  | { type: 'tool_result'; label: string }
+  | { type: 'answer'; answer: AssistantAnswer }
+  | { type: 'follow_ups'; questions: string[] }
+  | { type: 'error'; message: string }
+
 export function createAssistant(options: AssistantOptions) {
   const limiter = new RateLimiter()
 
   /** One round trip: the model, its tool calls, the results, and the answer. */
-  async function ask(input: AssistantRequest, apiKey: string, caller?: AbortSignal): Promise<AssistantAnswer> {
+  async function ask(
+    input: AssistantRequest,
+    apiKey: string,
+    caller?: AbortSignal,
+    emit?: (event: AssistantStreamEvent) => void
+  ): Promise<AssistantAnswer> {
     // One deadline for the whole request, the tool loop included. A fresh timer
     // per turn would let four rounds outlive the browser's own patience, and a
     // caller who has already gone away would keep paying for it.
@@ -66,6 +78,7 @@ export function createAssistant(options: AssistantOptions) {
     if (caller) caller.addEventListener('abort', () => controller.abort(), { once: true })
     /** Every booking id the tools handed over in this request, so only those can become links. */
     const known = new Set<string>()
+    const usedTools = new Set<string>()
     if (input.bookingId) known.add(input.bookingId)
 
     try {
@@ -96,20 +109,32 @@ export function createAssistant(options: AssistantOptions) {
         const parts = candidate.content?.parts ?? []
         const calls = parts.flatMap((part) => (part.functionCall ? [part.functionCall] : []))
         if (calls.length === 0) {
-          return shape(
+          const answer = shape(
             parts
               .map((p) => p.text ?? '')
               .join(' ')
               .trim(),
             known
           )
+          emit?.({ type: 'answer', answer })
+          // The answer decides what a person can follow up on, so the chips are
+          // built from its citations rather than from the tools alone: a chip
+          // that named a booking the answer never mentioned would be a guess.
+          emit?.({ type: 'follow_ups', questions: followUps(usedTools, answer.citations) })
+          return answer
         }
         const results: { name: string; text: string }[] = []
         for (const call of calls) {
           const name = call.name ?? ''
+          const label = toolLabel(name)
+          if (label) {
+            usedTools.add(name)
+            emit?.({ type: 'tool_call', label })
+          }
           const text = await runTool(name, (call.args ?? {}) as ToolInput, input.persona, options.db)
           for (const id of text.match(BOOKING_ID) ?? []) known.add(id)
           results.push({ name, text })
+          if (label) emit?.({ type: 'tool_result', label })
         }
         contents.push({ role: 'model', parts })
         contents.push({
@@ -121,14 +146,19 @@ export function createAssistant(options: AssistantOptions) {
       }
       // The model was still asking for facts when the cap closed the loop. Its
       // answers so far are not in hand, so say so rather than answer blind.
-      return { answer: NO_ANSWER, citations: [] }
+      const answer = { answer: NO_ANSWER, citations: [] }
+      emit?.({ type: 'answer', answer })
+      emit?.({ type: 'follow_ups', questions: followUps(usedTools, []) })
+      return answer
     } finally {
       clearTimeout(timer)
     }
   }
 
   /** `POST /api/assistant`. */
-  return async function handleAssistant({ req }: { req: Request }): Promise<Response> {
+  const handleAssistant: ((ctx: { req: Request }) => Promise<Response>) & {
+    stream?: (ctx: { req: Request }) => Promise<Response>
+  } = async function ({ req }: { req: Request }): Promise<Response> {
     const parsed = readAssistantRequest(await body(req))
     if (parsed instanceof Response) return parsed
     if (!options.apiKey) return json({ fallback: true }, 503)
@@ -147,6 +177,106 @@ export function createAssistant(options: AssistantOptions) {
       return modelErrorResponse(e)
     }
   }
+  handleAssistant.stream = async ({ req }: { req: Request }): Promise<Response> => {
+    const parsed = readAssistantRequest(await body(req))
+    if (parsed instanceof Response) return parsed
+    if (!options.apiKey) return json({ fallback: true }, 503)
+    const limited = limiter.check(clientIp(req))
+    if (limited) return limited
+    const encoder = new TextEncoder()
+    const disconnect = new AbortController()
+    let canceled = false
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        const send = (event: AssistantStreamEvent) => {
+          if (!canceled) controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))
+        }
+        const onAbort = () => disconnect.abort()
+        req.signal.addEventListener('abort', onAbort, { once: true })
+        void ask(parsed, options.apiKey!, disconnect.signal, send)
+          .catch((e) => {
+            if (disconnect.signal.aborted) return
+            console.error('ask mortar:', e instanceof Error ? e.message : String(e))
+            send({ type: 'error', message: 'Ask Mortar Could Not Check. Try Again.' })
+          })
+          .finally(() => {
+            req.signal.removeEventListener('abort', onAbort)
+            if (!canceled) controller.close()
+          })
+      },
+      cancel() {
+        canceled = true
+        disconnect.abort()
+      }
+    })
+    return new Response(stream, { headers: { 'content-type': 'text/event-stream', 'cache-control': 'no-cache' } })
+  }
+  return handleAssistant
+}
+
+function toolLabel(name: string): string | null {
+  const labels: Record<string, string> = {
+    find_bookings: 'Looking Up Bookings',
+    get_case: 'Reading A Booking',
+    get_my_queue: 'Checking Your Queue',
+    get_forecast_summary: 'Checking The Forecast',
+    search_playbooks: 'Reading The Playbooks'
+  }
+  return labels[name] ?? null
+}
+
+/** Four chips, the number the panel shows. */
+const CHIP_COUNT = 4
+
+/**
+ * The four questions offered under an answer, in the tools' own order of
+ * specificity: whatever the answer cited first, then the best general question
+ * for each tool it used, and finally the general case queue — never fewer, so a
+ * model that called nothing at all still offers something to ask.
+ *
+ * A chip that named a booking the answer did not mention would be a guess at
+ * something the person cannot see, so only the answer's own citations are named.
+ */
+function followUps(tools: ReadonlySet<string>, cited: readonly string[]): string[] {
+  const specific: string[] = []
+  const [focus] = cited
+  if (focus) {
+    specific.push(`What Is Blocking ${focus}?`, `Who Holds ${focus} Now?`, `What Changed On ${focus} Recently?`)
+  }
+  const general = toolFollowUps(tools)
+  return [
+    ...specific,
+    ...general,
+    'Which Booking Is Oldest?',
+    'Who Owns The Next Step?',
+    'What Should We Follow Up Today?'
+  ]
+    .filter((question, index, all) => all.indexOf(question) === index)
+    .slice(0, CHIP_COUNT)
+}
+
+/** The chips each tool earns on its own, most specific first, deduped across
+ * the tools one answer used. Every tool the assistant can call has a set, so a
+ * question never falls through to a set chosen for a different tool. */
+function toolFollowUps(tools: ReadonlySet<string>): string[] {
+  const sets: Record<string, readonly string[]> = {
+    search_playbooks: [
+      'Which Booking Needs This Next?',
+      'What Should I Ask The Bank?',
+      'Which Documents Are Still Missing?',
+      'Who Owns The Next Step?'
+    ],
+    get_forecast_summary: [
+      'Which Bookings Are At Risk?',
+      'What Could Delay These Signings?',
+      'Which Cases Need Attention Today?',
+      'How Does This Compare By Project?'
+    ],
+    get_case: ['Which Documents Are Still Missing?', 'Who Owns The Next Step?', 'What Should I Ask The Bank?'],
+    find_bookings: ['Which Of These Is The Oldest?', 'Who Owns The Next Step?', 'What Should We Follow Up Today?'],
+    get_my_queue: ['Who Owns The Next Step?', 'What Is Blocking The Case?', 'What Should We Follow Up Today?']
+  }
+  return [...tools].flatMap((name) => sets[name] ?? [])
 }
 
 /** What the panel shows when the model gave no answer to ground. */

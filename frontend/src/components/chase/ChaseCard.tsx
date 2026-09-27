@@ -41,6 +41,9 @@ function Glyph({ icon: Icon, className }: { icon: LucideIcon; className?: string
 }
 
 export function ChaseCard({
+  tourTarget,
+  actionsTarget,
+  quickViewTarget,
   booking,
   summary,
   step,
@@ -61,6 +64,9 @@ export function ChaseCard({
   openTask?: Task | null
   suggesting?: boolean
   creating?: boolean
+  tourTarget?: string
+  actionsTarget?: string
+  quickViewTarget?: string
   /** Opens the case's side sheet over the queue. */
   onInspect: () => void
   onSuggest: () => void
@@ -84,6 +90,7 @@ export function ChaseCard({
   return (
     <article
       data-testid={`chase-card-${booking.id}`}
+      data-tour={tourTarget}
       data-card-interactive=""
       className="flex flex-col gap-3 rounded-md border border-card-border bg-card p-4 shadow-card transition-[box-shadow,transform] duration-[160ms] ease-[var(--ease-out)] hover:-translate-y-px hover:shadow-card-hover"
     >
@@ -92,6 +99,7 @@ export function ChaseCard({
           recorded without leaving Today. */}
       <div className="flex items-start justify-between gap-2">
         <button
+          data-tour={quickViewTarget}
           type="button"
           onClick={onInspect}
           aria-label={`Quick View ${booking.unit}: ${booking.id} · ${booking.buyer.name}`}
@@ -147,7 +155,7 @@ export function ChaseCard({
       </div>
 
       {/* Footer */}
-      <div className="flex items-center justify-end gap-2">
+      <div data-tour={actionsTarget} className="flex items-center justify-end gap-2">
         {openTask ? (
           <p className="mr-auto flex min-w-0 items-center gap-2 text-[13px] text-muted-foreground">
             <StatusPill tone="info" className="shrink-0">

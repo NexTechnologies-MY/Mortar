@@ -1,9 +1,8 @@
 /**
- * Boot and reset: `applySchema` runs `schema.sql` idempotently; `resetDatabase`
- * rebuilds the canonical demo dataset in one transaction — the generator's 140
+ * Demo data actions: `applySchema` runs `schema.sql` idempotently; `addDemoData`
+ * inserts the canonical demo dataset in one transaction — the generator's 140
  * bookings, the story fixtures, the playbooks and the precomputed Jev cache —
- * then writes `meta`. Used by the server entry on first boot, by
- * `POST /api/admin/reset`, and by `bun run db:reset`.
+ * then writes `meta`. The server boots empty; the Settings action calls this.
  */
 import { SQL } from 'bun'
 import {
@@ -42,11 +41,10 @@ function textArray(values: string[]): string {
 }
 
 /**
- * Truncates every table and re-seeds. Fixture messages whose cached extraction
- * proposes an event (and no event already carries the message id) get a
- * provisional `jev` event, so the demo shows Jev proposals after a reset.
+ * Fixture messages whose cached extraction proposes an event (and no event
+ * already carries the message id) get a provisional `jev` event.
  */
-export async function resetDatabase(sql: SQL): Promise<SimulationMeta> {
+export async function addDemoData(sql: SQL): Promise<SimulationMeta> {
   const dataset = generate({ seed: DEFAULT_SEED, referenceDate: REFERENCE_DATE, bookings: 140 })
   const resetAt = simNow(REFERENCE_DATE)
 
@@ -74,9 +72,9 @@ export async function resetDatabase(sql: SQL): Promise<SimulationMeta> {
   }
 
   await sql.begin(async (tx) => {
-    await tx.unsafe(
-      'truncate events, event_reviews, messages, loan_applications, bookings, playbooks, tasks, jev_answers, imports, meta'
-    )
+    await tx`select pg_advisory_xact_lock(20_260_917)`
+    const seeded = await tx`select exists(select 1 from bookings where demo_seed) as seeded`
+    if (seeded[0]?.seeded) return
     // Multi-row inserts: one round trip per chunk instead of one per row.
     const chunks = <T>(rows: T[]) => {
       const out: T[][] = []
@@ -93,13 +91,14 @@ export async function resetDatabase(sql: SQL): Promise<SimulationMeta> {
         buyer: b.buyer,
         sales_owner: b.salesOwner,
         loan_owner: b.loanOwner,
-        legal_firm: b.legalFirm
+        legal_firm: b.legalFirm,
+        demo_seed: true
       }))
     )) {
       await tx`insert into bookings ${tx(chunk)}`
     }
     for (const chunk of chunks(
-      applications.map((a) => ({ id: a.id, booking_id: a.bookingId, bank: a.bank, banker: a.banker }))
+      applications.map((a) => ({ id: a.id, booking_id: a.bookingId, bank: a.bank, banker: a.banker, demo_seed: true }))
     )) {
       await tx`insert into loan_applications ${tx(chunk)}`
     }
@@ -112,7 +111,8 @@ export async function resetDatabase(sql: SQL): Promise<SimulationMeta> {
         language: m.language,
         sent_at: m.sentAt,
         body: m.body,
-        origin: m.origin
+        origin: m.origin,
+        demo_seed: true
       }))
     )) {
       await tx`insert into messages ${tx(chunk)}`
@@ -132,7 +132,8 @@ export async function resetDatabase(sql: SQL): Promise<SimulationMeta> {
         source: e.source,
         message_id: e.messageId,
         document: e.document,
-        note: e.note
+        note: e.note,
+        demo_seed: true
       }))
     )) {
       await tx`insert into events ${tx(chunk)}`
@@ -151,7 +152,8 @@ export async function resetDatabase(sql: SQL): Promise<SimulationMeta> {
         reviewer: p.reviewer,
         reviewed_on: p.reviewedOn,
         status: p.status,
-        tags: textArray(p.tags)
+        tags: textArray(p.tags),
+        demo_seed: true
       }))
     )) {
       await tx`insert into playbooks ${tx(chunk)}`
@@ -163,19 +165,51 @@ export async function resetDatabase(sql: SQL): Promise<SimulationMeta> {
         input_hash: e.inputHash,
         answer: e.answer,
         source: 'precomputed' as const,
-        latency_ms: e.latencyMs
+        latency_ms: e.latencyMs,
+        demo_seed: true
       }))
     )) {
       await tx`insert into jev_answers ${tx(chunk)}`
     }
-    // `resetAt` is sim time, whose time of day wraps at midnight; the reset
-    // cooldown reads the real clock time beside it.
+    // Keep the display time in the simulation's fixed reference timeline.
     await tx`insert into meta (key, value) values
       ('seed', to_jsonb(${DEFAULT_SEED}::int)),
       ('referenceDate', to_jsonb(${REFERENCE_DATE}::text)),
       ('resetAt', to_jsonb(${resetAt}::text)),
-      ('resetAtWall', to_jsonb(${new Date().toISOString()}::text))`
+      ('resetAtWall', to_jsonb(${new Date().toISOString()}::text))
+      on conflict (key) do update set value = excluded.value`
   })
 
   return { seed: DEFAULT_SEED, referenceDate: REFERENCE_DATE, resetAt }
+}
+
+/**
+ * Removes the demo dataset and nothing else: every demo booking with the rows
+ * attached to it (applications, messages, events, their reviews, tasks and the
+ * Jev answers about them), the demo playbooks and the demo `meta` keys.
+ * Bookings a visitor added, and anything attached to one, are untouched. Work
+ * a visitor did *on* a demo booking goes with the demo case, so Add Demo Data
+ * can restore the whole dataset afterwards.
+ */
+export async function deleteDemoData(sql: SQL): Promise<void> {
+  await sql.begin(async (tx) => {
+    await tx`select pg_advisory_xact_lock(20_260_917)`
+    // Jev answers and reviews first: they key off ids the deletes below remove.
+    // A visitor's own message or update on a demo booking cascades away with
+    // it, so its answers and reviews are matched by booking, not by flag.
+    await tx`delete from jev_answers where demo_seed
+      or subject_id in (select id from bookings where demo_seed)
+      or subject_id in (select m.id from messages m join bookings b on b.id = m.booking_id where b.demo_seed)
+      or subject_id in (select e.id from events e join bookings b on b.id = e.booking_id where b.demo_seed)`
+    await tx`delete from event_reviews where event_id in
+      (select e.id from events e join bookings b on b.id = e.booking_id where b.demo_seed)`
+    await tx`delete from events where demo_seed`
+    await tx`delete from messages where demo_seed`
+    await tx`delete from tasks where booking_id in (select id from bookings where demo_seed)`
+    await tx`delete from loan_applications where booking_id in (select id from bookings where demo_seed)`
+    await tx`delete from bookings where demo_seed`
+    await tx`delete from playbooks where demo_seed`
+    // Only the four keys Add Demo Data writes; any other key is the app's.
+    await tx`delete from meta where key in ('seed', 'referenceDate', 'resetAt', 'resetAtWall')`
+  })
 }

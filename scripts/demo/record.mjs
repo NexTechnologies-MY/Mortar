@@ -3,9 +3,9 @@
 //
 // This file is the RUNNER and knows almost nothing about the product. It
 // launches a browser, records video, and hands `walk.mjs` the tools to drive
-// the page and mark beats. The walk itself mutates production data, so the
-// runner also restores the clean seed afterwards -- through the same
-// /settings reset an operator would use, off camera in a second context.
+// the page and mark beats. The walk writes data, so use a disposable deployment
+// for each recording. Demo deletion preserves visitor edits and cannot restore
+// the original seed after the walk.
 //
 // Writes beats.json alongside the capture: the wall-clock offset of every moment
 // worth narrating. narrate.sh reads it, so narration lands on the beat even when
@@ -19,10 +19,13 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { auditCapture, REQUIRED_BEATS } from './contract.mjs'
-import { verifyCleanSeed } from './proof.mjs'
 
 const DIR = process.env.DEMO_DIR || join(tmpdir(), 'mortar-demo')
-const WEB = process.env.DEMO_WEB || 'https://mortar-ppdggwxxjq-as.a.run.app'
+const WEB = process.env.DEMO_WEB
+if (!WEB) throw new Error('DEMO_WEB must name a disposable recording deployment')
+if (new URL(WEB).hostname === 'mortar-ppdggwxxjq-as.a.run.app') {
+  throw new Error('The shared Mortar deployment cannot be used for a recording that writes visitor data')
+}
 const OUT = join(DIR, 'capture')
 
 // Prefer a playwright installed into DEMO_DIR, which is how the README sets this
@@ -55,6 +58,19 @@ const beat = (page, ms) => page.waitForTimeout(ms)
 const channel = process.env.DEMO_CHANNEL || undefined
 const browser = await chromium.launch({ channel })
 const { walk } = await import('./walk.mjs')
+const initial = await fetch(`${WEB}/api/snapshot`)
+if (!initial.ok) {
+  await browser.close()
+  throw new Error(`recording snapshot unavailable: HTTP ${initial.status}`)
+}
+const initialSnapshot = await initial.json()
+if ((initialSnapshot.bookings ?? []).length === 0) {
+  const added = await fetch(`${WEB}/api/admin/demo/add`, { method: 'POST' })
+  if (!added.ok) {
+    await browser.close()
+    throw new Error(`could not add demo data: HTTP ${added.status}`)
+  }
+}
 if (process.env.DEMO_WARMUP !== '0') {
   const { warmProduction } = await import('./warmup.mjs')
   const warmed = await warmProduction({ browser, web: WEB })
@@ -92,20 +108,6 @@ try {
   const video = page.video()
   await ctx.close()
 
-  // The walk creates a task, confirms two proposals and posts a message on
-  // production. Restore the clean seed the way an operator would -- the Reset
-  // Demo Data dialog on /settings -- in a second, unrecorded context. Skipped
-  // with DEMO_RESET_AFTER=0.
-  if (process.env.DEMO_RESET_AFTER !== '0') {
-    try {
-      const clean = await resetFromSettings({ browser, web: WEB })
-      console.log(
-        clean ? '  demo data reset from /settings; seed restored' : '  !! reset did not verify; check /settings'
-      )
-    } catch (e) {
-      console.log(`  !! reset from /settings failed: ${String(e).slice(0, 160)}`)
-    }
-  }
   await browser.close()
   if (video) {
     renameSync(await video.path(), join(DIR, 'capture.webm'))
@@ -128,25 +130,4 @@ try {
     console.log(`  ! ${e}`)
   }
   if (walkError || !audit.complete) process.exitCode = 1
-}
-
-/** Drives the same Reset Demo Data dialog an operator uses on /settings. */
-async function resetFromSettings({ browser, web }) {
-  const resetCtx = await browser.newContext({ viewport: { width: 1440, height: 900 } })
-  try {
-    const settings = await resetCtx.newPage()
-    settings.setDefaultTimeout(30_000)
-    const resetResponse = settings.waitForResponse(
-      (r) => r.url().endsWith('/api/admin/reset') && r.request().method() === 'POST',
-      { timeout: 60_000 }
-    )
-    await settings.goto(`${web}/settings`, { waitUntil: 'domcontentloaded' })
-    await settings.getByRole('button', { name: 'Reset Demo Data' }).first().click()
-    await settings.getByRole('button', { name: 'Reset Demo Data' }).last().click()
-    await resetResponse
-  } finally {
-    await resetCtx.close()
-  }
-  const check = await verifyCleanSeed(web)
-  return check.clean
 }

@@ -278,7 +278,7 @@ export function ChasePage() {
 
   return (
     <PageContainer>
-      <PageHeaderCard>
+      <PageHeaderCard tourTarget="today-header">
         <h1 className="text-[32px] font-semibold leading-[1.16] tracking-[-0.02em] text-foreground">Today</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           {headline.sentence} · {dueToday} {dueToday === 1 ? 'Task' : 'Tasks'} Due Today
@@ -378,6 +378,9 @@ export function ChasePage() {
                   if (!booking || !next) return null
                   return (
                     <ChaseCard
+                      tourTarget={summary === stalled[0] ? 'today-card' : undefined}
+                      actionsTarget={summary === stalled[0] ? 'today-actions' : undefined}
+                      quickViewTarget={summary === stalled[0] ? 'today-quick-view' : undefined}
                       key={summary.bookingId}
                       booking={booking}
                       summary={summary}
@@ -403,28 +406,26 @@ export function ChasePage() {
             </section>
           )}
 
-          {openTasks.length > 0 ? (
-            <section className="mt-8">
-              <div className="flex flex-wrap items-center gap-3">
-                <h2 className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                  <ListChecks aria-hidden="true" className="size-4 shrink-0" />
-                  Open Tasks
-                  <InfoTooltip text="Grouped By Owner." />
-                </h2>
-                <Button type="button" variant="ghost" size="sm" onClick={() => setMineOnly((v) => !v)}>
-                  {mineOnly ? 'Show All Owners' : 'Show Mine Only'}
-                </Button>
-              </div>
-              <div className="mt-3">
-                <ChaseTasks
-                  tasks={shownTasks}
-                  completing={completing}
-                  onComplete={(t) => void completeTask(t)}
-                  emptyLabel={`No Open Tasks For ${PERSONA_STAFF[persona].name}.`}
-                />
-              </div>
-            </section>
-          ) : null}
+          <section data-tour="open-tasks" className="mt-8">
+            <div className="flex flex-wrap items-center gap-3">
+              <h2 className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                <ListChecks aria-hidden="true" className="size-4 shrink-0" />
+                Open Tasks
+                <InfoTooltip text="Grouped By Owner." />
+              </h2>
+              <Button type="button" variant="ghost" size="sm" onClick={() => setMineOnly((v) => !v)}>
+                {mineOnly ? 'Show All Owners' : 'Show Mine Only'}
+              </Button>
+            </div>
+            <div className="mt-3">
+              <ChaseTasks
+                tasks={shownTasks}
+                completing={completing}
+                onComplete={(t) => void completeTask(t)}
+                emptyLabel={`No Open Tasks For ${PERSONA_STAFF[persona].name}.`}
+              />
+            </div>
+          </section>
 
           {/* The same side sheet a row opens on the ledger, so what happened
               can be recorded from Today without leaving it. A save in here

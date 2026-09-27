@@ -73,7 +73,9 @@ describe('ImportPage', () => {
   it('reviews every row: ready, held by an open booking, or missing a value', async () => {
     renderImport()
     await screen.findByRole('heading', { name: 'Add Bookings' })
-    expect(screen.getByText('Upload A Spreadsheet, Or Type Bookings In One By One.')).toBeTruthy()
+    expect(document.querySelector('[data-tour="import-header"]')).toBeTruthy()
+    expect(screen.queryByText('Upload A Spreadsheet, Or Type Bookings In One By One.')).toBeNull()
+    expect(screen.getByRole('heading', { name: 'Add Bookings' }).parentElement?.querySelector('button')).toBeTruthy()
     drop(SHEET)
 
     expect(await screen.findByText('3 Rows Read')).toBeTruthy()
@@ -115,9 +117,31 @@ describe('ImportPage', () => {
     await waitFor(() => expect(screen.queryByText('1 Booking Imported')).toBeNull())
   })
 
-  it('warns that the public demo takes made-up buyers only', async () => {
+  it('shows concise sheet requirements without the public demo warning', async () => {
     renderImport()
-    expect(await screen.findByText(/Import Made-Up Buyers Only/)).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'What The Sheet Needs' })).toBeTruthy()
+    expect(screen.getByText('One Row Per Unit Booking, Under A Row Of Column Names.')).toBeTruthy()
+    expect(screen.queryByText(/This Demo Is Public/)).toBeNull()
+    expect(screen.queryByText(/Import Made-Up Buyers Only/)).toBeNull()
+  })
+
+  it('shows the type form and booking settings in separate side-by-side cards', async () => {
+    renderImport()
+    await screen.findByRole('heading', { name: 'Add Bookings' })
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Type Them In' }), { button: 0 })
+    fireEvent.click(screen.getByRole('tab', { name: 'Type Them In' }))
+
+    const formHeading = await screen.findByRole('heading', { name: 'Type Bookings In' })
+    const settingsHeading = screen.getByRole('heading', { name: 'Booking Settings' })
+    const formCard = formHeading.parentElement?.parentElement
+    const settingsCard = settingsHeading.parentElement?.parentElement
+    expect(formCard?.className).toContain('h-full')
+    expect(settingsCard?.className).toContain('h-full')
+    expect(formCard?.parentElement).toBe(settingsCard?.parentElement)
+    expect(formCard?.parentElement?.className).toContain('grid-cols-[minmax(0,2fr)_minmax(260px,1fr)]')
+    expect(screen.getByText(/Project/)).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Settings' }).getAttribute('href')).toBe('/settings')
+    expect(screen.queryByText(/Demo Buyer Details/)).toBeNull()
   })
 
   it('names the required columns a sheet is missing', async () => {

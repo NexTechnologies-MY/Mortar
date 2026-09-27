@@ -38,6 +38,7 @@ import { WaitingOnCell } from './WaitingOn'
 import { SortHeader, type SortDir, type SortState } from '@/components/ui/SortHeader'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { cn } from '@/lib/utils'
+import { Checkbox } from '@/components/ui/checkbox'
 
 export interface BookingRow {
   booking: Booking
@@ -76,7 +77,10 @@ export function BookingsTable({
   onSort,
   onInspect,
   referenceDate,
-  onChanged
+  onChanged,
+  selectedIds = [],
+  onToggleSelected,
+  onToggleAll
 }: {
   rows: BookingRow[]
   sort?: Sort
@@ -87,12 +91,16 @@ export function BookingsTable({
   referenceDate: string
   /** Reloads the data after the Task column adds a task. */
   onChanged: () => Promise<void>
+  selectedIds?: string[]
+  onToggleSelected?: (bookingId: string) => void
+  onToggleAll?: (checked: boolean) => void
 }) {
   const sortable = onSort ?? (() => {})
 
   return (
     <Table className="min-w-[860px] table-fixed [&_td]:px-2 [&_td:first-child]:pl-3 [&_td:last-child]:pr-3 [&_th]:px-2 [&_th:first-child]:pl-3 [&_th:last-child]:pr-3">
       <colgroup>
+        <col style={{ width: 40 }} />
         <col style={{ width: WIDTHS.unit }} />
         <col />
         <col style={{ width: WIDTHS.age }} />
@@ -104,6 +112,13 @@ export function BookingsTable({
       </colgroup>
       <TableHeader>
         <TableRow>
+          <TableHead>
+            <Checkbox
+              aria-label="Select all bookings"
+              checked={rows.length > 0 && rows.every(({ booking }) => selectedIds.includes(booking.id))}
+              onCheckedChange={(checked) => onToggleAll?.(checked === true)}
+            />
+          </TableHead>
           <TableHead>Unit</TableHead>
           <TableHead>Buyer</TableHead>
           <SortHeader label="Age" columnKey="age" sort={sort} onSort={sortable} className="text-right" />
@@ -134,6 +149,13 @@ export function BookingsTable({
                 }
               }}
             >
+              <TableCell onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
+                <Checkbox
+                  aria-label={`Select ${booking.id}`}
+                  checked={selectedIds.includes(booking.id)}
+                  onCheckedChange={() => onToggleSelected?.(booking.id)}
+                />
+              </TableCell>
               <TableCell>
                 <span className="font-mono text-[13px] font-semibold text-foreground block leading-tight">
                   {booking.unit}

@@ -37,6 +37,7 @@ export function AskTrigger() {
           <TooltipTrigger asChild>
             <DialogTrigger asChild>
               <button
+                data-tour="ask-mortar"
                 type="button"
                 aria-label="Ask Mortar"
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
@@ -48,7 +49,7 @@ export function AskTrigger() {
           <TooltipContent>Ask Mortar</TooltipContent>
         </Tooltip>
       </TooltipProvider>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="flex h-[80vh] w-[80vw] max-w-none flex-col overflow-hidden max-sm:h-[92vh] max-sm:w-[calc(100vw-1rem)]">
         <AskPanel bookingId={bookingId} onNavigate={() => setOpen(false)} />
       </DialogContent>
     </Dialog>

@@ -24,6 +24,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { StatusPill } from '@/components/ui/status-pill'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { notify } from '@/components/ui/toastConfig'
@@ -244,240 +245,250 @@ export function DirectTableImport({
   }
 
   return (
-    <Card className="border-border shadow-card">
-      <CardContent className="flex flex-col gap-4 p-4 sm:p-5">
-        {/* Top Header & Settings Info Bar */}
-        <div className="flex flex-col gap-2 border-b border-border pb-3.5 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-base font-semibold text-foreground">Type Bookings In</h2>
-            <p className="text-xs text-muted-foreground">
-              Key in unit numbers, buyer names, and select layout models to batch import bookings directly.
-            </p>
-          </div>
+    <div className="grid grid-cols-1 items-stretch gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(260px,1fr)]">
+      <Card className="h-full border-border shadow-card">
+        <CardContent className="flex flex-col gap-4 p-4 sm:p-5">
+          <h2 className="flex items-center text-base font-semibold text-foreground">
+            Type Bookings In{' '}
+            <InfoTooltip text="Enter Each Booking In A Row. Buyer IC And Income Details Are Filled In For You." />
+          </h2>
 
-          <p className="text-xs text-muted-foreground">
-            Sales {loggedInSalesName} · Law Firm {settings.defaultLawFirm} · Project {activeProjectName} ·{' '}
-            <Link to="/settings" className="underline-offset-4 hover:text-foreground hover:underline">
-              Change In Settings
-            </Link>
-          </p>
-        </div>
-
-        <p className="text-xs text-muted-foreground">Demo Buyer Details Such As IC And Income Are Generated For You.</p>
-
-        {/* The Direct Entry Grid */}
-        <div className="overflow-x-auto rounded-md border border-border">
-          <Table className="min-w-[840px] text-xs">
-            <TableHeader className="bg-muted/60">
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="w-10 px-3 py-2.5 text-center">#</TableHead>
-                <TableHead className="w-36 px-3 py-2.5">Unit Number</TableHead>
-                <TableHead className="min-w-[170px] px-3 py-2.5">Buyer Name</TableHead>
-                <TableHead className="w-48 px-3 py-2.5">Model / Layout</TableHead>
-                <TableHead className="w-32 px-3 py-2.5">Sales Owner</TableHead>
-                <TableHead className="w-44 px-3 py-2.5">Panel Law Firm</TableHead>
-                <TableHead className="w-32 px-3 py-2.5 text-right">Price (RM)</TableHead>
-                <TableHead className="w-28 px-3 py-2.5 text-center">Status</TableHead>
-                <TableHead className="w-12 px-2 py-2.5 text-center"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {inspectedRows.map(({ row, check }, idx) => (
-                <TableRow key={row.id} className="hover:bg-accent/40">
-                  {/* Row index */}
-                  <TableCell className="px-3 py-2 text-center font-mono text-[11px] text-muted-foreground">
-                    {idx + 1}
-                  </TableCell>
-
-                  {/* Unit number autocomplete dropdown */}
-                  <TableCell className="px-3 py-1.5">
-                    <UnitAutocompleteInput
-                      value={row.unit}
-                      onChange={(val) => handleRowChange(row.id, 'unit', val)}
-                      availableUnits={availableInventoryUnits}
-                      placeholder={settings.blockPrefix ? `${settings.blockPrefix}-12-08` : '12-08'}
-                      hasError={check.status === 'error'}
-                      isReady={check.status === 'ready'}
-                    />
-                  </TableCell>
-
-                  {/* Buyer Name input */}
-                  <TableCell className="px-3 py-1.5">
-                    <Input
-                      value={row.buyerName}
-                      onChange={(e) => handleRowChange(row.id, 'buyerName', e.target.value)}
-                      placeholder="e.g. Nurul Huda Binti Ahmad"
-                      className="h-8 text-xs font-medium"
-                    />
-                  </TableCell>
-
-                  {/* Model / Layout selection */}
-                  <TableCell className="px-3 py-1.5">
-                    <Select value={row.modelId} onValueChange={(val) => handleModelChange(row.id, val)}>
-                      <SelectTrigger aria-label="Model / Layout" className="h-8 w-full text-xs font-medium">
-                        <SelectValue placeholder="Select Model" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {settings.models.map((m) => (
-                          <SelectItem key={m.id} value={m.id} className="text-xs">
-                            {m.name} · {m.layout}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-
-                  {/* Auto-assigned Sales Owner badge */}
-                  <TableCell className="px-3 py-2">
-                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-foreground">
-                      <span className="size-1.5 rounded-full bg-status-positive" />
-                      <span className="truncate">{loggedInSalesName}</span>
-                    </span>
-                  </TableCell>
-
-                  {/* Panel Law Firm selector */}
-                  <TableCell className="px-3 py-1.5">
-                    <Select
-                      value={row.lawFirm || settings.defaultLawFirm}
-                      onValueChange={(val) => handleRowChange(row.id, 'lawFirm', val)}
-                    >
-                      <SelectTrigger aria-label="Panel Law Firm" className="h-8 w-full text-xs font-medium">
-                        <SelectValue placeholder="Select Law Firm" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {PANEL_LAW_FIRMS.map((firm) => (
-                          <SelectItem key={firm} value={firm} className="text-xs">
-                            {firm}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-
-                  {/* Price (RM) editable input */}
-                  <TableCell className="px-3 py-1.5">
-                    <div className="relative">
-                      <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground select-none">
-                        RM
-                      </span>
-                      <Input
-                        type="text"
-                        inputMode="numeric"
-                        value={row.priceRm ? String(row.priceRm) : ''}
-                        onChange={(e) => {
-                          const digits = e.target.value.replace(/\D/g, '')
-                          handleRowChange(row.id, 'priceRm', digits ? parseInt(digits, 10) : 0)
-                        }}
-                        className="h-8 pl-9 text-right font-mono text-xs font-medium"
-                      />
-                    </div>
-                  </TableCell>
-
-                  {/* Validation status pill: pill only for errors */}
-                  <TableCell className="px-3 py-2 text-center">
-                    {check.status === 'error' ? (
-                      check.reason ? (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span tabIndex={0} className="inline-flex">
-                                <StatusPill tone="danger">{check.label}</StatusPill>
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent>{check.reason}</TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      ) : (
-                        <StatusPill tone="danger">{check.label}</StatusPill>
-                      )
-                    ) : check.status === 'warning' ? (
-                      check.reason ? (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span tabIndex={0} className="cursor-default text-[11px] text-muted-foreground">
-                                {check.label}
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent>{check.reason}</TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      ) : (
-                        <span className="text-[11px] text-muted-foreground">{check.label}</span>
-                      )
-                    ) : check.status === 'ready' ? (
-                      <span className="text-[11px] text-muted-foreground">Ready</span>
-                    ) : (
-                      <span className="text-[11px] text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-
-                  {/* Delete row button */}
-                  <TableCell className="px-2 py-1.5 text-center">
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleRemoveRow(row.id)}
-                            aria-label="Remove Row"
-                            className="size-7 p-0 text-muted-foreground hover:bg-transparent hover:text-status-danger"
-                          >
-                            <Trash2 className="size-3.5" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Remove Row</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </TableCell>
+          {/* The Direct Entry Grid */}
+          <div className="overflow-x-auto rounded-md border border-border">
+            <Table className="min-w-[840px] text-xs">
+              <TableHeader className="bg-muted/60">
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="w-10 px-3 py-2.5 text-center">#</TableHead>
+                  <TableHead className="w-36 px-3 py-2.5">Unit Number</TableHead>
+                  <TableHead className="min-w-[170px] px-3 py-2.5">Buyer Name</TableHead>
+                  <TableHead className="w-48 px-3 py-2.5">Model / Layout</TableHead>
+                  <TableHead className="w-32 px-3 py-2.5">Sales Owner</TableHead>
+                  <TableHead className="w-44 px-3 py-2.5">Panel Law Firm</TableHead>
+                  <TableHead className="w-32 px-3 py-2.5 text-right">Price (RM)</TableHead>
+                  <TableHead className="w-28 px-3 py-2.5 text-center">Status</TableHead>
+                  <TableHead className="w-12 px-2 py-2.5 text-center"></TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {inspectedRows.map(({ row, check }, idx) => (
+                  <TableRow key={row.id} className="hover:bg-accent/40">
+                    {/* Row index */}
+                    <TableCell className="px-3 py-2 text-center font-mono text-[11px] text-muted-foreground">
+                      {idx + 1}
+                    </TableCell>
 
-        {/* Footer Actions & Batch Import Trigger */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-          <div className="flex items-center gap-2">
-            <Button type="button" variant="secondary" size="sm" onClick={handleAddRow} className="gap-1 text-xs">
-              <Plus className="size-3.5" />
-              Add Row
-            </Button>
-            <Button type="button" variant="secondary" size="sm" onClick={handleAddFiveRows} className="gap-1 text-xs">
-              <Plus className="size-3.5" />
-              Add 5 Rows
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={handleClearAll}
-              className="text-xs text-muted-foreground hover:text-foreground"
-            >
-              Clear
-            </Button>
+                    {/* Unit number autocomplete dropdown */}
+                    <TableCell className="px-3 py-1.5">
+                      <UnitAutocompleteInput
+                        value={row.unit}
+                        onChange={(val) => handleRowChange(row.id, 'unit', val)}
+                        availableUnits={availableInventoryUnits}
+                        placeholder={settings.blockPrefix ? `${settings.blockPrefix}-12-08` : '12-08'}
+                        hasError={check.status === 'error'}
+                        isReady={check.status === 'ready'}
+                      />
+                    </TableCell>
+
+                    {/* Buyer Name input */}
+                    <TableCell className="px-3 py-1.5">
+                      <Input
+                        value={row.buyerName}
+                        onChange={(e) => handleRowChange(row.id, 'buyerName', e.target.value)}
+                        placeholder="e.g. Nurul Huda Binti Ahmad"
+                        className="h-8 text-xs font-medium"
+                      />
+                    </TableCell>
+
+                    {/* Model / Layout selection */}
+                    <TableCell className="px-3 py-1.5">
+                      <Select value={row.modelId} onValueChange={(val) => handleModelChange(row.id, val)}>
+                        <SelectTrigger aria-label="Model / Layout" className="h-8 w-full text-xs font-medium">
+                          <SelectValue placeholder="Select Model" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {settings.models.map((m) => (
+                            <SelectItem key={m.id} value={m.id} className="text-xs">
+                              {m.name} · {m.layout}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+
+                    {/* Auto-assigned Sales Owner badge */}
+                    <TableCell className="px-3 py-2">
+                      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-foreground">
+                        <span className="size-1.5 rounded-full bg-status-positive" />
+                        <span className="truncate">{loggedInSalesName}</span>
+                      </span>
+                    </TableCell>
+
+                    {/* Panel Law Firm selector */}
+                    <TableCell className="px-3 py-1.5">
+                      <Select
+                        value={row.lawFirm || settings.defaultLawFirm}
+                        onValueChange={(val) => handleRowChange(row.id, 'lawFirm', val)}
+                      >
+                        <SelectTrigger aria-label="Panel Law Firm" className="h-8 w-full text-xs font-medium">
+                          <SelectValue placeholder="Select Law Firm" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {PANEL_LAW_FIRMS.map((firm) => (
+                            <SelectItem key={firm} value={firm} className="text-xs">
+                              {firm}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+
+                    {/* Price (RM) editable input */}
+                    <TableCell className="px-3 py-1.5">
+                      <div className="relative">
+                        <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground select-none">
+                          RM
+                        </span>
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          value={row.priceRm ? String(row.priceRm) : ''}
+                          onChange={(e) => {
+                            const digits = e.target.value.replace(/\D/g, '')
+                            handleRowChange(row.id, 'priceRm', digits ? parseInt(digits, 10) : 0)
+                          }}
+                          className="h-8 pl-9 text-right font-mono text-xs font-medium"
+                        />
+                      </div>
+                    </TableCell>
+
+                    {/* Validation status pill: pill only for errors */}
+                    <TableCell className="px-3 py-2 text-center">
+                      {check.status === 'error' ? (
+                        check.reason ? (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span tabIndex={0} className="inline-flex">
+                                  <StatusPill tone="danger">{check.label}</StatusPill>
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>{check.reason}</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        ) : (
+                          <StatusPill tone="danger">{check.label}</StatusPill>
+                        )
+                      ) : check.status === 'warning' ? (
+                        check.reason ? (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span tabIndex={0} className="cursor-default text-[11px] text-muted-foreground">
+                                  {check.label}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>{check.reason}</TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        ) : (
+                          <span className="text-[11px] text-muted-foreground">{check.label}</span>
+                        )
+                      ) : check.status === 'ready' ? (
+                        <span className="text-[11px] text-muted-foreground">Ready</span>
+                      ) : (
+                        <span className="text-[11px] text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+
+                    {/* Delete row button */}
+                    <TableCell className="px-2 py-1.5 text-center">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRemoveRow(row.id)}
+                              aria-label="Remove Row"
+                              className="size-7 p-0 text-muted-foreground hover:bg-transparent hover:text-status-danger"
+                            >
+                              <Trash2 className="size-3.5" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Remove Row</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
 
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-muted-foreground">
-              <strong>{readyRows.length}</strong> of <strong>{rows.length}</strong> bookings ready
-            </span>
-            <Button
-              type="button"
-              disabled={readyRows.length === 0 || importing}
-              onClick={handleRunImport}
-              className="gap-1.5 font-medium"
-            >
-              <Upload className="size-3.5" />
-              {importing
-                ? 'Importing Bookings…'
-                : `Import ${readyRows.length} ${readyRows.length === 1 ? 'Booking' : 'Bookings'}`}
-            </Button>
+          {/* Footer Actions & Batch Import Trigger */}
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+            <div className="flex items-center gap-2">
+              <Button type="button" variant="secondary" size="sm" onClick={handleAddRow} className="gap-1 text-xs">
+                <Plus className="size-3.5" />
+                Add Row
+              </Button>
+              <Button type="button" variant="secondary" size="sm" onClick={handleAddFiveRows} className="gap-1 text-xs">
+                <Plus className="size-3.5" />
+                Add 5 Rows
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleClearAll}
+                className="text-xs text-muted-foreground hover:text-foreground"
+              >
+                Clear
+              </Button>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-muted-foreground">
+                <strong>{readyRows.length}</strong> of <strong>{rows.length}</strong> bookings ready
+              </span>
+              <Button
+                type="button"
+                disabled={readyRows.length === 0 || importing}
+                onClick={handleRunImport}
+                className="gap-1.5 font-medium"
+              >
+                <Upload className="size-3.5" />
+                {importing
+                  ? 'Importing Bookings…'
+                  : `Import ${readyRows.length} ${readyRows.length === 1 ? 'Booking' : 'Bookings'}`}
+              </Button>
+            </div>
           </div>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+      <Card className="h-full border-border shadow-card">
+        <CardContent className="flex flex-col gap-3 p-4 sm:p-5">
+          <h2 className="flex items-center text-base font-semibold text-foreground">
+            Booking Settings <InfoTooltip text="These Defaults Are Used For New Bookings." />
+          </h2>
+          <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-sm">
+            <dt className="text-muted-foreground">Project</dt>
+            <dd className="text-right font-medium text-foreground">{activeProjectName}</dd>
+            <dt className="text-muted-foreground">Sales Agent</dt>
+            <dd className="text-right font-medium text-foreground">{loggedInSalesName}</dd>
+            <dt className="text-muted-foreground">Law Firm</dt>
+            <dd className="text-right font-medium text-foreground">{settings.defaultLawFirm}</dd>
+            <dt className="text-muted-foreground">Unit Layouts</dt>
+            <dd className="text-right font-medium text-foreground">
+              {settings.models.map((model) => model.name).join(', ')}
+            </dd>
+          </dl>
+          <Link to="/settings" className="mt-auto text-sm text-foreground underline-offset-4 hover:underline">
+            Settings
+          </Link>
+        </CardContent>
+      </Card>
+    </div>
   )
 }

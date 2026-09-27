@@ -6,8 +6,9 @@ import { snapshot } from './mockSnapshot'
 
 const mocks = vi.hoisted(() => ({
   refresh: vi.fn(),
-  resetDemo: vi.fn(),
-  fetchHealth: vi.fn()
+  fetchHealth: vi.fn(),
+  addDemoData: vi.fn(),
+  deleteDemoData: vi.fn()
 }))
 
 const SNAP: Snapshot = snapshot()
@@ -18,8 +19,9 @@ vi.mock('@/lib/data', () => ({
 }))
 
 vi.mock('@/lib/api', () => ({
-  resetDemo: mocks.resetDemo,
-  fetchHealth: mocks.fetchHealth
+  fetchHealth: mocks.fetchHealth,
+  addDemoData: mocks.addDemoData,
+  deleteDemoData: mocks.deleteDemoData
 }))
 
 vi.mock('@/components/ui/toastConfig', () => ({
@@ -44,11 +46,9 @@ describe('SettingsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.fetchHealth.mockResolvedValue({ ok: true, db: true, jev: true, assistant: true, jevAnswers: 87 })
-    mocks.resetDemo.mockResolvedValue({
-      seed: 20260918,
-      referenceDate: '2026-09-18',
-      resetAt: '2026-09-18T05:00:00+08:00'
-    })
+    mocks.addDemoData.mockResolvedValue(undefined)
+    mocks.deleteDemoData.mockResolvedValue(undefined)
+    SNAP.meta.seed = 20260918
   })
 
   it('shows the demo-data identity, record counts and Jev status', async () => {
@@ -59,6 +59,8 @@ describe('SettingsPage', () => {
     expect(screen.getByText('18 Sep 2026')).toBeTruthy()
     expect(screen.getByText('Bookings')).toBeTruthy()
     expect(screen.getByText('Jev Answers')).toBeTruthy()
+    expect((screen.getByRole('button', { name: 'Add Demo Data' }) as HTMLButtonElement).disabled).toBe(true)
+    expect((screen.getByRole('button', { name: 'Delete Demo Data' }) as HTMLButtonElement).disabled).toBe(false)
     await waitFor(() => expect(mocks.fetchHealth).toHaveBeenCalled())
   })
 
@@ -105,24 +107,63 @@ describe('SettingsPage', () => {
     expect(within(askRow).getByText('Missing')).toBeTruthy()
   })
 
-  it('re-checks health after a reset', async () => {
+  it('starts without demo data and adds it once', async () => {
+    SNAP.meta.seed = 0
+    mocks.fetchHealth.mockImplementation(async () => ({
+      ok: true,
+      db: true,
+      jev: true,
+      assistant: true,
+      jevAnswers: 87
+    }))
+    mocks.addDemoData.mockImplementation(async () => {
+      SNAP.meta.seed = 20260918
+    })
     renderPage()
-    fireEvent.click(screen.getByRole('button', { name: 'Reset Demo Data' }))
-    const dialog = await screen.findByRole('dialog')
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Reset Demo Data' }))
-    await waitFor(() => expect(mocks.fetchHealth).toHaveBeenCalledTimes(2))
+    const add = screen.getByRole('button', { name: 'Add Demo Data' })
+    expect((add as HTMLButtonElement).disabled).toBe(false)
+    expect((screen.getByRole('button', { name: 'Delete Demo Data' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(add)
+    await waitFor(() => expect(mocks.addDemoData).toHaveBeenCalled())
+    await waitFor(() => expect((add as HTMLButtonElement).disabled).toBe(true))
+    expect((screen.getByRole('button', { name: 'Delete Demo Data' }) as HTMLButtonElement).disabled).toBe(false)
+    expect(mocks.refresh).toHaveBeenCalled()
   })
 
-  it('resets the demo behind a confirm dialog, then refreshes', async () => {
+  it('deletes demo data behind confirmation, then refreshes', async () => {
+    mocks.fetchHealth.mockImplementation(async () => ({
+      ok: true,
+      db: true,
+      jev: true,
+      assistant: true,
+      jevAnswers: 87
+    }))
+    mocks.deleteDemoData.mockImplementation(async () => {
+      SNAP.meta.seed = 0
+    })
     renderPage()
-    fireEvent.click(screen.getByRole('button', { name: 'Reset Demo Data' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Demo Data' }))
 
     const dialog = await screen.findByRole('dialog')
-    expect(dialog.textContent).toContain('Reset Demo Data?')
-    expect(mocks.resetDemo).not.toHaveBeenCalled()
+    expect(dialog.textContent).toContain('Delete Demo Data?')
+    expect(dialog.textContent).toContain('Bookings you created yourself are kept')
 
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Reset Demo Data' }))
-    await waitFor(() => expect(mocks.resetDemo).toHaveBeenCalledTimes(1))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete Demo Data' }))
+    await waitFor(() => expect(mocks.deleteDemoData).toHaveBeenCalled())
+    await waitFor(() =>
+      expect((screen.getByRole('button', { name: 'Add Demo Data' }) as HTMLButtonElement).disabled).toBe(false)
+    )
+    expect((screen.getByRole('button', { name: 'Delete Demo Data' }) as HTMLButtonElement).disabled).toBe(true)
     await waitFor(() => expect(mocks.refresh).toHaveBeenCalled())
+  })
+
+  it('reports the API client’s message when a demo action fails', async () => {
+    const { notify } = await import('@/components/ui/toastConfig')
+    mocks.deleteDemoData.mockRejectedValue(new Error('Demo Reset Is Switched Off.'))
+    renderPage()
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Demo Data' }))
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete Demo Data' }))
+    await waitFor(() => expect(notify.error).toHaveBeenCalledWith('Demo Reset Is Switched Off.'))
   })
 })

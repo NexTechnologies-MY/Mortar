@@ -180,9 +180,7 @@ storage for nested domain entities:
 
 - `meta`: Key-value store (`key text primary key, value jsonb not null`) holding
   simulation parameters (`seed`, `referenceDate`, `resetAt`, `resetAtWall`).
-  `resetAt` is sim time; `resetAtWall` is the real wall-clock timestamp of the
-  last reset, and is what the 30-second reset cooldown reads, since sim time's
-  time-of-day wraps to `00:00` at midnight and cannot time a cooldown.
+  `resetAt` is simulation time; `resetAtWall` records when demo data was added.
 - `bookings`: Core booking records (`id text primary key`, `project`, `unit`,
   `price_rm integer`, `booking_date date`, `buyer jsonb`, `sales_owner`,
   `loan_owner`, `legal_firm`). The nested `buyer` JSONB object stores contact
@@ -230,6 +228,12 @@ storage for nested domain entities:
   what it took out: each removed booking's id, unit, project, buyer name and
   price — never its IC or phone, since the booking row itself is gone once the
   undo commits.
+- `booking_removals`: Minimal audit record for individual deletion of an
+  untouched booking: booking ID, unit, project, buyer name, price, actor and
+  removal time. Contact details and the financial dossier are excluded.
+- `demo_seed`: Provenance flag on seed-owned bookings, applications, messages,
+  events, tasks, playbooks and Jev answers. A one-time schema migration marks
+  legacy seed rows; future visitor rows default to false.
 - Indexes added for query paths that did not have one: `messages(booking_id)`,
   `tasks(booking_id)`, and `loan_applications(booking_id)`, alongside the
   `events(message_id)` and `events(application_id)` indexes noted above.
@@ -264,24 +268,27 @@ The Bun server exposes a RESTful JSON API. Request bodies and responses conform
 directly to contract types. Validation is implemented with explicit type guards;
 no third-party schema validation libraries are loaded.
 
-| Method  | Path                            | Request Body                                                          | Response Body                                                            | Execution Pattern    |
-| ------- | ------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------ | -------------------- |
-| `GET`   | `/api/health`                   | None                                                                  | `{ ok, db, jev, assistant, jevAnswers, jevLastError }`                   | Direct Check         |
-| `GET`   | `/api/snapshot`                 | None                                                                  | `Snapshot`                                                               | Database Query       |
-| `POST`  | `/api/assistant`                | `{ question, persona, bookingId?, history?, image? }`                 | `{ answer, citations }`                                                  | Live Gemini Tool-Use |
-| `POST`  | `/api/messages`                 | `{ bookingId, senderRole, senderName, body }`                         | `{ message: Message, extraction: Extraction, event: CaseEvent \| null }` | Live-First Jev       |
-| `POST`  | `/api/messages/:id/extract`     | None                                                                  | `{ extraction: Extraction, event: CaseEvent \| null }`                   | Live-First Jev       |
-| `POST`  | `/api/events`                   | `{ bookingId, track, kind, document?, note?, reportedBy }`            | `CaseEvent`                                                              | Transaction Write    |
-| `POST`  | `/api/applications`             | `{ bookingId, bank, banker, note?, occurredOn?, reportedBy }`         | `{ application: LoanApplication, event: CaseEvent }`                     | Transaction Write    |
-| `POST`  | `/api/events/:id/review`        | `{ decision: 'confirm' \| 'dispute' \| 'dismiss', reviewer: string }` | `CaseEvent`                                                              | Transaction Write    |
-| `POST`  | `/api/bookings/:id/next-action` | None                                                                  | `NextActionSuggestion`                                                   | Live-First Jev       |
-| `GET`   | `/api/bookings/:id/playbooks`   | Optional Query `q`                                                    | `PlaybookRanking`                                                        | Cache-First Jev      |
-| `GET`   | `/api/bookings/:id/signals`     | None                                                                  | `BuyerSignals`                                                           | Cache-First Jev      |
-| `POST`  | `/api/bookings/import`          | `{ bookings: BookingDraft[], reportedBy, source? }`                   | `{ importId, bookings: Booking[] }`                                      | Transaction Write    |
-| `POST`  | `/api/imports/:id/undo`         | `{ reportedBy }`                                                      | `{ removed: string[] }`                                                  | Transaction Write    |
-| `POST`  | `/api/tasks`                    | `{ bookingId, action, title, ownerRole, ownerName, dueOn, origin }`   | `Task`                                                                   | Database Insert      |
-| `PATCH` | `/api/tasks/:id`                | `{ status: 'open' \| 'done' \| 'cancelled' }`                         | `Task`                                                                   | Database Update      |
-| `POST`  | `/api/admin/reset`              | None                                                                  | `SimulationMeta`                                                         | Database Truncate    |
+| Method   | Path                            | Request Body                                                          | Response Body                                                            | Execution Pattern    |
+| -------- | ------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------ | -------------------- |
+| `GET`    | `/api/health`                   | None                                                                  | `{ ok, db, jev, assistant, jevAnswers, jevLastError }`                   | Direct Check         |
+| `GET`    | `/api/snapshot`                 | None                                                                  | `Snapshot`                                                               | Database Query       |
+| `POST`   | `/api/assistant`                | `{ question, persona, bookingId?, history?, image? }`                 | `{ answer, citations }`                                                  | Live Gemini Tool-Use |
+| `POST`   | `/api/assistant/stream`         | Same assistant request                                                | SSE tool progress and answer events                                      | Live Gemini Tool-Use |
+| `POST`   | `/api/messages`                 | `{ bookingId, senderRole, senderName, body }`                         | `{ message: Message, extraction: Extraction, event: CaseEvent \| null }` | Live-First Jev       |
+| `POST`   | `/api/messages/:id/extract`     | None                                                                  | `{ extraction: Extraction, event: CaseEvent \| null }`                   | Live-First Jev       |
+| `POST`   | `/api/events`                   | `{ bookingId, track, kind, document?, note?, reportedBy }`            | `CaseEvent`                                                              | Transaction Write    |
+| `POST`   | `/api/applications`             | `{ bookingId, bank, banker, note?, occurredOn?, reportedBy }`         | `{ application: LoanApplication, event: CaseEvent }`                     | Transaction Write    |
+| `POST`   | `/api/events/:id/review`        | `{ decision: 'confirm' \| 'dispute' \| 'dismiss', reviewer: string }` | `CaseEvent`                                                              | Transaction Write    |
+| `POST`   | `/api/bookings/:id/next-action` | None                                                                  | `NextActionSuggestion`                                                   | Live-First Jev       |
+| `GET`    | `/api/bookings/:id/playbooks`   | Optional Query `q`                                                    | `PlaybookRanking`                                                        | Cache-First Jev      |
+| `GET`    | `/api/bookings/:id/signals`     | None                                                                  | `BuyerSignals`                                                           | Cache-First Jev      |
+| `POST`   | `/api/bookings/import`          | `{ bookings: BookingDraft[], reportedBy, source? }`                   | `{ importId, bookings: Booking[] }`                                      | Transaction Write    |
+| `POST`   | `/api/imports/:id/undo`         | `{ reportedBy }`                                                      | `{ removed: string[] }`                                                  | Transaction Write    |
+| `DELETE` | `/api/bookings/:id`             | `{ reportedBy }`                                                      | `{ removed: string }`                                                    | Retention Checked    |
+| `POST`   | `/api/tasks`                    | `{ bookingId, action, title, ownerRole, ownerName, dueOn, origin }`   | `Task`                                                                   | Database Insert      |
+| `PATCH`  | `/api/tasks/:id`                | `{ status: 'open' \| 'done' \| 'cancelled' }`                         | `Task`                                                                   | Database Update      |
+| `POST`   | `/api/admin/demo/add`           | None                                                                  | `SimulationMeta`                                                         | Seed-Owned Insert    |
+| `POST`   | `/api/admin/demo/delete`        | None                                                                  | `{ ok: true }`                                                           | Seed-Owned Delete    |
 
 ### Endpoint Details
 
@@ -350,14 +357,20 @@ no third-party schema validation libraries are loaded.
   already undone, and `409` (`ImportMovedOnError`) when any of its bookings has
   had updates since the import. What survives the undo is set out in
   [Data Retention](#data-retention).
-- `POST /api/admin/reset`: Clears all tables in a single transaction and
-  re-seeds the database using
-  `generate({ seed: DEFAULT_SEED, referenceDate: REFERENCE_DATE, bookings: 140 })`,
-  story fixtures, playbooks, and precomputed Jev cache entries. The endpoint
-  enforces a 30-second cooldown period between resets, returning HTTP 429 if
-  called prematurely, timed against `meta.resetAtWall` (a real clock timestamp)
-  rather than sim time, whose time of day wraps at midnight and cannot time a
-  cooldown.
+- `DELETE /api/bookings/:id`: Deletes only an untouched booking. An additional
+  event, application, message, task, visitor Jev answer or review blocks the
+  deletion with 409. The transaction stores a minimal `booking_removals` trace.
+- `POST /api/admin/demo/add`: Inserts the canonical generated 140 bookings,
+  story fixtures, playbooks and precomputed Jev cache without duplicating
+  existing seed rows. A fresh database has no demo rows until this action.
+- `POST /api/admin/demo/delete`: Removes the whole demo dataset in one
+  transaction: every demo booking with the rows attached to it (applications,
+  messages, events, their reviews, tasks, and the Jev answers about them), the
+  demo playbooks and the four demo `meta` keys. Bookings a visitor added, and
+  anything attached to one, are untouched, as is any other `meta` key. Work a
+  visitor did on a demo booking goes with the demo case, so the fixtures are
+  always restored whole by a later add. Both actions are disabled with 403 when
+  `MORTAR_DEMO_RESET=off`.
 
 ### Write Rules And Error Codes
 
@@ -823,18 +836,22 @@ developers, so it does not appear to cover a developer selling its own units.
 
 What Mortar does today:
 
-- **No Deletion In Normal Use:** Nothing deletes a booking, an event, a task or
-  a message. A completed task is marked done, not removed.
+- **Limited Booking Deletion:** Staff may remove a booking only before it has
+  progressed beyond its initial booking event and before any application,
+  message, task, visitor Jev answer or review exists. Deletion writes a
+  `booking_removals` trace without contact or financial dossier details.
+  Completed tasks are marked done, not removed.
 - **Review Trail:** Every staff decision on a Jev proposal is appended to
   `event_reviews`. It has no foreign key to `events`, so the trail outlives the
   event it reviewed.
 - **Undo Import:** An undo removes an import's bookings only while none of them
   has moved on, and a booking number is never reused. The import's own row keeps
   a `removed` snapshot of what went, without IC or phone.
-- **Demo Reset:** Reset Demo Data exists for the public demo only. A server
-  holding real data must set `MORTAR_DEMO_RESET` to `off`, `false`, `0` or `no`,
-  which also stops seeding and truncation on boot and makes
-  `POST /api/admin/reset` refuse with 403.
+- **Demo Data:** Fresh guest storage starts empty. Settings can add canonical
+  seed rows once and then delete them. Deletion removes every demo booking with
+  everything on it and only the demo `meta` keys; bookings a visitor created are
+  left alone. A server holding real data must set `MORTAR_DEMO_RESET` to `off`,
+  `false`, `0` or `no`; both admin demo endpoints then refuse with 403.
 - **Backups:** The database host keeps days of history, not years. A 7-year
   guarantee needs regular database exports, kept for 7 years outside the app,
   which is a hosting task.
@@ -936,8 +953,9 @@ Located in `packages/jev/src/__tests__/`, `server/src/__tests__/`, and
 - **Database Integration Suite:** `server/db/__tests__/integration.test.ts`
   reads `TEST_DATABASE_URL` and skips cleanly when it is not set. It never reads
   `DATABASE_URL`, preventing accidental execution against production. An empty
-  test database is seeded once by the suite on first run, mirroring server boot.
-  The team's test database is an isolated Neon project, `mortar-test`.
+  test database receives demo rows explicitly during suite setup; server boot
+  creates only the schema. The team's test database is an isolated Neon project,
+  `mortar-test`.
 - **Assistant Service And Tools:** Tests `server/src/assistant/` tool execution,
   read-only boundary enforcement, prompt fencing of untrusted messages, and
   graceful fallback to `askBrain` when the Gemini API key is missing or calls
@@ -949,8 +967,9 @@ Located in `packages/jev/src/__tests__/`, `server/src/__tests__/`, and
   cache &rarr; unavailable state.
 - **Database Row Mappers:** Validates bidirectional mapping between PostgreSQL
   snake_case columns and TypeScript camelCase domain entities.
-- **Reset Rate Limiting:** Confirms that `POST /api/admin/reset` rejects rapid
-  repeated invocations with HTTP 429 until the 30-second cooldown expires.
+- **Demo Provenance:** Confirms Add Demo Data is idempotent, and that Delete
+  Demo Data wipes the demo bookings with everything on them, leaves visitor
+  bookings and non-demo `meta` keys alone, and permits a later add.
 
 ### User Interface Verification
 

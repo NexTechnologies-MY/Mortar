@@ -93,6 +93,8 @@ describe('BookingDetailPage', () => {
     renderDetail('BK-9002')
 
     await screen.findByText('B-08-05')
+    expect(document.querySelector('[data-tour="case-status"]')).toBeTruthy()
+    expect(document.querySelector('[data-tour="case-message"]')).toBeTruthy()
     const sentence = [...document.body.querySelectorAll('p')].map((p) => p.textContent)
     // Stage, who holds it, how long, and stalled: one sentence, no four pills.
     // The age in it is Title Case like everything beside it.
