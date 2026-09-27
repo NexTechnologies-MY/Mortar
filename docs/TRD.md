@@ -325,7 +325,8 @@ no third-party schema validation libraries are loaded.
   clearly when data does not contain the answer. Citations link only bookings
   returned by tools. Accepts optional image attachments (PNG, JPEG, WebP up to 4
   MB). Limits: questions up to 1,000 characters, up to 6 history turns, 8
-  requests per minute per IP address, 300 requests per day per server instance,
+  requests per minute per IP address (the `CF-Connecting-IP` that Render's edge
+  sets, which a client cannot forge), 300 requests per day per server instance,
   and answers targeting about 150 words. Returns `400` on invalid payloads or
   limit breaches, `429` on rate limits, and `503` `{ fallback: true }` when
   `GEMINI_API_KEY` is missing or when calls fail or time out, prompting client

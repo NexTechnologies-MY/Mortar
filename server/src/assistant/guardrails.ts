@@ -166,9 +166,15 @@ export class RateLimiter {
   }
 }
 
-/** The address a request came from, behind Cloud Run's proxy or a local proxy. */
+/**
+ * The address a request came from. Render's edge sets `CF-Connecting-IP`
+ * itself and refuses a client-sent one; `X-Forwarded-For` keeps whatever the
+ * client sent, so its first entry is used only where no edge header exists
+ * (local proxies, tests).
+ */
 export function clientIp(req: Request): string {
-  const forwarded = req.headers.get('x-forwarded-for')
-  const first = forwarded?.split(',')[0]?.trim()
+  const edge = req.headers.get('cf-connecting-ip')?.trim()
+  if (edge) return edge
+  const first = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
   return first && first.length > 0 ? first : 'local'
 }
