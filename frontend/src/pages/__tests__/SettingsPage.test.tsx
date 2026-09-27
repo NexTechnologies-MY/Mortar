@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { MemoryRouter } from 'react-router-dom'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Snapshot } from '@mortar/core'
+import { PersonaProvider } from '@/lib/persona'
 import { snapshot } from './mockSnapshot'
 
 const mocks = vi.hoisted(() => ({
@@ -21,7 +22,12 @@ vi.mock('@/lib/data', () => ({
 vi.mock('@/lib/api', () => ({
   fetchHealth: mocks.fetchHealth,
   addDemoData: mocks.addDemoData,
-  deleteDemoData: mocks.deleteDemoData
+  deleteDemoData: mocks.deleteDemoData,
+  fetchProjectSettings: vi.fn(async () => {
+    const { DEFAULT_PROJECT_SETTINGS } = await import('@mortar/core')
+    return { settings: DEFAULT_PROJECT_SETTINGS }
+  }),
+  saveProjectSettings: vi.fn(async (settings: unknown) => ({ settings }))
 }))
 
 vi.mock('@/components/ui/toastConfig', () => ({
@@ -33,7 +39,9 @@ import { SettingsPage } from '@/pages/SettingsPage'
 function renderPage() {
   return render(
     <MemoryRouter>
-      <SettingsPage />
+      <PersonaProvider>
+        <SettingsPage />
+      </PersonaProvider>
     </MemoryRouter>
   )
 }
@@ -45,6 +53,10 @@ describe('SettingsPage', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.addDemoData.mockResolvedValue({})
+    mocks.deleteDemoData.mockResolvedValue({})
+    window.localStorage.clear()
+    window.localStorage.setItem('mortar.profile', 'manager')
     mocks.fetchHealth.mockResolvedValue({ ok: true, db: true, jev: true, assistant: true, jevAnswers: 87 })
     mocks.addDemoData.mockResolvedValue(undefined)
     mocks.deleteDemoData.mockResolvedValue(undefined)
@@ -62,6 +74,14 @@ describe('SettingsPage', () => {
     expect((screen.getByRole('button', { name: 'Add Demo Data' }) as HTMLButtonElement).disabled).toBe(true)
     expect((screen.getByRole('button', { name: 'Delete Demo Data' }) as HTMLButtonElement).disabled).toBe(false)
     await waitFor(() => expect(mocks.fetchHealth).toHaveBeenCalled())
+  })
+
+  it('keeps shared demo-data controls manager-only', () => {
+    window.localStorage.setItem('mortar.profile', 'sales-nurul-aina')
+    renderPage()
+    expect((screen.getByRole('button', { name: 'Add Demo Data' }) as HTMLButtonElement).disabled).toBe(true)
+    expect((screen.getByRole('button', { name: 'Delete Demo Data' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByText('Only A Manager Can Add Or Delete Shared Demo Data.')).toBeTruthy()
   })
 
   it('states the simulated-data fact plainly beside the seed and reference date', () => {
@@ -87,10 +107,11 @@ describe('SettingsPage', () => {
     expect(within(row).queryByText('Connected')).toBeNull()
   })
 
-  it('says whether Ask Mortar has a Gemini key, in the Jev row’s own words', async () => {
+  it('says whether Ask MortarAI has a Gemini key, in the Jev row’s own words', async () => {
     renderPage()
     const note = await screen.findByText('Whether A Gemini Key Is Configured')
     const row = note.closest('div')!.parentElement!
+    expect(within(row).getByText('Ask MortarAI')).toBeTruthy()
     // The panel falls back to its own answers without a key, so the row says
     // so rather than reporting a failure.
     expect(within(row).getByText('Configured')).toBeTruthy()
@@ -118,13 +139,14 @@ describe('SettingsPage', () => {
     }))
     mocks.addDemoData.mockImplementation(async () => {
       SNAP.meta.seed = 20260918
+      return {}
     })
     renderPage()
     const add = screen.getByRole('button', { name: 'Add Demo Data' })
     expect((add as HTMLButtonElement).disabled).toBe(false)
     expect((screen.getByRole('button', { name: 'Delete Demo Data' }) as HTMLButtonElement).disabled).toBe(true)
     fireEvent.click(add)
-    await waitFor(() => expect(mocks.addDemoData).toHaveBeenCalled())
+    await waitFor(() => expect(mocks.addDemoData).toHaveBeenCalledTimes(1))
     await waitFor(() => expect((add as HTMLButtonElement).disabled).toBe(true))
     expect((screen.getByRole('button', { name: 'Delete Demo Data' }) as HTMLButtonElement).disabled).toBe(false)
     expect(mocks.refresh).toHaveBeenCalled()
@@ -140,6 +162,7 @@ describe('SettingsPage', () => {
     }))
     mocks.deleteDemoData.mockImplementation(async () => {
       SNAP.meta.seed = 0
+      return {}
     })
     renderPage()
     fireEvent.click(screen.getByRole('button', { name: 'Delete Demo Data' }))
@@ -149,7 +172,7 @@ describe('SettingsPage', () => {
     expect(dialog.textContent).toContain('Bookings you created yourself are kept')
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Delete Demo Data' }))
-    await waitFor(() => expect(mocks.deleteDemoData).toHaveBeenCalled())
+    await waitFor(() => expect(mocks.deleteDemoData).toHaveBeenCalledTimes(1))
     await waitFor(() =>
       expect((screen.getByRole('button', { name: 'Add Demo Data' }) as HTMLButtonElement).disabled).toBe(false)
     )

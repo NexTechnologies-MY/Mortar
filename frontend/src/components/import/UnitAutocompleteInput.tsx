@@ -16,6 +16,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { cn } from '@/lib/utils'
 
 interface UnitAutocompleteInputProps {
+  id?: string
   value: string
   onChange: (val: string) => void
   availableUnits: string[]
@@ -27,6 +28,7 @@ interface UnitAutocompleteInputProps {
 }
 
 export function UnitAutocompleteInput({
+  id,
   value,
   onChange,
   availableUnits,
@@ -99,6 +101,7 @@ export function UnitAutocompleteInput({
     <div ref={containerRef} className="relative w-full">
       <div className="relative flex items-center w-full">
         <Input
+          id={id}
           ref={inputRef}
           type="text"
           value={value}
@@ -147,7 +150,7 @@ export function UnitAutocompleteInput({
       </div>
 
       {open && (
-        <div className="absolute top-full left-0 z-50 mt-1 max-h-60 w-64 overflow-hidden rounded-md border border-border bg-popover shadow-[var(--shadow-overlay)]">
+        <div className="absolute top-full left-0 z-50 mt-1 max-h-60 w-full min-w-64 overflow-hidden rounded-md border border-border bg-popover shadow-[var(--shadow-overlay)]">
           {/* Header summary */}
           <div className="flex items-center justify-between border-b border-border/80 bg-muted/60 px-2.5 py-1.5 text-[11px]">
             <div className="flex items-center gap-1.5 font-medium text-muted-foreground">
@@ -179,10 +182,8 @@ export function UnitAutocompleteInput({
                     type="button"
                     variant="ghost"
                     size="sm"
-                    onMouseDown={(e) => {
-                      e.preventDefault()
-                      handleSelectUnit(unit)
-                    }}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => handleSelectUnit(unit)}
                     className={cn(
                       'flex h-auto w-full items-center justify-between rounded px-2 py-1.5 text-left text-xs font-normal transition-colors cursor-pointer',
                       isHighlighted ? 'bg-accent text-accent-foreground' : 'hover:bg-accent/60 text-foreground',

@@ -63,7 +63,7 @@ asynchronous classification workflows:
 - **Server-Side Intelligence:** `@mortar/jev` wraps the TypeSafe SDK to run
   probabilistic classifications server-side. The TypeSafe API key is restricted
   to the server process and is never sent to the browser.
-- **Grounded Operational Assistant:** Ask Mortar (`POST /api/assistant`)
+- **Grounded Operational Assistant:** Ask MortarAI (`POST /api/assistant`)
   provides LLM-driven operational answers via Google Gemini
   (`gemini-3.5-flash-lite`), code in `server/src/assistant/`. It grounds answers
   over the live memory snapshot using five read-only tools, with fenced
@@ -114,7 +114,7 @@ Key files within each package include:
   reviewed knowledge articles (`playbooks.ts`).
 - `server/src/index.ts`: Application bootstrap, static file serving, and route
   dispatching.
-- `server/src/assistant/`: Ask Mortar Gemini service, tools (`tools.ts`),
+- `server/src/assistant/`: Ask MortarAI Gemini service, tools (`tools.ts`),
   schemas, and untrusted message prompt fencing.
 - `server/db/schema.sql`: PostgreSQL table definitions applied idempotently on
   server start.
@@ -295,7 +295,7 @@ no third-party schema validation libraries are loaded.
 - `GET /api/health`: `ok` and `db` report a live database ping (`false` on
   failure, alongside `jevAnswers: null`); `jev` is whether a live Jev service
   (TypeSafe key or proxy) is wired at all, not whether its last call succeeded;
-  `assistant` is whether the server started with a Gemini key for Ask Mortar
+  `assistant` is whether the server started with a Gemini key for Ask MortarAI
   (the key itself is never returned); `jevLastError` carries the message from
   the last failed live Jev call when the proxy client is wired, or `null`
   otherwise. TypeSafe API-key mode does not track `jevLastError`, since doing so
@@ -787,7 +787,7 @@ The system strictly handles synthetic data:
   secure environment variables populated from GitHub Secrets during deployment
   (`deploy.yml`).
 - **Free-Tier Gemini Caveat:** On Gemini's free tier, Google may use prompts and
-  responses to improve products. Ask Mortar must only process simulated data;
+  responses to improve products. Ask MortarAI must only process simulated data;
   processing real buyer data requires a paid tier or Vertex AI under a Data
   Processing Agreement.
 
@@ -806,10 +806,45 @@ architected for future corporate data onboarding:
   will apply once the forecast scores real buyers. The design already keeps AI
   outputs advisory: human officers must explicitly verify all status transitions
   and legal filings.
-- **Data Minimization:** Every persona sees the same figures and underlying case
-  data; persona sets workflow defaults, not access to data. Personal financial
-  documents and unneeded PII are excluded from client payloads by design,
-  keeping data minimized across all desks.
+- **Data Minimization:** Sales profiles receive only their own bookings and
+  linked records. Loan/legal access requires current confirmed responsibility
+  matched to the internal profile, or an exact-role/name open task assignment;
+  Manager has cross-department access. Server sessions authorize direct reads,
+  writes and Ask MortarAI tool calls. The public synthetic profile selector
+  remains a demo capability, not production identity verification.
+
+### Profile Sessions And Shared Configuration
+
+`POST /api/session` selects a known demo profile and issues an HttpOnly,
+SameSite cookie. `GET /api/session` reads it; `DELETE /api/session` clears it.
+The signed cookie alone decides access; the `X-Mortar-Profile` header is only
+compared against it, so a profile switch in another tab gets a 409 instead of
+silently acting as a different profile. Missing sessions fail closed for
+protected routes. The health endpoint remains public.
+
+`GET /api/settings` returns shared project settings; `PUT /api/settings` is
+manager-only. `GET /api/inventory` exposes held project/unit pairs without buyer
+names or booking identifiers. Existing import transaction locks continue to
+reject duplicate occupied units atomically. Manager flags are stored on tasks;
+the recipient's desk derives notifications from those persisted tasks.
+
+`currentCaseAssignee` resolves bank/buyer-document responsibility to the named
+loan owner, solicitor responsibility to the internal legal desk, and general
+developer responsibility to the sales owner. `scopeSnapshot` and direct routes
+derive permission from confirmed case data, not AI suggestions or law-firm
+names. An old assignment alone does not retain access after handoff/task
+completion.
+
+Manager task creation rechecks action and recipient on the server and under a
+booking row lock before persistence. Task writes share a natural-key advisory
+lock, reuse equivalent open tasks, and preserve manager flags on completion.
+Reviewing an event takes the same booking lock before changing confirmed status.
+
+`bookings.created_at` stores entry/import time. Migration leaves legacy unknown
+values null; new imports use the server's batch creation timestamp. Demo
+fixtures use their original recorded booking event. Demo-data rehoming preserves
+this timestamp. Today uses the last seven calendar dates of the snapshot's
+clock.
 
 ### Data Retention
 

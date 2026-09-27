@@ -5,13 +5,15 @@
 const SEEDED_MESSAGES = 27
 const BK = 'BK-9001'
 const BK_MESSAGES = ['MSG-9001-1', 'MSG-9001-2', 'MSG-9001-3', 'MSG-9001-4']
+import { openDemoSession } from './session.mjs'
 
 /** Reads /api/snapshot and reports whether it is the untouched seed. */
 export async function verifyCleanSeed(web, { fetchImpl = fetch } = {}) {
   const problems = []
   let snapshot
   try {
-    const res = await fetchImpl(`${web}/api/snapshot`)
+    const sessionFetch = await openDemoSession(web, { fetchImpl })
+    const res = await sessionFetch(`${web}/api/snapshot`)
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     snapshot = await res.json()
   } catch (e) {

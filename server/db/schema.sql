@@ -21,6 +21,8 @@ create table if not exists bookings (
   demo_seed boolean not null default false
 );
 alter table bookings add column if not exists demo_seed boolean not null default false;
+-- Do not mark legacy bookings as newly created when applying the migration.
+alter table bookings add column if not exists created_at timestamptz;
 
 create table if not exists loan_applications (
   id text primary key,
@@ -120,9 +122,11 @@ create table if not exists tasks (
   origin text not null check (origin in ('jev', 'staff')),
   created_at timestamptz not null,
   completed_at timestamptz,
+  manager_flagged_by text,
   demo_seed boolean not null default false
 );
 alter table tasks add column if not exists demo_seed boolean not null default false;
+alter table tasks add column if not exists manager_flagged_by text;
 create index if not exists tasks_booking_idx on tasks (booking_id);
 
 -- One row per spreadsheet import, so a batch can be undone as a whole while

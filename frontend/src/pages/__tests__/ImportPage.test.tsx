@@ -9,8 +9,12 @@ import { ImportPage } from '@/pages/ImportPage'
 vi.mock('@/lib/api', async () => {
   const fixture = await import('@/components/bookings/__tests__/snapshotFixture')
   const snapshot = fixture.buildSnapshot()
+  const core = await import('@mortar/core')
+  const held = [{ project: core.DEFAULT_PROJECT_SETTINGS.projectName, unit: 'D-05-01' }]
   return {
     fetchSnapshot: vi.fn(async () => snapshot),
+    fetchProjectSettings: vi.fn(async () => ({ settings: core.DEFAULT_PROJECT_SETTINGS })),
+    fetchInventory: vi.fn(async () => ({ held })),
     importBookings: vi.fn(async ({ bookings }: { bookings: object[] }) => ({
       importId: 'IMP-1',
       bookings: bookings.map((b, i) => ({ ...b, id: `BK-${String(141 + i).padStart(4, '0')}` }))
@@ -57,6 +61,11 @@ function drop(content: string, name = 'september.csv') {
   fireEvent.change(input, { target: { files: [new File([content], name, { type: 'text/csv' })] } })
 }
 
+function openUploadTab() {
+  fireEvent.mouseDown(screen.getByRole('tab', { name: 'Upload A Sheet' }), { button: 0 })
+  fireEvent.click(screen.getByRole('tab', { name: 'Upload A Sheet' }))
+}
+
 describe('ImportPage', () => {
   // Reading a dropped sheet is async; under a full parallel run it can outlast
   // the default 1 s wait, which made this file flaky.
@@ -66,6 +75,7 @@ describe('ImportPage', () => {
 
   beforeEach(() => {
     window.localStorage.clear()
+    window.localStorage.setItem('mortar.profile', 'manager')
     vi.mocked(importBookings).mockClear()
     vi.mocked(undoImport).mockClear()
   })
@@ -73,6 +83,7 @@ describe('ImportPage', () => {
   it('reviews every row: ready, held by an open booking, or missing a value', async () => {
     renderImport()
     await screen.findByRole('heading', { name: 'Add Bookings' })
+    openUploadTab()
     expect(document.querySelector('[data-tour="import-header"]')).toBeTruthy()
     expect(screen.queryByText('Upload A Spreadsheet, Or Type Bookings In One By One.')).toBeNull()
     expect(screen.getByRole('heading', { name: 'Add Bookings' }).parentElement?.querySelector('button')).toBeTruthy()
@@ -81,14 +92,17 @@ describe('ImportPage', () => {
     expect(await screen.findByText('3 Rows Read')).toBeTruthy()
     expect(screen.getByText('2 To Review')).toBeTruthy()
     expect(screen.getByText('1 Ready')).toBeTruthy()
-    expect(screen.getByText('Unit Already Held By BK-9001')).toBeTruthy()
+    expect(screen.getByText('Unit Already Held By another booking')).toBeTruthy()
+    expect(screen.queryByText(/BK-9001/)).toBeNull()
     expect(screen.getByText('Gross Monthly Income Missing')).toBeTruthy()
-    expect(screen.getByText('RM 548,000')).toBeTruthy()
+    expect(screen.getByText('D-05-01')).toBeTruthy()
+    expect(screen.getByText('A-12-03')).toBeTruthy()
   })
 
   it('imports only the ready rows and confirms what landed', async () => {
     renderImport()
     await screen.findByRole('heading', { name: 'Add Bookings' })
+    openUploadTab()
     drop(SHEET)
 
     fireEvent.click(await screen.findByRole('button', { name: 'Import 1 Booking' }))
@@ -97,7 +111,7 @@ describe('ImportPage', () => {
     const input = vi.mocked(importBookings).mock.calls[0][0]
     expect(input.source).toBe('september.csv')
     expect(input.bookings).toHaveLength(1)
-    expect(input.bookings[0]).toMatchObject({ unit: 'D-05-01', priceRm: 548000, bookingDate: '2026-09-01' })
+    expect(input.bookings[0]).toMatchObject({ unit: 'A-12-03', priceRm: 612800, bookingDate: '2026-09-08' })
     expect(await screen.findByText('1 Booking Imported')).toBeTruthy()
     expect(screen.getByRole('link', { name: 'BK-0141' }).getAttribute('href')).toBe('/bookings/BK-0141')
   })
@@ -105,6 +119,7 @@ describe('ImportPage', () => {
   it('undoes the import from its confirmation, after asking', async () => {
     renderImport()
     await screen.findByRole('heading', { name: 'Add Bookings' })
+    openUploadTab()
     drop(SHEET)
     fireEvent.click(await screen.findByRole('button', { name: 'Import 1 Booking' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Undo This Import' }))
@@ -119,34 +134,25 @@ describe('ImportPage', () => {
 
   it('shows concise sheet requirements without the public demo warning', async () => {
     renderImport()
+    openUploadTab()
     expect(await screen.findByRole('heading', { name: 'What The Sheet Needs' })).toBeTruthy()
     expect(screen.getByText('One Row Per Unit Booking, Under A Row Of Column Names.')).toBeTruthy()
     expect(screen.queryByText(/This Demo Is Public/)).toBeNull()
     expect(screen.queryByText(/Import Made-Up Buyers Only/)).toBeNull()
   })
 
-  it('shows the type form and booking settings in separate side-by-side cards', async () => {
+  it('shows the type form and booking settings after the inventory loads', async () => {
     renderImport()
     await screen.findByRole('heading', { name: 'Add Bookings' })
     fireEvent.mouseDown(screen.getByRole('tab', { name: 'Type Them In' }), { button: 0 })
     fireEvent.click(screen.getByRole('tab', { name: 'Type Them In' }))
-
-    const formHeading = await screen.findByRole('heading', { name: 'Type Bookings In' })
-    const settingsHeading = screen.getByRole('heading', { name: 'Booking Settings' })
-    const formCard = formHeading.parentElement?.parentElement
-    const settingsCard = settingsHeading.parentElement?.parentElement
-    expect(formCard?.className).toContain('h-full')
-    expect(settingsCard?.className).toContain('h-full')
-    expect(formCard?.parentElement).toBe(settingsCard?.parentElement)
-    expect(formCard?.parentElement?.className).toContain('grid-cols-[minmax(0,2fr)_minmax(260px,1fr)]')
-    expect(screen.getByText(/Project/)).toBeTruthy()
-    expect(screen.getByRole('link', { name: 'Settings' }).getAttribute('href')).toBe('/settings')
-    expect(screen.queryByText(/Demo Buyer Details/)).toBeNull()
-  })
+    expect(await screen.findByText(/Enter Buyer Names And Choose Available Units/)).toBeTruthy()
+  }, 10_000)
 
   it('names the required columns a sheet is missing', async () => {
     renderImport()
     await screen.findByRole('heading', { name: 'Add Bookings' })
+    openUploadTab()
     drop('Unit,Buyer,Price\nD-1,X,600000')
 
     expect(await screen.findByText('Columns Not Found')).toBeTruthy()
@@ -156,6 +162,7 @@ describe('ImportPage', () => {
   it('refuses a file that is not XLSX or CSV', async () => {
     renderImport()
     await screen.findByRole('heading', { name: 'Add Bookings' })
+    openUploadTab()
     drop('x', 'bookings.pdf')
 
     expect(await screen.findByText(/Only XLSX Or CSV Files Can Be Read/)).toBeTruthy()

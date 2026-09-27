@@ -89,14 +89,15 @@ CRM, spreadsheets and WhatsApp, as practitioners in our survey describe.
 
 ### Daily Users
 
-Three internal administration roles use Mortar every working day. Each is
-described in full under [Who Uses Mortar](#who-uses-mortar).
+Four internal roles use Mortar every working day. Each is described in full
+under [Who Uses Mortar](#who-uses-mortar).
 
-| Daily User  | Owns The Stretch                    | Opens Mortar To                                    |
-| ----------- | ----------------------------------- | -------------------------------------------------- |
-| Sales Admin | Booking to complete buyer documents | Work the Today queue of stuck bookings             |
-| Loan Admin  | Bank submission to Letter of Offer  | See which bank applications are late or incomplete |
-| Legal Admin | Letter of Offer to signed SPA       | See which approved cases have not been signed      |
+| Daily User  | Owns The Stretch                    | Opens Mortar To                                                        |
+| ----------- | ----------------------------------- | ---------------------------------------------------------------------- |
+| Sales Admin | Booking to complete buyer documents | Work the Today queue of stuck bookings                                 |
+| Loan Admin  | Bank submission to Letter of Offer  | See which bank applications are late or incomplete                     |
+| Legal Admin | Letter of Offer to signed SPA       | See which approved cases have not been signed                          |
+| Manager     | Cross-department escalations        | Review overdue bookings across all desks and flag follow-ups for staff |
 
 ### Beneficiaries Who Do Not Log In Daily
 
@@ -104,8 +105,6 @@ described in full under [Who Uses Mortar](#who-uses-mortar).
   booking counts at face value.
 - **Sales Director:** keeps launch momentum, because Mortar advises on financing
   risk without blocking bookings.
-- **Management:** sees persistent stalls early enough to decide whether to
-  release a unit for resale.
 
 ### Deliberately Not Users
 
@@ -131,7 +130,7 @@ decide how simple the product has to be.
 
 ## Who Uses Mortar
 
-Mortar provides a single operational environment tailored for three distinct
+Mortar provides a single operational environment tailored for four distinct
 internal staff personas. Staff switch roles via the header persona menu, which
 persists the active role in browser storage and routes them to their dedicated
 workspace.
@@ -182,6 +181,22 @@ manage directly. Legal Admin Arvind Raj anchors his workflow on the Legal desk
 - **Panel Load:** Shows the count, median wait and value sitting with each firm,
   stated as load rather than as firm performance.
 
+### Project Management
+
+Project managers oversee conversion health and cross-department bottlenecks. In
+Mortar, Project Manager anchors their workflow on the Manager desk (`/manager`)
+with full visibility across every department.
+
+- **Overview Dashboard:** Tracks overdue cases (at least 50% past expected
+  wait), 30-day expected signings from the forecast engine, and open
+  manager-flagged tasks.
+- **Follow-Up Suggestions:** Reviews timing-based follow-ups and Jev confidence
+  scores for stalled bookings across sales, loan administration, and legal.
+- **Department Escalation:** Flags tasks or requests direct follow-ups from the
+  assigned sales, loan, or legal owner with one click.
+- **Company-Wide Scoping:** Maintains unrestricted access to every booking,
+  while individual staff desks remain scoped to assigned cases.
+
 ### Persona Comparison
 
 | Persona     | Representative Staff | Home Route  | Core Responsibility                       | Primary Value Delivered                                         |
@@ -189,6 +204,7 @@ manage directly. Legal Admin Arvind Raj anchors his workflow on the Legal desk
 | Sales Admin | Nurul Aina           | `/chase`    | Works the Today queue of stuck bookings   | Surfaces each stall reason with an actionable next step         |
 | Loan Admin  | Tan Mei Ling         | `/bookings` | Oversees multi-bank mortgage applications | Flags applications undecided past the bank guideline window     |
 | Legal Admin | Arvind Raj           | `/legal`    | Runs the SPA execution queue              | Puts a clock on every case sitting between approval and signing |
+| Manager     | Project Manager      | `/manager`  | Oversees cross-department bottlenecks     | Flags overdue cases and assigns follow-up tasks to staff        |
 
 ## What Mortar Does
 
@@ -210,10 +226,10 @@ preventing stale cases from masquerading as healthy pipeline.
 
 ### Waiting On
 
-Daily triage across the three desks comes down to four questions: where the unit
-is now, what is blocking it, who has to move next, and what that move is. The
-desk tables showed a booking's stage, age and risk, but not why it was stuck or
-what to do next.
+Daily triage across the desks comes down to four questions: where the unit is
+now, what is blocking it, who has to move next, and what that move is. The desk
+tables showed a booking's stage, age and risk, but not why it was stuck or what
+to do next.
 
 Every open case now names the party it waits on: the buyer, a panel bank, the
 solicitor or the developer's own staff. It also names what that party owes and
@@ -227,13 +243,13 @@ Clicking a unit code on Today or a row in Bookings opens the same side sheet
 Record An Update, and Open Full Case, allowing staff to unblock cases without
 leaving their queue.
 
-### Ask Mortar
+### Ask MortarAI
 
-The top bar's sparkle button opens Ask Mortar, an embedded assistant that
+The top bar's sparkle button opens Ask MortarAI, an embedded assistant that
 answers natural-language questions from staff across any page in the app. It
 reads the live bookings snapshot using five read-only tools and returns grounded
-answers with booking citations. Ask Mortar never modifies data or makes credit,
-loan, or legal decisions.
+answers with booking citations. Ask MortarAI never modifies data or makes
+credit, loan, or legal decisions.
 
 ### High-Density Ledger Design
 
@@ -331,6 +347,9 @@ Mortar enforces a strict architectural boundary between automated assistance and
 human authority. AI accelerates clerical extraction and semantic retrieval, but
 it is never permitted to make operational or financial decisions.
 
+MortarAI names Mortar's AI layer as a whole: Ask MortarAI, the Gemini assistant
+in the top bar, and Jev, the classifier that reads buyer and banker messages.
+
 ### Division Of Operational Responsibility
 
 | Operational Domain     | AI Role                                                     | Human Or Deterministic Governance                                     |
@@ -338,24 +357,24 @@ it is never permitted to make operational or financial decisions.
 | Message processing     | Extracts candidate dates, document types, and event classes | Staff confirm identity matches and verify material facts              |
 | Staff knowledge        | Retrieves and ranks vetted playbooks by contextual fit      | Experienced managers author, review, and approve playbook text        |
 | Task coordination      | Proposes next actions and estimates follow-up urgency       | Staff assign responsibilities, execute actions, and manage partners   |
-| Operational inquiries  | Ask Mortar reads snapshot to answer grounded questions      | Staff evaluate answers; model never writes or decides                 |
+| Operational inquiries  | Ask MortarAI reads snapshot to answer grounded questions    | Staff evaluate answers; model never writes or decides                 |
 | Buyer sentiment        | Evaluates message response gaps and hesitation patterns     | Sales agents interpret relationship context and buyer motives         |
 | Financing risk         | Computes nothing; deterministic rules evaluate debt ratios  | Credit staff evaluate documentation; commercial banks decide credit   |
 | Legal milestones       | Assembles chronological document trails for case review     | Panel solicitors confirm statutory execution of the agreement         |
 | Conversion forecasting | Explains underlying statistical distributions               | Mathematical algorithms compute rates; Finance owns assumptions       |
 | Inventory management   | Highlights persistent stalls exceeding policy limits        | Authorized executives review evidence and authorize unit cancellation |
 
-### The Ask Mortar Boundary
+### The Ask MortarAI Boundary
 
-Ask Mortar operates as an internal conversational assistant for staff, accessed
-via the sparkle button in the top bar. It connects to Google's Gemini API
-(`server/src/assistant/`) and is grounded by five read-only snapshot tools
+Ask MortarAI operates as an internal conversational assistant for staff,
+accessed via the sparkle button in the top bar. It connects to Google's Gemini
+API (`server/src/assistant/`) and is grounded by five read-only snapshot tools
 (`find_bookings`, `get_case`, `get_my_queue`, `get_forecast_summary`, and
 `search_playbooks`).
 
 The architectural boundary is absolute:
 
-- **Read-Only Operation:** Ask Mortar never executes database writes, state
+- **Read-Only Operation:** Ask MortarAI never executes database writes, state
   transitions, or task creations. It cannot modify booking records.
 - **No Operational Authority:** The model never makes credit, underwriting,
   loan, or legal decisions. It refuses off-topic requests and explicitly states
@@ -368,8 +387,8 @@ The architectural boundary is absolute:
   the endpoint returns 503 and the UI seamlessly degrades to scripted answers.
 - **Privacy Protection:** API keys, message contents, and user images are never
   logged. On Gemini's free tier, prompts may be retained by Google for model
-  training; Ask Mortar is therefore restricted to simulated data until deployed
-  under an enterprise agreement.
+  training; Ask MortarAI is therefore restricted to simulated data until
+  deployed under an enterprise agreement.
 
 ### The Jev Boundary And Resilience
 
@@ -535,8 +554,9 @@ partners, Mortar defines clear functional boundaries:
   must confirm every milestone.
 - **Not A Customer-Facing Chatbot:** Mortar does not engage in customer
   conversations with external buyers. AI assistance is strictly internal: Jev
-  classifies events and scores structured fields, while Ask Mortar answers staff
-  inquiries grounded in the live snapshot without making operational decisions.
+  classifies events and scores structured fields, while Ask MortarAI answers
+  staff inquiries grounded in the live snapshot without making operational
+  decisions.
 - **Not A Customer-Facing Portal:** Mortar is an internal operational tool for
   developer personnel. Panel bankers and panel solicitors keep their existing
   channels; their participation does not require a new portal.

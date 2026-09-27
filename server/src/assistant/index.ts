@@ -9,6 +9,9 @@
  * have to be trusted to remember it.
  */
 import type { Database } from '../../db/index'
+import type { StaffProfile } from '@mortar/core'
+import { canAccessBooking, createAssignmentAccessContext, REFERENCE_DATE } from '@mortar/core'
+import { scopeSnapshot } from '@mortar/core'
 import { clientIp, readAssistantRequest, RateLimiter, type AssistantRequest } from './guardrails'
 import { ASSISTANT_TIMEOUT_MS, callGemini, modelErrorResponse, type GeminiContent } from './gemini'
 import { systemPrompt } from './prompt'
@@ -61,13 +64,20 @@ export type AssistantStreamEvent =
 
 export function createAssistant(options: AssistantOptions) {
   const limiter = new RateLimiter()
+  const canAccess = async (bookingId: string, profile: StaffProfile): Promise<boolean> => {
+    const booking = await options.db.getBooking(bookingId)
+    if (!booking) return false
+    const context = createAssignmentAccessContext(await options.db.caseData(), REFERENCE_DATE)
+    return canAccessBooking(booking, profile, context)
+  }
 
   /** One round trip: the model, its tool calls, the results, and the answer. */
   async function ask(
     input: AssistantRequest,
     apiKey: string,
     caller?: AbortSignal,
-    emit?: (event: AssistantStreamEvent) => void
+    emit?: (event: AssistantStreamEvent) => void,
+    profile?: StaffProfile
   ): Promise<AssistantAnswer> {
     // One deadline for the whole request, the tool loop included. A fresh timer
     // per turn would let four rounds outlive the browser's own patience, and a
@@ -77,11 +87,15 @@ export function createAssistant(options: AssistantOptions) {
     const timer = setTimeout(() => controller.abort(), budget)
     if (caller) caller.addEventListener('abort', () => controller.abort(), { once: true })
     /** Every booking id the tools handed over in this request, so only those can become links. */
+    let allowedBookingIds = new Set<string>()
     const known = new Set<string>()
     const usedTools = new Set<string>()
-    if (input.bookingId) known.add(input.bookingId)
 
     try {
+      allowedBookingIds = new Set(
+        scopeSnapshot(await options.db.snapshot(), profile!).bookings.map((booking) => booking.id)
+      )
+      if (input.bookingId && allowedBookingIds.has(input.bookingId)) known.add(input.bookingId)
       const contents: GeminiContent[] = [
         ...input.history.flatMap((turn) => [
           { role: 'user' as const, parts: [{ text: turn.question }] },
@@ -131,8 +145,8 @@ export function createAssistant(options: AssistantOptions) {
             usedTools.add(name)
             emit?.({ type: 'tool_call', label })
           }
-          const text = await runTool(name, (call.args ?? {}) as ToolInput, input.persona, options.db)
-          for (const id of text.match(BOOKING_ID) ?? []) known.add(id)
+          const text = await runTool(name, (call.args ?? {}) as ToolInput, profile!, options.db)
+          for (const id of text.match(BOOKING_ID) ?? []) if (allowedBookingIds.has(id)) known.add(id)
           results.push({ name, text })
           if (label) emit?.({ type: 'tool_result', label })
         }
@@ -156,11 +170,15 @@ export function createAssistant(options: AssistantOptions) {
   }
 
   /** `POST /api/assistant`. */
-  const handleAssistant: ((ctx: { req: Request }) => Promise<Response>) & {
-    stream?: (ctx: { req: Request }) => Promise<Response>
-  } = async function ({ req }: { req: Request }): Promise<Response> {
-    const parsed = readAssistantRequest(await body(req))
+  const handleAssistant: ((ctx: { req: Request; profile: StaffProfile }) => Promise<Response>) & {
+    stream?: (ctx: { req: Request; profile: StaffProfile }) => Promise<Response>
+  } = async function ({ req, profile }: { req: Request; profile: StaffProfile }): Promise<Response> {
+    const posted = await body(req)
+    const parsed = readAssistantRequest(posted ? { ...posted, persona: profile.persona } : null)
     if (parsed instanceof Response) return parsed
+    if (parsed.bookingId) {
+      if (!(await canAccess(parsed.bookingId, profile))) return json({ error: 'booking not found' }, 404)
+    }
     if (!options.apiKey) return json({ fallback: true }, 503)
     const limited = limiter.check(clientIp(req))
     if (limited) return limited
@@ -169,7 +187,7 @@ export function createAssistant(options: AssistantOptions) {
     const disconnect = new AbortController()
     req.signal.addEventListener('abort', () => disconnect.abort(), { once: true })
     try {
-      return json(await ask(parsed, options.apiKey, disconnect.signal))
+      return json(await ask(parsed, options.apiKey, disconnect.signal, undefined, profile))
     } catch (e) {
       // A model failure is a server fault on our side, so it is logged (the
       // message, never the key, the image or the question) and refused as one.
@@ -177,9 +195,13 @@ export function createAssistant(options: AssistantOptions) {
       return modelErrorResponse(e)
     }
   }
-  handleAssistant.stream = async ({ req }: { req: Request }): Promise<Response> => {
-    const parsed = readAssistantRequest(await body(req))
+  handleAssistant.stream = async ({ req, profile }: { req: Request; profile: StaffProfile }): Promise<Response> => {
+    const posted = await body(req)
+    const parsed = readAssistantRequest(posted ? { ...posted, persona: profile.persona } : null)
     if (parsed instanceof Response) return parsed
+    if (parsed.bookingId) {
+      if (!(await canAccess(parsed.bookingId, profile))) return json({ error: 'booking not found' }, 404)
+    }
     if (!options.apiKey) return json({ fallback: true }, 503)
     const limited = limiter.check(clientIp(req))
     if (limited) return limited
@@ -193,11 +215,11 @@ export function createAssistant(options: AssistantOptions) {
         }
         const onAbort = () => disconnect.abort()
         req.signal.addEventListener('abort', onAbort, { once: true })
-        void ask(parsed, options.apiKey!, disconnect.signal, send)
+        void ask(parsed, options.apiKey!, disconnect.signal, send, profile)
           .catch((e) => {
             if (disconnect.signal.aborted) return
             console.error('ask mortar:', e instanceof Error ? e.message : String(e))
-            send({ type: 'error', message: 'Ask Mortar Could Not Check. Try Again.' })
+            send({ type: 'error', message: 'Ask MortarAI Could Not Check. Try Again.' })
           })
           .finally(() => {
             req.signal.removeEventListener('abort', onAbort)
@@ -304,6 +326,7 @@ function userParts(input: AssistantRequest): { text?: string; inlineData?: { mim
 function shape(answer: string, known: ReadonlySet<string>): AssistantAnswer {
   const trimmed = answer.trim()
   if (trimmed.length === 0) return { answer: NO_ANSWER, citations: [] }
-  const cited = (trimmed.match(BOOKING_ID) ?? []).filter((id) => known.has(id))
-  return { answer: trimmed, citations: [...new Set(cited)] }
+  const safe = trimmed.replace(BOOKING_ID, (id) => (known.has(id) ? id : '[unavailable booking]'))
+  const cited = (safe.match(BOOKING_ID) ?? []).filter((id) => known.has(id))
+  return { answer: safe, citations: [...new Set(cited)] }
 }

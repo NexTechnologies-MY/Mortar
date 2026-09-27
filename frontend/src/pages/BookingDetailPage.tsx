@@ -37,8 +37,8 @@ export function BookingDetailPage() {
   const { id } = useParams()
   const { snapshot, loading, error, refresh } = useSnapshot()
   const cases = useCases()
-  const { persona } = usePersona()
-  const reviewer = PERSONA_STAFF[persona].name
+  const { persona, profile } = usePersona()
+  const reviewer = profile?.name ?? PERSONA_STAFF[persona].name
   /** The desks' today, which every new update and message is dated against. */
   const referenceDate = snapshot?.meta.referenceDate ?? ''
 

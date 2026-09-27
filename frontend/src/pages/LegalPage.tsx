@@ -27,10 +27,10 @@ import { FirmLoadCard } from '@/components/legal/FirmLoadCard'
 import { firmLoad, isLegalStall, legalQueue } from '@/components/legal/legal'
 
 export function LegalPage() {
-  const { persona } = usePersona()
+  const { persona, profile } = usePersona()
   const { snapshot, loading, error, refresh } = useSnapshot()
   const cases = useCases()
-  const reviewer = PERSONA_STAFF[persona].name
+  const reviewer = profile?.name ?? PERSONA_STAFF[persona].name
 
   const rows = useMemo(() => legalQueue(snapshot?.bookings ?? [], cases, snapshot?.events ?? []), [snapshot, cases])
   const firms = useMemo(() => firmLoad(rows), [rows])

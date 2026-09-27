@@ -111,20 +111,22 @@ existing tool shows the whole. Mortar's input is the booking spreadsheet the
 team already maintains — intake, not migration — and its rules push the daily
 Today queue instead of waiting for somebody to open a report.
 
-The app is used as three personas, switched in the header and persisted in
-`localStorage`:
+The app is used as four personas, switched in the header and persisted in
+`localStorage` under `mortar.profile` (with `mortar.persona` still written):
 
 | Persona     | Home Route  | Job                                                        |
 | ----------- | ----------- | ---------------------------------------------------------- |
 | Sales Admin | `/chase`    | Works the Today queue of stuck bookings                    |
 | Loan Admin  | `/bookings` | Tracks loan and banker status across bookings              |
 | Legal Admin | `/legal`    | Works the queue of unsigned SPAs by how long they have sat |
+| Manager     | `/manager`  | Oversees overdue cases and escalations across departments  |
 
 | Route           | Purpose                                                                                                                              |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | `/`             | Public landing page                                                                                                                  |
-| `/sign-in`      | Persona picker, no real authentication                                                                                               |
+| `/sign-in`      | Named demo profile picker and signed session cookie, no password                                                                     |
 | `/app`          | Redirects to the active persona's home                                                                                               |
+| `/manager`      | Manager: cross-department overview, overdue cases, and follow-up suggestions                                                         |
 | `/bookings`     | Bookings: unit pipeline, Who Holds Each Booking filter, and side sheet quick view; hand-entry Add Booking and closed Excel export    |
 | `/bookings/:id` | Case page: single-sentence status header, dual tracks, button-driven updates, and verbal Jev readings                                |
 | `/chase`        | Today: who to chase today, with rule-based next steps, blocker reasons, and WhatsApp click-to-chat links                             |
@@ -144,9 +146,9 @@ Measured, not estimated.
 
 |                               |        |
 | ----------------------------- | ------ |
-| App pages                     | **11** |
+| App pages                     | **12** |
 | API routes                    | **15** |
-| Personas                      | **3**  |
+| Personas                      | **4**  |
 | Funnel stages tracked         | **6**  |
 | Shared packages               | **2**  |
 | Backend services              | **1**  |
@@ -256,7 +258,7 @@ in `asia-southeast1`, with keyless Workload Identity Federation.
 | State    | React Context for persona; case data from `/api`           |
 | Tests    | Vitest, Testing Library, jsdom                             |
 | Serving  | One Bun process serves `/api/*` and `frontend/dist`        |
-| AI       | Jev (TypeSafe SDK); Ask Mortar (Gemini via assistant/)     |
+| AI       | Jev (TypeSafe SDK); Ask MortarAI (Gemini via assistant/)   |
 | Hosting  | Google Cloud Run (`asia-southeast1`)                       |
 
 <p align="right"><a href="#readme-top">&uarr;</a></p>
@@ -304,11 +306,11 @@ JEV_PROXY_MODEL=gemini-3.5-flash-lite   # model to route to (default shown)
 proxy. Use this only with made-up demo data, never with real buyer or booking
 information.
 
-### Ask Mortar (Gemini Assistant)
+### Ask MortarAI (Gemini Assistant)
 
-Ask Mortar connects to Google's Gemini API over `fetch` (`POST /api/assistant`)
-to answer questions grounded in the live snapshot using five read-only tools.
-Set `GEMINI_API_KEY` in `.env` to enable it:
+Ask MortarAI connects to Google's Gemini API over `fetch`
+(`POST /api/assistant`) to answer questions grounded in the live snapshot using
+five read-only tools. Set `GEMINI_API_KEY` in `.env` to enable it:
 
 ```sh
 GEMINI_API_KEY=                         # Google Gemini API key
@@ -370,13 +372,15 @@ AGENTS.md        Agent instructions: stack, routes, rules
   Malaysian industry practitioners (n = 8).
 - **PDPA.** Real buyer documents are personal data under Malaysia's PDPA and
   stay out of free-tier AI APIs (such as Gemini's free tier).
-- **No sign-in on the public demo.** Only made-up buyers should be imported;
-  income figures still reach the browser because risk is worked out there.
+- **Demo profile sign-in.** Sign-in selects a named demo profile with a signed
+  session cookie, but uses no passwords or real authentication. Only made-up
+  buyers should be imported; income figures still reach the browser because risk
+  is worked out there.
 - **Retention.** Transaction records are kept 7 years (Companies Act 2016 s245,
   Income Tax Act 1967 s82); a server holding real data must set
   `MORTAR_DEMO_RESET=off`. See [Data Retention](TRD.md#data-retention).
 - **AI is an assistant, not a decider.** Rules flag risk; Jev structures
-  messages, and Ask Mortar answers grounded inquiries, but neither ever writes
+  messages, and Ask MortarAI answers grounded inquiries, but neither ever writes
   to records or makes credit, loan, or legal decisions.
 
 <p align="right"><a href="#readme-top">&uarr;</a></p>

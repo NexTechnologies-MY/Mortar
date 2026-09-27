@@ -13,7 +13,16 @@ import {
   searchPlaybooks,
   simNow,
   summarizeCases,
-  unitKey
+  unitKey,
+  DEMO_PROFILES,
+  profileFor,
+  scopeSnapshot,
+  createAssignmentAccessContext,
+  currentCaseAssignee,
+  ballInCourt,
+  canAccessBooking,
+  normalizeProjectSettings,
+  DEFAULT_PROJECT_SETTINGS
 } from '@mortar/core'
 import { defaultPlaybookQuery } from '@mortar/jev'
 import type {
@@ -34,7 +43,8 @@ import type {
   SenderRole,
   SimulationMeta,
   Task,
-  Track
+  Track,
+  StaffProfile
 } from '@mortar/core'
 import {
   BookingMovedOnError,
@@ -42,6 +52,7 @@ import {
   ImportMovedOnError,
   OpenApplicationError,
   UnitHeldError,
+  TaskAssignmentChangedError,
   type Database
 } from '../db/index'
 import { isoDateTime, withMaskedContact } from '../db/mappers'
@@ -162,6 +173,20 @@ function occurredOnProblem(occurredOn: IsoDate, booking: Booking): string | null
   return null
 }
 
+function cookieValue(req: Request, name: string): string {
+  const cookie = req.headers.get('cookie') ?? ''
+  const item = cookie
+    .split(';')
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(`${name}=`))
+  if (!item) return ''
+  try {
+    return decodeURIComponent(item.slice(name.length + 1))
+  } catch {
+    return ''
+  }
+}
+
 /** Updates that belong to one bank's application; without it they cannot mark the bank. */
 const NEEDS_APPLICATION: ReadonlySet<EventKind> = new Set(['loan_approved', 'loan_rejected', 'valuation_shortfall'])
 
@@ -272,18 +297,100 @@ function cleanDraft(value: unknown): BookingDraft {
   }
 }
 
-type Handler = (ctx: { req: Request; url: URL; params: Record<string, string> }) => Promise<Response>
+type Handler = (ctx: {
+  req: Request
+  url: URL
+  params: Record<string, string>
+  profile: StaffProfile
+}) => Promise<Response>
 
 export function createApp(options: AppOptions): App {
   const { db, jev } = options
   const assistant = options.assistant
     ? createAssistant({ db, ...options.assistant })
     : createAssistant({ db, apiKey: null })
+  const cookieName = 'mortar_session'
+  const cookieOptions = (secure: boolean) => `Path=/; HttpOnly; SameSite=Lax; Max-Age=43200${secure ? '; Secure' : ''}`
+  // Cloud Run terminates TLS before the container, so the request the app sees
+  // is plain http. The proxy's own header is what tells us the client is on https.
+  const isSecureRequest = (req: Request) =>
+    req.headers.get('x-forwarded-proto') === 'https' || new URL(req.url).protocol === 'https:'
+  let secretPromise: Promise<string> | null = null
+  const sessionSecret = () => (secretPromise ??= db.sessionSecret())
+  const signingKey = async () =>
+    crypto.subtle.importKey(
+      'raw',
+      new TextEncoder().encode(await sessionSecret()),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign', 'verify']
+    )
+  const signProfile = async (profileId: string) => {
+    const payload = `${profileId}:${Math.floor(Date.now() / 1000) + 43_200}`
+    const signature = await crypto.subtle.sign('HMAC', await signingKey(), new TextEncoder().encode(payload))
+    return `${payload}.${btoa(String.fromCharCode(...new Uint8Array(signature)))
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '')}`
+  }
+  const sessionProfile = async (req: Request): Promise<StaffProfile | null> => {
+    const [payload, signature] = cookieValue(req, cookieName).split('.')
+    const [profileId, expiryText] = payload?.split(':') ?? []
+    const profile = profileId ? profileFor(profileId) : null
+    const expiry = Number(expiryText)
+    if (!profile || !Number.isInteger(expiry) || expiry <= Math.floor(Date.now() / 1000) || !signature) return null
+    try {
+      const bytes = Uint8Array.from(
+        atob(signature.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (signature.length % 4)) % 4)),
+        (char) => char.charCodeAt(0)
+      )
+      const payload = `${profileId}:${expiry}`
+      const valid = await crypto.subtle.verify('HMAC', await signingKey(), bytes, new TextEncoder().encode(payload))
+      return valid ? profile : null
+    } catch {
+      return null
+    }
+  }
+
+  const sessionRoutes: [string, string, (req: Request) => Promise<Response>][] = [
+    ['GET', '/api/session', async (req) => json({ profile: await sessionProfile(req), profiles: DEMO_PROFILES })],
+    [
+      'POST',
+      '/api/session',
+      async (req) => {
+        const b = await body(req)
+        const profile = b && typeof b.profileId === 'string' ? profileFor(b.profileId) : null
+        if (!profile) return error(400, 'profileId must name an available demo profile')
+        const token = await signProfile(profile.id)
+        return new Response(JSON.stringify({ profile }), {
+          headers: {
+            'content-type': 'application/json',
+            'set-cookie': `${cookieName}=${token}; ${cookieOptions(isSecureRequest(req))}`
+          }
+        })
+      }
+    ],
+    [
+      'DELETE',
+      '/api/session',
+      async (req) => {
+        return new Response(null, {
+          status: 204,
+          headers: {
+            'set-cookie': `${cookieName}=; ${cookieOptions(isSecureRequest(req))}; Max-Age=0`
+          }
+        })
+      }
+    ]
+  ]
 
   const summaryFor = async (bookingId: string): Promise<CaseSummary | null> => {
     const summaries = summarizeCases(await db.caseData(), REFERENCE_DATE)
     return summaries.find((s) => s.bookingId === bookingId) ?? null
   }
+
+  const canAccess = async (booking: Booking, profile: StaffProfile): Promise<boolean> =>
+    canAccessBooking(booking, profile, createAssignmentAccessContext(await db.caseData(), REFERENCE_DATE))
 
   /**
    * Turns a Jev extraction into a provisional event, or `null` for `no_update`
@@ -296,11 +403,11 @@ export function createApp(options: AppOptions): App {
   }
 
   const routes: [string, string, Handler][] = [
-    ['POST', '/api/assistant', assistant],
+    ['POST', '/api/assistant', (ctx) => assistant(ctx)],
     [
       'POST',
       '/api/assistant/stream',
-      async ({ req }) => assistant.stream?.({ req }) ?? json({ error: 'stream unavailable' }, 500)
+      async ({ req, profile }) => assistant.stream?.({ req, profile }) ?? json({ error: 'stream unavailable' }, 500)
     ],
     [
       'GET',
@@ -318,7 +425,7 @@ export function createApp(options: AppOptions): App {
           ok: dbOk,
           db: dbOk,
           jev: Boolean(options.jevAvailable),
-          // Whether Ask Mortar can reach a model at all. Only the fact is
+          // Whether Ask MortarAI can reach a model at all. Only the fact is
           // reported, never the key itself.
           assistant: Boolean(options.assistant?.apiKey),
           jevAnswers,
@@ -328,9 +435,46 @@ export function createApp(options: AppOptions): App {
     ],
     ['GET', '/api/snapshot', async () => json(await db.snapshot())],
     [
+      'GET',
+      '/api/settings',
+      async () => json({ settings: (await db.getProjectSettings()) ?? DEFAULT_PROJECT_SETTINGS })
+    ],
+    [
+      'PUT',
+      '/api/settings',
+      async ({ req, profile }) => {
+        if (profile.persona !== 'manager') return error(403, 'manager profile required')
+        const b = await body(req)
+        if (!b) return error(400, 'expected a JSON object body')
+        const settings = normalizeProjectSettings(b.settings)
+        if (!settings) return error(400, 'settings are invalid')
+        await db.setProjectSettings(settings)
+        return json({ settings })
+      }
+    ],
+    [
+      'GET',
+      '/api/inventory',
+      async () => {
+        const snapshot = await db.snapshot()
+        const held = snapshot.bookings
+          .filter(
+            (booking) =>
+              !snapshot.events.some(
+                (event) =>
+                  event.bookingId === booking.id &&
+                  ['cancelled', 'lapsed'].includes(event.kind) &&
+                  event.status === 'confirmed'
+              )
+          )
+          .map(({ project, unit }) => ({ project, unit }))
+        return json({ held })
+      }
+    ],
+    [
       'POST',
       '/api/messages',
-      async ({ req }) => {
+      async ({ req, profile }) => {
         const b = await body(req)
         if (!b) return error(400, 'expected a JSON object body')
         if (!isString(b.bookingId)) return error(400, 'bookingId is required')
@@ -346,6 +490,7 @@ export function createApp(options: AppOptions): App {
           return error(400, 'sentAt must be a date-time with an offset, e.g. 2026-09-17T21:05:00+08:00')
         const booking = await db.getBooking(b.bookingId)
         if (!booking) return error(404, `booking ${b.bookingId} not found`)
+        if (!(await canAccess(booking, profile))) return error(404, `booking ${b.bookingId} not found`)
         // When the message was sent, not when it was pasted in: Jev reads reply
         // speed from the gaps between messages. Stored in +08:00 like the rest.
         const now = simNow(REFERENCE_DATE)
@@ -397,7 +542,7 @@ export function createApp(options: AppOptions): App {
     [
       'POST',
       '/api/events',
-      async ({ req }) => {
+      async ({ req, profile }) => {
         const b = await body(req)
         if (!b) return error(400, 'expected a JSON object body')
         if (!isString(b.bookingId)) return error(400, 'bookingId is required')
@@ -428,6 +573,7 @@ export function createApp(options: AppOptions): App {
         if (reportedByTooLong) return reportedByTooLong
         const booking = await db.getBooking(b.bookingId)
         if (!booking) return error(404, `booking ${b.bookingId} not found`)
+        if (!(await canAccess(booking, profile))) return error(404, `booking ${b.bookingId} not found`)
         const applicationId = (b.applicationId as string | undefined) ?? null
         if (applicationId !== null) {
           const application = await db.getApplication(applicationId)
@@ -460,8 +606,8 @@ export function createApp(options: AppOptions): App {
           kind: b.kind,
           occurredAt,
           recordedAt: now,
-          reportedBy: b.reportedBy.trim(),
-          verifiedBy: b.reportedBy.trim(),
+          reportedBy: profile.name,
+          verifiedBy: profile.name,
           status: 'confirmed',
           source: 'staff',
           messageId: null,
@@ -475,7 +621,7 @@ export function createApp(options: AppOptions): App {
     [
       'POST',
       '/api/applications',
-      async ({ req }) => {
+      async ({ req, profile }) => {
         const b = await body(req)
         if (!b) return error(400, 'expected a JSON object body')
         if (!isString(b.bookingId)) return error(400, 'bookingId is required')
@@ -496,6 +642,7 @@ export function createApp(options: AppOptions): App {
         if (reportedByTooLong) return reportedByTooLong
         const booking = await db.getBooking(b.bookingId)
         if (!booking) return error(404, `booking ${b.bookingId} not found`)
+        if (!(await canAccess(booking, profile))) return error(404, `booking ${b.bookingId} not found`)
         const occurredOn = (b.occurredOn as IsoDate | undefined) ?? null
         const problem = occurredOn === null ? null : occurredOnProblem(occurredOn, booking)
         if (problem) return error(400, problem)
@@ -505,7 +652,7 @@ export function createApp(options: AppOptions): App {
         if (refused) return error(409, refused)
         const now = simNow(REFERENCE_DATE)
         const occurredAt = occurredAtFor(occurredOn, now, await db.eventsForBooking(booking.id))
-        const reportedBy = b.reportedBy.trim()
+        const reportedBy = profile.name
         const application: LoanApplication = {
           id: newId('APP'),
           bookingId: booking.id,
@@ -544,7 +691,7 @@ export function createApp(options: AppOptions): App {
     [
       'POST',
       '/api/events/:id/review',
-      async ({ req, params }) => {
+      async ({ req, params, profile }) => {
         const b = await body(req)
         if (!b) return error(400, 'expected a JSON object body')
         if (!isOneOf(b.decision, Object.keys(REVIEW_DECISIONS)))
@@ -555,6 +702,8 @@ export function createApp(options: AppOptions): App {
         const status = REVIEW_DECISIONS[b.decision as keyof typeof REVIEW_DECISIONS]
         const current = await db.getEvent(params.id)
         if (!current) return error(404, `event ${params.id} not found`)
+        const booking = await db.getBooking(current.bookingId)
+        if (!booking || !(await canAccess(booking, profile))) return error(404, `event ${params.id} not found`)
         if (status === 'confirmed' && isPendingProposal(current)) {
           // Confirming writes the proposal into the case, so the case rules apply
           // as they do to an update recorded by hand.
@@ -566,7 +715,7 @@ export function createApp(options: AppOptions): App {
         try {
           // The database checks the proposal is still waiting, under a row lock,
           // and keeps the change in `event_reviews`.
-          const event = await db.reviewEvent(params.id, status, b.reviewer.trim(), simNow(REFERENCE_DATE))
+          const event = await db.reviewEvent(params.id, status, profile.name, simNow(REFERENCE_DATE))
           if (!event) return error(404, `event ${params.id} not found`)
           return json(event)
         } catch (e) {
@@ -578,8 +727,9 @@ export function createApp(options: AppOptions): App {
     [
       'POST',
       '/api/bookings/:id/next-action',
-      async ({ params }) => {
-        if (!(await db.getBooking(params.id))) return error(404, `booking ${params.id} not found`)
+      async ({ params, profile }) => {
+        const booking = await db.getBooking(params.id)
+        if (!booking || !(await canAccess(booking, profile))) return error(404, `booking ${params.id} not found`)
         const summary = await summaryFor(params.id)
         if (!summary) return error(500, `no case summary for ${params.id}`)
         const recentMessages = (await db.messagesForBooking(params.id)).slice(-3)
@@ -589,11 +739,12 @@ export function createApp(options: AppOptions): App {
     [
       'GET',
       '/api/bookings/:id/playbooks',
-      async ({ url, params }) => {
+      async ({ url, params, profile }) => {
         const rawQuery = url.searchParams.get('q')?.trim() ?? ''
         const rawQueryTooLong = tooLong('q', rawQuery, MAX_PLAYBOOK_QUERY)
         if (rawQueryTooLong) return rawQueryTooLong
-        if (!(await db.getBooking(params.id))) return error(404, `booking ${params.id} not found`)
+        const booking = await db.getBooking(params.id)
+        if (!booking || !(await canAccess(booking, profile))) return error(404, `booking ${params.id} not found`)
         const summary = await summaryFor(params.id)
         if (!summary) return error(500, `no case summary for ${params.id}`)
         const query = rawQuery || defaultPlaybookQuery(summary)
@@ -604,8 +755,9 @@ export function createApp(options: AppOptions): App {
     [
       'GET',
       '/api/bookings/:id/signals',
-      async ({ params }) => {
-        if (!(await db.getBooking(params.id))) return error(404, `booking ${params.id} not found`)
+      async ({ params, profile }) => {
+        const booking = await db.getBooking(params.id)
+        if (!booking || !(await canAccess(booking, profile))) return error(404, `booking ${params.id} not found`)
         const messages = await db.messagesForBooking(params.id)
         // Signals read the buyer's messages only; an empty history is not a
         // Jev job, so the route 404s instead of scoring silence as unresponsive.
@@ -618,14 +770,16 @@ export function createApp(options: AppOptions): App {
     [
       'DELETE',
       '/api/bookings/:id',
-      async ({ req, params }) => {
+      async ({ req, params, profile }) => {
         const b = await body(req)
         if (!b) return error(400, 'expected a JSON object body')
         if (!isString(b.reportedBy)) return error(400, 'reportedBy is required')
         const reportedByTooLong = tooLong('reportedBy', b.reportedBy, MAX_NAME)
         if (reportedByTooLong) return reportedByTooLong
+        const booking = await db.getBooking(params.id)
+        if (!booking || !(await canAccess(booking, profile))) return error(404, `booking ${params.id} not found`)
         try {
-          const removed = await db.deleteBooking(params.id, b.reportedBy.trim(), simNow(REFERENCE_DATE))
+          const removed = await db.deleteBooking(params.id, profile.name, simNow(REFERENCE_DATE))
           if (!removed) return error(404, `booking ${params.id} not found`)
           return json({ removed: params.id })
         } catch (e) {
@@ -637,7 +791,7 @@ export function createApp(options: AppOptions): App {
     [
       'POST',
       '/api/bookings/import',
-      async ({ req }) => {
+      async ({ req, profile }) => {
         const b = await body(req)
         if (!b) return error(400, 'expected a JSON object body')
         if (!Array.isArray(b.bookings) || b.bookings.length === 0)
@@ -650,16 +804,23 @@ export function createApp(options: AppOptions): App {
           checkBookingDraft(draft, REFERENCE_DATE).map((p) => `row ${i + 1}: ${p}`)
         )
         if (problems.length > 0) return error(400, problems.slice(0, 5).join('; '))
-        const drafts = b.bookings.map(cleanDraft)
+        const drafts = b.bookings.map(cleanDraft).map((draft) => ({
+          ...draft,
+          // Sales staff can only create bookings for themselves. The manager
+          // imports on behalf of the sales owner selected in the sheet.
+          salesOwner: profile.persona === 'sales-admin' ? profile.name : draft.salesOwner
+        }))
 
         const inBatch = new Set<string>()
         for (const draft of drafts) {
+          if (!DEMO_PROFILES.some((staff) => staff.persona === 'sales-admin' && staff.name === draft.salesOwner))
+            return error(400, 'salesOwner must name an available sales profile')
           const key = unitKey(draft.project, draft.unit)
           if (inBatch.has(key)) return error(409, `unit ${draft.unit} appears twice in the import`)
           inBatch.add(key)
         }
 
-        const reportedBy = b.reportedBy.trim()
+        const reportedBy = profile.name
         const source = isString(b.source) ? b.source.trim().slice(0, 120) : null
         const note = source ? `Imported From ${source}` : 'Imported From A Booking Sheet'
         const recordedAt = simNow(REFERENCE_DATE)
@@ -690,7 +851,7 @@ export function createApp(options: AppOptions): App {
           )
           return json({ importId, bookings: bookings.map(withMaskedContact) })
         } catch (e) {
-          if (e instanceof UnitHeldError) return error(409, e.message)
+          if (e instanceof UnitHeldError) return error(409, `unit ${e.unit} is already held by another booking`)
           throw e
         }
       }
@@ -698,14 +859,15 @@ export function createApp(options: AppOptions): App {
     [
       'POST',
       '/api/imports/:id/undo',
-      async ({ req, params }) => {
+      async ({ req, params, profile }) => {
         const b = await body(req)
         if (!b) return error(400, 'expected a JSON object body')
         if (!isString(b.reportedBy)) return error(400, 'reportedBy is required')
         const reportedByTooLong = tooLong('reportedBy', b.reportedBy, MAX_NAME)
         if (reportedByTooLong) return reportedByTooLong
         try {
-          const result = await db.undoImport(params.id, b.reportedBy.trim(), simNow(REFERENCE_DATE))
+          if (!(await db.canUndoImport(params.id, profile))) return error(404, `import ${params.id} not found`)
+          const result = await db.undoImport(params.id, profile.name, simNow(REFERENCE_DATE))
           if (!result) return error(404, `import ${params.id} not found or already undone`)
           return json(result)
         } catch (e) {
@@ -717,7 +879,7 @@ export function createApp(options: AppOptions): App {
     [
       'POST',
       '/api/tasks',
-      async ({ req }) => {
+      async ({ req, profile }) => {
         const b = await body(req)
         if (!b) return error(400, 'expected a JSON object body')
         if (!isString(b.bookingId)) return error(400, 'bookingId is required')
@@ -731,28 +893,63 @@ export function createApp(options: AppOptions): App {
         if (ownerNameTooLong) return ownerNameTooLong
         if (!isIsoDate(b.dueOn)) return error(400, 'dueOn must be a YYYY-MM-DD date')
         if (!isOneOf(b.origin, ['jev', 'staff'] as const)) return error(400, "origin must be 'jev' or 'staff'")
-        if (!(await db.getBooking(b.bookingId))) return error(404, `booking ${b.bookingId} not found`)
+        if (b.managerFlaggedBy && profile.persona !== 'manager')
+          return error(403, 'manager profile required to flag a task')
+        const booking = await db.getBooking(b.bookingId)
+        if (!booking || !(await canAccess(booking, profile))) return error(404, `booking ${b.bookingId} not found`)
+        const managerFlaggedBy = b.managerFlaggedBy ? (profile.persona === 'manager' ? profile.name : null) : null
+        let ownerRole = b.ownerRole
+        let ownerName = b.ownerName.trim()
+        if (managerFlaggedBy) {
+          const summary = await summaryFor(booking.id)
+          const recipient = summary ? currentCaseAssignee(booking, summary) : null
+          const expectedRole =
+            recipient?.persona === 'legal-admin'
+              ? 'legal'
+              : recipient?.persona === 'loan-admin'
+                ? 'loan_admin'
+                : 'sales_admin'
+          if (
+            !recipient ||
+            !summary ||
+            b.action !== ballInCourt(summary).nextMove ||
+            ownerName !== recipient.name ||
+            (ownerRole === 'sales' ? 'sales_admin' : ownerRole) !== expectedRole
+          )
+            return error(409, 'Case responsibility changed. Refresh the case before sending this follow-up.')
+          ownerRole = expectedRole
+          ownerName = recipient.name
+        }
         const task: Task = {
           id: newId('TSK'),
           bookingId: b.bookingId,
           action: b.action,
           title: b.title.trim(),
-          ownerRole: b.ownerRole,
-          ownerName: b.ownerName.trim(),
+          ownerRole,
+          ownerName,
           dueOn: b.dueOn,
           status: 'open',
           origin: b.origin,
           createdAt: simNow(REFERENCE_DATE),
-          completedAt: null
+          completedAt: null,
+          managerFlaggedBy
         }
-        await db.insertTask(task)
-        return json(task)
+        try {
+          return json(managerFlaggedBy ? await db.flagManagerTask(task) : await db.insertTask(task))
+        } catch (e) {
+          if (e instanceof TaskAssignmentChangedError) return error(409, e.message)
+          throw e
+        }
       }
     ],
     [
       'PATCH',
       '/api/tasks/:id',
-      async ({ req, params }) => {
+      async ({ req, params, profile }) => {
+        const current = (await db.snapshot()).tasks.find((candidate) => candidate.id === params.id)
+        const booking = current ? await db.getBooking(current.bookingId) : null
+        if (!current || !booking || !(await canAccess(booking, profile)))
+          return error(404, `task ${params.id} not found`)
         const b = await body(req)
         if (!b) return error(400, 'expected a JSON object body')
         if (!isOneOf(b.status, TASK_STATUSES)) return error(400, `status must be one of: ${TASK_STATUSES.join(', ')}`)
@@ -765,7 +962,8 @@ export function createApp(options: AppOptions): App {
     [
       'POST',
       '/api/admin/demo/add',
-      async () => {
+      async ({ profile }) => {
+        if (profile.persona !== 'manager') return error(403, 'manager profile required')
         if (options.resetEnabled === false) {
           return error(403, 'demo data is turned off on this server (MORTAR_DEMO_RESET=off)')
         }
@@ -776,7 +974,8 @@ export function createApp(options: AppOptions): App {
     [
       'POST',
       '/api/admin/demo/delete',
-      async () => {
+      async ({ profile }) => {
+        if (profile.persona !== 'manager') return error(403, 'manager profile required')
         if (options.resetEnabled === false) {
           return error(403, 'demo data is turned off on this server (MORTAR_DEMO_RESET=off)')
         }
@@ -791,12 +990,31 @@ export function createApp(options: AppOptions): App {
     async fetch(req) {
       const url = new URL(req.url)
       if (!url.pathname.startsWith('/api/')) return null
+      for (const [method, pattern, handler] of sessionRoutes) {
+        if (method !== req.method || !match(url.pathname, pattern)) continue
+        return handler(req)
+      }
+      if (req.method === 'GET' && url.pathname === '/api/health') {
+        const health = routes.find(([method, pattern]) => method === 'GET' && pattern === '/api/health')
+        if (health) return health[2]({ req, url, params: {}, profile: profileFor('manager')! })
+      }
+      const profile = await sessionProfile(req)
+      if (!profile) return error(401, 'select a demo profile to continue')
+      const selectedProfile = req.headers.get('x-mortar-profile')
+      if (selectedProfile && selectedProfile !== profile.id)
+        return error(409, 'profile changed in another tab; select your profile again')
       for (const [method, pattern, handler] of routes) {
         if (method !== req.method) continue
         const params = match(url.pathname, pattern)
         if (!params) continue
         try {
-          return await handler({ req, url, params })
+          if (pattern === '/api/snapshot') return json(scopeSnapshot(await db.snapshot(), profile))
+          if (pattern === '/api/messages/:id/extract') {
+            const message = await db.getMessage(params.id)
+            const booking = message ? await db.getBooking(message.bookingId) : null
+            if (!booking || !(await canAccess(booking, profile))) return error(404, 'message not found')
+          }
+          return await handler({ req, url, params, profile })
         } catch (e) {
           // Never show raw Postgres wording to the browser, but always log it.
           console.error(e)

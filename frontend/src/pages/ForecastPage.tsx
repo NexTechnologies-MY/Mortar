@@ -23,10 +23,14 @@ import { AssumptionsCard } from '@/components/forecast/AssumptionsCard'
 import { LeakageCard } from '@/components/forecast/LeakageCard'
 import { RecoveryCard } from '@/components/forecast/RecoveryCard'
 import { SeedSpreadCard, type SeedRun } from '@/components/forecast/SeedSpreadCard'
-import { ForecastDocuments } from '@/components/forecast/ForecastDocuments'
+import { Disclosure } from '@/components/ui/Disclosure'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { ManagerCases } from '@/components/manager/ManagerCases'
+import { usePersona } from '@/lib/persona'
 import { addDays, altDataset, datasetFor } from '@/components/forecast/forecast'
 
 export function ForecastPage() {
+  const { persona } = usePersona()
   const { snapshot, loading, error } = useSnapshot()
   const [altRuns, setAltRuns] = useState<SeedRun[]>([])
   const [running, setRunning] = useState(false)
@@ -60,8 +64,7 @@ export function ForecastPage() {
       <PageHeaderCard>
         <h1 className="text-[32px] font-semibold leading-[1.16] tracking-[-0.02em] text-foreground">Forecast</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          The SPAs You Can Bank On, And The Ones You Already Lost: Expected Signings Within 30 Days, Then Where Bookings
-          Died And What Was Recoverable.
+          Expected signed sale agreements within 30 days of booking, and where follow-up could help.
         </p>
       </PageHeaderCard>
 
@@ -95,71 +98,47 @@ export function ForecastPage() {
             </div>
           </section>
 
-          <ForecastDocuments
-            documents={[
-              {
-                title: 'Expected Signings',
-                summary: 'The forecast range and the live bookings counted in this estimate.',
-                content: (
-                  <div className="flex flex-wrap gap-3">
-                    <StatCard
-                      label={`Expected Signings In ${result.forecast.horizonDays} Days`}
-                      value={String(Math.round(result.forecast.expectedSignings))}
-                      info="Sum of live signing probabilities."
-                      exact={result.forecast.expectedSignings.toFixed(1)}
-                    />
-                    <StatCard
-                      label="Forecast Range"
-                      value={`${result.forecast.rangeLow} – ${result.forecast.rangeHigh}`}
-                      info="10th – 90th percentile of simulated signings."
-                    />
-                    <StatCard
-                      label="Bookings In The Forecast"
-                      value={String(result.forecast.liveBookings)}
-                      info="Unsigned and under 30 days old."
-                    />
-                  </div>
-                )
-              },
-              {
-                title: 'Where Bookings Leak',
-                summary: 'Cancellations and lapses, ranked by the value they take out of the pipeline.',
-                content: <LeakageCard leakage={result.leakage} />
-              },
-              {
-                title: 'What Recovery Is Worth',
-                summary: 'The estimated value of giving rejected loan applications another route.',
-                content: <RecoveryCard leakage={result.leakage} />
-              },
-              {
-                title: 'Stage Conversion Rates',
-                summary: 'How often resolved bookings at each stage went on to sign.',
-                content: <StageRatesCard stageRates={result.forecast.stageRates} />
-              },
-              {
-                title: 'How Well The Method Backtests',
-                summary: 'A historical accuracy check of the simulation method.',
-                content: <BacktestCard backtest={result.backtest} />
-              },
-              {
-                title: 'Assumptions',
-                summary: 'The working assumptions used to make this forecast.',
-                content: <AssumptionsCard />
-              },
-              {
-                title: 'Seed Spread',
-                summary: 'How the answer moves when the same method runs on another simulation.',
-                content: (
+          <Tabs defaultValue="forecast" className="mt-5">
+            <TabsList>
+              <TabsTrigger value="forecast">Forecast</TabsTrigger>
+              {persona === 'manager' && <TabsTrigger value="suggestions">Suggestions</TabsTrigger>}
+            </TabsList>
+            <TabsContent value="forecast" className="space-y-4">
+              <StatCard
+                label="Bookings In The Forecast"
+                value={String(result.forecast.liveBookings)}
+                info="Unsigned and under 30 days old."
+              />
+              <Disclosure title="Where Bookings Leak">
+                <LeakageCard leakage={result.leakage} />
+                <RecoveryCard leakage={result.leakage} />
+              </Disclosure>
+              <Disclosure title="Stage Conversion Rates">
+                <StageRatesCard stageRates={result.forecast.stageRates} />
+              </Disclosure>
+              <Disclosure title="How Well The Method Backtests">
+                <BacktestCard backtest={result.backtest} />
+              </Disclosure>
+              <Disclosure title="Assumptions">
+                <AssumptionsCard />
+              </Disclosure>
+              {persona === 'manager' && (
+                <Disclosure title="Seed Spread">
                   <SeedSpreadCard
                     canonicalSeed={snapshot?.meta.seed ?? 0}
                     runs={[{ seed: snapshot?.meta.seed ?? 0, forecast: result.forecast }, ...altRuns]}
                     running={running}
                     onTryAnother={tryAnotherSeed}
                   />
-                )
-              }
-            ]}
-          />
+                </Disclosure>
+              )}
+            </TabsContent>
+            {persona === 'manager' && (
+              <TabsContent value="suggestions">
+                <ManagerCases suggestionsOnly />
+              </TabsContent>
+            )}
+          </Tabs>
         </>
       ) : null}
     </PageContainer>

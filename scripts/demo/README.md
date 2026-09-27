@@ -28,6 +28,9 @@ slides/render.mjs ──► slide-sXX.png ─────────┘
 - **Disposable target**: The walk creates a task, confirms two Jev proposals and
   posts a message. `record.mjs` requires an explicit disposable deployment; demo
   deletion preserves those visitor edits, so the target is used once.
+- **Profile sessions**: Setup and clean-seed checks open a Manager demo session
+  so their snapshot covers all departments. The recorded browser independently
+  starts as the named Sales Admin profile and follows normal UI access rules.
 - **Swappable voice**: The pipeline runs end to end on the placeholder Kokoro
   voice. Another lane can replace the audio by dropping wavs into
   `$DEMO_DIR/seg/` and re-running with `DEMO_SEGMENTS=external`.

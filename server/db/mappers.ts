@@ -55,6 +55,7 @@ export function rowToBooking(row: Row): Booking {
     unit: String(row.unit),
     priceRm: Number(row.price_rm),
     bookingDate: isoDate(row.booking_date),
+    createdAt: row.created_at == null ? null : isoDateTime(row.created_at),
     buyer: jsonb<Booking['buyer']>(row.buyer),
     salesOwner: String(row.sales_owner),
     loanOwner: String(row.loan_owner),
@@ -154,7 +155,8 @@ export function rowToTask(row: Row): Task {
     status: row.status as Task['status'],
     origin: row.origin as Task['origin'],
     createdAt: isoDateTime(row.created_at),
-    completedAt: row.completed_at == null ? null : isoDateTime(row.completed_at)
+    completedAt: row.completed_at == null ? null : isoDateTime(row.completed_at),
+    managerFlaggedBy: row.manager_flagged_by == null ? null : String(row.manager_flagged_by)
   }
 }
 

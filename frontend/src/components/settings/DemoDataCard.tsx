@@ -1,5 +1,6 @@
 /** Seeded examples and the visitor's current records. */
 import { useState } from 'react'
+import { usePersona } from '@/lib/persona'
 import type { Snapshot } from '@mortar/core'
 import { notify } from '@/components/ui/toastConfig'
 import { formatDate } from '@/components/case'
@@ -28,6 +29,8 @@ export function DemoDataCard({
   jevAnswers: number | null
   onChange: () => Promise<void>
 }) {
+  const { persona } = usePersona()
+  const canManage = persona === 'manager'
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [busy, setBusy] = useState(false)
   const hasDemoData = snapshot.meta.seed !== 0
@@ -35,8 +38,8 @@ export function DemoDataCard({
   const run = async (action: 'add' | 'delete') => {
     setBusy(true)
     try {
-      if (action === 'add') await addDemoData()
-      else await deleteDemoData()
+      if (!canManage) return
+      await (action === 'add' ? addDemoData() : deleteDemoData())
       notify.success(action === 'add' ? 'Demo Data Added.' : 'Demo Data Deleted.')
       setConfirmDelete(false)
       await onChange()
@@ -88,13 +91,16 @@ export function DemoDataCard({
             ))}
           </dl>
         </div>
+        {!canManage && (
+          <p className="text-sm text-muted-foreground">Only A Manager Can Add Or Delete Shared Demo Data.</p>
+        )}
         <div className="mt-auto flex flex-wrap gap-2">
-          <Button type="button" size="sm" disabled={hasDemoData || busy} onClick={() => void run('add')}>
+          <Button type="button" size="sm" disabled={!canManage || hasDemoData || busy} onClick={() => void run('add')}>
             Add Demo Data
           </Button>
           <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
             <DialogTrigger asChild>
-              <Button type="button" variant="destructive" size="sm" disabled={!hasDemoData || busy}>
+              <Button type="button" variant="destructive" size="sm" disabled={!canManage || !hasDemoData || busy}>
                 Delete Demo Data
               </Button>
             </DialogTrigger>

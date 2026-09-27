@@ -5,8 +5,8 @@
  */
 import type { LucideIcon } from 'lucide-react'
 import { CalendarCheck, Clock, Eye, FileSignature, FileText, FileWarning, Landmark, Phone, Scale } from 'lucide-react'
-import { PERSONA_STAFF } from '@mortar/core'
 import type { Booking, DocumentKind, NextAction, NextActionSuggestion, OwnerRole } from '@mortar/core'
+import { profileForPersona } from '@mortar/core'
 import { OWNER_ROLE_LABELS } from '@/components/case'
 
 /**
@@ -73,11 +73,11 @@ export function ownerName(role: OwnerRole, booking: Booking): string {
     case 'sales':
       return booking.salesOwner
     case 'sales_admin':
-      return PERSONA_STAFF['sales-admin'].name
+      return booking.salesOwner
     case 'loan_admin':
       return booking.loanOwner
     case 'legal':
-      return booking.legalFirm
+      return profileForPersona('legal-admin').name
   }
 }
 

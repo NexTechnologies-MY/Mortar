@@ -1,20 +1,6 @@
-/**
- * DirectTableImport — Type Bookings In: interactive table for rapid batch booking import.
- *
- * Requirements:
- * - Key in Unit Number (validated against Settings unit range and active held units)
- * - Key in Buyer Name
- * - Multiple layout models supported (Type A, Type B, Type C) with auto price updates
- * - Auto-assigns Sales Agent to current logged-in account (active persona)
- * - Auto-assigns Panel Law Firm from Settings configuration
- * - Default rows is 1
- * - One-click batch import into Mortar via importBookings API
- */
-
-import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useState } from 'react'
 import { Plus, Trash2, Upload } from 'lucide-react'
-import { PERSONA_STAFF, unitKey, type Booking, type BookingDraft, type Persona } from '@mortar/core'
+import { DEMO_PROFILES, PERSONA_STAFF, unitKey, type Booking, type BookingDraft, type Persona } from '@mortar/core'
 import { importBookings } from '@/lib/api'
 import { usePersona } from '@/lib/persona'
 import { useProjectSettings, isUnitInRange, getAvailableInventoryUnits, PANEL_LAW_FIRMS } from '@/lib/projectSettings'
@@ -24,471 +10,376 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { StatusPill } from '@/components/ui/status-pill'
-import { InfoTooltip } from '@/components/ui/InfoTooltip'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { notify } from '@/components/ui/toastConfig'
 
-export interface CaseEntryRow {
+type Entry = {
   id: string
   unit: string
   buyerName: string
   modelId: string
   priceRm: number
-  lawFirm?: string
+  lawFirm: string
+  salesOwner: string
 }
+const rowId = () => `entry-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+const salesProfiles = DEMO_PROFILES.filter((profile) => profile.persona === 'sales-admin')
+const newEntry = (
+  settings: ReturnType<typeof useProjectSettings>['settings'],
+  salesOwner: string,
+  id = rowId()
+): Entry => ({
+  id,
+  unit: '',
+  buyerName: '',
+  modelId: settings.defaultModelId,
+  priceRm: settings.defaultPriceRm,
+  lawFirm: settings.defaultLawFirm,
+  salesOwner
+})
 
-function createEmptyRow(
-  defaultPriceRm: number,
-  defaultModelId = 'model-a',
-  defaultLawFirm = 'Teh & Partners',
-  customId?: string
-): CaseEntryRow {
+function fakeBuyer(index: number) {
   return {
-    id: customId ?? `row-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-    unit: '',
-    buyerName: '',
-    modelId: defaultModelId,
-    priceRm: defaultPriceRm,
-    lawFirm: defaultLawFirm
+    name: '',
+    ic: `000000-00-${String(index + 1).padStart(4, '0')}`,
+    phone: '+60 00-000 0000',
+    age: 30,
+    grossMonthlyIncomeRm: 8000,
+    monthlyCommitmentsRm: 2000,
+    propertiesOwned: 0
   }
-}
-
-/** Generates a pseudo MyKad IC string (e.g. 930814-10-5231) for fast mock buyer import. */
-function generateMockIc(seedNum: number): string {
-  const y = 85 + (seedNum % 15)
-  const m = String(1 + (seedNum % 12)).padStart(2, '0')
-  const d = String(1 + (seedNum % 28)).padStart(2, '0')
-  const place = '10'
-  const serial = String(1000 + ((seedNum * 37) % 8999)).slice(0, 4)
-  return `${y}${m}${d}-${place}-${serial}`
 }
 
 export function DirectTableImport({
   persona: propPersona,
   referenceDate = '',
   held = new Map(),
-  projectName: propProjectName,
   onImported = () => {}
 }: {
   persona?: Persona
   referenceDate?: string
   held?: Map<string, string>
-  projectName?: string
   onImported?: (result: { importId: string; bookings: Booking[] }) => void
 }) {
-  const { persona: contextPersona } = usePersona()
+  const { persona: contextPersona, profile } = usePersona()
   const activePersona = propPersona ?? contextPersona ?? 'sales-admin'
-  const { settings } = useProjectSettings(propProjectName)
-  const activeProjectName = propProjectName || settings.projectName || 'Bukit Damai'
-  const loggedInSalesName = PERSONA_STAFF[activePersona]?.name ?? 'Nurul Aina'
-
-  // Calculate unsold inventory units matching the configured building range
-  const availableInventoryUnits = useMemo(() => {
-    return getAvailableInventoryUnits({ ...settings, projectName: activeProjectName }, held)
-  }, [settings, activeProjectName, held])
-
-  // Default is 1 row initially
-  const [rows, setRows] = useState<CaseEntryRow[]>([
-    createEmptyRow(settings.defaultPriceRm, settings.defaultModelId, settings.defaultLawFirm, 'row-1')
-  ])
+  const { settings, loading: settingsLoading, error: settingsError, refreshSettings } = useProjectSettings()
+  const defaultSalesOwner =
+    activePersona === 'manager'
+      ? (salesProfiles[0]?.name ?? PERSONA_STAFF['sales-admin'].name)
+      : profile.persona === activePersona
+        ? profile.name
+        : PERSONA_STAFF[activePersona].name
+  const managerCanChooseSales = activePersona === 'manager'
+  const blocks = settings.blocks?.length ? settings.blocks : settings.blockPrefix ? [settings.blockPrefix] : ['']
+  const [initialEntryId] = useState(rowId)
+  const initialEntry = newEntry(settings, defaultSalesOwner, initialEntryId)
+  const [entryDraft, setEntryDraft] = useState<Entry[] | null>(null)
+  const entries = entryDraft ?? [initialEntry]
+  const updateEntries = (changeEntries: (current: Entry[]) => Entry[]) =>
+    setEntryDraft((current) => changeEntries(current ?? [initialEntry]))
+  const [entryBlocks, setEntryBlocks] = useState<Record<string, string>>({})
   const [importing, setImporting] = useState(false)
 
-  const handleRowChange = (id: string, field: keyof CaseEntryRow, value: string | number) => {
-    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, [field]: value } : r)))
-  }
-
-  const handleModelChange = (id: string, modelId: string) => {
-    const selectedModel = settings.models.find((m) => m.id === modelId)
-    setRows((prev) =>
-      prev.map((r) => {
-        if (r.id !== id) return r
-        return {
-          ...r,
-          modelId,
-          priceRm: selectedModel ? selectedModel.priceRm : r.priceRm
-        }
-      })
-    )
-  }
-
-  const handleAddRow = () => {
-    setRows((prev) => [
-      ...prev,
-      createEmptyRow(settings.defaultPriceRm, settings.defaultModelId, settings.defaultLawFirm)
-    ])
-  }
-
-  const handleAddFiveRows = () => {
-    setRows((prev) => [
-      ...prev,
-      createEmptyRow(settings.defaultPriceRm, settings.defaultModelId, settings.defaultLawFirm),
-      createEmptyRow(settings.defaultPriceRm, settings.defaultModelId, settings.defaultLawFirm),
-      createEmptyRow(settings.defaultPriceRm, settings.defaultModelId, settings.defaultLawFirm),
-      createEmptyRow(settings.defaultPriceRm, settings.defaultModelId, settings.defaultLawFirm),
-      createEmptyRow(settings.defaultPriceRm, settings.defaultModelId, settings.defaultLawFirm)
-    ])
-  }
-
-  const handleRemoveRow = (id: string) => {
-    setRows((prev) =>
-      prev.length > 1
-        ? prev.filter((r) => r.id !== id)
-        : [createEmptyRow(settings.defaultPriceRm, settings.defaultModelId, settings.defaultLawFirm)]
-    )
-  }
-
-  const handleClearAll = () => {
-    setRows([createEmptyRow(settings.defaultPriceRm, settings.defaultModelId, settings.defaultLawFirm)])
-  }
-
-  // Row inspection & validation helper
-  const inspectRow = (row: CaseEntryRow) => {
-    const trimmedUnit = row.unit.trim().toUpperCase()
-    const trimmedName = row.buyerName.trim()
-
-    if (!trimmedUnit && !trimmedName) {
-      return { status: 'empty', label: 'Empty', canImport: false }
+  const change = (id: string, field: keyof Entry, value: string | number) =>
+    updateEntries((current) => current.map((entry) => (entry.id === id ? { ...entry, [field]: value } : entry)))
+  const selectedUnits = entries.map((entry) => entry.unit).filter(Boolean)
+  const available = getAvailableInventoryUnits(settings, held)
+  const inspect = (entry: Entry) => {
+    const unit = entry.unit.trim().toUpperCase()
+    const name = entry.buyerName.trim()
+    if (!unit && !name) return { ok: false, label: 'Add Unit And Buyer' }
+    if (!unit) return { ok: false, label: 'Choose A Unit' }
+    if (!Number.isInteger(entry.priceRm) || entry.priceRm < 10_000 || entry.priceRm > 2_000_000_000) {
+      return { ok: false, label: 'Enter SPA Price From RM 10,000' }
     }
-
-    if (!trimmedUnit) {
-      return { status: 'error', label: 'Enter Unit', canImport: false }
+    const range = isUnitInRange(unit, settings)
+    if (!range.inRange) return { ok: false, label: range.reason ?? 'Choose A Unit In Range' }
+    if (!name) return { ok: false, label: 'Enter Buyer Name' }
+    const heldKey = unitKey(settings.projectName, unit)
+    if (held.has(heldKey)) return { ok: false, label: 'Already Booked' }
+    if (entries.some((other) => other.id !== entry.id && other.unit.trim().toUpperCase() === unit)) {
+      return { ok: false, label: 'Unit Already Added' }
     }
-
-    if (!trimmedName) {
-      return { status: 'error', label: 'Enter Buyer Name', canImport: false }
-    }
-
-    // Check if unit is already held in current project
-    const key = unitKey(activeProjectName, trimmedUnit)
-    const holdingBookingId = held.get(key)
-    if (holdingBookingId) {
-      return {
-        status: 'error',
-        label: `Held by ${holdingBookingId}`,
-        reason: `Unit ${trimmedUnit} is already booked by ${holdingBookingId}`,
-        canImport: false
-      }
-    }
-
-    // Check unit range from settings
-    const rangeCheck = isUnitInRange(trimmedUnit, settings)
-    if (!rangeCheck.inRange) {
-      return {
-        status: 'warning',
-        label: 'Out of Range',
-        reason: rangeCheck.reason ?? 'Unit outside configured inventory range',
-        canImport: true // allow import with advisory warning
-      }
-    }
-
-    return { status: 'ready', label: 'Ready', canImport: true }
+    return { ok: true, label: 'Ready' }
   }
+  const checks = entries.map(inspect)
+  const readyCount = checks.filter((check) => check.ok).length
+  const allValid = readyCount === entries.length
 
-  const inspectedRows = rows.map((r) => ({ row: r, check: inspectRow(r) }))
-  const readyRows = inspectedRows.filter((item) => item.check.canImport)
-
-  const handleRunImport = async () => {
-    if (readyRows.length === 0) {
-      notify.error('No valid rows to import. Enter at least one unit number and buyer name.')
-      return
-    }
-
+  const handleImport = async () => {
+    if (!allValid || settingsLoading || settingsError) return
     setImporting(true)
     try {
-      const today = referenceDate || new Date().toISOString().slice(0, 10)
-
-      const drafts: BookingDraft[] = readyRows.map(({ row }, index) => {
-        const trimmedUnit = row.unit.trim().toUpperCase()
-        const trimmedName = row.buyerName.trim()
-        const selectedModel = settings.models.find((m) => m.id === row.modelId)
-        const price = row.priceRm > 0 ? row.priceRm : selectedModel?.priceRm || settings.defaultPriceRm
-        const lawFirm = row.lawFirm || settings.defaultLawFirm || 'Teh & Partners'
-
-        return {
-          project: activeProjectName,
-          unit: trimmedUnit,
-          priceRm: price,
-          bookingDate: today,
-          salesOwner: loggedInSalesName,
-          loanOwner: PERSONA_STAFF['loan-admin'].name,
-          legalFirm: lawFirm,
-          buyer: {
-            name: trimmedName,
-            ic: generateMockIc(index + (Date.now() % 100)),
-            phone: `+60 1${2 + (index % 7)}-${300 + ((index * 13) % 600)} ${1000 + ((index * 47) % 8999)}`,
-            age: 28 + (index % 30),
-            grossMonthlyIncomeRm: 7500 + ((index * 400) % 6000),
-            monthlyCommitmentsRm: 1800 + ((index * 200) % 2500),
-            propertiesOwned: 0
-          }
-        }
-      })
-
-      const result = await importBookings({
-        bookings: drafts,
-        reportedBy: loggedInSalesName,
-        source: 'Direct Table Entry'
-      })
-
-      notify.success(
-        `${result.bookings.length} ${result.bookings.length === 1 ? 'booking' : 'bookings'} successfully imported!`
-      )
+      const bookings: BookingDraft[] = entries.map((entry, index) => ({
+        project: settings.projectName,
+        unit: entry.unit.trim().toUpperCase(),
+        priceRm: entry.priceRm,
+        bookingDate: referenceDate || new Date().toISOString().slice(0, 10),
+        salesOwner: entry.salesOwner,
+        loanOwner: PERSONA_STAFF['loan-admin'].name,
+        legalFirm: entry.lawFirm,
+        buyer: { ...fakeBuyer(index), name: entry.buyerName.trim() }
+      }))
+      const result = await importBookings({ bookings, reportedBy: profile.name, source: 'Direct Entry' })
+      notify.success(`${result.bookings.length} ${result.bookings.length === 1 ? 'Booking' : 'Bookings'} Added.`)
       onImported(result)
-      setRows([createEmptyRow(settings.defaultPriceRm, settings.defaultModelId, settings.defaultLawFirm)])
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Could not import the bookings.'
-      notify.error(msg)
+      setEntryDraft([newEntry(settings, defaultSalesOwner)])
+      setEntryBlocks({})
+    } catch (cause) {
+      notify.error(cause instanceof Error ? cause.message : 'Could Not Add These Bookings.')
     } finally {
       setImporting(false)
     }
   }
 
   return (
-    <div className="grid grid-cols-1 items-stretch gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(260px,1fr)]">
-      <Card className="h-full border-border shadow-card">
-        <CardContent className="flex flex-col gap-4 p-4 sm:p-5">
-          <h2 className="flex items-center text-base font-semibold text-foreground">
-            Type Bookings In{' '}
-            <InfoTooltip text="Enter Each Booking In A Row. Buyer IC And Income Details Are Filled In For You." />
-          </h2>
-
-          {/* The Direct Entry Grid */}
-          <div className="overflow-x-auto rounded-md border border-border">
-            <Table className="min-w-[840px] text-xs">
-              <TableHeader className="bg-muted/60">
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="w-10 px-3 py-2.5 text-center">#</TableHead>
-                  <TableHead className="w-36 px-3 py-2.5">Unit Number</TableHead>
-                  <TableHead className="min-w-[170px] px-3 py-2.5">Buyer Name</TableHead>
-                  <TableHead className="w-48 px-3 py-2.5">Model / Layout</TableHead>
-                  <TableHead className="w-32 px-3 py-2.5">Sales Owner</TableHead>
-                  <TableHead className="w-44 px-3 py-2.5">Panel Law Firm</TableHead>
-                  <TableHead className="w-32 px-3 py-2.5 text-right">Price (RM)</TableHead>
-                  <TableHead className="w-28 px-3 py-2.5 text-center">Status</TableHead>
-                  <TableHead className="w-12 px-2 py-2.5 text-center"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {inspectedRows.map(({ row, check }, idx) => (
-                  <TableRow key={row.id} className="hover:bg-accent/40">
-                    {/* Row index */}
-                    <TableCell className="px-3 py-2 text-center font-mono text-[11px] text-muted-foreground">
-                      {idx + 1}
-                    </TableCell>
-
-                    {/* Unit number autocomplete dropdown */}
-                    <TableCell className="px-3 py-1.5">
-                      <UnitAutocompleteInput
-                        value={row.unit}
-                        onChange={(val) => handleRowChange(row.id, 'unit', val)}
-                        availableUnits={availableInventoryUnits}
-                        placeholder={settings.blockPrefix ? `${settings.blockPrefix}-12-08` : '12-08'}
-                        hasError={check.status === 'error'}
-                        isReady={check.status === 'ready'}
-                      />
-                    </TableCell>
-
-                    {/* Buyer Name input */}
-                    <TableCell className="px-3 py-1.5">
-                      <Input
-                        value={row.buyerName}
-                        onChange={(e) => handleRowChange(row.id, 'buyerName', e.target.value)}
-                        placeholder="e.g. Nurul Huda Binti Ahmad"
-                        className="h-8 text-xs font-medium"
-                      />
-                    </TableCell>
-
-                    {/* Model / Layout selection */}
-                    <TableCell className="px-3 py-1.5">
-                      <Select value={row.modelId} onValueChange={(val) => handleModelChange(row.id, val)}>
-                        <SelectTrigger aria-label="Model / Layout" className="h-8 w-full text-xs font-medium">
-                          <SelectValue placeholder="Select Model" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {settings.models.map((m) => (
-                            <SelectItem key={m.id} value={m.id} className="text-xs">
-                              {m.name} · {m.layout}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-
-                    {/* Auto-assigned Sales Owner badge */}
-                    <TableCell className="px-3 py-2">
-                      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-foreground">
-                        <span className="size-1.5 rounded-full bg-status-positive" />
-                        <span className="truncate">{loggedInSalesName}</span>
-                      </span>
-                    </TableCell>
-
-                    {/* Panel Law Firm selector */}
-                    <TableCell className="px-3 py-1.5">
-                      <Select
-                        value={row.lawFirm || settings.defaultLawFirm}
-                        onValueChange={(val) => handleRowChange(row.id, 'lawFirm', val)}
+    <Card className="border-border shadow-card">
+      <CardContent className="flex flex-col gap-4 p-4 sm:p-5">
+        <div>
+          <h2 className="text-base font-semibold text-foreground">Type Bookings In</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Enter Buyer Names And Choose Available Units. Demo Buyer Details Are Filled In For You.
+          </p>
+          {settingsError && (
+            <div
+              role="alert"
+              className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-border p-3 text-sm text-status-danger-fg"
+            >
+              <span>Project Settings Could Not Be Loaded. Bookings Are Paused Until Settings Are Available.</span>
+              <Button type="button" size="sm" variant="secondary" onClick={() => void refreshSettings()}>
+                Try Again
+              </Button>
+            </div>
+          )}
+        </div>
+        <fieldset
+          disabled={settingsLoading || Boolean(settingsError)}
+          className="flex min-w-0 flex-col gap-3 border-0 p-0 disabled:opacity-60"
+        >
+          {entries.map((entry, index) => {
+            const block = entryBlocks[entry.id] ?? blocks[0] ?? ''
+            const prefix = block ? `${block}-` : ''
+            const blocked = new Set(selectedUnits.filter((unit) => unit.toUpperCase() !== entry.unit.toUpperCase()))
+            const choices = available.filter(
+              (unit) => unit.toUpperCase().startsWith(prefix.toUpperCase()) && !blocked.has(unit.toUpperCase())
+            )
+            return (
+              <section
+                key={entry.id}
+                aria-label={`Booking ${index + 1}`}
+                className="rounded-md border border-border p-3 sm:p-4"
+              >
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <h3 className="text-sm font-semibold">Booking {index + 1}</h3>
+                  {entries.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      aria-label={`Remove Booking ${index + 1}`}
+                      onClick={() => updateEntries((current) => current.filter((item) => item.id !== entry.id))}
+                    >
+                      <Trash2 className="size-4" />
+                      Remove
+                    </Button>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-medium" htmlFor={`block-${entry.id}`}>
+                      Block
+                    </label>
+                    <Select
+                      value={block || '__no_block__'}
+                      onValueChange={(selected) => {
+                        const value = selected === '__no_block__' ? '' : selected
+                        setEntryBlocks((current) => ({ ...current, [entry.id]: value }))
+                        if (entry.unit && !entry.unit.toUpperCase().startsWith(`${value}-`.toUpperCase()))
+                          change(entry.id, 'unit', '')
+                      }}
+                    >
+                      <SelectTrigger
+                        id={`block-${entry.id}`}
+                        aria-label={`Block For Booking ${index + 1}`}
+                        className="h-9"
                       >
-                        <SelectTrigger aria-label="Panel Law Firm" className="h-8 w-full text-xs font-medium">
-                          <SelectValue placeholder="Select Law Firm" />
+                        <SelectValue placeholder="Choose Block" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {blocks.map((value) => (
+                          <SelectItem key={value || 'no-block'} value={value || '__no_block__'}>
+                            {value || 'No Block'}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-medium" htmlFor={`unit-${entry.id}`}>
+                      Unit Number
+                    </label>
+                    <UnitAutocompleteInput
+                      id={`unit-${entry.id}`}
+                      value={entry.unit}
+                      onChange={(value) => {
+                        const parts = value.trim().split('-')
+                        const unit =
+                          prefix &&
+                          parts.length === 2 &&
+                          /^\d+$/.test(parts[0]) &&
+                          /^\d+$/.test(parts[1]) &&
+                          parts[0].toUpperCase() !== block.toUpperCase()
+                            ? `${prefix}${value.trim()}`
+                            : value
+                        change(entry.id, 'unit', unit)
+                      }}
+                      availableUnits={choices}
+                      placeholder={prefix ? `${prefix}12-08` : '12-08'}
+                      hasError={
+                        entry.unit.length > 0 && !checks[index].ok && checks[index].label !== 'Enter Buyer Name'
+                      }
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-medium" htmlFor={`buyer-${entry.id}`}>
+                      Buyer Name
+                    </label>
+                    <Input
+                      id={`buyer-${entry.id}`}
+                      value={entry.buyerName}
+                      onChange={(event) => change(entry.id, 'buyerName', event.target.value)}
+                      placeholder="Enter Buyer Name"
+                      className="h-9"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-medium" htmlFor={`model-${entry.id}`}>
+                      Unit Layout
+                    </label>
+                    <Select
+                      value={entry.modelId}
+                      onValueChange={(value) => {
+                        const model = settings.models.find((item) => item.id === value)
+                        updateEntries((current) =>
+                          current.map((item) =>
+                            item.id === entry.id
+                              ? { ...item, modelId: value, priceRm: model?.priceRm ?? item.priceRm }
+                              : item
+                          )
+                        )
+                      }}
+                    >
+                      <SelectTrigger
+                        id={`model-${entry.id}`}
+                        aria-label={`Unit Layout For Booking ${index + 1}`}
+                        className="h-9"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {settings.models.map((model) => (
+                          <SelectItem key={model.id} value={model.id}>
+                            {model.name} · {model.layout}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-medium" htmlFor={`firm-${entry.id}`}>
+                      Panel Law Firm
+                    </label>
+                    <Select value={entry.lawFirm} onValueChange={(value) => change(entry.id, 'lawFirm', value)}>
+                      <SelectTrigger
+                        id={`firm-${entry.id}`}
+                        aria-label={`Panel Law Firm For Booking ${index + 1}`}
+                        className="h-9"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PANEL_LAW_FIRMS.map((firm) => (
+                          <SelectItem key={firm} value={firm}>
+                            {firm}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-medium" htmlFor={`price-${entry.id}`}>
+                      SPA Price
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-2.5 text-xs text-muted-foreground">RM</span>
+                      <Input
+                        id={`price-${entry.id}`}
+                        inputMode="numeric"
+                        value={entry.priceRm || ''}
+                        onChange={(event) => change(entry.id, 'priceRm', Number(event.target.value.replace(/\D/g, '')))}
+                        className="h-9 pl-10 text-right font-mono tabular-nums"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm">
+                  {managerCanChooseSales ? (
+                    <div className="flex items-center gap-2">
+                      <label htmlFor={`sales-owner-${entry.id}`} className="text-muted-foreground">
+                        Sales Agent
+                      </label>
+                      <Select value={entry.salesOwner} onValueChange={(value) => change(entry.id, 'salesOwner', value)}>
+                        <SelectTrigger
+                          id={`sales-owner-${entry.id}`}
+                          aria-label={`Sales Agent For Booking ${index + 1}`}
+                          className="h-8 w-auto min-w-40"
+                        >
+                          <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {PANEL_LAW_FIRMS.map((firm) => (
-                            <SelectItem key={firm} value={firm} className="text-xs">
-                              {firm}
+                          {salesProfiles.map((salesProfile) => (
+                            <SelectItem key={salesProfile.id} value={salesProfile.name}>
+                              {salesProfile.name}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
-                    </TableCell>
-
-                    {/* Price (RM) editable input */}
-                    <TableCell className="px-3 py-1.5">
-                      <div className="relative">
-                        <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground select-none">
-                          RM
-                        </span>
-                        <Input
-                          type="text"
-                          inputMode="numeric"
-                          value={row.priceRm ? String(row.priceRm) : ''}
-                          onChange={(e) => {
-                            const digits = e.target.value.replace(/\D/g, '')
-                            handleRowChange(row.id, 'priceRm', digits ? parseInt(digits, 10) : 0)
-                          }}
-                          className="h-8 pl-9 text-right font-mono text-xs font-medium"
-                        />
-                      </div>
-                    </TableCell>
-
-                    {/* Validation status pill: pill only for errors */}
-                    <TableCell className="px-3 py-2 text-center">
-                      {check.status === 'error' ? (
-                        check.reason ? (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span tabIndex={0} className="inline-flex">
-                                  <StatusPill tone="danger">{check.label}</StatusPill>
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent>{check.reason}</TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        ) : (
-                          <StatusPill tone="danger">{check.label}</StatusPill>
-                        )
-                      ) : check.status === 'warning' ? (
-                        check.reason ? (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span tabIndex={0} className="cursor-default text-[11px] text-muted-foreground">
-                                  {check.label}
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent>{check.reason}</TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        ) : (
-                          <span className="text-[11px] text-muted-foreground">{check.label}</span>
-                        )
-                      ) : check.status === 'ready' ? (
-                        <span className="text-[11px] text-muted-foreground">Ready</span>
-                      ) : (
-                        <span className="text-[11px] text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-
-                    {/* Delete row button */}
-                    <TableCell className="px-2 py-1.5 text-center">
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleRemoveRow(row.id)}
-                              aria-label="Remove Row"
-                              className="size-7 p-0 text-muted-foreground hover:bg-transparent hover:text-status-danger"
-                            >
-                              <Trash2 className="size-3.5" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Remove Row</TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-
-          {/* Footer Actions & Batch Import Trigger */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-            <div className="flex items-center gap-2">
-              <Button type="button" variant="secondary" size="sm" onClick={handleAddRow} className="gap-1 text-xs">
-                <Plus className="size-3.5" />
-                Add Row
-              </Button>
-              <Button type="button" variant="secondary" size="sm" onClick={handleAddFiveRows} className="gap-1 text-xs">
-                <Plus className="size-3.5" />
-                Add 5 Rows
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={handleClearAll}
-                className="text-xs text-muted-foreground hover:text-foreground"
-              >
-                Clear
-              </Button>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-muted-foreground">
-                <strong>{readyRows.length}</strong> of <strong>{rows.length}</strong> bookings ready
-              </span>
-              <Button
-                type="button"
-                disabled={readyRows.length === 0 || importing}
-                onClick={handleRunImport}
-                className="gap-1.5 font-medium"
-              >
-                <Upload className="size-3.5" />
-                {importing
-                  ? 'Importing Bookings…'
-                  : `Import ${readyRows.length} ${readyRows.length === 1 ? 'Booking' : 'Bookings'}`}
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-      <Card className="h-full border-border shadow-card">
-        <CardContent className="flex flex-col gap-3 p-4 sm:p-5">
-          <h2 className="flex items-center text-base font-semibold text-foreground">
-            Booking Settings <InfoTooltip text="These Defaults Are Used For New Bookings." />
-          </h2>
-          <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-sm">
-            <dt className="text-muted-foreground">Project</dt>
-            <dd className="text-right font-medium text-foreground">{activeProjectName}</dd>
-            <dt className="text-muted-foreground">Sales Agent</dt>
-            <dd className="text-right font-medium text-foreground">{loggedInSalesName}</dd>
-            <dt className="text-muted-foreground">Law Firm</dt>
-            <dd className="text-right font-medium text-foreground">{settings.defaultLawFirm}</dd>
-            <dt className="text-muted-foreground">Unit Layouts</dt>
-            <dd className="text-right font-medium text-foreground">
-              {settings.models.map((model) => model.name).join(', ')}
-            </dd>
-          </dl>
-          <Link to="/settings" className="mt-auto text-sm text-foreground underline-offset-4 hover:underline">
-            Settings
-          </Link>
-        </CardContent>
-      </Card>
-    </div>
+                    </div>
+                  ) : (
+                    <span className="text-muted-foreground">
+                      Sales Agent: <strong className="font-medium text-foreground">{entry.salesOwner}</strong>
+                    </span>
+                  )}
+                  {checks[index].ok ? (
+                    <StatusPill tone="positive">Ready</StatusPill>
+                  ) : (
+                    <span className="text-muted-foreground">{checks[index].label}</span>
+                  )}
+                </div>
+              </section>
+            )
+          })}
+        </fieldset>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => updateEntries((current) => [...current, newEntry(settings, defaultSalesOwner)])}
+            disabled={settingsLoading || Boolean(settingsError)}
+          >
+            <Plus className="size-4" />
+            Add Another Booking
+          </Button>
+          <Button
+            type="button"
+            onClick={() => void handleImport()}
+            disabled={!allValid || importing || settingsLoading || Boolean(settingsError)}
+          >
+            <Upload className="size-4" />
+            {importing ? 'Adding Bookings…' : `Add ${entries.length} ${entries.length === 1 ? 'Booking' : 'Bookings'}`}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   )
 }

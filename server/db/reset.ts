@@ -88,6 +88,8 @@ export async function addDemoData(sql: SQL): Promise<SimulationMeta> {
         unit: b.unit,
         price_rm: b.priceRm,
         booking_date: b.bookingDate,
+        // Synthetic creation times follow the fixture's original recorded booking event.
+        created_at: events.find((e) => e.bookingId === b.id && e.kind === 'booked')?.recordedAt ?? null,
         buyer: b.buyer,
         sales_owner: b.salesOwner,
         loan_owner: b.loanOwner,

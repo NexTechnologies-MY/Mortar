@@ -13,6 +13,7 @@ import { AppShell } from './components/layout/AppShell'
 import { PersonaRoute } from './components/layout/PersonaRoute'
 import { SiteShell } from './components/layout/SiteShell'
 import { usePersona } from './lib/persona'
+import { ManagerPage } from './pages/ManagerPage'
 import { BookingsPage } from './pages/BookingsPage'
 import { BookingDetailPage } from './pages/BookingDetailPage'
 import { ChasePage } from './pages/ChasePage'
@@ -52,6 +53,7 @@ export function App() {
           element={
             <PersonaRoute>
               <Routes>
+                <Route path="/manager" element={<ManagerPage />} />
                 <Route path="/bookings" element={<BookingsPage />} />
                 <Route path="/chase" element={<ChasePage />} />
                 <Route path="/legal" element={<LegalPage />} />

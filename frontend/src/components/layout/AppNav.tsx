@@ -15,6 +15,7 @@ import { ChevronRight, Home, Menu } from 'lucide-react'
 type Crumb = { label: string; to?: string; icon?: React.ReactNode; short?: string }
 
 const ROUTE_LABELS: Record<string, string> = {
+  '/manager': 'Overview',
   '/bookings': 'Bookings',
   '/chase': 'Today',
   '/legal': 'Legal',

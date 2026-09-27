@@ -17,8 +17,8 @@ const FAQS: { question: string; answer: string[] }[] = [
   {
     question: 'Who Uses Mortar, And Where Does Each Role Start?',
     answer: [
-      'Three staff roles, chosen on the sign-in page or switched in the header. Each persona sees only its own pages. Sales Admin: Today (home), Bookings, Add Bookings, Forecast, Settings. Loan Admin: Bookings (home), Today, Forecast, Settings. Legal Admin: Legal (home), Today, Bookings, Forecast, Settings. Switching persona in the top bar opens that persona’s home.',
-      'Today lists stalled bookings, with the ones awaiting a person’s review first; each card names the blocker, the one next step and who owns it. Sales Admin sees every desk’s bookings; Loan Admin and Legal Admin start on their own.',
+      'Four staff roles, chosen as named demo profiles on the sign-in page or switched in the header. Each persona sees only its own pages. Sales Admin: Today (home), Bookings, Add Bookings, Forecast, Settings. Loan Admin: Bookings (home), Today, Forecast, Settings. Legal Admin: Legal (home), Today, Bookings, Forecast, Settings. Manager: Manager (home), Today, Bookings, Legal, Add Bookings, Forecast, Settings. Switching persona in the top bar opens that persona’s home.',
+      'Today lists stalled bookings, with the ones awaiting a person’s review first; each card names the blocker, the one next step and who owns it. A sales admin sees only the bookings they took; loan and legal admins see only cases currently assigned to them or with an open task assigned to them; and the Manager sees everything.',
       'The Bookings page’s strip, Who Holds Each Booking, filters the table by Buyer, Bank, Solicitor, Signed or Us. Clicking any booking opens a side sheet where you can record what happened.'
     ]
   },
@@ -46,7 +46,7 @@ const FAQS: { question: string; answer: string[] }[] = [
     question: 'What Does Jev Do?',
     answer: [
       'Jev is Mortar’s AI reader. Paste a buyer’s or banker’s message — English, Malay, Chinese or Manglish — and it proposes what happened, such as Documents Requested for a payslip, with a probability and a confidence. It also suggests next actions on Today and ranks the staff playbooks by fit.',
-      'Ask Mortar, the sparkle button in the top bar, answers questions about your bookings from Mortar’s own data, can read a photo of a letter, never changes anything, and says when the data does not hold the answer.',
+      'Ask MortarAI, the sparkle button in the top bar, answers questions about your bookings from Mortar’s own data, can read a photo of a letter, never changes anything, and says when the data does not hold the answer.',
       'Jev only proposes. A person confirms, disputes or dismisses every suggestion before it moves a booking, and anything under 60% confidence is flagged Needs Review. The forecast is statistics, not Jev — the practitioners we surveyed wanted AI on document checks and next actions, not on conversion.'
     ]
   },
@@ -67,7 +67,7 @@ const FAQS: { question: string; answer: string[] }[] = [
   {
     question: 'Why Is There No Real Sign-In?',
     answer: [
-      'Because there is nothing to protect: the prototype holds only synthetic data. The sign-in page is theatre — the email and password fields are disabled, you pick a persona, and Sign In As Guest drops you on that role’s home page. Real accounts and single sign-on are on the production roadmap.'
+      'Because there is nothing to protect: the prototype holds only synthetic data. The sign-in page is theatre — the email and password fields are disabled, you pick a named demo profile with a signed server session, and Sign In As Guest drops you on that role’s home page. Real accounts and single sign-on are on the production roadmap.'
     ]
   }
 ]

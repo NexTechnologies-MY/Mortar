@@ -49,7 +49,7 @@ describe('UnitAutocompleteInput', () => {
     fireEvent.focus(input)
 
     const option = screen.getByText('A-12-08')
-    fireEvent.mouseDown(option)
+    fireEvent.click(option)
 
     expect(onChange).toHaveBeenCalledWith('A-12-08')
   })

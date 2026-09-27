@@ -34,14 +34,25 @@ describe('SignInPage', () => {
     expect((screen.getByRole('button', { name: 'Sign In' }) as HTMLButtonElement).disabled).toBe(true)
   })
 
-  it('signs in as the chosen persona and navigates to its home', () => {
+  it('signs in as the chosen profile and navigates to its home', () => {
     renderSignIn()
 
-    fireEvent.click(screen.getByRole('radio', { name: 'Legal Admin' }))
+    fireEvent.keyDown(screen.getByRole('combobox', { name: 'Sign In As' }), { key: 'ArrowDown' })
+    fireEvent.click(screen.getByRole('option', { name: 'Arvind Raj · Legal Admin' }))
     fireEvent.click(screen.getByRole('button', { name: 'Sign In As Guest' }))
 
     expect(window.localStorage.getItem(PERSONA_STORAGE_KEY)).toBe('legal-admin')
+    expect(window.localStorage.getItem('mortar.profile')).toBe('legal-admin')
     expect(screen.getByTestId('location').textContent).toBe('/legal')
+  })
+
+  it('preserves the selected sales identity instead of using the first sales profile', () => {
+    renderSignIn()
+    fireEvent.keyDown(screen.getByRole('combobox', { name: 'Sign In As' }), { key: 'ArrowDown' })
+    fireEvent.click(screen.getByRole('option', { name: 'Kelvin Chow · Sales Admin' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Sign In As Guest' }))
+    expect(window.localStorage.getItem('mortar.profile')).toBe('sales-kelvin-chow')
+    expect(screen.getByTestId('location').textContent).toBe('/chase')
   })
 
   it('makes the live guest button the primary action and the dead button transparent', () => {

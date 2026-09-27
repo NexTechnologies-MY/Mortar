@@ -1,14 +1,15 @@
 /**
  * Persona provider + hook for the staff role the app is being used as.
  *
- * Mortar is shared by Sales Admin, Loan Admin, and Legal Admin staff; the active
+ * Mortar is shared by Sales Admin, Loan Admin, Legal Admin and Manager; the active
  * persona decides which route `/` redirects to, which sidebar item leads, and
  * which pages the role can open at all. The choice persists in localStorage
- * under `mortar.persona` so a workstation reopens in the same role.
+ * under `mortar.profile` so a workstation reopens with the same named profile.
  */
 
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react'
-import type { OwnerRole, Persona } from '@mortar/core'
+import { profileForPersona, type StaffProfile, type OwnerRole, type Persona } from '@mortar/core'
+import { readProfile, selectProfile } from './session'
 
 export type { Persona }
 
@@ -23,7 +24,8 @@ export type PersonaMeta = {
 export const PERSONAS: PersonaMeta[] = [
   { id: 'sales-admin', label: 'Sales Admin', home: '/chase' },
   { id: 'loan-admin', label: 'Loan Admin', home: '/bookings' },
-  { id: 'legal-admin', label: 'Legal Admin', home: '/legal' }
+  { id: 'legal-admin', label: 'Legal Admin', home: '/legal' },
+  { id: 'manager', label: 'Manager', home: '/manager' }
 ]
 
 /** Persona used before the user expresses a preference. */
@@ -50,24 +52,35 @@ export type PersonaPage = {
 }
 
 export const PERSONA_PAGES: readonly PersonaPage[] = [
+  { to: '/manager', label: 'Manager', group: 'primary', personas: ['manager'], home: 'manager' },
   {
     to: '/chase',
     label: 'Today',
     group: 'primary',
-    personas: ['sales-admin', 'loan-admin', 'legal-admin'],
+    personas: ['sales-admin', 'loan-admin', 'legal-admin', 'manager'],
     home: 'sales-admin'
   },
   {
     to: '/bookings',
     label: 'Bookings',
     group: 'primary',
-    personas: ['sales-admin', 'loan-admin', 'legal-admin'],
+    personas: ['sales-admin', 'loan-admin', 'legal-admin', 'manager'],
     home: 'loan-admin'
   },
-  { to: '/legal', label: 'Legal', group: 'primary', personas: ['legal-admin'], home: 'legal-admin' },
-  { to: '/import', label: 'Add Bookings', group: 'primary', personas: ['sales-admin'] },
-  { to: '/forecast', label: 'Forecast', group: 'more', personas: ['sales-admin', 'loan-admin', 'legal-admin'] },
-  { to: '/settings', label: 'Settings', group: 'more', personas: ['sales-admin', 'loan-admin', 'legal-admin'] }
+  { to: '/legal', label: 'Legal', group: 'primary', personas: ['legal-admin', 'manager'], home: 'legal-admin' },
+  { to: '/import', label: 'Add Bookings', group: 'primary', personas: ['sales-admin', 'manager'] },
+  {
+    to: '/forecast',
+    label: 'Forecast',
+    group: 'more',
+    personas: ['sales-admin', 'loan-admin', 'legal-admin', 'manager']
+  },
+  {
+    to: '/settings',
+    label: 'Settings',
+    group: 'more',
+    personas: ['sales-admin', 'loan-admin', 'legal-admin', 'manager']
+  }
 ] as const
 
 /** The page a persona can open, in sidebar order with its home first. */
@@ -108,40 +121,20 @@ export function pageLabelFor(path: string): string {
 export const PERSONA_DESK_ROLE: Record<Persona, OwnerRole> = {
   'sales-admin': 'sales_admin',
   'loan-admin': 'loan_admin',
-  'legal-admin': 'legal'
+  'legal-admin': 'legal',
+  manager: 'sales_admin'
 }
 
 /** localStorage key holding the persisted persona choice. */
 export const PERSONA_STORAGE_KEY = 'mortar.persona'
-
-function isPersona(value: string | null): value is Persona {
-  return PERSONAS.some((p) => p.id === value)
-}
-
-/**
- * Personas renamed since a workstation last stored its choice. Without this a
- * stored `finance` would fail validation and silently reset the seat to Sales
- * Admin on the next visit.
- */
-const RENAMED_PERSONAS: Record<string, Persona> = { finance: 'legal-admin' }
-
-/** Reads the persisted persona, falling back to the default on any failure. */
-function readStoredPersona(): Persona {
-  try {
-    const stored = window.localStorage.getItem(PERSONA_STORAGE_KEY)
-    if (isPersona(stored)) return stored
-    if (stored !== null && stored in RENAMED_PERSONAS) return RENAMED_PERSONAS[stored]
-  } catch {
-    // localStorage unavailable (private mode etc) — fall through to default
-  }
-  return DEFAULT_PERSONA
-}
 
 /**
  * Value exposed by `usePersona`. `persona` is the active id, `meta` its label
  * and home route, and `home` is the route `/` should redirect to.
  */
 type PersonaContextValue = {
+  profile: StaffProfile
+  setProfile: (profile: StaffProfile) => void
   persona: Persona
   meta: PersonaMeta
   home: string
@@ -155,20 +148,38 @@ const PersonaContext = createContext<PersonaContextValue | undefined>(undefined)
  * inside `BrowserRouter` so consumers can navigate on change.
  */
 export function PersonaProvider({ children, initialPersona }: { children: ReactNode; initialPersona?: Persona }) {
-  const [persona, setPersonaState] = useState<Persona>(initialPersona ?? readStoredPersona)
+  const [profile, setProfileState] = useState<StaffProfile>(() =>
+    initialPersona ? profileForPersona(initialPersona) : readProfile()
+  )
+  const persona = profile.persona
   const meta = PERSONAS.find((p) => p.id === persona) ?? PERSONAS[0]
 
-  const setPersona = useCallback((next: Persona) => {
-    setPersonaState(next)
+  const setProfile = useCallback((next: StaffProfile) => {
+    selectProfile(next)
+    setProfileState(next)
     try {
-      window.localStorage.setItem(PERSONA_STORAGE_KEY, next)
+      window.localStorage.setItem(PERSONA_STORAGE_KEY, next.persona)
     } catch {
-      // localStorage unavailable — the in-memory switch still applies
+      /* Storage is optional. */
     }
   }, [])
 
+  const setPersona = useCallback(
+    (next: Persona) => {
+      setProfile(profileForPersona(next))
+      try {
+        window.localStorage.setItem(PERSONA_STORAGE_KEY, next)
+      } catch {
+        // localStorage unavailable — the in-memory switch still applies
+      }
+    },
+    [setProfile]
+  )
+
   return (
-    <PersonaContext.Provider value={{ persona, meta, home: meta.home, setPersona }}>{children}</PersonaContext.Provider>
+    <PersonaContext.Provider value={{ persona, profile, setProfile, meta, home: meta.home, setPersona }}>
+      {children}
+    </PersonaContext.Provider>
   )
 }
 
@@ -191,6 +202,8 @@ export function usePersonaSafe(): PersonaContextValue {
     const defaultMeta = PERSONAS[1] // Loan Admin as default fallback
     return {
       persona: 'loan-admin',
+      profile: profileForPersona('loan-admin'),
+      setProfile: () => {},
       meta: defaultMeta,
       home: defaultMeta.home,
       setPersona: () => {}

@@ -771,13 +771,6 @@ control, and none appears. Do not "fix" this by removing the input.
   (`#FFFFFF` / `#141414`), 1px `--border`, corner radius 6px (`--radius-md`),
   `Elevation/Overlay` shadow. Backdrop overlay uses `--scrim` in both themes
   with `--scrim-blur` behind it.
-- **Variants:**
-  - `Standard`: Centered modal panel, maximum width 480px.
-  - `Forecast Document Sheet`: Long forecast documents and methodology reading.
-    Rises from the bottom centre (`bottom-0 sm:bottom-6`), sliding in from the
-    bottom, up to 860px wide (`w-[min(860px,calc(100vw-2rem))]`), maximum height
-    `min(90vh, 900px)` with a scrollable content area, bordered header, and 6px
-    corner radius (`rounded-t-md sm:rounded-md`).
 - **Rules:** Traps keyboard focus, Esc dismisses, autofocuses the secondary
   cancel button on destructive dialogs. Replaces all native browser `alert()`,
   `confirm()`, and `prompt()` calls.

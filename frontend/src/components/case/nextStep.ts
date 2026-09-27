@@ -14,6 +14,7 @@
  */
 
 import { ballInCourt } from '@mortar/core'
+import { currentCaseAssignee } from '@mortar/core'
 import type {
   Booking,
   CaseSummary,
@@ -45,8 +46,19 @@ export type CaseNextStep = {
   waitingOnNobody: boolean
 }
 
-function stepFor(action: NextAction, label: string, booking: Booking, document?: DocumentKind): NextStep {
-  return { action, label, ownerRole: MOVE_OWNER[action], document }
+function defaultOwnerRole(booking: Booking, summary: CaseSummary, action: NextAction): OwnerRole {
+  const assignee = currentCaseAssignee(booking, summary)
+  return assignee?.persona === 'legal-admin'
+    ? 'legal'
+    : assignee?.persona === 'loan-admin'
+      ? 'loan_admin'
+      : assignee?.persona === 'sales-admin'
+        ? 'sales_admin'
+        : MOVE_OWNER[action]
+}
+
+function stepFor(action: NextAction, label: string, ownerRole: OwnerRole, document?: DocumentKind): NextStep {
+  return { action, label, ownerRole, document }
 }
 
 /**
@@ -66,14 +78,19 @@ export function nextStepFor(
   const document = summary.outstandingDocuments[0]
   if (ball.nextMove === null) {
     return {
-      defaultStep: stepFor('wait', labels.wait, booking, document),
-      alternativeStep: jevStep(booking, suggestion, document, labels),
+      defaultStep: stepFor('wait', labels.wait, defaultOwnerRole(booking, summary, 'wait'), document),
+      alternativeStep: jevStep(suggestion, document, labels),
       waitingOnNobody: true
     }
   }
 
-  const defaultStep = stepFor(ball.nextMove, labels[ball.nextMove], booking, document)
-  const alternativeStep = jevStep(booking, suggestion, document, labels)
+  const defaultStep = stepFor(
+    ball.nextMove,
+    labels[ball.nextMove],
+    defaultOwnerRole(booking, summary, ball.nextMove),
+    document
+  )
+  const alternativeStep = jevStep(suggestion, document, labels)
   return {
     defaultStep,
     alternativeStep: alternativeStep?.action === defaultStep.action ? undefined : alternativeStep,
@@ -83,14 +100,13 @@ export function nextStepFor(
 
 /** Jev's move, when it is one a person can act on. */
 function jevStep(
-  booking: Booking,
   suggestion: NextActionSuggestion | undefined,
   document: DocumentKind | undefined,
   labels: Record<NextAction, string>
 ): NextStep | undefined {
   if (!suggestion) return undefined
   const action = suggestion.action.value
-  return stepFor(action, labels[action], booking, document)
+  return stepFor(action, labels[action], MOVE_OWNER[action], document)
 }
 
 /**

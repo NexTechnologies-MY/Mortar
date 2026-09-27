@@ -34,7 +34,7 @@ const DAY_MS = 24 * 60 * 60 * 1000
 const IP_KEEP_MS = 10 * MINUTE_MS
 const MAX_TRACKED_IPS = 5_000
 
-export const PERSONAS: readonly Persona[] = ['sales-admin', 'loan-admin', 'legal-admin']
+export const PERSONAS: readonly Persona[] = ['sales-admin', 'loan-admin', 'legal-admin', 'manager']
 
 export interface AssistantImage {
   mimeType: (typeof IMAGE_MIME_TYPES)[number]
@@ -139,7 +139,7 @@ export class RateLimiter {
   /** `null` when the request may go ahead, or the 429 to send. */
   check(ip: string, now: number = Date.now()): Response | null {
     if (this.day.filter((at) => now - at < DAY_MS).length >= REQUESTS_PER_DAY) {
-      return error(429, 'Ask Mortar has answered its daily allowance. Try again tomorrow.')
+      return error(429, 'Ask MortarAI has answered its daily allowance. Try again tomorrow.')
     }
     const recent = (this.hits.get(ip) ?? []).filter((at) => now - at < MINUTE_MS)
     if (recent.length >= REQUESTS_PER_MINUTE) {

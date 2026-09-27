@@ -30,11 +30,12 @@ describe('PersonaSwitch', () => {
     renderSwitch()
     openMenu()
 
-    const active = screen.getByRole('menuitem', { name: /Sales Admin/ })
+    const active = screen.getByRole('menuitem', { name: 'Nurul Aina · Sales Admin' })
     expect(active.querySelector('svg.lucide-check')).toBeTruthy()
 
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Legal Admin' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Arvind Raj · Legal Admin' }))
     expect(window.localStorage.getItem(PERSONA_STORAGE_KEY)).toBe('legal-admin')
+    expect(window.localStorage.getItem('mortar.profile')).toBe('legal-admin')
     window.localStorage.clear()
   })
 
@@ -42,7 +43,7 @@ describe('PersonaSwitch', () => {
     renderSwitch('/import')
     openMenu()
 
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Legal Admin' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Arvind Raj · Legal Admin' }))
     expect(screen.getByTestId('location').textContent).toBe('/legal')
     window.localStorage.clear()
   })
@@ -51,7 +52,7 @@ describe('PersonaSwitch', () => {
     renderSwitch('/import')
     openMenu()
 
-    fireEvent.click(screen.getByRole('menuitem', { name: /Sales Admin/ }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Nurul Aina · Sales Admin' }))
     expect(screen.getByTestId('location').textContent).toBe('/import')
     window.localStorage.clear()
   })

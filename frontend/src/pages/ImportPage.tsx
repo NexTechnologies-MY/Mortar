@@ -7,8 +7,9 @@
  * The confirmation (`ImportedCard`) can undo the batch.
  */
 
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Download } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import {
   PERSONA_STAFF,
   readBookingSheet,
@@ -17,9 +18,10 @@ import {
   type SheetCell,
   type SheetDefaults
 } from '@mortar/core'
-import { useCases, useSnapshot } from '@/lib/data'
+import { useSnapshot } from '@/lib/data'
 import { usePersona } from '@/lib/persona'
-import { ApiError, importBookings } from '@/lib/api'
+import { ApiError, fetchInventory, importBookings } from '@/lib/api'
+import { formatUnitRangeDescription, useProjectSettings } from '@/lib/projectSettings'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { PageHeaderCard } from '@/components/layout/PageHeaderCard'
 import { DirectTableImport } from '@/components/import/DirectTableImport'
@@ -51,8 +53,27 @@ export function mainProject(bookings: Booking[]): string {
 
 export function ImportPage() {
   const { snapshot, error: loadError, refresh } = useSnapshot()
-  const cases = useCases()
-  const { persona } = usePersona()
+  const { persona, profile } = usePersona()
+
+  const { settings, loading: settingsLoading, error: settingsError } = useProjectSettings()
+  const [inventory, setInventory] = useState<{ project: string; unit: string }[] | null>(null)
+  const [inventoryError, setInventoryError] = useState<string | null>(null)
+  useEffect(() => {
+    let current = true
+    void fetchInventory()
+      .then((result) => {
+        if (current) {
+          setInventory(result.held)
+          setInventoryError(null)
+        }
+      })
+      .catch(() => {
+        if (current) setInventoryError('Could not check available units. Refresh to try again.')
+      })
+    return () => {
+      current = false
+    }
+  }, [snapshot])
 
   const [file, setFile] = useState<File | null>(null)
   const [cells, setCells] = useState<SheetCell[][] | null>(null)
@@ -89,28 +110,27 @@ export function ImportPage() {
     () =>
       snapshot
         ? {
-            project: mainProject(snapshot.bookings),
-            salesOwner: 'Unassigned',
+            project: settings.projectName,
+            salesOwner: persona === 'manager' ? PERSONA_STAFF['sales-admin'].name : profile.name,
             loanOwner: PERSONA_STAFF['loan-admin'].name,
-            legalFirm: 'Unassigned'
+            legalFirm: settings.defaultLawFirm
           }
         : null,
-    [snapshot]
+    [snapshot, settings.projectName, settings.defaultLawFirm, profile.name, persona]
   )
 
-  // A unit is free again once its booking was cancelled or lapsed.
-  const held = useMemo(() => {
-    if (!snapshot) return new Map<string, string>()
-    const closed = new Set(cases.filter((c) => c.stage === 'cancelled' || c.stage === 'lapsed').map((c) => c.bookingId))
-    return new Map(snapshot.bookings.filter((b) => !closed.has(b.id)).map((b) => [unitKey(b.project, b.unit), b.id]))
-  }, [snapshot, cases])
+  // Inventory includes held units across profiles without exposing buyer or booking IDs.
+  const held = useMemo(
+    () => new Map((inventory ?? []).map((unit) => [unitKey(unit.project, unit.unit), 'another booking'])),
+    [inventory]
+  )
 
   const sheet = useMemo(
     () =>
-      cells && snapshot && defaults
+      cells && snapshot && defaults && inventory && !settingsLoading && !settingsError
         ? readBookingSheet(cells, { referenceDate: snapshot.meta.referenceDate, defaults, held })
         : null,
-    [cells, snapshot, defaults, held]
+    [cells, snapshot, defaults, held, inventory, settingsLoading, settingsError]
   )
 
   const ready = useMemo(() => (sheet ? sheet.rows.flatMap((r) => (r.draft ? [r.draft] : [])) : []), [sheet])
@@ -122,7 +142,7 @@ export function ImportPage() {
     try {
       const result = await importBookings({
         bookings: ready,
-        reportedBy: PERSONA_STAFF[persona].name,
+        reportedBy: profile?.name ?? PERSONA_STAFF[persona].name,
         source: file?.name
       })
       readToken.current += 1
@@ -168,14 +188,20 @@ export function ImportPage() {
         <InfoTooltip text="Upload A Spreadsheet, Or Enter Bookings One At A Time." />
       </PageHeaderCard>
 
-      <Tabs defaultValue="upload" className="mt-4">
+      {inventoryError && (
+        <p role="alert" className="mt-4 text-sm">
+          {inventoryError}
+        </p>
+      )}
+      <Tabs defaultValue="type" className="mt-4">
         <TabsList>
-          <TabsTrigger value="upload">Upload A Sheet</TabsTrigger>
           <TabsTrigger value="type">Type Them In</TabsTrigger>
+          <TabsTrigger value="upload">Upload A Sheet</TabsTrigger>
         </TabsList>
 
         <TabsContent value="upload" className="mt-4 space-y-4">
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] [&>*]:min-w-0">
+          {settingsError && <p role="alert">Project Settings Could Not Be Loaded. Refresh To Check Your Sheet.</p>}
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] [&>*]:min-w-0">
             <Card>
               <CardContent className="flex flex-col gap-3 p-4">
                 <h2 className="flex items-center text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
@@ -236,16 +262,43 @@ export function ImportPage() {
         </TabsContent>
 
         <TabsContent value="type" className="mt-4">
-          <DirectTableImport
-            persona={persona}
-            referenceDate={snapshot?.meta.referenceDate ?? ''}
-            held={held}
-            projectName={snapshot ? mainProject(snapshot.bookings) : undefined}
-            onImported={(res) => {
-              setImported(res)
-              void refresh()
-            }}
-          />
+          <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,3fr)_minmax(240px,1fr)]">
+            {inventory === null ? (
+              <p role="status">{inventoryError ?? 'Checking Available Units...'}</p>
+            ) : (
+              <DirectTableImport
+                persona={persona}
+                referenceDate={snapshot?.meta.referenceDate ?? ''}
+                held={held}
+                onImported={(res) => {
+                  setImported(res)
+                  void refresh()
+                }}
+              />
+            )}
+            <Card>
+              <CardContent className="space-y-3 p-4">
+                <h2 className="text-base font-semibold">Booking Settings</h2>
+                <dl className="space-y-3 text-sm">
+                  <div>
+                    <dt className="text-muted-foreground">Project</dt>
+                    <dd>{settings.projectName}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">Units</dt>
+                    <dd className="break-words text-xs">{formatUnitRangeDescription(settings)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground">Default Law Firm</dt>
+                    <dd>{settings.defaultLawFirm}</dd>
+                  </div>
+                </dl>
+                <Link to="/settings" className="inline-block text-sm underline underline-offset-4">
+                  View Settings
+                </Link>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
 

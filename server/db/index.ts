@@ -5,7 +5,15 @@
  * `mappers.ts` — handlers never see snake_case.
  */
 import { SQL } from 'bun'
-import { REFERENCE_DATE, summarizeCases, unitKey } from '@mortar/core'
+import {
+  REFERENCE_DATE,
+  summarizeCases,
+  unitKey,
+  canAccessBooking,
+  createAssignmentAccessContext,
+  currentCaseAssignee,
+  ballInCourt
+} from '@mortar/core'
 import type {
   Booking,
   BookingDraft,
@@ -19,13 +27,16 @@ import type {
   Message,
   Playbook,
   Snapshot,
-  Task
+  Task,
+  ProjectSettings,
+  StaffProfile
 } from '@mortar/core'
 import { QUESTION_VERSION, jevInputHash, nextActionJob, signalsJob } from '@mortar/jev'
 import {
   rowToApplication,
   rowToBooking,
   rowToEvent,
+  jsonb,
   rowToJevAnswer,
   rowToMessage,
   rowToPlaybook,
@@ -41,6 +52,9 @@ export interface Database {
   ping(): Promise<void>
   /** Simulation parameters, or `null` while the `seed` row is absent (pre-reset). */
   meta(): Promise<StoredMeta | null>
+  getProjectSettings(): Promise<ProjectSettings | null>
+  setProjectSettings(settings: ProjectSettings): Promise<void>
+  sessionSecret(): Promise<string>
   /** Whether `bookings` has any row at all; boot uses it to tell an empty database from one whose `meta` row went missing. */
   hasBookings(): Promise<boolean>
   /** The case-derivation input: bookings, applications, events and tasks. */
@@ -85,7 +99,8 @@ export interface Database {
    * message is confirmed, or when `proposal` is `null`; returns what was.
    */
   replaceProposal(messageId: string, proposal: CaseEvent | null): Promise<CaseEvent | null>
-  insertTask(task: Task): Promise<void>
+  insertTask(task: Task): Promise<Task>
+  flagManagerTask(task: Task): Promise<Task>
   /**
    * Numbers and stores imported bookings in one transaction, each with the
    * event `bookedEvent` builds for it, records the batch under `batch.id`, and
@@ -113,6 +128,7 @@ export interface Database {
    * bookings that have moved on.
    */
   undoImport(id: string, undoneBy: string, undoneAt: IsoDateTime): Promise<{ removed: string[] } | null>
+  canUndoImport(id: string, profile: StaffProfile): Promise<boolean>
   /** Removes a single untouched booking and records its minimal retention trace. */
   deleteBooking(id: string, removedBy: string, removedAt: IsoDateTime): Promise<boolean>
   updateTaskStatus(id: string, status: Task['status'], completedAt: IsoDateTime | null): Promise<Task | null>
@@ -166,6 +182,13 @@ export class ImportMovedOnError extends Error {
 export class BookingMovedOnError extends Error {
   constructor(readonly bookingId: string) {
     super(`booking ${bookingId} has transaction or progression data and must be retained`)
+  }
+}
+
+/** A manager's preview no longer matches the confirmed case responsibility. */
+export class TaskAssignmentChangedError extends Error {
+  constructor() {
+    super('Case responsibility changed. Refresh the case before sending this follow-up.')
   }
 }
 
@@ -265,6 +288,20 @@ export function createDatabase(sql: SQL): Database {
     },
 
     meta,
+    async getProjectSettings() {
+      const rows = await sql`select value from meta where key = 'project_settings'`
+      return rows.length ? jsonb<ProjectSettings>(rows[0]!.value) : null
+    },
+    async setProjectSettings(settings) {
+      await sql`insert into meta (key, value) values ('project_settings', ${JSON.stringify(settings)}::jsonb)
+        on conflict (key) do update set value = excluded.value`
+    },
+    async sessionSecret() {
+      await sql`insert into meta (key, value) values ('session_secret', ${JSON.stringify(crypto.randomUUID() + crypto.randomUUID())}::jsonb)
+        on conflict (key) do nothing`
+      const rows = await sql`select value from meta where key = 'session_secret'`
+      return jsonb<string>(rows[0]?.value)
+    },
     caseData,
     latestJevAnswers,
 
@@ -420,6 +457,8 @@ export function createDatabase(sql: SQL): Database {
 
     async reviewEvent(id, status, reviewer, at) {
       return sql.begin(async (tx) => {
+        // Serialize confirmed handoffs with manager routing before locking the event.
+        await tx`select id from bookings where id = (select booking_id from events where id = ${id}) for update`
         // The row lock makes the check and the change one step: a second
         // review waits here, then sees the first one's result.
         const rows = await tx`select * from events where id = ${id} for update`
@@ -455,19 +494,64 @@ export function createDatabase(sql: SQL): Database {
     },
 
     async insertTask(task) {
-      await sql`insert into tasks ${sql({
-        id: task.id,
-        booking_id: task.bookingId,
-        action: task.action,
-        title: task.title,
-        owner_role: task.ownerRole,
-        owner_name: task.ownerName,
-        due_on: task.dueOn,
-        status: task.status,
-        origin: task.origin,
-        created_at: task.createdAt,
-        completed_at: task.completedAt
-      })}`
+      return this.flagManagerTask(task)
+    },
+
+    async flagManagerTask(task) {
+      return sql.begin(async (tx) => {
+        const roleKey = task.ownerRole === 'sales' ? 'sales_admin' : task.ownerRole
+        await tx`select pg_advisory_xact_lock(20260927, hashtext(${`${task.bookingId}:${task.action}:${roleKey}:${task.ownerName}`}))`
+        if (task.managerFlaggedBy) {
+          const rows = await tx`select * from bookings where id = ${task.bookingId} for update`
+          if (!rows.length) throw new TaskAssignmentChangedError()
+          const booking = rowToBooking(rows[0])
+          const applications = (await tx`select * from loan_applications where booking_id = ${task.bookingId}`).map(
+            rowToApplication
+          )
+          const events = (await tx`select * from events where booking_id = ${task.bookingId} order by seq`).map(
+            rowToEvent
+          )
+          const summary = summarizeCases({ bookings: [booking], applications, events, tasks: [] }, REFERENCE_DATE)[0]
+          const recipient = summary ? currentCaseAssignee(booking, summary) : null
+          const expectedRole =
+            recipient?.persona === 'legal-admin'
+              ? 'legal'
+              : recipient?.persona === 'loan-admin'
+                ? 'loan_admin'
+                : 'sales_admin'
+          if (
+            !recipient ||
+            recipient.name !== task.ownerName ||
+            expectedRole !== roleKey ||
+            ballInCourt(summary).nextMove !== task.action
+          )
+            throw new TaskAssignmentChangedError()
+        }
+        const existing = await tx`select * from tasks where booking_id = ${task.bookingId}
+          and action = ${task.action} and (owner_role = ${task.ownerRole} or (${roleKey === 'sales_admin'} and owner_role in ('sales', 'sales_admin')))
+          and owner_name = ${task.ownerName} and status = 'open' order by created_at, id limit 1 for update`
+        if (existing.length) {
+          if (!task.managerFlaggedBy || existing[0].manager_flagged_by) return rowToTask(existing[0]!)
+          const updated = await tx`update tasks set manager_flagged_by = ${task.managerFlaggedBy},
+            due_on = least(due_on, ${task.dueOn}::date) where id = ${existing[0].id} returning *`
+          return rowToTask(updated[0]!)
+        }
+        const rows = await tx`insert into tasks ${tx({
+          id: task.id,
+          booking_id: task.bookingId,
+          action: task.action,
+          title: task.title,
+          owner_role: task.ownerRole,
+          owner_name: task.ownerName,
+          due_on: task.dueOn,
+          status: task.status,
+          origin: task.origin,
+          created_at: task.createdAt,
+          completed_at: task.completedAt,
+          manager_flagged_by: task.managerFlaggedBy ?? null
+        })} returning *`
+        return rowToTask(rows[0]!)
+      })
     },
 
     async importBookings(batch, drafts, bookedEvent) {
@@ -500,7 +584,8 @@ export function createDatabase(sql: SQL): Database {
         if (last + drafts.length > LAST_IMPORT_NUMBER) throw new Error('no booking numbers left below BK-9000')
         const bookings: Booking[] = drafts.map((draft, i) => ({
           id: `BK-${String(last + i + 1).padStart(4, '0')}`,
-          ...draft
+          ...draft,
+          createdAt: batch.createdAt
         }))
         await tx`insert into bookings ${tx(
           bookings.map((b) => ({
@@ -509,6 +594,7 @@ export function createDatabase(sql: SQL): Database {
             unit: b.unit,
             price_rm: b.priceRm,
             booking_date: b.bookingDate,
+            created_at: b.createdAt,
             buyer: b.buyer,
             sales_owner: b.salesOwner,
             loan_owner: b.loanOwner,
@@ -543,6 +629,18 @@ export function createDatabase(sql: SQL): Database {
         })}`
         return bookings
       })
+    },
+
+    async canUndoImport(id, profile) {
+      const context = createAssignmentAccessContext(await this.caseData(), REFERENCE_DATE)
+      const rows = await sql`select b.* from imports i
+        cross join unnest(i.booking_ids) as imported(booking_id)
+        join bookings b on b.id = imported.booking_id
+        where i.id = ${id} and i.undone_at is null`
+      return (
+        rows.length > 0 &&
+        rows.every((row: Record<string, unknown>) => canAccessBooking(rowToBooking(row), profile, context))
+      )
     },
 
     async undoImport(id, undoneBy, undoneAt) {

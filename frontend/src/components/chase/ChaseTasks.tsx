@@ -22,7 +22,12 @@ function groupTasks(tasks: Task[]): Map<string, Task[]> {
     groups.set(key, list)
   }
   for (const list of groups.values()) {
-    list.sort((a, b) => a.dueOn.localeCompare(b.dueOn) || a.title.localeCompare(b.title))
+    list.sort(
+      (a, b) =>
+        Number(!!b.managerFlaggedBy) - Number(!!a.managerFlaggedBy) ||
+        a.dueOn.localeCompare(b.dueOn) ||
+        a.title.localeCompare(b.title)
+    )
   }
   return new Map(
     [...groups.entries()].sort(([a], [b]) => {
@@ -79,6 +84,7 @@ export function ChaseTasks({
                         {' · Due '}
                         {formatDate(task.dueOn)}
                         {task.origin === 'jev' ? ' · Jev' : ''}
+                        {task.managerFlaggedBy ? ' · Manager Follow-up' : ''}
                       </p>
                     </div>
                     <Button

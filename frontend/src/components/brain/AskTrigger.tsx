@@ -1,5 +1,5 @@
 /**
- * The Ask Mortar button in the top bar, plus its Cmd/Ctrl-K shortcut.
+ * The Ask MortarAI button in the top bar, plus its Cmd/Ctrl-K shortcut.
  *
  * It holds nothing but the open flag on purpose. Every data hook lives in
  * `AskPanel`, which Radix only mounts once the dialog opens, so carrying Ask
@@ -12,9 +12,11 @@ import { useMatch } from 'react-router-dom'
 import { Sparkles } from 'lucide-react'
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { usePersonaSafe } from '@/lib/persona'
 import { AskPanel } from './AskPanel'
 
 export function AskTrigger() {
+  const { profile } = usePersonaSafe()
   const [open, setOpen] = useState(false)
   // The case page, when one is open; nothing on the other routes.
   const caseMatch = useMatch('/bookings/:id')
@@ -39,18 +41,18 @@ export function AskTrigger() {
               <button
                 data-tour="ask-mortar"
                 type="button"
-                aria-label="Ask Mortar"
+                aria-label="Ask MortarAI"
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
               >
                 <Sparkles className="h-5 w-5" />
               </button>
             </DialogTrigger>
           </TooltipTrigger>
-          <TooltipContent>Ask Mortar</TooltipContent>
+          <TooltipContent>Ask MortarAI</TooltipContent>
         </Tooltip>
       </TooltipProvider>
       <DialogContent className="flex h-[80vh] w-[80vw] max-w-none flex-col overflow-hidden max-sm:h-[92vh] max-sm:w-[calc(100vw-1rem)]">
-        <AskPanel bookingId={bookingId} onNavigate={() => setOpen(false)} />
+        <AskPanel key={profile.id} bookingId={bookingId} onNavigate={() => setOpen(false)} />
       </DialogContent>
     </Dialog>
   )

@@ -1,7 +1,7 @@
 /**
  * Status card — the server's own health report: the API itself, the database
  * connection, whether a TypeSafe key is configured for Jev, and whether the
- * Ask Mortar assistant has a Gemini key to work with. The page owns the
+ * Ask MortarAI assistant has a Gemini key to work with. The page owns the
  * `GET /api/health` fetch and re-checks after demo data changes.
  */
 
@@ -48,7 +48,7 @@ export function HealthCard({ health, failed }: { health: Health | null; failed: 
           up: 'Configured',
           down: 'Missing'
         })}
-        {row('Ask Mortar', failed ? false : health ? health.assistant : null, 'Whether A Gemini Key Is Configured', {
+        {row('Ask MortarAI', failed ? false : health ? health.assistant : null, 'Whether A Gemini Key Is Configured', {
           up: 'Configured',
           down: 'Missing'
         })}

@@ -10,7 +10,7 @@ import { Toaster } from 'react-hot-toast'
 import { AppErrorBoundary } from './components/layout/AppErrorBoundary'
 import { ScrollToTop } from './components/layout/ScrollToTop'
 import { ThemeProvider } from './hooks/useTheme'
-import { PersonaProvider } from './lib/persona'
+import { PersonaProvider, usePersona } from './lib/persona'
 import { SnapshotProvider } from './lib/data'
 import { App } from './App'
 import './globals.css'
@@ -34,6 +34,16 @@ window.addEventListener('unhandledrejection', (event) => {
   }
 })
 
+function ProfileWorkspace() {
+  const { profile } = usePersona()
+  return (
+    <SnapshotProvider key={profile.id}>
+      <App />
+      <Toaster position="bottom-center" toastOptions={{ duration: 4000 }} />
+    </SnapshotProvider>
+  )
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AppErrorBoundary>
@@ -41,10 +51,7 @@ createRoot(document.getElementById('root')!).render(
         <ScrollToTop />
         <ThemeProvider>
           <PersonaProvider>
-            <SnapshotProvider>
-              <App />
-              <Toaster position="bottom-center" toastOptions={{ duration: 4000 }} />
-            </SnapshotProvider>
+            <ProfileWorkspace />
           </PersonaProvider>
         </ThemeProvider>
       </BrowserRouter>
