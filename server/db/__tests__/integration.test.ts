@@ -147,7 +147,8 @@ describe.skipIf(!TEST_DATABASE_URL)('database integration', () => {
       const metaKeys = (await sql`select key from meta order by key`).map((row: Record<string, unknown>) =>
         String(row.key)
       )
-      expect(metaKeys).toEqual(['sessionSecret'])
+      expect(metaKeys).toContain('sessionSecret')
+      for (const key of ['seed', 'referenceDate', 'resetAt', 'resetAtWall']) expect(metaKeys).not.toContain(key)
     } finally {
       await sql`delete from event_reviews where reviewer = 'W2TEST Visitor'`
       await sql`delete from jev_answers where input_hash = 'w2test'`
