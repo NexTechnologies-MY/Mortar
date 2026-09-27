@@ -311,6 +311,10 @@ export function createApp(options: AppOptions): App {
     : createAssistant({ db, apiKey: null })
   const cookieName = 'mortar_session'
   const cookieOptions = (secure: boolean) => `Path=/; HttpOnly; SameSite=Lax; Max-Age=43200${secure ? '; Secure' : ''}`
+  // Cloud Run terminates TLS before the container, so the request the app sees
+  // is plain http. The proxy's own header is what tells us the client is on https.
+  const isSecureRequest = (req: Request) =>
+    req.headers.get('x-forwarded-proto') === 'https' || new URL(req.url).protocol === 'https:'
   let secretPromise: Promise<string> | null = null
   const sessionSecret = () => (secretPromise ??= db.sessionSecret())
   const signingKey = async () =>
@@ -361,7 +365,7 @@ export function createApp(options: AppOptions): App {
         return new Response(JSON.stringify({ profile }), {
           headers: {
             'content-type': 'application/json',
-            'set-cookie': `${cookieName}=${token}; ${cookieOptions(new URL(req.url).protocol === 'https:')}`
+            'set-cookie': `${cookieName}=${token}; ${cookieOptions(isSecureRequest(req))}`
           }
         })
       }
@@ -373,7 +377,7 @@ export function createApp(options: AppOptions): App {
         return new Response(null, {
           status: 204,
           headers: {
-            'set-cookie': `${cookieName}=; ${cookieOptions(new URL(req.url).protocol === 'https:')}; Max-Age=0`
+            'set-cookie': `${cookieName}=; ${cookieOptions(isSecureRequest(req))}; Max-Age=0`
           }
         })
       }
@@ -421,7 +425,7 @@ export function createApp(options: AppOptions): App {
           ok: dbOk,
           db: dbOk,
           jev: Boolean(options.jevAvailable),
-          // Whether Ask Mortar can reach a model at all. Only the fact is
+          // Whether Copilot can reach a model at all. Only the fact is
           // reported, never the key itself.
           assistant: Boolean(options.assistant?.apiKey),
           jevAnswers,

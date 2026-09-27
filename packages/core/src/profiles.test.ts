@@ -5,7 +5,9 @@ import {
   DEFAULT_PROJECT_SETTINGS,
   DEMO_PROFILES,
   normalizeProjectSettings,
+  PERSONA_STAFF,
   profileFor,
+  PROJECT_NAME,
   scopeSnapshot,
   STORIES
 } from './index'
@@ -39,11 +41,14 @@ describe('staff profiles and snapshot scope', () => {
         'Hafiz Rahman',
         'Jocelyn Ng',
         'Tan Mei Ling',
-        'Legal Admin',
+        'Arvind Raj',
         'Project Manager'
       ])
     )
     expect(profileFor('manager')?.persona).toBe('manager')
+    // The legal desk is a person in the UI, so the profile must carry the same
+    // name the sim gives its legal staff member.
+    expect(profileFor('legal-admin')?.name).toBe(PERSONA_STAFF['legal-admin'].name)
   })
 
   test('restricts sales to assigned ownership while manager sees all bookings', () => {
@@ -140,6 +145,24 @@ describe('staff profiles and snapshot scope', () => {
     expect(canAccessBooking(legalStory.booking, legal)).toBe(false)
   })
 
+  test('grants the legal profile a task owned by the legal desk’s staff member', () => {
+    const legalStory = STORIES.find((candidate) => candidate.booking.id === 'BK-9006')!
+    const legal = profileFor('legal-admin')!
+    const context = {
+      summaries: [],
+      tasks: [
+        {
+          id: 'TSK-NAMED',
+          bookingId: legalStory.booking.id,
+          ownerRole: 'legal' as const,
+          ownerName: PERSONA_STAFF['legal-admin'].name,
+          status: 'open' as const
+        }
+      ] as Snapshot['tasks']
+    }
+    expect(canAccessBooking(legalStory.booking, legal, context)).toBe(true)
+  })
+
   test('filters every booking-linked collection through the same allowed booking set', () => {
     const message = (id: string, bookingId: string) => ({
       id,
@@ -188,7 +211,7 @@ describe('shared project settings validation', () => {
     ).toMatchObject({
       blockPrefix: 'A',
       blocks: ['A', 'B'],
-      projectName: 'Bukit Damai'
+      projectName: PROJECT_NAME
     })
     expect(
       normalizeProjectSettings({ ...DEFAULT_PROJECT_SETTINGS, blocks: undefined, blockPrefix: 'C' })?.blocks

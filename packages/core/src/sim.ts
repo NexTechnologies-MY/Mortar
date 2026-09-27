@@ -21,6 +21,7 @@ import { generateDataset } from './sim/generate'
 import { financingRiskFor } from './sim/risk'
 
 export { DEFAULT_SEED, REFERENCE_DATE, HORIZON_DAYS, PERSONA_STAFF } from './sim/constants'
+export { PROJECT_NAME } from './sim/names'
 export { leakage } from './sim/leakage'
 export { byOccurred } from './sim/cases'
 export type { Leakage, LeakageCause, RecoveryEstimate } from './sim/leakage'

@@ -1,3 +1,5 @@
+import { PROJECT_NAME } from './sim/names'
+
 export interface UnitModel {
   id: string
   name: string
@@ -68,7 +70,7 @@ export const DEFAULT_UNIT_MODELS: UnitModel[] = [
 ]
 
 export const DEFAULT_PROJECT_SETTINGS: ProjectSettings = {
-  projectName: 'Bukit Damai',
+  projectName: PROJECT_NAME,
   blockPrefix: 'A',
   blocks: ['A'],
   minFloor: 1,

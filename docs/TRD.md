@@ -817,9 +817,10 @@ architected for future corporate data onboarding:
 
 `POST /api/session` selects a known demo profile and issues an HttpOnly,
 SameSite cookie. `GET /api/session` reads it; `DELETE /api/session` clears it.
-The server verifies the cookie and checks the `X-Mortar-Profile` header against
-it, so a profile switch in another tab cannot silently widen access. Missing
-sessions fail closed for protected routes. The health endpoint remains public.
+The signed cookie alone decides access; the `X-Mortar-Profile` header is only
+compared against it, so a profile switch in another tab gets a 409 instead of
+silently acting as a different profile. Missing sessions fail closed for
+protected routes. The health endpoint remains public.
 
 `GET /api/settings` returns shared project settings; `PUT /api/settings` is
 manager-only. `GET /api/inventory` exposes held project/unit pairs without buyer

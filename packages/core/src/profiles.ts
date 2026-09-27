@@ -22,7 +22,7 @@ export const DEMO_PROFILES: StaffProfile[] = [
   { id: 'sales-hafiz-rahman', name: 'Hafiz Rahman', persona: 'sales-admin' },
   { id: 'sales-jocelyn-ng', name: 'Jocelyn Ng', persona: 'sales-admin' },
   { id: 'loan-tan-mei-ling', name: 'Tan Mei Ling', persona: 'loan-admin' },
-  { id: 'legal-admin', name: 'Legal Admin', persona: 'legal-admin' },
+  { id: 'legal-admin', name: 'Arvind Raj', persona: 'legal-admin' },
   { id: 'manager', name: 'Project Manager', persona: 'manager' }
 ]
 

@@ -25,7 +25,7 @@ describe('ProjectSettingsCard', () => {
 
   it('loads shared settings and displays block range and law firm', async () => {
     renderCard()
-    expect(await screen.findByDisplayValue('Bukit Damai')).toBeTruthy()
+    expect(await screen.findByDisplayValue('Residensi Cahaya Muda')).toBeTruthy()
     expect(screen.getByDisplayValue('A')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'About Project Settings' })).toBeTruthy()
     expect(screen.getByDisplayValue('1')).toBeTruthy()
