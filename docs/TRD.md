@@ -63,12 +63,11 @@ asynchronous classification workflows:
 - **Server-Side Intelligence:** `@mortar/jev` wraps the TypeSafe SDK to run
   probabilistic classifications server-side. The TypeSafe API key is restricted
   to the server process and is never sent to the browser.
-- **Grounded Operational Assistant:** Ask Mortar (`POST /api/assistant`)
-  provides LLM-driven operational answers via Google Gemini
-  (`gemini-3.5-flash-lite`), code in `server/src/assistant/`. It grounds answers
-  over the live memory snapshot using five read-only tools, with fenced
-  untrusted message bodies, returning structured answers and booking citations
-  with zero write access.
+- **Grounded Operational Assistant:** Copilot (`POST /api/assistant`) provides
+  LLM-driven operational answers via Google Gemini (`gemini-3.5-flash-lite`),
+  code in `server/src/assistant/`. It grounds answers over the live memory
+  snapshot using five read-only tools, with fenced untrusted message bodies,
+  returning structured answers and booking citations with zero write access.
 - **Persona Navigation And Route Guarding:** `frontend/src/lib/persona.tsx`
   defines permitted page mappings (`PERSONA_PAGES`) and
   `frontend/src/components/layout/PersonaRoute.tsx` guards routes client-side,
@@ -114,8 +113,8 @@ Key files within each package include:
   reviewed knowledge articles (`playbooks.ts`).
 - `server/src/index.ts`: Application bootstrap, static file serving, and route
   dispatching.
-- `server/src/assistant/`: Ask Mortar Gemini service, tools (`tools.ts`),
-  schemas, and untrusted message prompt fencing.
+- `server/src/assistant/`: Copilot Gemini service, tools (`tools.ts`), schemas,
+  and untrusted message prompt fencing.
 - `server/db/schema.sql`: PostgreSQL table definitions applied idempotently on
   server start.
 - `server/db/__tests__/integration.test.ts`: Database integration suite running
@@ -295,12 +294,12 @@ no third-party schema validation libraries are loaded.
 - `GET /api/health`: `ok` and `db` report a live database ping (`false` on
   failure, alongside `jevAnswers: null`); `jev` is whether a live Jev service
   (TypeSafe key or proxy) is wired at all, not whether its last call succeeded;
-  `assistant` is whether the server started with a Gemini key for Ask Mortar
-  (the key itself is never returned); `jevLastError` carries the message from
-  the last failed live Jev call when the proxy client is wired, or `null`
-  otherwise. TypeSafe API-key mode does not track `jevLastError`, since doing so
-  would need `@typesafe-ai/sdk` as a dependency of the server package rather
-  than `@mortar/jev`'s.
+  `assistant` is whether the server started with a Gemini key for Copilot (the
+  key itself is never returned); `jevLastError` carries the message from the
+  last failed live Jev call when the proxy client is wired, or `null` otherwise.
+  TypeSafe API-key mode does not track `jevLastError`, since doing so would need
+  `@typesafe-ai/sdk` as a dependency of the server package rather than
+  `@mortar/jev`'s.
 - `GET /api/snapshot`: Assembles the full dataset required by the frontend
   workspace: `bookings`, `loan_applications`, `events`, `messages`, `playbooks`,
   `tasks`, and the latest `extractions`, `signals`, and `nextActions` from
@@ -787,7 +786,7 @@ The system strictly handles synthetic data:
   secure environment variables populated from GitHub Secrets during deployment
   (`deploy.yml`).
 - **Free-Tier Gemini Caveat:** On Gemini's free tier, Google may use prompts and
-  responses to improve products. Ask Mortar must only process simulated data;
+  responses to improve products. Copilot must only process simulated data;
   processing real buyer data requires a paid tier or Vertex AI under a Data
   Processing Agreement.
 

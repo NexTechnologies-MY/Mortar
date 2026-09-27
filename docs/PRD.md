@@ -227,9 +227,9 @@ one.
   route guard driven by `PERSONA_PAGES`, so each persona sees only its allowed
   pages, while `/bookings/:id`, `/app`, `/faq`, and public pages remain
   unguarded.
-- **US-27 (Ask Mortar Assistant):** As a staff member on any desk, I want to
-  open Ask Mortar from the sparkle button in the top bar to ask questions
-  grounded in the live snapshot via read-only tools.
+- **US-27 (Copilot Assistant):** As a staff member on any desk, I want to open
+  Copilot from the sparkle button in the top bar to ask questions grounded in
+  the live snapshot via read-only tools.
 
 ## Functional Requirements
 
@@ -809,14 +809,14 @@ no second creation dialog.
 - **AC-22.7:** Upload guidance is concise, settings occupy a separate card, and
   secondary explanations are available in tooltips.
 
-### FR-23: Ask Mortar Grounded Assistant
+### FR-23: Copilot Grounded Assistant
 
 The system must provide an intelligent assistant accessible via a sparkle button
 in the top navigation bar, grounded strictly on live operations data.
 
 **Status:** Built.
 
-- **AC-23.1:** The top bar's sparkle button must open the Ask Mortar assistant
+- **AC-23.1:** The top bar's sparkle button must open the Copilot assistant
   panel, replacing the legacy scripted panel.
 - **AC-23.2:** Submitting a query must call `POST /api/assistant` with payload
   `{ question, persona, bookingId?, history?, image? }` and return
@@ -844,7 +844,7 @@ in the top navigation bar, grounded strictly on live operations data.
   fall back.
 - **AC-23.8:** `GEMINI_API_KEY`, image data, and message bodies must never be
   logged. On Gemini's free tier, prompts and responses may be used by Google to
-  improve products; Ask Mortar must only be used with simulated data unless
+  improve products; Copilot must only be used with simulated data unless
   configured with a paid tier or Vertex AI under a Data Processing Agreement.
 - **AC-23.9:** The larger panel shows starter and follow-up prompts. Its stream
   reports tool progress before the answer, supports cancellation, and retains
@@ -910,7 +910,7 @@ Every signed-in page offers a help button that starts a persona-specific tour.
   prototype holds no personal data under the Personal Data Protection Act. No
   real personal data, identity card numbers, or real company names may be
   committed or stored. On Gemini's free tier, Google may use prompts and answers
-  to improve products; Ask Mortar must process only synthetic data unless
+  to improve products; Copilot must process only synthetic data unless
   configured on a paid tier or Vertex AI under a Data Processing Agreement.
 - **NFR-9 (Secret Isolation):** `DATABASE_URL`, `TEST_DATABASE_URL`,
   `GEMINI_API_KEY`, and `TYPESAFE_API_KEY` must remain server-side only. No
