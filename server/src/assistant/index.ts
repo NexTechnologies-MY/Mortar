@@ -131,7 +131,10 @@ export function createAssistant(options: AssistantOptions) {
             known
           )
           emit?.({ type: 'answer', answer })
-          emit?.({ type: 'follow_ups', questions: followUps(usedTools) })
+          // The answer decides what a person can follow up on, so the chips are
+          // built from its citations rather than from the tools alone: a chip
+          // that named a booking the answer never mentioned would be a guess.
+          emit?.({ type: 'follow_ups', questions: followUps(usedTools, answer.citations) })
           return answer
         }
         const results: { name: string; text: string }[] = []
@@ -159,7 +162,7 @@ export function createAssistant(options: AssistantOptions) {
       // answers so far are not in hand, so say so rather than answer blind.
       const answer = { answer: NO_ANSWER, citations: [] }
       emit?.({ type: 'answer', answer })
-      emit?.({ type: 'follow_ups', questions: followUps(usedTools) })
+      emit?.({ type: 'follow_ups', questions: followUps(usedTools, []) })
       return answer
     } finally {
       clearTimeout(timer)
@@ -244,27 +247,58 @@ function toolLabel(name: string): string | null {
   return labels[name] ?? null
 }
 
-function followUps(tools: ReadonlySet<string>): string[] {
-  if (tools.has('search_playbooks'))
-    return [
-      'Which booking needs this next?',
-      'What should I ask the bank?',
-      'Which documents are still missing?',
-      'Who owns the next step?'
-    ]
-  if (tools.has('get_forecast_summary'))
-    return [
-      'Which bookings are at risk?',
-      'What could delay these signings?',
-      'Which cases need attention today?',
-      'How does this compare by project?'
-    ]
+/** Four chips, the number the panel shows. */
+const CHIP_COUNT = 4
+
+/**
+ * The four questions offered under an answer, in the tools' own order of
+ * specificity: whatever the answer cited first, then the best general question
+ * for each tool it used, and finally the general case queue — never fewer, so a
+ * model that called nothing at all still offers something to ask.
+ *
+ * A chip that named a booking the answer did not mention would be a guess at
+ * something the person cannot see, so only the answer's own citations are named.
+ */
+function followUps(tools: ReadonlySet<string>, cited: readonly string[]): string[] {
+  const specific: string[] = []
+  const [focus] = cited
+  if (focus) {
+    specific.push(`What Is Blocking ${focus}?`, `Who Holds ${focus} Now?`, `What Changed On ${focus} Recently?`)
+  }
+  const general = toolFollowUps(tools)
   return [
-    'Which booking is oldest?',
-    'Who owns the next step?',
-    'What is blocking the case?',
-    'What should we follow up today?'
+    ...specific,
+    ...general,
+    'Which Booking Is Oldest?',
+    'Who Owns The Next Step?',
+    'What Should We Follow Up Today?'
   ]
+    .filter((question, index, all) => all.indexOf(question) === index)
+    .slice(0, CHIP_COUNT)
+}
+
+/** The chips each tool earns on its own, most specific first, deduped across
+ * the tools one answer used. Every tool the assistant can call has a set, so a
+ * question never falls through to a set chosen for a different tool. */
+function toolFollowUps(tools: ReadonlySet<string>): string[] {
+  const sets: Record<string, readonly string[]> = {
+    search_playbooks: [
+      'Which Booking Needs This Next?',
+      'What Should I Ask The Bank?',
+      'Which Documents Are Still Missing?',
+      'Who Owns The Next Step?'
+    ],
+    get_forecast_summary: [
+      'Which Bookings Are At Risk?',
+      'What Could Delay These Signings?',
+      'Which Cases Need Attention Today?',
+      'How Does This Compare By Project?'
+    ],
+    get_case: ['Which Documents Are Still Missing?', 'Who Owns The Next Step?', 'What Should I Ask The Bank?'],
+    find_bookings: ['Which Of These Is The Oldest?', 'Who Owns The Next Step?', 'What Should We Follow Up Today?'],
+    get_my_queue: ['Who Owns The Next Step?', 'What Is Blocking The Case?', 'What Should We Follow Up Today?']
+  }
+  return [...tools].flatMap((name) => sets[name] ?? [])
 }
 
 /** What the panel shows when the model gave no answer to ground. */

@@ -1,13 +1,13 @@
 /** Seeded examples and the visitor's current records. */
 import { useState } from 'react'
 import { usePersona } from '@/lib/persona'
-import { addDemoData, deleteDemoData } from '@/lib/api'
-import { Info } from 'lucide-react'
 import type { Snapshot } from '@mortar/core'
 import { notify } from '@/components/ui/toastConfig'
 import { formatDate } from '@/components/case'
+import { addDemoData, deleteDemoData } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
 import { StatusPill } from '@/components/ui/status-pill'
 import {
   Dialog,
@@ -19,22 +19,6 @@ import {
   DialogTitle,
   DialogTrigger
 } from '@/components/ui/dialog'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-
-function InfoTip({ children }: { children: string }) {
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button type="button" aria-label={children} className="rounded-sm text-muted-foreground focus-visible:ring-2">
-            <Info className="size-4" />
-          </button>
-        </TooltipTrigger>
-        <TooltipContent>{children}</TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  )
-}
 
 export function DemoDataCard({
   snapshot,
@@ -82,7 +66,7 @@ export function DemoDataCard({
         <div className="flex items-center gap-2">
           <CardTitle className="text-base">Demo Data</CardTitle>
           <StatusPill tone="neutral">Simulated Data</StatusPill>
-          <InfoTip>Example bookings and activity for exploring Mortar.</InfoTip>
+          <InfoTooltip text="Example bookings and activity for exploring Mortar." />
         </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
@@ -124,7 +108,7 @@ export function DemoDataCard({
               <DialogHeader>
                 <DialogTitle>Delete Demo Data?</DialogTitle>
                 <DialogDescription>
-                  Visitor-created bookings, messages, tasks and updates will be kept.
+                  Every example booking and everything on it is removed. Bookings you created yourself are kept.
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter className="gap-2">

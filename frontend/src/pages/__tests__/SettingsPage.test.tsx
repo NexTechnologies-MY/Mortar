@@ -58,6 +58,8 @@ describe('SettingsPage', () => {
     window.localStorage.clear()
     window.localStorage.setItem('mortar.profile', 'manager')
     mocks.fetchHealth.mockResolvedValue({ ok: true, db: true, jev: true, assistant: true, jevAnswers: 87 })
+    mocks.addDemoData.mockResolvedValue(undefined)
+    mocks.deleteDemoData.mockResolvedValue(undefined)
     SNAP.meta.seed = 20260918
   })
 
@@ -167,6 +169,7 @@ describe('SettingsPage', () => {
 
     const dialog = await screen.findByRole('dialog')
     expect(dialog.textContent).toContain('Delete Demo Data?')
+    expect(dialog.textContent).toContain('Bookings you created yourself are kept')
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'Delete Demo Data' }))
     await waitFor(() => expect(mocks.deleteDemoData).toHaveBeenCalledTimes(1))
@@ -175,5 +178,15 @@ describe('SettingsPage', () => {
     )
     expect((screen.getByRole('button', { name: 'Delete Demo Data' }) as HTMLButtonElement).disabled).toBe(true)
     await waitFor(() => expect(mocks.refresh).toHaveBeenCalled())
+  })
+
+  it('reports the API client’s message when a demo action fails', async () => {
+    const { notify } = await import('@/components/ui/toastConfig')
+    mocks.deleteDemoData.mockRejectedValue(new Error('Demo Reset Is Switched Off.'))
+    renderPage()
+    fireEvent.click(screen.getByRole('button', { name: 'Delete Demo Data' }))
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete Demo Data' }))
+    await waitFor(() => expect(notify.error).toHaveBeenCalledWith('Demo Reset Is Switched Off.'))
   })
 })

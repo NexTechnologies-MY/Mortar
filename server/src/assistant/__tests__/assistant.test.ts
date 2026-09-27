@@ -279,6 +279,21 @@ async function withSession(app: App, request: Request, profileId = 'loan-tan-mei
 const answerOf = async (res: Response) => ((await res.json()) as { answer: string }).answer
 const errorOf = async (res: Response) => ((await res.json()) as { error?: string }).error
 
+/** The four follow-up chips a scripted answer leads to, read off the stream. */
+async function chipsFor(turns: Turn[], ip = '10.0.0.7') {
+  const request = new Request('http://test/api/assistant/stream', {
+    method: 'POST',
+    headers: { 'x-forwarded-for': ip },
+    body: JSON.stringify(QUESTION)
+  })
+  const response = await makeApp(new FakeDb(), scriptedFetch(turns).impl).fetch(request)
+  const events = (await response!.text())
+    .split('\n\n')
+    .filter(Boolean)
+    .map((line) => JSON.parse(line.slice(6)))
+  return (events.find((event) => event.type === 'follow_ups') as { questions: string[] }).questions
+}
+
 describe('POST /api/assistant', () => {
   test('Copilot tools hide cases from legal unless an open task names the internal profile', async () => {
     const db = new FakeDb()
@@ -336,6 +351,54 @@ describe('POST /api/assistant', () => {
     expect((events[3] as { questions: string[] }).questions).toHaveLength(4)
     expect(JSON.stringify(events)).not.toContain('get_case')
     expect(JSON.stringify(events)).not.toContain('bookingId')
+  })
+
+  test('builds follow-up chips that name the booking the answer cited', async () => {
+    const questions = await chipsFor([
+      { call: { name: 'get_case', args: { bookingId: 'BK-9001' } } },
+      { text: 'BK-9001 is waiting on a payslip. BK-9002 is waiting on the bank.' }
+    ])
+    // The first citation leads, the second is not a separate question: one
+    // booking named, three moves on it, padded to four with the tool's own.
+    expect(questions).toEqual([
+      'What Is Blocking BK-9001?',
+      'Who Holds BK-9001 Now?',
+      'What Changed On BK-9001 Recently?',
+      'Which Documents Are Still Missing?'
+    ])
+  })
+
+  test('never names in a chip a booking the answer did not cite', async () => {
+    const questions = await chipsFor([
+      { call: { name: 'find_bookings', args: {} } },
+      { text: 'BK-9001 is the only one worth chasing today.' }
+    ])
+    // The tools handed over both bookings; only the answer's own words decide
+    // which one a chip may name.
+    expect(questions.join(' ')).toContain('BK-9001')
+    expect(questions.join(' ')).not.toContain('BK-9002')
+  })
+
+  test('falls back to the tool family when the answer cites no booking', async () => {
+    const questions = await chipsFor([
+      { call: { name: 'search_playbooks', args: { query: 'bank has not decided' } } },
+      { text: 'Call the banker, then chase the decision in writing.' }
+    ])
+    expect(questions).toEqual([
+      'Which Booking Needs This Next?',
+      'What Should I Ask The Bank?',
+      'Which Documents Are Still Missing?',
+      'Who Owns The Next Step?'
+    ])
+  })
+
+  test('gives the queue tool its own chips rather than the playbook set', async () => {
+    const questions = await chipsFor([
+      { call: { name: 'get_my_queue', args: { desk: 'loan-admin' } } },
+      { text: 'Two of your bookings are waiting on a bank decision.' }
+    ])
+    expect(questions).toContain('What Is Blocking The Case?')
+    expect(questions).not.toContain('Which Booking Needs This Next?')
   })
 
   test('stops the model request when the reader cancels the stream', async () => {

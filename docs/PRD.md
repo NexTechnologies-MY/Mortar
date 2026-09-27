@@ -479,9 +479,11 @@ The system must persist state in PostgreSQL and manage demo data atomically.
 - **AC-11.3:** `POST /api/admin/demo/add` inserts canonical generated bookings,
   story fixtures, playbooks, precomputed Jev cache entries and simulation
   metadata in one transaction. Repeated calls do not duplicate seed rows.
-- **AC-11.4:** `POST /api/admin/demo/delete` removes seed-owned rows in one
-  transaction. Visitor-created messages, updates, tasks and applications on demo
-  cases remain attached to preserved bookings. A later add succeeds.
+- **AC-11.4:** `POST /api/admin/demo/delete` removes the whole seed dataset in
+  one transaction: every demo booking with the rows attached to it, the demo
+  playbooks, the demo Jev answers and the demo `meta` keys. Bookings a visitor
+  created, and anything attached to one, are untouched. A later add succeeds and
+  restores every demo booking.
 
 ### FR-12: High-Availability Offline Jev Fallback
 
@@ -978,8 +980,9 @@ following six-step pitch video script without error or manual intervention:
       displaying the outcome spread beside the canonical baseline.
 6.  **Settings Reset:**
     - The user opens `/settings` and can add the canonical demo dataset.
-    - Deleting demo data requires confirmation and preserves visitor-created
-      records; adding it again does not duplicate seed rows.
+    - Deleting demo data requires confirmation and removes every example booking
+      with everything on it, leaving the user's own bookings untouched; adding
+      it again does not duplicate seed rows.
 
 ## Metrics
 
