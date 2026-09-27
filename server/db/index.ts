@@ -113,6 +113,8 @@ export interface Database {
    * bookings that have moved on.
    */
   undoImport(id: string, undoneBy: string, undoneAt: IsoDateTime): Promise<{ removed: string[] } | null>
+  /** Removes a single untouched booking and records its minimal retention trace. */
+  deleteBooking(id: string, removedBy: string, removedAt: IsoDateTime): Promise<boolean>
   updateTaskStatus(id: string, status: Task['status'], completedAt: IsoDateTime | null): Promise<Task | null>
   /** Latest `jev_answers` rows for `extract`, `next_action` and `signals`, for the snapshot. */
   latestJevAnswers(): Promise<JevAnswerRow[]>
@@ -157,6 +159,13 @@ export class UnitHeldError extends Error {
 export class ImportMovedOnError extends Error {
   constructor(readonly bookingIds: string[]) {
     super(`${bookingIds.join(', ')} ${bookingIds.length === 1 ? 'has' : 'have'} had updates since the import`)
+  }
+}
+
+/** A booking has transaction/progression evidence and must be retained. */
+export class BookingMovedOnError extends Error {
+  constructor(readonly bookingId: string) {
+    super(`booking ${bookingId} has transaction or progression data and must be retained`)
   }
 }
 
@@ -272,7 +281,6 @@ export function createDatabase(sql: SQL): Database {
         sql`select * from playbooks order by id`,
         latestJevAnswers()
       ])
-      if (!metaRow) throw new Error('database is not seeded')
       const messages = messageRows.map(rowToMessage)
 
       // One summarizeCases pass for the whole snapshot, then compare each
@@ -319,7 +327,7 @@ export function createDatabase(sql: SQL): Database {
       return {
         ...data,
         bookings: data.bookings.map(withMaskedContact),
-        meta: { seed: metaRow.seed, referenceDate: metaRow.referenceDate, resetAt: metaRow.resetAt },
+        meta: metaRow ?? { seed: 0, referenceDate: REFERENCE_DATE, resetAt: null },
         messages,
         playbooks: playbooks.map(rowToPlaybook),
         extractions,
@@ -483,6 +491,7 @@ export function createDatabase(sql: SQL): Database {
         // deleted — see `imports` in schema.sql), so the floor is the higher
         // of the two.
         const rows = await tx`select greatest(
+            140,
             coalesce((select max(substring(b.id from 4)::int) from bookings b where b.id ~ '^BK-[0-8][0-9]{3}$'), 0),
             coalesce((select max(substring(x from 4)::int) from imports i, unnest(i.booking_ids) x
               where x ~ '^BK-[0-8][0-9]{3}$'), 0)
@@ -581,6 +590,33 @@ export function createDatabase(sql: SQL): Database {
         await tx`update imports set undone_at = ${undoneAt}, undone_by = ${undoneBy},
           removed = ${JSON.stringify(removed)}::jsonb where id = ${id}`
         return { removed: ids }
+      })
+    },
+
+    async deleteBooking(id, removedBy, removedAt) {
+      return sql.begin(async (tx) => {
+        const rows = await tx`select id, unit, project, price_rm, buyer ->> 'name' as buyer_name
+          from bookings where id = ${id} for update`
+        if (rows.length === 0) return false
+        const activity = await tx`select b.id from bookings b where b.id = ${id} and (
+          b.demo_seed
+          or
+          (select count(*) from events e where e.booking_id = b.id) > 1
+          or exists (select 1 from events e where e.booking_id = b.id and e.kind <> 'booked')
+          or exists (select 1 from events e where e.booking_id = b.id and e.kind = 'booked' and nullif(trim(e.note), '') is not null)
+          or exists (select 1 from messages m where m.booking_id = b.id)
+          or exists (select 1 from tasks t where t.booking_id = b.id)
+          or exists (select 1 from loan_applications a where a.booking_id = b.id)
+          or exists (select 1 from jev_answers j where j.subject_id = b.id and not j.demo_seed)
+          or exists (select 1 from events e join event_reviews r on r.event_id = e.id where e.booking_id = b.id)
+        )`
+        if (activity.length > 0) throw new BookingMovedOnError(id)
+        const booking = rows[0]
+        await tx`insert into booking_removals (booking_id, unit, project, buyer_name, price_rm, removed_by, removed_at)
+          values (${id}, ${booking.unit}, ${booking.project}, ${booking.buyer_name}, ${booking.price_rm}, ${removedBy}, ${removedAt})`
+        await tx`delete from jev_answers where subject_id = ${id} and demo_seed`
+        await tx`delete from bookings where id = ${id}`
+        return true
       })
     },
 

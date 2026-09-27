@@ -4,7 +4,7 @@
  */
 
 import { useState } from 'react'
-import { Building2, Check, ChevronDown, Plus, Scale, Trash2 } from 'lucide-react'
+import { Building2, Check, ChevronDown, Info, Plus, Scale, Trash2 } from 'lucide-react'
 import {
   PANEL_LAW_FIRMS,
   DEFAULT_UNIT_MODELS,
@@ -126,11 +126,24 @@ export function ProjectSettingsCard({ defaultProjectName }: { defaultProjectName
             <div className="flex size-8 items-center justify-center rounded-md border border-border bg-accent text-foreground">
               <Building2 className="size-4" />
             </div>
-            <div>
+            <div className="flex items-center gap-2">
               <h2 className="text-sm font-semibold text-foreground">Project & Unit Range Settings</h2>
-              <p className="text-xs text-muted-foreground">
-                Set Project Unit Inventory Boundaries, Unit Layout Models, And The Default Panel Law Firm.
-              </p>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label="About Project And Unit Range Settings"
+                      className="rounded-sm text-muted-foreground focus-visible:ring-2"
+                    >
+                      <Info className="size-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Set Project Unit Inventory Boundaries, Unit Layout Models, And The Default Panel Law Firm.
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           </div>
         </div>

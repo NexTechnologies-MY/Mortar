@@ -2,12 +2,14 @@
  * Status card — the server's own health report: the API itself, the database
  * connection, whether a TypeSafe key is configured for Jev, and whether the
  * Ask Mortar assistant has a Gemini key to work with. The page owns the
- * `GET /api/health` fetch and re-checks after a reset.
+ * `GET /api/health` fetch and re-checks after demo data changes.
  */
 
 import type { Health } from '@/lib/api'
+import { Info } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { StatusPill } from '@/components/ui/status-pill'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 function row(
   label: string,
@@ -32,10 +34,25 @@ export function HealthCard({ health, failed }: { health: Health | null; failed: 
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">System Status</CardTitle>
-        <p className="text-[13px] text-muted-foreground">
-          What The Server Reports Right Now. Jev Falls Back To Cached Answers When Unavailable.
-        </p>
+        <div className="flex items-center gap-2">
+          <CardTitle className="text-base">System Status</CardTitle>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="About System Status"
+                  className="rounded-sm text-muted-foreground focus-visible:ring-2"
+                >
+                  <Info className="size-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>
+                What The Server Reports Right Now. Jev Falls Back To Cached Answers When Unavailable.
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
       </CardHeader>
       <CardContent>
         {row('API', failed ? false : health ? health.ok : null, 'The Bun Server And Its Routes')}

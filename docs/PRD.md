@@ -212,9 +212,9 @@ one.
 - **US-19 (Demo Data First):** As an operator, I want Settings to display Demo
   Data first and fold unit layouts, showing the active seed, reference date,
   record counts, and system status.
-- **US-20 (Reset Demo Data):** As a demonstrator, I want a button behind a
-  confirmation dialog that restores the canonical demo dataset with a 30-second
-  cooldown.
+- **US-20 (Manage Demo Data):** As a demonstrator, I want to add the canonical
+  demo dataset to an empty guest account and remove seed-owned rows through a
+  confirmation dialog while retaining visitor-created records.
 - **US-21 (Health Monitoring):** As an operator, I want to inspect database and
   service connectivity status reported from `/api/health`.
 
@@ -436,6 +436,9 @@ transition frequencies.
   probabilities.
 - **AC-8.6:** The forecast range must represent the 10th to 90th percentiles of
   2,000 seeded Monte Carlo simulation draws.
+- **AC-8.7:** The headline remains visible while supporting documents sit in an
+  accessible stack, operable by keyboard and touch, without changing the
+  forecast calculation.
 
 ### FR-9: Historical Forecast Backtesting
 
@@ -465,23 +468,20 @@ testing.
   browser with a randomized seed and recompute the forecast, displaying the new
   forecast beside the canonical baseline without altering database records.
 
-### FR-11: Database Persistence And Atomic State Reset
+### FR-11: Database Persistence And Demo Data Management
 
-The system must persist state in PostgreSQL and provide an atomic reset
-endpoint.
+The system must persist state in PostgreSQL and manage demo data atomically.
 
 - **AC-11.1:** The schema must define tables for `meta`, `bookings`,
   `loan_applications`, `messages`, `events`, `playbooks`, `tasks`, and
   `jev_answers`.
-- **AC-11.2:** Bootstrapping without a seed in `meta` must automatically trigger
-  a reset.
-- **AC-11.3:** `POST /api/admin/reset` must execute within a single transaction:
-  truncate all tables; insert canonical generated bookings, story fixtures,
-  playbooks, and precomputed Jev cache entries; insert the provisional proposal
-  for each fixture message with a cached extraction and no event carrying its
-  `messageId`; and write `meta`.
-- **AC-11.4:** The reset endpoint must enforce a 30-second cooldown, returning
-  HTTP 429 if called within 30 seconds of a prior reset.
+- **AC-11.2:** A fresh guest database starts empty after schema creation.
+- **AC-11.3:** `POST /api/admin/demo/add` inserts canonical generated bookings,
+  story fixtures, playbooks, precomputed Jev cache entries and simulation
+  metadata in one transaction. Repeated calls do not duplicate seed rows.
+- **AC-11.4:** `POST /api/admin/demo/delete` removes seed-owned rows in one
+  transaction. Visitor-created messages, updates, tasks and applications on demo
+  cases remain attached to preserved bookings. A later add succeeds.
 
 ### FR-12: High-Availability Offline Jev Fallback
 
@@ -498,7 +498,7 @@ AI service is unavailable.
 - **AC-12.2:** Cache-first GET routes must inspect the cache first and never
   wait on live API responses during initial page render.
 - **AC-12.3:** The server must load precomputed entries from
-  `server/fixtures/jev-cache.json` during reset.
+  `server/fixtures/jev-cache.json` when demo data is added.
 - **AC-12.4:** The application must function completely without an API key
   configured.
 - **AC-12.5:** `GET /api/snapshot` must mark `next_action` and `signals` answers
@@ -632,12 +632,15 @@ next move, on the bookings ledger and on the case page alike.
   Wait For The Bank.
 - **AC-17.2:** `/bookings` must feature two metric tiles: Stalled and No Update
   10+ Days. A "Who Holds Each Booking" filter strip must display segment counts:
-  Buyer, Bank, Solicitor, Signed, and Us. Clicking an item filters the ledger; a
-  second click clears it. The strip opens preset by persona: Buyer for Sales
-  Admin, Bank for Loan Admin, Solicitor for Legal Admin. Signed counts cases
-  with a signed SPA, summing across the strip to match the Active tab total.
-- **AC-17.3:** The ledger must provide a single filter row (Active and Closed
-  tabs, Stage, Risk, No Update 10+ Days, Stalled Only).
+  Buyer, Bank, Solicitor, Signed, and Us. The strip starts collapsed; opening it
+  shows clickable holders. Clicking an item filters the ledger; a second click
+  clears it. The holder selection is preset by persona: Buyer for Sales Admin,
+  Bank for Loan Admin, Solicitor for Legal Admin. Signed counts cases with a
+  signed SPA, summing across the strip to match the Active tab total.
+- **AC-17.3:** The ledger must provide one filter menu for Active and Closed,
+  Stage, Risk, No Update 10+ Days and Stalled Only, plus search by unit, buyer,
+  booking ID, bank and solicitor. Row selection opens a bulk action island for
+  task creation, export, safe delete and clearing the selection.
 - **AC-17.4:** Clicking any row in Bookings or a card's unit code on Today must
   open the unified `CaseQuickView` side sheet. The sheet displays who the case
   waits on, the recommended next step with Add Task, Record An Update, and an
@@ -784,37 +787,25 @@ never move again stops crowding the working list without ever being deleted.
   on the log yet, written as `d mmm yyyy` (e.g. `31 May 2026`), matching
   `docs/DESIGN.md`'s date format.
 
-### FR-22: Add Booking By Hand
+### FR-22: Add Bookings Intake
 
-Staff can add one booking by hand from the Bookings page, validated exactly as a
-spreadsheet import row.
+Staff add bookings on the dedicated Add Bookings page. The Bookings ledger has
+no second creation dialog.
 
 **Status:** Built.
 
-- **AC-22.1:** `AddBookingDialog.tsx`, opened from the Bookings page, must
-  capture Project (a select of the ledger's own project names, defaulting to the
-  desk's main project, with an Other Project… option to type a new one), Unit,
-  Buyer Name, IC, Phone, Age (shown only once the IC entered is not a 12-digit
-  MyKad, since a passport carries no birth date to derive it from), Price (RM),
-  Booking Date, Gross Monthly Income (RM), Monthly Commitments (RM), Properties
-  Owned, Sales Agent, and Solicitor.
-- **AC-22.2:** The booking date must not be pickable after the reference date.
-- **AC-22.3:** The form's fields must be assembled into a two-row sheet and run
-  through `readBookingSheet` with the same defaults and held-unit map
-  `ImportPage` uses, so a row that would be refused on import is refused here
-  too, with the same messages.
-- **AC-22.4:** On submit, the one validated row must be sent to
-  `POST /api/bookings/import` as a one-row batch through `importBookings`, so
-  the server's own check runs a second time before anything is stored.
-- **AC-22.5:** On success, the dialog must navigate to the new booking's case
-  page.
-- **AC-22.6:** An IC cell read as an 11-digit number must be treated as a
-  12-digit MyKad that lost its leading zero to Excel's numeric formatting, and
-  padded back to 12 digits before validation; an 11-digit IC entered as text
-  must be kept exactly as written. The rule applies wherever `readBookingSheet`
-  runs, so `/import` and Add Booking read the same cell the same way.
-- **AC-22.7:** Closing the dialog, whether by saving or cancelling, must return
-  keyboard focus to the Add Booking button that opened it.
+- **AC-22.1:** `/import` offers Upload A Sheet and Type Them In with the same
+  booking validation and server import endpoint.
+- **AC-22.2:** A booking date after the reference date is refused.
+- **AC-22.3:** Direct entry uses `readBookingSheet` with the same defaults and
+  held-unit map as spreadsheet upload.
+- **AC-22.4:** Valid rows are sent to `POST /api/bookings/import`; the server
+  checks them again before writing.
+- **AC-22.5:** Successful imports appear in the ledger and open from its rows.
+- **AC-22.6:** Numeric 11-digit IC cells that lost a leading zero in Excel are
+  padded before validation; text cells retain their exact contents.
+- **AC-22.7:** Upload guidance is concise, settings occupy a separate card, and
+  secondary explanations are available in tooltips.
 
 ### FR-23: Ask Mortar Grounded Assistant
 
@@ -853,6 +844,26 @@ in the top navigation bar, grounded strictly on live operations data.
   logged. On Gemini's free tier, prompts and responses may be used by Google to
   improve products; Ask Mortar must only be used with simulated data unless
   configured with a paid tier or Vertex AI under a Data Processing Agreement.
+- **AC-23.9:** The larger panel shows starter and follow-up prompts. Its stream
+  reports tool progress before the answer, supports cancellation, and retains
+  citations and the scripted fallback when live service is unavailable.
+
+### FR-24: Guided Walkthrough
+
+Every signed-in page offers a help button that starts a persona-specific tour.
+
+- **AC-24.1:** The dialog preselects the active persona; choosing another
+  switches persona and starts at that desk's home.
+- **AC-24.2:** Each step has a spotlight, caption, Back and Next (or Finish),
+  with a step list and End control. The highlighted page remains usable.
+- **AC-24.3:** Arrow keys move between steps and Escape ends the tour, without
+  intercepting typing or controls inside an open dialog.
+- **AC-24.4:** Missing targets retain a caption and navigation controls. Case
+  steps resolve a booking from the current snapshot or stay on Bookings when
+  none exists.
+- **AC-24.5:** Other page navigation ends the tour; switching persona restarts
+  it. Finish returns home, while End leaves the current page. Progress is not
+  persisted.
 
 ## Non-Functional Requirements
 
@@ -966,11 +977,9 @@ following six-step pitch video script without error or manual intervention:
     - Clicking "Try Another Seed" generates a new in-browser forecast,
       displaying the outcome spread beside the canonical baseline.
 6.  **Settings Reset:**
-    - The user opens `/settings` and clicks "Reset Demo Data" in the Demo Data
-      section shown first.
-    - A confirmation dialog appears; confirming resets the database to the
-      canonical state with a toast notification.
-    - The 30-second cooldown is enforced.
+    - The user opens `/settings` and can add the canonical demo dataset.
+    - Deleting demo data requires confirmation and preserves visitor-created
+      records; adding it again does not duplicate seed rows.
 
 ## Metrics
 

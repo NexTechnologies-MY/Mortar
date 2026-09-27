@@ -17,15 +17,19 @@ create table if not exists bookings (
   buyer jsonb not null,
   sales_owner text not null,
   loan_owner text not null,
-  legal_firm text not null
+  legal_firm text not null,
+  demo_seed boolean not null default false
 );
+alter table bookings add column if not exists demo_seed boolean not null default false;
 
 create table if not exists loan_applications (
   id text primary key,
   booking_id text not null references bookings (id) on delete cascade,
   bank text not null,
-  banker text not null
+  banker text not null,
+  demo_seed boolean not null default false
 );
+alter table loan_applications add column if not exists demo_seed boolean not null default false;
 create index if not exists loan_applications_booking_idx on loan_applications (booking_id);
 
 create table if not exists messages (
@@ -36,8 +40,10 @@ create table if not exists messages (
   language text not null check (language in ('en', 'ms', 'zh', 'mixed')),
   sent_at timestamptz not null,
   body text not null,
-  origin text not null check (origin in ('fixture', 'live'))
+  origin text not null check (origin in ('fixture', 'live')),
+  demo_seed boolean not null default false
 );
+alter table messages add column if not exists demo_seed boolean not null default false;
 create index if not exists messages_booking_idx on messages (booking_id);
 
 -- The order events were stored in. Two updates recorded for the same moment (a
@@ -59,8 +65,10 @@ create table if not exists events (
   message_id text references messages (id) on delete set null,
   document text,
   note text,
-  seq bigint not null default nextval('events_seq')
+  seq bigint not null default nextval('events_seq'),
+  demo_seed boolean not null default false
 );
+alter table events add column if not exists demo_seed boolean not null default false;
 -- Numbers existing rows in storage order, once.
 alter table events add column if not exists seq bigint not null default nextval('events_seq');
 alter sequence events_seq owned by events.seq;
@@ -95,8 +103,10 @@ create table if not exists playbooks (
   reviewer text not null,
   reviewed_on date not null,
   status text not null check (status in ('draft', 'approved', 'superseded', 'retired')),
-  tags text[] not null default '{}'
+  tags text[] not null default '{}',
+  demo_seed boolean not null default false
 );
+alter table playbooks add column if not exists demo_seed boolean not null default false;
 
 create table if not exists tasks (
   id text primary key,
@@ -109,8 +119,10 @@ create table if not exists tasks (
   status text not null check (status in ('open', 'done', 'cancelled')),
   origin text not null check (origin in ('jev', 'staff')),
   created_at timestamptz not null,
-  completed_at timestamptz
+  completed_at timestamptz,
+  demo_seed boolean not null default false
 );
+alter table tasks add column if not exists demo_seed boolean not null default false;
 create index if not exists tasks_booking_idx on tasks (booking_id);
 
 -- One row per spreadsheet import, so a batch can be undone as a whole while
@@ -132,6 +144,17 @@ alter table imports add column if not exists undone_at timestamptz;
 alter table imports add column if not exists undone_by text;
 alter table imports add column if not exists removed jsonb;
 
+-- A minimal, durable trace for an individually removed booking.
+create table if not exists booking_removals (
+  booking_id text primary key,
+  unit text not null,
+  project text not null,
+  buyer_name text not null,
+  price_rm integer not null,
+  removed_by text not null,
+  removed_at timestamptz not null
+);
+
 -- Every Jev answer, live or precomputed. The latest row per key serves as the cache.
 create table if not exists jev_answers (
   id bigint generated always as identity primary key,
@@ -141,6 +164,27 @@ create table if not exists jev_answers (
   answer jsonb not null,
   source text not null check (source in ('live', 'precomputed')),
   latency_ms integer,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  demo_seed boolean not null default false
 );
+alter table jev_answers add column if not exists demo_seed boolean not null default false;
+
+-- One-time provenance migration for the canonical demo already present on older
+-- deployments. Imports start at BK-0141, so these booking ids are reserved.
+create table if not exists schema_migrations (name text primary key);
+do $$
+begin
+  if not exists (select 1 from schema_migrations where name = 'demo_provenance_v1') then
+    update bookings set demo_seed = true where id ~ '^BK-(00(0[1-9]|[1-9][0-9])|0(1[0-3][0-9]|140)|900[1-8])$';
+    update loan_applications set demo_seed = true
+      where id ~ '^LA-(00(0[1-9]|[1-9][0-9])|0(1[0-3][0-9]|140))-[1-3]$'
+        or id ~ '^APP-900[1-8]-[1-3]$';
+    update messages set demo_seed = true where origin = 'fixture';
+    update events set demo_seed = true where source in ('generator', 'story')
+      or (source = 'jev' and message_id in (select id from messages where demo_seed));
+    update playbooks set demo_seed = true where id ~ '^PB-0(0[1-9]|1[0-9]|2[0-7])$';
+    update jev_answers set demo_seed = true where source = 'precomputed';
+    insert into schema_migrations (name) values ('demo_provenance_v1');
+  end if;
+end $$;
 create index if not exists jev_answers_key_idx on jev_answers (kind, subject_id, created_at desc);

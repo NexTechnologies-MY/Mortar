@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils'
 type PageHeaderCardProps = {
   children: ReactNode
   className?: string
+  tourTarget?: string
   /** @deprecated Flat spec — artwork is ignored. Kept so existing callers compile. */
   artSrc?: string
   /** @deprecated Flat spec — artwork is ignored. Kept so existing callers compile. */
@@ -23,6 +24,10 @@ type PageHeaderCardProps = {
  * Renders a flat page header. `artSrc`/`artAlt` are accepted for backwards
  * compatibility but never rendered.
  */
-export function PageHeaderCard({ children, className }: PageHeaderCardProps) {
-  return <div className={cn(className)}>{children}</div>
+export function PageHeaderCard({ children, className, tourTarget }: PageHeaderCardProps) {
+  return (
+    <div data-tour={tourTarget} className={cn(className)}>
+      {children}
+    </div>
+  )
 }

@@ -46,12 +46,18 @@ describe('DirectTableImport', () => {
     vi.mocked(importBookings).mockClear()
   })
 
-  it('renders direct entry ledger with default 1 row, persona auto-assignment, and collapsed context line', async () => {
+  it('renders the entry ledger beside its booking settings', async () => {
     renderDirectImport()
     expect(await screen.findByText(/Type Bookings In/i)).toBeTruthy()
     expect(screen.getByText('Buyer Name')).toBeTruthy()
-    expect(screen.getByText(/Sales Nurul Aina · Law Firm Teh & Partners · Project Bukit Damai/i)).toBeTruthy()
-    expect(screen.getByText(/Demo Buyer Details Such As IC And Income Are Generated For You/i)).toBeTruthy()
+    expect(screen.getByRole('heading', { name: /Booking Settings/i })).toBeTruthy()
+    expect(screen.getByText('Project')).toBeTruthy()
+    expect(screen.getByText('Bukit Damai')).toBeTruthy()
+    expect(screen.getByText('Sales Agent')).toBeTruthy()
+    expect(screen.getAllByText('Nurul Aina').length).toBeGreaterThan(0)
+    expect(screen.getByText('Law Firm')).toBeTruthy()
+    expect(screen.getAllByText('Teh & Partners').length).toBeGreaterThan(0)
+    expect(screen.getByRole('link', { name: 'Settings' })).toBeTruthy()
 
     // Exactly 1 row by default
     const unitInputs = screen.getAllByPlaceholderText(/A-12-08/i)

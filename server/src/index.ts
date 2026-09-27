@@ -1,21 +1,21 @@
 /**
- * The one process: applies the schema, seeds the database on first boot when
- * the reset is on, then serves `/api/*` plus `frontend/dist` on `PORT` (8787
+ * The one process: applies the schema, starts with an empty guest account,
+ * then serves `/api/*` plus `frontend/dist` on `PORT` (8787
  * locally, 8080 on Cloud Run). `DATABASE_URL` is required. Jev runs one of
  * three ways: with `TYPESAFE_API_KEY` against the real TypeSafe API; with no
  * key but `JEV_PROXY_URL` set, against a local Anthropic-Messages-compatible
  * model proxy (see `.env.example`); or, with neither, cache-only. Whichever
  * key or proxy secret is configured reaches the Jev service only — never the
  * browser, and never the log. `MORTAR_DEMO_RESET=off` (also `false`, `0` or
- * `no`, case-insensitively — see `isResetEnabled`) turns off the demo reset
- * route AND the boot seed, as any server holding real data must.
+ * `no`, case-insensitively — see `isResetEnabled`) turns off demo data actions,
+ * as any server holding real data must.
  */
 import { SQL } from 'bun'
 import path from 'node:path'
 import type { JevService } from '@mortar/core'
 import { createJevService, createProxySystemOne } from '@mortar/jev'
 import { createDatabase } from '../db/index'
-import { applySchema, resetDatabase } from '../db/reset'
+import { addDemoData, applySchema, deleteDemoData } from '../db/reset'
 import { createApp } from './app'
 import { DbJevCache } from './jev'
 import { staticHandler } from './static'
@@ -33,30 +33,6 @@ const db = createDatabase(sql)
 const resetEnabled = isResetEnabled(process.env.MORTAR_DEMO_RESET)
 
 await applySchema(sql)
-if (!(await db.meta())) {
-  if (!resetEnabled) {
-    // A real server never seeds or truncates on its own. If `meta` is simply
-    // absent (a fresh, empty database) that's fine — it just runs unseeded
-    // until someone loads real data. If bookings already exist, the `meta`
-    // row was lost some other way (a partial migration, a manual delete):
-    // touching nothing and logging loudly beats guessing, since seeding would
-    // never overwrite real rows but a future reset-style repair might.
-    if (await db.hasBookings()) {
-      console.error(
-        'meta row is missing but bookings exist, and MORTAR_DEMO_RESET is off — refusing to seed or touch anything. Starting unseeded; routes that require meta (e.g. /api/snapshot) will fail until the meta row is restored by hand.'
-      )
-    } else {
-      console.log('MORTAR_DEMO_RESET is off and the database is empty — starting unseeded, with no automatic seed.')
-    }
-  } else {
-    try {
-      const meta = await resetDatabase(sql)
-      console.log(`seeded database — seed ${meta.seed}, resetAt ${meta.resetAt}`)
-    } catch (e) {
-      console.warn(`initial reset failed; serving an unseeded database (${(e as Error).message})`)
-    }
-  }
-}
 
 // Measured against the local proxy (two runs, extractJob + nextActionJob on a
 // documents_received/payslip case): gemini-3-flash answered correctly but averaged
@@ -117,7 +93,8 @@ if (typesafeKey) {
 const app = createApp({
   db,
   jev,
-  reset: () => resetDatabase(sql),
+  addDemoData: () => addDemoData(sql),
+  deleteDemoData: () => deleteDemoData(sql),
   jevAvailable,
   jevLastError: () => jevLastError,
   resetEnabled,
@@ -134,8 +111,8 @@ const serveStatic = staticHandler(path.resolve(import.meta.dir, '../../frontend/
 
 Bun.serve({
   port,
-  // The default 10s kills slow requests; a reset can outlive it, and so can a
-  // model call, which is why the assistant's own 30s budget is the tight one.
+  // The default 10s kills slow requests; adding demo data can outlive it, and
+  // so can a model call, which is why the assistant's own 30s budget is tighter.
   idleTimeout: 120,
   // A launch sheet import is the largest legitimate body, and a photographed
   // bank letter runs to 5.6MB as base64; 8MB covers both and refuses anything

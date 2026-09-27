@@ -57,5 +57,6 @@ describe('AskTrigger', () => {
     renderAt('/bookings/BK-9001')
 
     expect(screen.getByRole('button', { name: 'Ask Mortar' })).toBeTruthy()
+    expect(document.querySelector('[data-tour="ask-mortar"]')).toBeTruthy()
   })
 })

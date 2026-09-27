@@ -12,8 +12,13 @@ import {
 } from '@mortar/core'
 import { PersonaProvider, type Persona } from '@/lib/persona'
 import { SnapshotProvider } from '@/lib/data'
-import { fetchSnapshot, importBookings, postTask } from '@/lib/api'
+import { deleteBooking, fetchSnapshot, importBookings, postTask } from '@/lib/api'
+import type { ClosedExportRow } from '@/components/bookings/closedExport'
 import { BookingsPage } from '@/pages/BookingsPage'
+
+const exportMocks = vi.hoisted(() => ({
+  download: vi.fn<(rows: readonly ClosedExportRow[], date: string) => Promise<void>>(async () => {})
+}))
 
 // Radix Select scrolls the highlighted item into view on open; jsdom has no layout engine.
 Element.prototype.scrollIntoView = vi.fn()
@@ -29,9 +34,15 @@ vi.mock('@/lib/api', async () => {
     extractMessage: vi.fn(async () => ({})),
     postMessage: vi.fn(async () => ({})),
     postTask: vi.fn(async () => ({})),
+    deleteBooking: vi.fn(async () => ({})),
     updateTask: vi.fn(async () => ({})),
     importBookings: vi.fn(async () => ({ importId: 'IMP-TEST', bookings: [] }))
   }
+})
+
+vi.mock('@/components/bookings/closedExport', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/components/bookings/closedExport')>()
+  return { ...actual, downloadClosedExport: exportMocks.download }
 })
 
 /**
@@ -98,12 +109,6 @@ function LocationEcho() {
   return <div data-testid="location">{useLocation().pathname}</div>
 }
 
-/** Radix Tabs activates on `mousedown`, not `click` — a plain `fireEvent.click` never switches the tab. */
-function clickTab(el: HTMLElement) {
-  fireEvent.mouseDown(el, { button: 0 })
-  fireEvent.click(el)
-}
-
 function renderBookings(initialPersona: Persona = 'loan-admin') {
   return render(
     <MemoryRouter initialEntries={['/bookings']}>
@@ -119,36 +124,114 @@ function renderBookings(initialPersona: Persona = 'loan-admin') {
   )
 }
 
+function ensureFiltersOpen() {
+  if (!screen.queryByText('Filter Bookings')) fireEvent.click(screen.getByRole('button', { name: 'Filters' }))
+}
+
 describe('BookingsPage', () => {
   beforeEach(() => {
     window.localStorage.clear()
+    vi.clearAllMocks()
   })
 
-  it('renders the two stat tiles, the Active/Closed tabs, the strip and the booking rows', async () => {
+  it('renders the stat tiles, one filter menu, collapsed holder strip and booking rows', async () => {
     renderBookings()
 
     expect(await screen.findByRole('heading', { name: 'Bookings' })).toBeTruthy()
+    expect(document.querySelector('[data-tour="booking-holder"]')).toBeTruthy()
+    expect(document.querySelector('[data-tour="booking-filters"]')).toBeTruthy()
     // Live Bookings and SPA Signed tiles are removed (Change 2)
     expect(screen.queryByText('Live Bookings')).toBeNull()
     // Stalled and No Update 10+ Days tiles remain
     expect(screen.getByText('Stalled')).toBeTruthy()
-    // Stat label and checkbox both read "No Update 10+ Days"
-    expect(screen.getAllByText('No Update 10+ Days').length).toBe(2)
-    // Who Holds Each Booking strip carries the Signed count
+    expect(screen.getAllByText('No Update 10+ Days').length).toBe(1)
+    // Collapsed strip keeps counts visible and exposes its caption only as tooltip.
     expect(screen.getByText('Who Holds Each Booking')).toBeTruthy()
-    expect(screen.getByRole('button', { name: /Filter by Signed/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Who Holds Each Booking/i }).getAttribute('aria-expanded')).toBe('false')
+    expect(screen.getByLabelText('Signed: 1')).toBeTruthy()
 
     expect(screen.getByText('BK-9001')).toBeTruthy()
     expect(screen.getByText('A-12-03')).toBeTruthy()
     expect(screen.getByText('Raymond Tan Wei Hong')).toBeTruthy()
 
     // 28 bookings in fixture: 20 Active / 8 Closed
-    expect(screen.getByRole('tab', { name: 'Active (20)' })).toBeTruthy()
-    expect(screen.getByRole('tab', { name: 'Closed (8)' })).toBeTruthy()
+    ensureFiltersOpen()
+    expect(screen.getByRole('checkbox', { name: 'Active (20)' })).toBeTruthy()
+    expect(screen.getByRole('checkbox', { name: 'Closed (8)' })).toBeTruthy()
+    ensureFiltersOpen()
 
     // Under Loan Admin preset (Bank), 13 of 20 bookings match
     expect(screen.getByText('13 Of 20 Bookings')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Add Booking' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Add Booking' })).toBeNull()
+  })
+
+  it('searches unit, buyer and booking id and removes the duplicate Add Booking entry point', async () => {
+    renderBookings()
+    await screen.findByText('BK-9001')
+    expect(screen.queryByRole('button', { name: 'Add Booking' })).toBeNull()
+    const search = screen.getByRole('textbox', { name: 'Search bookings' })
+    fireEvent.change(search, { target: { value: 'Raymond Tan' } })
+    await waitFor(() => expect(screen.getByText('BK-9001')).toBeTruthy())
+    expect(screen.queryByText('BK-9007')).toBeNull()
+    fireEvent.change(search, { target: { value: 'does not match' } })
+    await waitFor(() => expect(screen.queryByText('BK-9001')).toBeNull())
+  })
+
+  it('selects a row without opening its quick view and offers bulk actions', async () => {
+    renderBookings()
+    await screen.findByText('BK-9001')
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select BK-9001' }))
+    expect(screen.getByRole('region', { name: 'Selected bookings actions' }).textContent).toContain('1 Selected')
+    expect(screen.getByRole('button', { name: 'Create Tasks' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Export To Excel' })).toBeTruthy()
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('deletes only after confirmation, leaves selection on cancel, then clears it after delete', async () => {
+    renderBookings()
+    await screen.findByText('BK-9001')
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select BK-9001' }))
+    fireEvent.click(
+      within(screen.getByRole('region', { name: 'Selected bookings actions' })).getByRole('button', { name: 'Delete' })
+    )
+    const dialog = await screen.findByRole('dialog', { name: 'Delete Selected Bookings?' })
+    expect(deleteBooking).not.toHaveBeenCalled()
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(deleteBooking).not.toHaveBeenCalled()
+    expect(screen.getByRole('region', { name: 'Selected bookings actions' }).textContent).toContain('1 Selected')
+
+    fireEvent.click(
+      within(screen.getByRole('region', { name: 'Selected bookings actions' })).getByRole('button', { name: 'Delete' })
+    )
+    const confirmation = await screen.findByRole('dialog', { name: 'Delete Selected Bookings?' })
+    fireEvent.click(within(confirmation).getByRole('button', { name: 'Delete Bookings' }))
+    await waitFor(() => expect(deleteBooking).toHaveBeenCalledWith('BK-9001', 'loan-admin'))
+    await waitFor(() => expect(screen.queryByRole('region', { name: 'Selected bookings actions' })).toBeNull())
+  })
+
+  it('creates tasks for selected rows only and clears the selection', async () => {
+    renderBookings()
+    await screen.findByText('BK-9001')
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select BK-9002' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Create Tasks' }))
+
+    await waitFor(() => expect(postTask).toHaveBeenCalled())
+    expect(vi.mocked(postTask).mock.calls.every(([task]) => task.bookingId === 'BK-9002')).toBe(true)
+    await waitFor(() => expect(screen.queryByRole('region', { name: 'Selected bookings actions' })).toBeNull())
+  })
+
+  it('exports only selected bookings', async () => {
+    renderBookings()
+    await screen.findByText('BK-9001')
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select BK-9002' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select BK-9003' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Export To Excel' }))
+
+    await waitFor(() => expect(exportMocks.download).toHaveBeenCalledTimes(1))
+    const rows = exportMocks.download.mock.calls[0][0]
+    expect(rows.map((row) => row.booking)).toEqual(['BK-9002', 'BK-9003'])
   })
 
   it('sorts stalled bookings first and keeps Age calm when Waiting On is red (Change 7)', async () => {
@@ -168,6 +251,7 @@ describe('BookingsPage', () => {
     renderBookings()
     await screen.findByText('BK-9001')
 
+    ensureFiltersOpen()
     fireEvent.click(screen.getByRole('checkbox', { name: 'No Update 10+ Days' }))
 
     await waitFor(() => expect(screen.queryByText('BK-9001')).toBeNull())
@@ -191,7 +275,8 @@ describe('BookingsPage', () => {
     // BK-0002 is cancelled in the fixture, so it is Closed from the start.
     expect(screen.queryByText('BK-0002')).toBeNull()
 
-    clickTab(screen.getByRole('tab', { name: 'Closed (8)' }))
+    ensureFiltersOpen()
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Closed (8)' }))
     expect(await screen.findByText('BK-0002')).toBeTruthy()
     expect(screen.queryByText('BK-9001')).toBeNull()
   })
@@ -200,48 +285,55 @@ describe('BookingsPage', () => {
     vi.mocked(fetchSnapshot).mockResolvedValueOnce(buildLargeSnapshot())
     renderBookings()
 
-    expect(await screen.findByRole('tab', { name: 'Active (27)' })).toBeTruthy()
-    expect(screen.getByRole('tab', { name: 'Closed (18)' })).toBeTruthy()
+    await screen.findByRole('button', { name: 'Filters' })
+    ensureFiltersOpen()
+    expect(await screen.findByRole('checkbox', { name: 'Active (27)' })).toBeTruthy()
+    expect(screen.getByRole('checkbox', { name: 'Closed (18)' })).toBeTruthy()
+    ensureFiltersOpen()
 
-    // Clear preset Bank filter so all 27 Active bookings are shown
+    // Clear the Loan Admin's preset Bank holder to show all Active bookings.
+    fireEvent.click(screen.getByRole('button', { name: /Who Holds Each Booking/i }))
     fireEvent.click(screen.getByRole('button', { name: /Filter by Bank/i }))
     expect(screen.getByText('Showing 1 To 25 Of 27')).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: 'Next Page' }))
     expect(screen.getByText('Showing 26 To 27 Of 27')).toBeTruthy()
 
-    clickTab(screen.getByRole('tab', { name: 'Closed (18)' }))
+    ensureFiltersOpen()
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Closed (18)' }))
     expect(screen.getByText('Showing 1 To 18 Of 18')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Export To Excel' })).toBeTruthy()
 
-    clickTab(screen.getByRole('tab', { name: 'Active (27)' }))
+    ensureFiltersOpen()
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Active (27)' }))
     expect(screen.getByText('Showing 1 To 25 Of 27')).toBeTruthy()
   })
 
   it('offers only the current tab’s stages, and resets Stage to All when switching tabs (issue M10)', async () => {
     vi.mocked(fetchSnapshot).mockResolvedValueOnce(buildLargeSnapshot())
     renderBookings()
-    await screen.findByRole('tab', { name: 'Active (27)' })
+    await screen.findByRole('button', { name: 'Filters' })
 
-    // Clear the Bank preset to see all active stages
+    // Clear the Bank holder preset to see all active stages.
+    fireEvent.click(screen.getByRole('button', { name: /Who Holds Each Booking/i }))
     fireEvent.click(screen.getByRole('button', { name: /Filter by Bank/i }))
+    ensureFiltersOpen()
     expect(await screen.findByText('27 Bookings')).toBeTruthy()
 
     // Active: Booked is a real Active-tab stage — filtering by it narrows, not empties.
-    fireEvent.click(screen.getByLabelText('Filter By Stage'))
-    fireEvent.click(screen.getByRole('option', { name: 'Booked' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Booked' }))
     expect(await screen.findByText('1 Of 27 Bookings')).toBeTruthy()
 
     // Switching to Closed must not carry Booked over — it would show "0 Of 18",
     // same shape as the reported bug, since no closed booking is ever Booked.
-    clickTab(screen.getByRole('tab', { name: 'Closed (18)' }))
+    ensureFiltersOpen()
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Closed (18)' }))
     expect(await screen.findByText('18 Bookings')).toBeTruthy()
-    expect(screen.getByLabelText('Filter By Stage').textContent).toContain('All Stages')
+    expect(screen.getByRole('checkbox', { name: 'All Stages' })).toBeTruthy()
 
     // And Closed's own Stage options never include an Active-only stage.
-    fireEvent.click(screen.getByLabelText('Filter By Stage'))
-    expect(screen.queryByRole('option', { name: 'Booked' })).toBeNull()
-    expect(screen.getByRole('option', { name: 'Disbursed' })).toBeTruthy()
+    expect(screen.queryByRole('checkbox', { name: 'Booked' })).toBeNull()
+    expect(screen.getByRole('checkbox', { name: 'Disbursed' })).toBeTruthy()
   })
 
   it('does not count a booking disbursed within 30 days on the Active tab (issue L13)', async () => {
@@ -249,26 +341,18 @@ describe('BookingsPage', () => {
 
     vi.mocked(fetchSnapshot).mockResolvedValueOnce(augmented)
     renderBookings()
-    await screen.findByRole('tab', { name: 'Closed (19)' })
+    await screen.findByRole('button', { name: 'Filters' })
 
-    expect(screen.getByRole('tab', { name: 'Active (27)' })).toBeTruthy()
-    expect(screen.getByRole('tab', { name: 'Closed (19)' })).toBeTruthy()
+    ensureFiltersOpen()
+    expect(screen.getByRole('checkbox', { name: 'Active (27)' })).toBeTruthy()
+    expect(screen.getByRole('checkbox', { name: 'Closed (19)' })).toBeTruthy()
   })
 
-  it('opens Add Booking and checks a typed unit against the real held units (issue #24)', async () => {
+  it('keeps Add Bookings on the dedicated import route', async () => {
     renderBookings()
     await screen.findByText('BK-9001')
-
-    fireEvent.click(screen.getByRole('button', { name: 'Add Booking' }))
-    expect(await screen.findByRole('heading', { name: 'Add Booking' })).toBeTruthy()
-
-    // BK-0001 holds C-24-05 under the fixture's main project; typing it in must
-    // read the page's real held-unit map, not an empty one.
-    const unitField = screen.getByLabelText(/^Unit/)
-    fireEvent.change(unitField, { target: { value: 'C-24-05' } })
-    fireEvent.blur(unitField)
-    expect(await screen.findByText('Unit Already Held By BK-0001')).toBeTruthy()
-
+    expect(screen.queryByRole('button', { name: 'Add Booking' })).toBeNull()
+    expect(screen.queryByRole('dialog', { name: 'Add Booking' })).toBeNull()
     expect(importBookings).not.toHaveBeenCalled()
   })
 
@@ -325,7 +409,7 @@ describe('BookingsPage', () => {
     // cell padding with a scrollable container and a clipping card wrapper.
     const container = document.querySelector('[data-slot="table-container"]')!
     expect(container.className).toContain('overflow-x-auto')
-    expect(container.parentElement!.className).toContain('overflow-hidden')
+    expect(container.parentElement!.className).toContain('overflow-x-auto')
     const table = document.querySelector('[data-slot="table"]')!
     expect(table.className).toContain('[&_td]:px-2')
   })
@@ -370,6 +454,7 @@ describe('BookingsPage', () => {
 
     expect(screen.getByTestId('booking-pipeline-flow')).toBeTruthy()
     expect(screen.getByText('Who Holds Each Booking')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /Who Holds Each Booking/i }))
     expect(screen.getByRole('button', { name: /Filter by Buyer/i })).toBeTruthy()
     expect(screen.getByRole('button', { name: /Filter by Bank/i })).toBeTruthy()
     expect(screen.getByRole('button', { name: /Filter by Solicitor/i })).toBeTruthy()
@@ -383,6 +468,7 @@ describe('BookingsPage', () => {
 
     // Starts preset on Bank for Loan Admin (13 bookings)
     expect(screen.getByText('13 Of 20 Bookings')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /Who Holds Each Booking/i }))
 
     // Second click on Bank clears the filter back to all 20 active bookings
     const bankStep = screen.getByRole('button', { name: /Filter by Bank/i })
@@ -400,11 +486,13 @@ describe('BookingsPage', () => {
   it('presets the holder filter to Buyer for Sales Admin and Solicitor for Legal Admin (Change 6)', async () => {
     const { unmount } = renderBookings('sales-admin')
     expect(await screen.findByText('3 Of 20 Bookings')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /Who Holds Each Booking/i }))
     expect(screen.getByRole('button', { name: /Filter by Buyer/i }).getAttribute('aria-pressed')).toBe('true')
     unmount()
 
     renderBookings('legal-admin')
     expect(await screen.findByText('1 Of 20 Bookings')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /Who Holds Each Booking/i }))
     expect(screen.getByRole('button', { name: /Filter by Solicitor/i }).getAttribute('aria-pressed')).toBe('true')
   })
 
@@ -412,14 +500,15 @@ describe('BookingsPage', () => {
     renderBookings()
     await screen.findByText('BK-9001')
 
-    // The strip displays the 5 counts: Buyer (3), Bank (13), Solicitor (1), Signed (1), Us (2)
+    // The collapsed strip displays the five holder counts: Buyer (3), Bank (13), Solicitor (1), Signed (1), Us (2)
     // 3 + 13 + 1 + 1 + 2 = 20, exactly matching Active (20)
+    expect(screen.getByLabelText('Buyer: 3')).toBeTruthy()
+    expect(screen.getByLabelText('Bank: 13')).toBeTruthy()
+    expect(screen.getByLabelText('Solicitor: 1')).toBeTruthy()
+    expect(screen.getByLabelText('Signed: 1')).toBeTruthy()
+    expect(screen.getByLabelText('Us: 2')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /Who Holds Each Booking/i }))
     expect(screen.getByRole('button', { name: /Filter by Buyer: 3/i })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /Filter by Bank: 13/i })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /Filter by Solicitor: 1/i })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /Filter by Signed: 1/i })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /Filter by Us: 2/i })).toBeTruthy()
-    expect(screen.getByRole('tab', { name: 'Active (20)' })).toBeTruthy()
   })
 
   it('renders Low Risk as muted text rather than a pill (Change 7)', async () => {

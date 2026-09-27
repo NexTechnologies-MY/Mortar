@@ -137,7 +137,9 @@ export function BookingDetailPage() {
           {/* The save that just landed is real; only the follow-up read failed, so the
               case stays on screen with a way to retry rather than vanishing behind it. */}
           {error ? <RefreshErrorBanner onRetry={() => void refresh()} /> : null}
-          <CaseHeader booking={data.booking} summary={data.summary} />
+          <div data-tour="case-status">
+            <CaseHeader booking={data.booking} summary={data.summary} />
+          </div>
           <Card className="mt-4">
             <CardContent className="flex flex-col gap-4 p-4">
               <CaseJourney
@@ -178,23 +180,25 @@ export function BookingDetailPage() {
           </div>
           <div className="mt-4 grid items-start gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
             <div className="flex min-w-0 flex-col gap-4">
-              <MessagesPanel
-                messages={data.messages}
-                extractions={data.extractions}
-                events={data.events}
-                reviewer={reviewer}
-                onChanged={onChanged}
-                footer={
-                  <AddMessageForm
-                    key={data.booking.id}
-                    booking={data.booking}
-                    banker={data.applications[data.applications.length - 1]?.banker}
-                    referenceDate={referenceDate}
-                    onAdded={onChanged}
-                    collapsible
-                  />
-                }
-              />
+              <div data-tour="case-message">
+                <MessagesPanel
+                  messages={data.messages}
+                  extractions={data.extractions}
+                  events={data.events}
+                  reviewer={reviewer}
+                  onChanged={onChanged}
+                  footer={
+                    <AddMessageForm
+                      key={data.booking.id}
+                      booking={data.booking}
+                      banker={data.applications[data.applications.length - 1]?.banker}
+                      referenceDate={referenceDate}
+                      onAdded={onChanged}
+                      collapsible
+                    />
+                  }
+                />
+              </div>
             </div>
             <div className="flex min-w-0 flex-col gap-4">
               <ApplicationsCard applications={data.applications} summary={data.summary} />

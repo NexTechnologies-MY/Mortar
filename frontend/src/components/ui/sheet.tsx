@@ -1,7 +1,7 @@
 /**
  * Sheet — a Dialog anchored to one edge of the screen, for looking into a row
  * without leaving the list. Same surface, overlay and focus trap as Dialog:
- * solid popover ground, ink-950 at 40% behind it, no blur (DESIGN.md Dialog).
+ * solid popover ground with the shared token-backed scrim behind it.
  */
 
 import * as React from 'react'
@@ -22,7 +22,7 @@ function SheetOverlay({ className, ...props }: React.ComponentProps<typeof Sheet
     <SheetPrimitive.Overlay
       className={cn(
         // z-[70] sits above AppSidebar (z-[60]) and AppNav (z-50), as Dialog does.
-        'fixed inset-0 z-[70] bg-ink-950/40 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+        'fixed inset-0 z-[70] bg-[var(--scrim)] backdrop-blur-[var(--scrim-blur)] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
         className
       )}
       {...props}

@@ -16,24 +16,14 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, ClipboardList, HelpCircle, Plus } from 'lucide-react'
-import {
-  ballInCourt,
-  PERSONA_STAFF,
-  unitKey,
-  type Booking,
-  type EventKind,
-  type SheetDefaults,
-  type Stage,
-  type Task
-} from '@mortar/core'
+import { AlertTriangle, ClipboardList, HelpCircle, Search, Trash2, ListPlus, Download, X } from 'lucide-react'
+import { ballInCourt, type EventKind, type Stage, type Task } from '@mortar/core'
 import { useCases, useSnapshot } from '@/lib/data'
 import { usePersona, type Persona } from '@/lib/persona'
 import { STAGE_LABELS } from '@/components/case/StagePill'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { PageHeaderCard } from '@/components/layout/PageHeaderCard'
 import { StatCard } from '@/components/StatCard'
-import { AddBookingDialog } from '@/components/bookings/AddBookingDialog'
 import { BookingFilters, type BookingFilter } from '@/components/bookings/BookingFilters'
 import {
   BookingPipelineFlow,
@@ -46,11 +36,22 @@ import { CaseQuickView } from '@/components/bookings/CaseQuickView'
 import { buildClosedExportRows, downloadClosedExport } from '@/components/bookings/closedExport'
 import { Pagination, usePagination } from '@/components/ui/Pagination'
 import { nextSort } from '@/components/ui/SortHeader'
-import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { RefreshErrorBanner } from '@/components/ui/RefreshErrorBanner'
 import { Skeleton } from '@/components/ui/skeleton'
 import { notify } from '@/components/ui/toastConfig'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog'
+import { deleteBooking, postTask } from '@/lib/api'
+import { waitingOnTask } from '@/components/bookings/WaitingOn'
 
 type View = 'active' | 'closed'
 
@@ -73,21 +74,6 @@ const STAGES_BY_VIEW: Record<View, Stage[]> = {
 
 type Row = BookingRow & { stalled: boolean; live: boolean; closed: boolean }
 
-/** The project most bookings belong to: what a hand-entered booking joins when it leaves Project blank. */
-function mainProject(bookings: Booking[]): string {
-  const counts = new Map<string, number>()
-  for (const b of bookings) counts.set(b.project, (counts.get(b.project) ?? 0) + 1)
-  let best = 'Unnamed Project'
-  let most = 0
-  for (const [project, n] of counts) {
-    if (n > most) {
-      best = project
-      most = n
-    }
-  }
-  return best
-}
-
 /** Default holder filter in the pipeline strip based on active persona. */
 function defaultHolderForPersona(persona: Persona): PipelineStageId {
   if (persona === 'sales-admin') return 'buyer'
@@ -107,8 +93,11 @@ export function BookingsPage() {
   })
   const [inspecting, setInspecting] = useState<string | null>(null)
   const [view, setView] = useState<View>('active')
-  const [addOpen, setAddOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
+  const [search, setSearch] = useState('')
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [bulkWorking, setBulkWorking] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const [stripHolder, setStripHolder] = useState<PipelineStageId | null>(() => defaultHolderForPersona(persona))
   const lastPersonaRef = useRef(persona)
 
@@ -118,10 +107,6 @@ export function BookingsPage() {
       setStripHolder(defaultHolderForPersona(persona))
     }
   }, [persona])
-
-  // Passed to AddBookingDialog so it can put focus back here once Escape, the
-  // X or Cancel close it (issue #M12) — a successful add navigates away instead.
-  const addButtonRef = useRef<HTMLButtonElement>(null)
 
   const confirmedKinds = useMemo(() => {
     const map = new Map<string, Set<EventKind>>()
@@ -234,6 +219,20 @@ export function BookingsPage() {
         if (filter.stalledOnly && !r.stalled) return false
         if (filter.unknownOnly && !r.summary.unknown) return false
 
+        const needle = search.trim().toLocaleLowerCase()
+        if (needle) {
+          const text = [
+            r.booking.unit,
+            r.booking.buyer.name,
+            r.booking.id,
+            r.booking.legalFirm,
+            ...r.summary.applications.map((application) => application.bank)
+          ]
+            .join(' ')
+            .toLocaleLowerCase()
+          if (!text.includes(needle)) return false
+        }
+
         if (view === 'active' && stripHolder) {
           if (stripHolder === 'spa') {
             if (!r.summary.spaSigned && r.summary.stage !== 'spa_signed') return false
@@ -245,7 +244,7 @@ export function BookingsPage() {
 
         return true
       }),
-    [viewRows, filter, view, stripHolder]
+    [viewRows, filter, view, stripHolder, search]
   )
 
   // Applied after filtering so the sort acts on what the reader can see.
@@ -281,6 +280,7 @@ export function BookingsPage() {
   /** A changed filter always returns the table to page one. */
   const applyFilter = (next: BookingFilter) => {
     setFilter(next)
+    setSelectedIds([])
     pagination.onPageChange(1)
   }
 
@@ -289,17 +289,20 @@ export function BookingsPage() {
    * tab would just show a confusing "0 Of N" (issue M10). */
   const changeView = (next: View) => {
     setView(next)
+    setSelectedIds([])
     setFilter((prev) => (prev.stage === 'all' ? prev : { ...prev, stage: 'all' }))
     pagination.onPageChange(1)
   }
 
   const handlePipelineSelect = (next: PipelineSelection) => {
     setStripHolder(next.stageId)
+    setSelectedIds([])
     pagination.onPageChange(1)
   }
 
   const handlePipelineClear = () => {
     setStripHolder(null)
+    setSelectedIds([])
     pagination.onPageChange(1)
   }
 
@@ -321,34 +324,61 @@ export function BookingsPage() {
     }
   }
 
-  const defaults = useMemo<SheetDefaults | null>(
-    () =>
-      snapshot
-        ? {
-            project: mainProject(snapshot.bookings),
-            salesOwner: 'Unassigned',
-            loanOwner: PERSONA_STAFF['loan-admin'].name,
-            legalFirm: 'Unassigned'
-          }
-        : null,
-    [snapshot]
-  )
+  const selectedRows = rows.filter((row) => selectedIds.includes(row.booking.id))
+  const createSelectedTasks = async () => {
+    if (!snapshot) return
+    setBulkWorking(true)
+    try {
+      const tasks = selectedRows.flatMap((row) => {
+        const task = waitingOnTask(row.booking, row.summary, snapshot.meta.referenceDate)
+        return task && !row.openTask ? [task] : []
+      })
+      await Promise.all(tasks.map((task) => postTask(task)))
+      notify.success(`${tasks.length} Tasks Created`)
+      setSelectedIds([])
+      await refresh()
+    } catch {
+      notify.error('Could Not Create All Tasks. Try Again.')
+    } finally {
+      setBulkWorking(false)
+    }
+  }
 
-  // Every project already in the ledger, for Add Booking's Project select
-  // (issue #H6) — `defaults.project` (the biggest one) is always among them.
-  const projects = useMemo(
-    () => (snapshot ? [...new Set(snapshot.bookings.map((b) => b.project))].sort((a, b) => a.localeCompare(b)) : []),
-    [snapshot]
-  )
+  const exportSelected = async () => {
+    if (!snapshot) return
+    setBulkWorking(true)
+    try {
+      const exportRows = buildClosedExportRows(
+        selectedRows.map((r) => ({ booking: r.booking, summary: r.summary })),
+        snapshot.events
+      )
+      await downloadClosedExport(exportRows, snapshot.meta.referenceDate)
+    } catch {
+      notify.error('Could Not Export The Selected Bookings. Try Again.')
+    } finally {
+      setBulkWorking(false)
+    }
+  }
 
-  // A unit is free again once its booking was cancelled or lapsed — the same
-  // rule ImportPage applies, so a hand-entered booking is checked against
-  // exactly the units an import would refuse.
-  const held = useMemo(() => {
-    if (!snapshot) return new Map<string, string>()
-    const freed = new Set(cases.filter((c) => c.stage === 'cancelled' || c.stage === 'lapsed').map((c) => c.bookingId))
-    return new Map(snapshot.bookings.filter((b) => !freed.has(b.id)).map((b) => [unitKey(b.project, b.unit), b.id]))
-  }, [snapshot, cases])
+  const deleteSelected = async () => {
+    if (selectedRows.length === 0) return
+    setConfirmDelete(false)
+    setBulkWorking(true)
+    try {
+      const outcomes = await Promise.allSettled(selectedRows.map((row) => deleteBooking(row.booking.id, persona)))
+      const removed = outcomes.filter((outcome) => outcome.status === 'fulfilled').length
+      const refused = outcomes.length - removed
+      if (removed > 0) notify.success(`${removed} Bookings Deleted`)
+      if (refused > 0)
+        notify.error(`${refused} Bookings Could Not Be Deleted Because They Have Transaction Or Progression Data.`)
+      setSelectedIds([])
+      await refresh()
+    } catch {
+      notify.error('Could Not Delete The Selected Bookings. Try Again.')
+    } finally {
+      setBulkWorking(false)
+    }
+  }
 
   return (
     <PageContainer>
@@ -360,30 +390,8 @@ export function BookingsPage() {
               Every Unit Booking, From Reservation Through To SPA Signing.
             </p>
           </div>
-          <Button
-            ref={addButtonRef}
-            type="button"
-            className="shrink-0"
-            disabled={!snapshot}
-            onClick={() => setAddOpen(true)}
-          >
-            <Plus aria-hidden="true" />
-            Add Booking
-          </Button>
         </div>
       </PageHeaderCard>
-
-      <AddBookingDialog
-        open={addOpen}
-        onOpenChange={setAddOpen}
-        referenceDate={snapshot?.meta.referenceDate ?? ''}
-        defaults={defaults}
-        held={held}
-        persona={persona}
-        onImported={refresh}
-        projects={projects}
-        triggerRef={addButtonRef}
-      />
 
       {loading && !snapshot ? (
         <div className="mt-4 flex flex-col gap-3">
@@ -429,7 +437,7 @@ export function BookingsPage() {
 
           {/* Who Holds Each Booking — Pipeline Flow Strip */}
           {view === 'active' && (
-            <div className="mt-4">
+            <div data-tour="booking-holder" className="mt-4">
               <BookingPipelineFlow
                 counts={pipelineCounts}
                 selection={{ stageId: stripHolder }}
@@ -440,7 +448,7 @@ export function BookingsPage() {
           )}
 
           {/* Single Filter Row including Active/Closed Tabs */}
-          <div className="mt-4">
+          <div data-tour="booking-filters" className="mt-4">
             <BookingFilters
               filter={filter}
               onChange={applyFilter}
@@ -457,7 +465,26 @@ export function BookingsPage() {
             />
           </div>
 
-          <div className="mt-3 overflow-hidden rounded-md border border-border bg-card">
+          <div className="mt-3 flex items-center gap-2">
+            <div className="relative min-w-0 flex-1">
+              <Search
+                aria-hidden="true"
+                className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+              />
+              <Input
+                aria-label="Search bookings"
+                placeholder="Search unit, buyer, booking, bank or solicitor"
+                value={search}
+                onChange={(event) => {
+                  setSelectedIds([])
+                  setSearch(event.target.value)
+                  pagination.onPageChange(1)
+                }}
+                className="pl-9"
+              />
+            </div>
+          </div>
+          <div className="mt-3 overflow-x-auto rounded-md border border-border bg-card">
             {visible.length === 0 ? (
               <EmptyState
                 icon={ClipboardList}
@@ -477,6 +504,19 @@ export function BookingsPage() {
                   onInspect={setInspecting}
                   referenceDate={snapshot?.meta.referenceDate ?? ''}
                   onChanged={refresh}
+                  selectedIds={selectedIds}
+                  onToggleSelected={(id) =>
+                    setSelectedIds((current) =>
+                      current.includes(id) ? current.filter((value) => value !== id) : [...current, id]
+                    )
+                  }
+                  onToggleAll={(checked) =>
+                    setSelectedIds((current) =>
+                      checked
+                        ? [...new Set([...current, ...pageRows.map((row) => row.booking.id)])]
+                        : current.filter((id) => !pageRows.some((row) => row.booking.id === id))
+                    )
+                  }
                 />
                 <Pagination {...pagination} />
               </>
@@ -488,6 +528,46 @@ export function BookingsPage() {
             onClose={() => setInspecting(null)}
             onChanged={refresh}
           />
+          {selectedIds.length > 0 && (
+            <div
+              className="fixed bottom-5 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-md border border-border bg-card/85 px-3 py-2 shadow-[var(--shadow-overlay)] backdrop-blur-md"
+              role="region"
+              aria-label="Selected bookings actions"
+            >
+              <span className="pr-2 text-sm font-medium">{selectedIds.length} Selected</span>
+              <Button size="sm" variant="destructive" disabled={bulkWorking} onClick={() => setConfirmDelete(true)}>
+                <Trash2 aria-hidden="true" /> Delete
+              </Button>
+              <Button size="sm" variant="secondary" disabled={bulkWorking} onClick={() => void createSelectedTasks()}>
+                <ListPlus aria-hidden="true" /> Create Tasks
+              </Button>
+              <Button size="sm" variant="secondary" disabled={bulkWorking} onClick={() => void exportSelected()}>
+                <Download aria-hidden="true" /> Export To Excel
+              </Button>
+              <Button size="sm" variant="ghost" aria-label="Clear Selection" onClick={() => setSelectedIds([])}>
+                <X aria-hidden="true" /> Clear Selection
+              </Button>
+            </div>
+          )}
+          <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Delete Selected Bookings?</DialogTitle>
+                <DialogDescription>
+                  Delete {selectedRows.length} selected booking{selectedRows.length === 1 ? '' : 's'}? Any booking with
+                  transaction or progression data will be retained and reported.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button variant="secondary" onClick={() => setConfirmDelete(false)}>
+                  Cancel
+                </Button>
+                <Button variant="destructive" disabled={bulkWorking} onClick={() => void deleteSelected()}>
+                  Delete Bookings
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </>
       )}
     </PageContainer>

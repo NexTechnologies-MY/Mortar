@@ -52,11 +52,23 @@ export interface AssistantAnswer {
   citations: string[]
 }
 
+export type AssistantStreamEvent =
+  | { type: 'tool_call'; label: string }
+  | { type: 'tool_result'; label: string }
+  | { type: 'answer'; answer: AssistantAnswer }
+  | { type: 'follow_ups'; questions: string[] }
+  | { type: 'error'; message: string }
+
 export function createAssistant(options: AssistantOptions) {
   const limiter = new RateLimiter()
 
   /** One round trip: the model, its tool calls, the results, and the answer. */
-  async function ask(input: AssistantRequest, apiKey: string, caller?: AbortSignal): Promise<AssistantAnswer> {
+  async function ask(
+    input: AssistantRequest,
+    apiKey: string,
+    caller?: AbortSignal,
+    emit?: (event: AssistantStreamEvent) => void
+  ): Promise<AssistantAnswer> {
     // One deadline for the whole request, the tool loop included. A fresh timer
     // per turn would let four rounds outlive the browser's own patience, and a
     // caller who has already gone away would keep paying for it.
@@ -66,6 +78,7 @@ export function createAssistant(options: AssistantOptions) {
     if (caller) caller.addEventListener('abort', () => controller.abort(), { once: true })
     /** Every booking id the tools handed over in this request, so only those can become links. */
     const known = new Set<string>()
+    const usedTools = new Set<string>()
     if (input.bookingId) known.add(input.bookingId)
 
     try {
@@ -96,20 +109,29 @@ export function createAssistant(options: AssistantOptions) {
         const parts = candidate.content?.parts ?? []
         const calls = parts.flatMap((part) => (part.functionCall ? [part.functionCall] : []))
         if (calls.length === 0) {
-          return shape(
+          const answer = shape(
             parts
               .map((p) => p.text ?? '')
               .join(' ')
               .trim(),
             known
           )
+          emit?.({ type: 'answer', answer })
+          emit?.({ type: 'follow_ups', questions: followUps(usedTools) })
+          return answer
         }
         const results: { name: string; text: string }[] = []
         for (const call of calls) {
           const name = call.name ?? ''
+          const label = toolLabel(name)
+          if (label) {
+            usedTools.add(name)
+            emit?.({ type: 'tool_call', label })
+          }
           const text = await runTool(name, (call.args ?? {}) as ToolInput, input.persona, options.db)
           for (const id of text.match(BOOKING_ID) ?? []) known.add(id)
           results.push({ name, text })
+          if (label) emit?.({ type: 'tool_result', label })
         }
         contents.push({ role: 'model', parts })
         contents.push({
@@ -121,14 +143,19 @@ export function createAssistant(options: AssistantOptions) {
       }
       // The model was still asking for facts when the cap closed the loop. Its
       // answers so far are not in hand, so say so rather than answer blind.
-      return { answer: NO_ANSWER, citations: [] }
+      const answer = { answer: NO_ANSWER, citations: [] }
+      emit?.({ type: 'answer', answer })
+      emit?.({ type: 'follow_ups', questions: followUps(usedTools) })
+      return answer
     } finally {
       clearTimeout(timer)
     }
   }
 
   /** `POST /api/assistant`. */
-  return async function handleAssistant({ req }: { req: Request }): Promise<Response> {
+  const handleAssistant: ((ctx: { req: Request }) => Promise<Response>) & {
+    stream?: (ctx: { req: Request }) => Promise<Response>
+  } = async function ({ req }: { req: Request }): Promise<Response> {
     const parsed = readAssistantRequest(await body(req))
     if (parsed instanceof Response) return parsed
     if (!options.apiKey) return json({ fallback: true }, 503)
@@ -147,6 +174,75 @@ export function createAssistant(options: AssistantOptions) {
       return modelErrorResponse(e)
     }
   }
+  handleAssistant.stream = async ({ req }: { req: Request }): Promise<Response> => {
+    const parsed = readAssistantRequest(await body(req))
+    if (parsed instanceof Response) return parsed
+    if (!options.apiKey) return json({ fallback: true }, 503)
+    const limited = limiter.check(clientIp(req))
+    if (limited) return limited
+    const encoder = new TextEncoder()
+    const disconnect = new AbortController()
+    let canceled = false
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        const send = (event: AssistantStreamEvent) => {
+          if (!canceled) controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))
+        }
+        const onAbort = () => disconnect.abort()
+        req.signal.addEventListener('abort', onAbort, { once: true })
+        void ask(parsed, options.apiKey!, disconnect.signal, send)
+          .catch((e) => {
+            if (disconnect.signal.aborted) return
+            console.error('ask mortar:', e instanceof Error ? e.message : String(e))
+            send({ type: 'error', message: 'Ask Mortar Could Not Check. Try Again.' })
+          })
+          .finally(() => {
+            req.signal.removeEventListener('abort', onAbort)
+            if (!canceled) controller.close()
+          })
+      },
+      cancel() {
+        canceled = true
+        disconnect.abort()
+      }
+    })
+    return new Response(stream, { headers: { 'content-type': 'text/event-stream', 'cache-control': 'no-cache' } })
+  }
+  return handleAssistant
+}
+
+function toolLabel(name: string): string | null {
+  const labels: Record<string, string> = {
+    find_bookings: 'Looking Up Bookings',
+    get_case: 'Reading A Booking',
+    get_my_queue: 'Checking Your Queue',
+    get_forecast_summary: 'Checking The Forecast',
+    search_playbooks: 'Reading The Playbooks'
+  }
+  return labels[name] ?? null
+}
+
+function followUps(tools: ReadonlySet<string>): string[] {
+  if (tools.has('search_playbooks'))
+    return [
+      'Which booking needs this next?',
+      'What should I ask the bank?',
+      'Which documents are still missing?',
+      'Who owns the next step?'
+    ]
+  if (tools.has('get_forecast_summary'))
+    return [
+      'Which bookings are at risk?',
+      'What could delay these signings?',
+      'Which cases need attention today?',
+      'How does this compare by project?'
+    ]
+  return [
+    'Which booking is oldest?',
+    'Who owns the next step?',
+    'What is blocking the case?',
+    'What should we follow up today?'
+  ]
 }
 
 /** What the panel shows when the model gave no answer to ground. */

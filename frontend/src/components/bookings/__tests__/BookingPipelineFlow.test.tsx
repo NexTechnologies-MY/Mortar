@@ -23,6 +23,7 @@ describe('BookingPipelineFlow', () => {
         onClear={onClear}
       />
     )
+    fireEvent.click(screen.getByRole('button', { name: /Who Holds Each Booking/i }))
 
     // Heading
     expect(screen.getByText('Who Holds Each Booking')).toBeTruthy()
@@ -57,6 +58,7 @@ describe('BookingPipelineFlow', () => {
         onClear={vi.fn()}
       />
     )
+    fireEvent.click(screen.getByRole('button', { name: /Who Holds Each Booking/i }))
 
     const strip = screen.getByTestId('booking-pipeline-flow')
     for (const prose of [
@@ -79,6 +81,7 @@ describe('BookingPipelineFlow', () => {
         onClear={vi.fn()}
       />
     )
+    fireEvent.click(screen.getByRole('button', { name: /Who Holds Each Booking/i }))
 
     const signed = screen.getByRole('button', { name: /Filter by Signed/i })
     // The step reads as its title and its count, "Signed 5 signed". A second
@@ -99,6 +102,7 @@ describe('BookingPipelineFlow', () => {
         onClear={onClear}
       />
     )
+    fireEvent.click(screen.getByRole('button', { name: /Who Holds Each Booking/i }))
 
     const bankCard = screen.getByRole('button', { name: /Filter by Bank/i })
     fireEvent.click(bankCard)
@@ -119,6 +123,7 @@ describe('BookingPipelineFlow', () => {
         onClear={onClear}
       />
     )
+    fireEvent.click(screen.getByRole('button', { name: /Who Holds Each Booking/i }))
 
     const bankCard = screen.getByRole('button', { name: /Filter by Bank/i })
     fireEvent.click(bankCard)
@@ -139,6 +144,7 @@ describe('BookingPipelineFlow', () => {
         onClear={onClear}
       />
     )
+    fireEvent.click(screen.getByRole('button', { name: /Who Holds Each Booking/i }))
 
     const usCard = screen.getByRole('button', { name: /Filter by Us/i })
     fireEvent.click(usCard)
@@ -158,6 +164,7 @@ describe('BookingPipelineFlow', () => {
         onClear={onClear}
       />
     )
+    fireEvent.click(screen.getByRole('button', { name: /Who Holds Each Booking/i }))
 
     const signedCard = screen.getByRole('button', { name: /Filter by Signed/i })
     fireEvent.click(signedCard)
@@ -174,6 +181,7 @@ describe('BookingPipelineFlow', () => {
         onClear={vi.fn()}
       />
     )
+    fireEvent.click(screen.getByRole('button', { name: /Who Holds Each Booking/i }))
 
     const buyerCard = screen.getByRole('button', { name: /Filter by Buyer/i })
     expect(buyerCard.getAttribute('aria-pressed')).toBe('true')

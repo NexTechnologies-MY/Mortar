@@ -10,12 +10,12 @@
  */
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CornerDownLeft, Paperclip, X } from 'lucide-react'
+import { ChevronDown, ChevronRight, CornerDownLeft, Paperclip, X } from 'lucide-react'
 import type { AskAction, AskReply, Booking, DocumentKind } from '@mortar/core'
 import { askBrain, buildAskContext, suggestedQuestions } from '@mortar/core'
 import { useSnapshot } from '@/lib/data'
 import { usePersona } from '@/lib/persona'
-import { askAssistant, postTask, type AssistantImage } from '@/lib/api'
+import { askAssistantStream, postTask, type AssistantImage, type AssistantStreamEvent } from '@/lib/api'
 import { addDays, ownerName, taskTitle } from '@/components/chase/chase'
 import { notify } from '@/components/ui/toastConfig'
 import { Button } from '@/components/ui/button'
@@ -34,6 +34,8 @@ type Turn = {
   reply: AskReply | null
   /** Which of the two answered, so the panel says where the words came from. */
   source: 'assistant' | 'scripted'
+  tools: string[]
+  followUps: string[]
 }
 
 /** Questions offered before anything is typed, and again after one misses. */
@@ -91,6 +93,8 @@ export function AskPanel({ onNavigate, bookingId }: { onNavigate: () => void; bo
   const [acted, setActed] = useState<ReadonlySet<number>>(new Set())
   const [working, setWorking] = useState(false)
   const [thinking, setThinking] = useState(false)
+  const [activeTools, setActiveTools] = useState<string[]>([])
+  const [expandedTools, setExpandedTools] = useState<ReadonlySet<number>>(new Set())
   const [image, setImage] = useState<{ name: string; preview: string; data: AssistantImage } | null>(null)
   const [imageError, setImageError] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -139,6 +143,7 @@ export function AskPanel({ onNavigate, bookingId }: { onNavigate: () => void; bo
       setDraft('')
       const turnId = turns.length
       setThinking(true)
+      setActiveTools([])
       // The model reads the last few exchanges, so "what about the other one?"
       // still knows which one. Answers are the only text carried back; the
       // question is already in the transcript the server can see.
@@ -146,33 +151,60 @@ export function AskPanel({ onNavigate, bookingId }: { onNavigate: () => void; bo
         .slice(-6)
         .map((t) => ({ question: t.question, answer: t.answer?.text ?? t.reply?.text ?? '' }))
       let turn: Turn
+      const streamed: { answer: { answer: string; citations: string[] } | null } = { answer: null }
+      let streamedFollowUps: string[] = []
+      const streamedTools: string[] = []
       try {
-        const result = await askAssistant({
-          question: trimmed,
-          persona,
-          ...(bookingId ? { bookingId } : {}),
-          history,
-          ...(image ? { image: image.data } : {})
-        })
+        const handleEvent = (event: AssistantStreamEvent) => {
+          if (event.type === 'tool_call') {
+            streamedTools.push(event.label)
+            setActiveTools((prev) => [...prev, event.label])
+          }
+          if (event.type === 'answer') streamed.answer = event.answer
+          if (event.type === 'follow_ups') streamedFollowUps = event.questions
+        }
+        await askAssistantStream(
+          {
+            question: trimmed,
+            persona,
+            ...(bookingId ? { bookingId } : {}),
+            history,
+            ...(image ? { image: image.data } : {})
+          },
+          handleEvent
+        )
+        const result = streamed.answer
+        if (!result) throw new Error('The assistant stream ended without an answer')
         turn = {
           id: turnId,
           question: trimmed,
           answer: { text: result.answer, citations: result.citations },
           reply: null,
-          source: 'assistant'
+          source: 'assistant',
+          tools: streamedTools,
+          followUps: streamedFollowUps.slice(0, CHIP_LIMIT)
         }
       } catch {
         // No model key, a model that could not answer, or a dropped request.
         // The scripted answers count the same snapshot, so the panel still
         // says something true.
         const reply = askBrain(trimmed, context)
-        turn = { id: turnId, question: trimmed, answer: null, reply, source: 'scripted' }
+        turn = {
+          id: turnId,
+          question: trimmed,
+          answer: null,
+          reply,
+          source: 'scripted',
+          tools: [],
+          followUps: chips.map((chip) => chip.question)
+        }
       }
       setTurns((prev) => [...prev, turn])
       setThinking(false)
+      setActiveTools([])
       if (image) dropImage()
     },
-    [context, thinking, turns, persona, bookingId, image, dropImage]
+    [context, thinking, turns, persona, bookingId, image, dropImage, chips]
   )
 
   const runAction = useCallback(
@@ -246,7 +278,7 @@ export function AskPanel({ onNavigate, bookingId }: { onNavigate: () => void; bo
       {loading && !snapshot ? (
         <Skeleton className="h-40" />
       ) : (
-        <div className="flex max-h-[50vh] flex-col gap-5 overflow-y-auto">
+        <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto">
           {turns.map((turn) => {
             const text = turn.answer?.text ?? turn.reply?.text
             const citations = turn.answer?.citations ?? turn.reply?.citations ?? []
@@ -258,8 +290,44 @@ export function AskPanel({ onNavigate, bookingId }: { onNavigate: () => void; bo
                   <div className="flex min-w-0 flex-col items-start gap-2">
                     {text ? (
                       <>
+                        {turn.tools.length > 0 && (
+                          <button
+                            type="button"
+                            className="flex items-center gap-1 text-xs text-muted-foreground"
+                            onClick={() =>
+                              setExpandedTools((prev) => {
+                                const next = new Set(prev)
+                                if (next.has(turn.id)) next.delete(turn.id)
+                                else next.add(turn.id)
+                                return next
+                              })
+                            }
+                          >
+                            {expandedTools.has(turn.id) ? (
+                              <ChevronDown className="size-3" />
+                            ) : (
+                              <ChevronRight className="size-3" />
+                            )}
+                            {turn.tools.length} checks completed
+                          </button>
+                        )}
+                        {expandedTools.has(turn.id) &&
+                          turn.tools.map((tool, index) => (
+                            <p key={`${tool}-${index}`} className="text-xs text-muted-foreground">
+                              {tool}
+                            </p>
+                          ))}
                         <p className="text-sm leading-6 text-muted-foreground">{text}</p>
                         <Citations ids={citations} onNavigate={onNavigate} />
+                        {turn.followUps.length > 0 && (
+                          <div className="flex flex-wrap gap-2">
+                            {turn.followUps.map((q) => (
+                              <Button key={q} type="button" variant="outline" size="sm" onClick={() => void ask(q)}>
+                                {q}
+                              </Button>
+                            ))}
+                          </div>
+                        )}
                         {turn.source === 'scripted' ? (
                           <StatusPill tone="neutral">Counted From Your Bookings</StatusPill>
                         ) : (
@@ -295,7 +363,17 @@ export function AskPanel({ onNavigate, bookingId }: { onNavigate: () => void; bo
           {thinking && (
             <div className="flex gap-3">
               <Mascot size={28} />
-              <Skeleton className="h-6 w-48" />
+              <div className="flex flex-col gap-2">
+                {activeTools.length ? (
+                  activeTools.map((tool, index) => (
+                    <p key={`${tool}-${index}`} className="text-sm text-muted-foreground">
+                      {tool}
+                    </p>
+                  ))
+                ) : (
+                  <Skeleton className="h-6 w-48" />
+                )}
+              </div>
             </div>
           )}
 
@@ -319,7 +397,7 @@ export function AskPanel({ onNavigate, bookingId }: { onNavigate: () => void; bo
       )}
 
       <form
-        className="flex flex-col gap-2"
+        className="mt-auto flex shrink-0 flex-col gap-2 border-t border-border pt-3"
         onSubmit={(e) => {
           e.preventDefault()
           void ask(draft)

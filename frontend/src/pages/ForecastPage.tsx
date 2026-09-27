@@ -23,6 +23,7 @@ import { AssumptionsCard } from '@/components/forecast/AssumptionsCard'
 import { LeakageCard } from '@/components/forecast/LeakageCard'
 import { RecoveryCard } from '@/components/forecast/RecoveryCard'
 import { SeedSpreadCard, type SeedRun } from '@/components/forecast/SeedSpreadCard'
+import { ForecastDocuments } from '@/components/forecast/ForecastDocuments'
 import { addDays, altDataset, datasetFor } from '@/components/forecast/forecast'
 
 export function ForecastPage() {
@@ -75,44 +76,90 @@ export function ForecastPage() {
         </div>
       ) : result ? (
         <>
-          <div className="mt-4 flex flex-wrap gap-3">
-            <StatCard
-              label={`Expected Signings In ${result.forecast.horizonDays} Days`}
-              value={String(Math.round(result.forecast.expectedSignings))}
-              info="Sum of live signing probabilities."
-              exact={result.forecast.expectedSignings.toFixed(1)}
-            />
-            <StatCard
-              label="Forecast Range"
-              value={`${result.forecast.rangeLow} – ${result.forecast.rangeHigh}`}
-              info="10th – 90th percentile of simulated signings."
-            />
-            <StatCard
-              label="Bookings In The Forecast"
-              value={String(result.forecast.liveBookings)}
-              info="Unsigned and under 30 days old."
-            />
-          </div>
+          <section className="mt-5" aria-label="Forecast answer">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+              Expected within {result.forecast.horizonDays} days
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <StatCard
+                label={`Expected Signings In ${result.forecast.horizonDays} Days`}
+                value={String(Math.round(result.forecast.expectedSignings))}
+                info="Sum of live signing probabilities."
+                exact={result.forecast.expectedSignings.toFixed(1)}
+              />
+              <StatCard
+                label="Forecast Range"
+                value={`${result.forecast.rangeLow} – ${result.forecast.rangeHigh}`}
+                info="10th – 90th percentile of simulated signings."
+              />
+            </div>
+          </section>
 
-          <div className="mt-4 grid items-start gap-4 xl:grid-cols-2 [&>*]:min-w-0">
-            <LeakageCard leakage={result.leakage} />
-            <RecoveryCard leakage={result.leakage} />
-          </div>
-
-          <div className="mt-4 grid gap-4 xl:grid-cols-2 [&>*]:min-w-0">
-            <StageRatesCard stageRates={result.forecast.stageRates} />
-            <BacktestCard backtest={result.backtest} />
-          </div>
-
-          <div className="mt-4 grid items-start gap-4 xl:grid-cols-2 [&>*]:min-w-0">
-            <AssumptionsCard />
-            <SeedSpreadCard
-              canonicalSeed={snapshot?.meta.seed ?? 0}
-              runs={[{ seed: snapshot?.meta.seed ?? 0, forecast: result.forecast }, ...altRuns]}
-              running={running}
-              onTryAnother={tryAnotherSeed}
-            />
-          </div>
+          <ForecastDocuments
+            documents={[
+              {
+                title: 'Expected Signings',
+                summary: 'The forecast range and the live bookings counted in this estimate.',
+                content: (
+                  <div className="flex flex-wrap gap-3">
+                    <StatCard
+                      label={`Expected Signings In ${result.forecast.horizonDays} Days`}
+                      value={String(Math.round(result.forecast.expectedSignings))}
+                      info="Sum of live signing probabilities."
+                      exact={result.forecast.expectedSignings.toFixed(1)}
+                    />
+                    <StatCard
+                      label="Forecast Range"
+                      value={`${result.forecast.rangeLow} – ${result.forecast.rangeHigh}`}
+                      info="10th – 90th percentile of simulated signings."
+                    />
+                    <StatCard
+                      label="Bookings In The Forecast"
+                      value={String(result.forecast.liveBookings)}
+                      info="Unsigned and under 30 days old."
+                    />
+                  </div>
+                )
+              },
+              {
+                title: 'Where Bookings Leak',
+                summary: 'Cancellations and lapses, ranked by the value they take out of the pipeline.',
+                content: <LeakageCard leakage={result.leakage} />
+              },
+              {
+                title: 'What Recovery Is Worth',
+                summary: 'The estimated value of giving rejected loan applications another route.',
+                content: <RecoveryCard leakage={result.leakage} />
+              },
+              {
+                title: 'Stage Conversion Rates',
+                summary: 'How often resolved bookings at each stage went on to sign.',
+                content: <StageRatesCard stageRates={result.forecast.stageRates} />
+              },
+              {
+                title: 'How Well The Method Backtests',
+                summary: 'A historical accuracy check of the simulation method.',
+                content: <BacktestCard backtest={result.backtest} />
+              },
+              {
+                title: 'Assumptions',
+                summary: 'The working assumptions used to make this forecast.',
+                content: <AssumptionsCard />
+              },
+              {
+                title: 'Seed Spread',
+                summary: 'How the answer moves when the same method runs on another simulation.',
+                content: (
+                  <SeedSpreadCard
+                    canonicalSeed={snapshot?.meta.seed ?? 0}
+                    runs={[{ seed: snapshot?.meta.seed ?? 0, forecast: result.forecast }, ...altRuns]}
+                    running={running}
+                    onTryAnother={tryAnotherSeed}
+                  />
+                )
+              }
+            ]}
+          />
         </>
       ) : null}
     </PageContainer>

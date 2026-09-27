@@ -107,6 +107,10 @@ describe('LegalPage', () => {
 
   it('counts only the cases sitting between approval and signing', () => {
     renderPage()
+    expect(document.querySelector('[data-tour="legal-header"]')).toBeTruthy()
+    expect(document.querySelector('[data-tour="legal-no-appointment"]')).toBeTruthy()
+    expect(document.querySelector('[data-tour="legal-appointment-set"]')).toBeTruthy()
+    expect(document.querySelector('[data-tour="legal-panel-load"]')).toBeTruthy()
     expect(stat('Awaiting SPA')).toContain('4')
     expect(stat('Past The Threshold')).toContain('1')
     expect(stat('Longest Wait')).toContain('67 d')

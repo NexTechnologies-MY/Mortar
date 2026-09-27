@@ -11,15 +11,12 @@ test('a failed or incomplete walk exits non-zero after preserving diagnostics', 
   assert.match(source, /if \(!warmed\).*throw/s)
 })
 
-test('the runner restores the mutated production data off camera', () => {
-  // The walk creates a task, confirms two proposals and posts a message on
-  // production; the runner must reset through the same /settings dialog an
-  // operator uses, in a context that is not the recorded one.
-  assert.match(source, /DEMO_RESET_AFTER/)
-  assert.match(source, /api\/admin\/reset/)
-  assert.match(source, /\/settings/)
-  assert.match(source, /Reset Demo Data/)
-  assert.match(source, /verifyCleanSeed/)
+test('the runner requires a disposable target and adds seed data only when empty', () => {
+  assert.match(source, /DEMO_WEB must name a disposable recording deployment/)
+  assert.match(source, /shared Mortar deployment cannot be used/)
+  assert.match(source, /initialSnapshot\.bookings/)
+  assert.match(source, /api\/admin\/demo\/add/)
+  assert.doesNotMatch(source, /api\/admin\/reset/)
 })
 
 test('capture contract requires every narrated beat exactly once and in order', () => {

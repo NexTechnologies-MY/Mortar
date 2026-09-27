@@ -57,27 +57,59 @@ function renderPage() {
   )
 }
 
-/** The (i) trigger inside the element holding `label`. */
-function infoTrigger(label: string) {
-  const host = screen.getAllByText(label).find((el) => el.querySelector('button'))!
-  return within(host).getByRole('button')
-}
-
 describe('ForecastPage', () => {
-  it('opens on the answer: headline tiles, stage rates and the backtest', () => {
+  it('keeps the forecast answer visible above the document stack', () => {
     renderPage()
     expect(screen.getByRole('heading', { level: 1, name: 'Forecast' })).toBeTruthy()
     expect(screen.getByText('Expected Signings In 30 Days')).toBeTruthy()
     expect(screen.getByText('Forecast Range')).toBeTruthy()
-    expect(screen.getAllByText('Bookings In The Forecast').length).toBeGreaterThan(0)
-    expect(screen.getByText('How Often Each Stage Reaches Signing')).toBeTruthy()
-    expect(screen.getByText('An Accuracy Check On Simulated Data Proves The Method, Not The Business.')).toBeTruthy()
-    expect(screen.getByText('Assumptions')).toBeTruthy()
-    expect(screen.getByText('Placeholder To Calibrate On Company Data')).toBeTruthy()
+    expect(screen.getByRole('heading', { level: 2, name: 'Forecast Documents' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Expected Signings' })).toBeTruthy()
+    expect(screen.queryByText('How Often Each Stage Reaches Signing')).toBeNull()
+  })
+
+  it('opens a selected document in a labelled paper dialog and closes it with Escape', () => {
+    renderPage()
+    fireEvent.click(screen.getByRole('button', { name: /Where Bookings Leak/ }))
+    expect(screen.getByRole('dialog', { name: 'Where Bookings Leak' })).toBeTruthy()
+    expect(screen.getByText(/bookings worth/)).toBeTruthy()
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('moves the selected document with arrow keys and swipe gestures', () => {
+    renderPage()
+    const stack = screen.getByRole('group', { name: 'Forecast documents' })
+    const expected = within(stack).getByRole('button')
+    fireEvent.keyDown(stack, { key: 'ArrowRight' })
+    expect(within(stack).getByRole('button').getAttribute('aria-label')).toContain('Where Bookings Leak')
+    fireEvent.keyDown(stack, { key: 'ArrowLeft' })
+    expect(expected.getAttribute('aria-current')).toBe('true')
+    fireEvent.touchStart(stack, { touches: [{ clientX: 220 }] })
+    fireEvent.touchEnd(stack, { changedTouches: [{ clientX: 40 }] })
+    expect(within(stack).getByRole('button').getAttribute('aria-label')).toContain('Where Bookings Leak')
+  })
+
+  it('opens the expected-signings document with its range and live booking count', () => {
+    renderPage()
+    fireEvent.click(screen.getByRole('button', { name: 'Expected Signings' }))
+    const dialog = screen.getByRole('dialog', { name: 'Expected Signings' })
+    expect(within(dialog).getByText('Bookings In The Forecast')).toBeTruthy()
+    expect(within(dialog).getByText(/\d+ – \d+/)).toBeTruthy()
+  })
+
+  it('keeps metric explanations available by keyboard inside documents', () => {
+    renderPage()
+    fireEvent.click(screen.getByRole('button', { name: 'Expected Signings' }))
+    const dialog = screen.getByRole('dialog', { name: 'Expected Signings' })
+    const label = within(dialog).getByText('Bookings In The Forecast')
+    fireEvent.focusIn(within(label).getByRole('button'))
+    expect(screen.getByText('Unsigned and under 30 days old.')).toBeTruthy()
   })
 
   it('folds the assumptions table behind one control that names the count', () => {
     renderPage()
+    fireEvent.click(screen.getByRole('button', { name: 'Assumptions' }))
     const toggle = screen.getByRole('button', { name: /Show \d+ Assumptions/ })
     expect(toggle.getAttribute('aria-expanded')).toBe('false')
     expect(screen.queryByText('1 working day')).toBeNull()
@@ -89,25 +121,16 @@ describe('ForecastPage', () => {
 
   it('renders singular units for assumption values of one once expanded', () => {
     renderPage()
+    fireEvent.click(screen.getByRole('button', { name: 'Assumptions' }))
     fireEvent.click(screen.getByRole('button', { name: /Show \d+ Assumptions/ }))
     expect(screen.queryByText('1 days')).toBeNull()
     expect(screen.queryByText('1 working days')).toBeNull()
     expect(screen.getByText('1 working day')).toBeTruthy()
   })
 
-  it('moves tile second lines and notes into info tooltips beside their labels', () => {
-    renderPage()
-    expect(screen.queryByText('Unsigned And Under 30 Days Old')).toBeNull()
-    expect(screen.queryByText('Mean Squared Error, Lower Is Better')).toBeNull()
-    expect(screen.queryByText(/Approval Falls As The Debt Service Ratio Rises/)).toBeNull()
-
-    for (const label of ['Bookings In The Forecast', 'Forecast Range', 'Rate', 'Likely Range']) {
-      expect(infoTrigger(label)).toBeTruthy()
-    }
-  })
-
   it('displays a plain-language accuracy sentence on how close the forecast came', () => {
     renderPage()
+    fireEvent.click(screen.getByRole('button', { name: 'How Well The Method Backtests' }))
     expect(
       screen.getByText(/(The forecast matched actual signings exactly|The forecast came within \d+ signing)/)
     ).toBeTruthy()
@@ -116,16 +139,10 @@ describe('ForecastPage', () => {
 
   it('Run It Again adds a browser-only run beside the canonical forecast', async () => {
     renderPage()
+    fireEvent.click(screen.getByRole('button', { name: 'Seed Spread' }))
     fireEvent.click(screen.getByRole('button', { name: 'Run It Again' }))
     await waitFor(() => expect(screen.getByText('20260919')).toBeTruthy())
     expect(screen.getByText('This Run')).toBeTruthy()
     expect(screen.getByText('Regenerated In The Browser Only; The Saved Simulation Is Untouched.')).toBeTruthy()
-  })
-
-  it('opens the info tooltip on keyboard focus, like every other tooltip', () => {
-    renderPage()
-    // React delegates onFocus to the bubbling focusin event; Radix opens on it.
-    fireEvent.focusIn(infoTrigger('Bookings In The Forecast'))
-    expect(screen.getByText('Unsigned and under 30 days old.')).toBeTruthy()
   })
 })

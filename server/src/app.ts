@@ -2,7 +2,7 @@
  * `createApp` builds the `/api` fetch handler. It takes a `Database` (Bun SQL in
  * production, an in-memory fake in tests), a `JevService` (the real
  * `createJevService` once `@mortar/jev` lands, `unavailableJevService` until
- * then) and a `reset` callback so the admin route stays testable. Returns
+ * then) and demo data callbacks so the admin routes stay testable. Returns
  * `null` for non-API paths so the caller can fall through to static files.
  */
 import { SQL } from 'bun'
@@ -36,7 +36,14 @@ import type {
   Task,
   Track
 } from '@mortar/core'
-import { EventSettledError, ImportMovedOnError, OpenApplicationError, UnitHeldError, type Database } from '../db/index'
+import {
+  BookingMovedOnError,
+  EventSettledError,
+  ImportMovedOnError,
+  OpenApplicationError,
+  UnitHeldError,
+  type Database
+} from '../db/index'
 import { isoDateTime, withMaskedContact } from '../db/mappers'
 import { createAssistant } from './assistant/index'
 import {
@@ -56,8 +63,10 @@ import {
 export interface AppOptions {
   db: Database
   jev: JevService
-  /** Rebuilds the canonical dataset; `POST /api/admin/reset` and the boot seed both call it. */
-  reset: () => Promise<SimulationMeta>
+  addDemoData?: () => Promise<SimulationMeta>
+  deleteDemoData?: () => Promise<void>
+  /** Kept for internal test/service wiring; no public reset route calls it. */
+  reset?: () => Promise<SimulationMeta>
   /** What `/api/health` reports for Jev: whether a live service is wired. */
   jevAvailable?: boolean
   /**
@@ -67,9 +76,9 @@ export interface AppOptions {
    */
   jevLastError?: () => string | null
   /**
-   * Whether `POST /api/admin/reset` may wipe the database. On for the public
+   * Whether demo data may be managed. On for the public
    * demo; a server holding real data sets `MORTAR_DEMO_RESET=off`, and the
-   * route then refuses with 403 (docs/TRD.md, Data Retention).
+   * routes then refuse with 403 (docs/TRD.md, Data Retention).
    */
   resetEnabled?: boolean
   /**
@@ -127,7 +136,6 @@ const NEXT_ACTIONS: readonly NextAction[] = [
 const TASK_STATUSES: readonly Task['status'][] = ['open', 'done', 'cancelled']
 const REVIEW_DECISIONS = { confirm: 'confirmed', dispute: 'disputed', dismiss: 'superseded' } as const
 
-const RESET_COOLDOWN_MS = 30_000
 /** Rows one import may carry; a launch sheet is a few hundred units. */
 const MAX_IMPORT_ROWS = 1000
 /**
@@ -268,8 +276,9 @@ type Handler = (ctx: { req: Request; url: URL; params: Record<string, string> })
 
 export function createApp(options: AppOptions): App {
   const { db, jev } = options
-  /** Wall clock of the last reset through this route; covers restarts via `meta` below. */
-  let lastResetAt = Number.NEGATIVE_INFINITY
+  const assistant = options.assistant
+    ? createAssistant({ db, ...options.assistant })
+    : createAssistant({ db, apiKey: null })
 
   const summaryFor = async (bookingId: string): Promise<CaseSummary | null> => {
     const summaries = summarizeCases(await db.caseData(), REFERENCE_DATE)
@@ -287,10 +296,11 @@ export function createApp(options: AppOptions): App {
   }
 
   const routes: [string, string, Handler][] = [
+    ['POST', '/api/assistant', assistant],
     [
       'POST',
-      '/api/assistant',
-      options.assistant ? createAssistant({ db, ...options.assistant }) : createAssistant({ db, apiKey: null })
+      '/api/assistant/stream',
+      async ({ req }) => assistant.stream?.({ req }) ?? json({ error: 'stream unavailable' }, 500)
     ],
     [
       'GET',
@@ -606,6 +616,25 @@ export function createApp(options: AppOptions): App {
       }
     ],
     [
+      'DELETE',
+      '/api/bookings/:id',
+      async ({ req, params }) => {
+        const b = await body(req)
+        if (!b) return error(400, 'expected a JSON object body')
+        if (!isString(b.reportedBy)) return error(400, 'reportedBy is required')
+        const reportedByTooLong = tooLong('reportedBy', b.reportedBy, MAX_NAME)
+        if (reportedByTooLong) return reportedByTooLong
+        try {
+          const removed = await db.deleteBooking(params.id, b.reportedBy.trim(), simNow(REFERENCE_DATE))
+          if (!removed) return error(404, `booking ${params.id} not found`)
+          return json({ removed: params.id })
+        } catch (e) {
+          if (e instanceof BookingMovedOnError) return error(409, e.message)
+          throw e
+        }
+      }
+    ],
+    [
       'POST',
       '/api/bookings/import',
       async ({ req }) => {
@@ -735,29 +764,25 @@ export function createApp(options: AppOptions): App {
     ],
     [
       'POST',
-      '/api/admin/reset',
+      '/api/admin/demo/add',
       async () => {
         if (options.resetEnabled === false) {
-          return error(403, 'demo reset is turned off on this server (MORTAR_DEMO_RESET=off)')
+          return error(403, 'demo data is turned off on this server (MORTAR_DEMO_RESET=off)')
         }
-        const meta = await db.meta()
-        // `meta.resetAt` is sim time, whose time of day falls back to 00:00 at
-        // midnight, so it cannot time a cooldown. Every reset also stores the
-        // real clock time, which covers a reset by another process too; either
-        // side of it, in case that process's clock runs a little ahead.
-        const resetAtWall = meta?.resetAtWall ? Date.parse(meta.resetAtWall) : Number.NaN
-        const recent =
-          Date.now() - lastResetAt < RESET_COOLDOWN_MS || Math.abs(Date.now() - resetAtWall) < RESET_COOLDOWN_MS
-        if (recent) return error(429, 'reset ran less than 30 seconds ago')
-        // Arm before awaiting so a concurrent POST inside the reset's own
-        // runtime is also a 429; a failed reset frees the window again.
-        lastResetAt = Date.now()
-        try {
-          return json(await options.reset())
-        } catch (e) {
-          lastResetAt = Number.NEGATIVE_INFINITY
-          throw e
+        if (!options.addDemoData) return error(503, 'demo data is not configured on this server')
+        return json(await options.addDemoData())
+      }
+    ],
+    [
+      'POST',
+      '/api/admin/demo/delete',
+      async () => {
+        if (options.resetEnabled === false) {
+          return error(403, 'demo data is turned off on this server (MORTAR_DEMO_RESET=off)')
         }
+        if (!options.deleteDemoData) return error(503, 'demo data is not configured on this server')
+        await options.deleteDemoData()
+        return json({ ok: true })
       }
     ]
   ]

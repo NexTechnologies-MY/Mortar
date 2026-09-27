@@ -10,8 +10,9 @@ import { RISK_LABELS } from '@/components/case/RiskChip'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { useState } from 'react'
+import { ListFilter } from 'lucide-react'
 
 export type View = 'active' | 'closed'
 
@@ -54,73 +55,85 @@ export function BookingFilters({
   exporting = false,
   exportDisabled = false
 }: BookingFiltersProps) {
+  const [open, setOpen] = useState(false)
+  const check = (id: string, label: string, checked: boolean, onChange: (checked: boolean) => void) => (
+    <div key={id} className="flex items-center gap-2 py-1">
+      <Checkbox id={id} checked={checked} onCheckedChange={(value) => onChange(value === true)} />
+      <Label htmlFor={id} className="cursor-pointer text-sm">
+        {label}
+      </Label>
+    </div>
+  )
+  const active = view === 'active'
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-      {onViewChange && (
-        <Tabs value={view} onValueChange={(next) => onViewChange(next as View)}>
-          <TabsList>
-            <TabsTrigger value="active">Active{activeCount !== undefined ? ` (${activeCount})` : ''}</TabsTrigger>
-            <TabsTrigger value="closed">Closed{closedCount !== undefined ? ` (${closedCount})` : ''}</TabsTrigger>
-          </TabsList>
-        </Tabs>
-      )}
-      {view === 'closed' && onExportClosed && (
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          disabled={exportDisabled || exporting}
-          onClick={onExportClosed}
-        >
-          {exporting ? 'Exporting…' : 'Export To Excel'}
-        </Button>
-      )}
-      <Select value={filter.stage} onValueChange={(stage) => onChange({ ...filter, stage: stage as Stage | 'all' })}>
-        <SelectTrigger aria-label="Filter By Stage" className="w-44">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All Stages</SelectItem>
-          {stages.map((stage) => (
-            <SelectItem key={stage} value={stage}>
-              {STAGE_LABELS[stage]}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <Select value={filter.risk} onValueChange={(risk) => onChange({ ...filter, risk: risk as RiskLevel | 'all' })}>
-        <SelectTrigger aria-label="Filter By Risk" className="w-40">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All Risk Levels</SelectItem>
-          {RISKS.map((level) => (
-            <SelectItem key={level} value={level}>
-              {RISK_LABELS[level]}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <div className="flex items-center gap-2">
-        <Checkbox
-          id="bookings-stalled-only"
-          checked={filter.stalledOnly}
-          onCheckedChange={(checked) => onChange({ ...filter, stalledOnly: checked === true })}
-        />
-        <Label htmlFor="bookings-stalled-only" className="cursor-pointer text-sm">
-          Stalled Only
-        </Label>
-      </div>
-      <div className="flex items-center gap-2">
-        <Checkbox
-          id="bookings-unknown-only"
-          checked={filter.unknownOnly}
-          onCheckedChange={(checked) => onChange({ ...filter, unknownOnly: checked === true })}
-        />
-        <Label htmlFor="bookings-unknown-only" className="cursor-pointer text-sm">
-          No Update 10+ Days
-        </Label>
-      </div>
+    <div className="flex flex-wrap items-center gap-3">
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button type="button" variant="secondary" size="sm" aria-label="Filters">
+            <ListFilter aria-hidden="true" /> Filters
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="start" className="w-72">
+          <p className="mb-2 text-sm font-semibold">Filter Bookings</p>
+          {onViewChange && (
+            <>
+              {check(
+                'bookings-active',
+                `Active${activeCount !== undefined ? ` (${activeCount})` : ''}`,
+                active,
+                (checked) => {
+                  if (checked) onViewChange('active')
+                }
+              )}
+              {check(
+                'bookings-closed',
+                `Closed${closedCount !== undefined ? ` (${closedCount})` : ''}`,
+                !active,
+                (checked) => {
+                  if (checked) onViewChange('closed')
+                }
+              )}
+            </>
+          )}
+          <div className="my-2 border-t border-border" />
+          {check('bookings-stage-all', 'All Stages', filter.stage === 'all', (checked) => {
+            if (checked) onChange({ ...filter, stage: 'all' })
+          })}
+          {stages.map((stage) =>
+            check(`bookings-stage-${stage}`, STAGE_LABELS[stage], filter.stage === stage, (checked) =>
+              onChange({ ...filter, stage: checked ? stage : 'all' })
+            )
+          )}
+          <div className="my-2 border-t border-border" />
+          {check('bookings-risk-all', 'All Risk Levels', filter.risk === 'all', (checked) => {
+            if (checked) onChange({ ...filter, risk: 'all' })
+          })}
+          {RISKS.map((level) =>
+            check(`bookings-risk-${level}`, RISK_LABELS[level], filter.risk === level, (checked) =>
+              onChange({ ...filter, risk: checked ? level : 'all' })
+            )
+          )}
+          <div className="my-2 border-t border-border" />
+          {check('bookings-stalled-only', 'Stalled Only', filter.stalledOnly, (checked) =>
+            onChange({ ...filter, stalledOnly: checked })
+          )}
+          {check('bookings-unknown-only', 'No Update 10+ Days', filter.unknownOnly, (checked) =>
+            onChange({ ...filter, unknownOnly: checked })
+          )}
+          {view === 'closed' && onExportClosed && (
+            <Button
+              className="mt-2 w-full"
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={exportDisabled || exporting}
+              onClick={onExportClosed}
+            >
+              {exporting ? 'Exporting…' : 'Export To Excel'}
+            </Button>
+          )}
+        </PopoverContent>
+      </Popover>
       <p className="ml-auto text-[13px] text-muted-foreground tabular-nums">
         {shown === total ? `${total} Bookings` : `${shown} Of ${total} Bookings`}
       </p>

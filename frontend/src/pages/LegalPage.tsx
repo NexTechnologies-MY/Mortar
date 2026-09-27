@@ -44,7 +44,7 @@ export function LegalPage() {
 
   return (
     <PageContainer>
-      <PageHeaderCard>
+      <PageHeaderCard tourTarget="legal-header">
         <h1 className="text-[32px] font-semibold leading-[1.16] tracking-[-0.02em] text-foreground">Legal</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           What Is Sitting Between An Approved Loan And A Signed SPA, With Whom, And For How Long.
@@ -111,7 +111,7 @@ export function LegalPage() {
             </div>
           ) : (
             <>
-              <section className="mt-6">
+              <section data-tour="legal-no-appointment" className="mt-6">
                 <h2 className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                   No Appointment Yet ({noAppointmentRows.length})
                   <InfoTooltip text="Longest Wait First Until You Sort A Column. Rows Open The Case File." />
@@ -133,7 +133,7 @@ export function LegalPage() {
                 )}
               </section>
 
-              <section className="mt-8">
+              <section data-tour="legal-appointment-set" className="mt-8">
                 <h2 className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                   Appointment Set, Not Signed ({appointmentSetRows.length})
                   <InfoTooltip text="Longest Wait First Until You Sort A Column. Rows Open The Case File." />
@@ -155,7 +155,7 @@ export function LegalPage() {
                 )}
               </section>
 
-              <section className="mt-8">
+              <section data-tour="legal-panel-load" className="mt-8">
                 <FirmLoadCard firms={firms} />
               </section>
             </>

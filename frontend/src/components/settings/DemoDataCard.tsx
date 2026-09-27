@@ -1,13 +1,7 @@
-/**
- * Demo Data card — the simulation's identity (seed, reference date, last
- * reset), record counts across the snapshot, and Reset Demo Data: a
- * destructive action behind a confirm dialog that restores the original
- * dataset for the next demo run.
- */
-
+/** Seeded examples and the visitor's current records. */
 import { useState } from 'react'
+import { Info } from 'lucide-react'
 import type { Snapshot } from '@mortar/core'
-import { ApiError, resetDemo } from '@/lib/api'
 import { notify } from '@/components/ui/toastConfig'
 import { formatDate } from '@/components/case'
 import { Button } from '@/components/ui/button'
@@ -23,25 +17,53 @@ import {
   DialogTitle,
   DialogTrigger
 } from '@/components/ui/dialog'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
-function formatDateTime(value: string | null): string {
-  if (!value) return '—'
-  const match = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(value)
-  return match ? `${formatDate(match[1])}, ${match[2]}` : formatDate(value)
+function InfoTip({ children }: { children: string }) {
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button type="button" aria-label={children} className="rounded-sm text-muted-foreground focus-visible:ring-2">
+            <Info className="size-4" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>{children}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
 }
 
 export function DemoDataCard({
   snapshot,
   jevAnswers,
-  onReset
+  onChange
 }: {
   snapshot: Snapshot
-  /** Stored `jev_answers` rows from `/api/health`; `null` while unknown. */
   jevAnswers: number | null
-  onReset: () => Promise<void>
+  onChange: () => Promise<void>
 }) {
-  const [open, setOpen] = useState(false)
-  const [resetting, setResetting] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const hasDemoData = snapshot.meta.seed !== 0
+
+  const run = async (action: 'add' | 'delete') => {
+    setBusy(true)
+    try {
+      const response = await fetch(`/api/admin/demo/${action}`, { method: 'POST' })
+      if (!response.ok) {
+        const result = (await response.json()) as { error?: string }
+        throw new Error(result.error ?? 'Could Not Update Demo Data.')
+      }
+      notify.success(action === 'add' ? 'Demo Data Added.' : 'Demo Data Deleted.')
+      setConfirmDelete(false)
+      await onChange()
+    } catch (error) {
+      notify.error(error instanceof Error ? error.message : 'Could Not Update Demo Data. Try Again.')
+    } finally {
+      setBusy(false)
+    }
+  }
 
   const counts: [string, number | null][] = [
     ['Bookings', snapshot.bookings.length],
@@ -50,51 +72,29 @@ export function DemoDataCard({
     ['Messages', snapshot.messages.length],
     ['Tasks', snapshot.tasks.length],
     ['Playbooks', snapshot.playbooks.length],
-    // The snapshot only surfaces the latest answer per subject; the stored
-    // `jev_answers` total comes from the health route.
     ['Jev Answers', jevAnswers]
   ]
 
-  const runReset = async () => {
-    setResetting(true)
-    try {
-      const meta = await resetDemo()
-      notify.success(`Demo data reset to seed ${meta.seed}`)
-      setOpen(false)
-      await onReset()
-    } catch (e) {
-      notify.error(e instanceof ApiError ? e.message : 'Could Not Reset The Demo Data. Try Again.')
-    } finally {
-      setResetting(false)
-    }
-  }
-
   return (
-    <Card>
+    <Card className="h-full">
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">
-          Demo Data <StatusPill tone="neutral">Simulated Data</StatusPill>
-        </CardTitle>
-        <p className="text-[13px] text-muted-foreground">
-          The Simulated Dataset Every Screen Reads. Resetting Restores The Original State For The Next Run.
-        </p>
+        <div className="flex items-center gap-2">
+          <CardTitle className="text-base">Demo Data</CardTitle>
+          <StatusPill tone="neutral">Simulated Data</StatusPill>
+          <InfoTip>Example bookings and activity for exploring Mortar.</InfoTip>
+        </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <dl className="grid grid-cols-1 gap-x-8 gap-y-2 sm:grid-cols-2">
           <div className="flex items-baseline justify-between gap-4 border-b border-border py-1.5">
             <dt className="text-[13px] text-muted-foreground">Seed</dt>
-            <dd className="font-mono text-[13px] tabular-nums">{snapshot.meta.seed}</dd>
+            <dd className="font-mono text-[13px] tabular-nums">{hasDemoData ? snapshot.meta.seed : '—'}</dd>
           </div>
           <div className="flex items-baseline justify-between gap-4 border-b border-border py-1.5">
             <dt className="text-[13px] text-muted-foreground">Reference Date</dt>
             <dd className="text-[13px] tabular-nums">{formatDate(snapshot.meta.referenceDate)}</dd>
           </div>
-          <div className="flex items-baseline justify-between gap-4 border-b border-border py-1.5 sm:col-span-2">
-            <dt className="text-[13px] text-muted-foreground">Last Reset</dt>
-            <dd className="text-[13px] tabular-nums">{formatDateTime(snapshot.meta.resetAt)}</dd>
-          </div>
         </dl>
-
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Records</p>
           <dl className="mt-1 grid grid-cols-2 gap-x-8 gap-y-2 sm:grid-cols-3">
@@ -106,33 +106,36 @@ export function DemoDataCard({
             ))}
           </dl>
         </div>
-
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button type="button" variant="destructive" size="sm" className="w-fit">
-              Reset Demo Data
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Reset Demo Data?</DialogTitle>
-              <DialogDescription>
-                Restores the original simulated dataset. Every message, event and task added since the last reset is
-                discarded.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="gap-2">
-              <DialogClose asChild>
-                <Button type="button" variant="secondary" autoFocus>
-                  Cancel
-                </Button>
-              </DialogClose>
-              <Button type="button" variant="destructive" disabled={resetting} onClick={() => void runReset()}>
-                {resetting ? 'Resetting…' : 'Reset Demo Data'}
+        <div className="mt-auto flex flex-wrap gap-2">
+          <Button type="button" size="sm" disabled={hasDemoData || busy} onClick={() => void run('add')}>
+            Add Demo Data
+          </Button>
+          <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+            <DialogTrigger asChild>
+              <Button type="button" variant="destructive" size="sm" disabled={!hasDemoData || busy}>
+                Delete Demo Data
               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Delete Demo Data?</DialogTitle>
+                <DialogDescription>
+                  Visitor-created bookings, messages, tasks and updates will be kept.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="gap-2">
+                <DialogClose asChild>
+                  <Button type="button" variant="secondary" autoFocus>
+                    Cancel
+                  </Button>
+                </DialogClose>
+                <Button type="button" variant="destructive" disabled={busy} onClick={() => void run('delete')}>
+                  {busy ? 'Deleting…' : 'Delete Demo Data'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
       </CardContent>
     </Card>
   )

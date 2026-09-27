@@ -23,6 +23,17 @@ neither shows: conventions, the file map, and the gotchas.
 
 ## File Map
 
+The guided walkthrough lives in `frontend/src/tour/`, mounted by `AppLayout`.
+Keep `tourSteps.ts` selectors aligned with the pages' `data-tour` anchors and
+their tests. Its keyboard controls must leave inputs and dialogs usable.
+
+Demo data actions live in `server/db/reset.ts`: startup applies the schema
+without seeding. Add/Delete Demo Data use `demo_seed` provenance; deletion
+rehomes visitor work, reviewed events and source evidence under fresh IDs so
+fixtures can be added again. Test these paths only with `TEST_DATABASE_URL`
+pointing at a disposable database. Recording requires an explicit disposable
+`DEMO_WEB`; demo deletion no longer restores a clean recording seed.
+
 | Area           | Files                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | App shell      | `frontend/src/App.tsx` (routes), `frontend/src/main.tsx` (providers), `frontend/src/components/layout/` (sidebar, nav, `PersonaRoute.tsx` (guard), `AppFooter`, `PublicShell` (footer layout route for `/` and `/faq`), `AppShell`, `PageContainer`, `PageHeaderCard`, `AppErrorBoundary`, `ThemeToggle`, `PersonaSwitch`)                                                                                                                                             |

@@ -16,31 +16,31 @@ describe('BookingFilters', () => {
   it('offers only the stages passed in, not every stage in the pipeline (issue M10)', () => {
     render(<BookingFilters filter={FILTER} onChange={vi.fn()} shown={8} total={8} stages={CLOSED_STAGES} />)
 
-    fireEvent.click(screen.getByLabelText('Filter By Stage'))
-    const listbox = screen.getByRole('listbox')
-    expect(within(listbox).getByText('Disbursed')).toBeTruthy()
-    expect(within(listbox).getByText('Cancelled')).toBeTruthy()
-    expect(within(listbox).getByText('Lapsed')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Filters' }))
+    const menu = screen.getByRole('dialog')
+    expect(within(menu).getByRole('checkbox', { name: 'Disbursed' })).toBeTruthy()
+    expect(within(menu).getByRole('checkbox', { name: 'Cancelled' })).toBeTruthy()
+    expect(within(menu).getByRole('checkbox', { name: 'Lapsed' })).toBeTruthy()
     // Only reachable through the Active tab — must not appear while Closed is showing.
-    expect(within(listbox).queryByText('Booked')).toBeNull()
+    expect(within(menu).queryByRole('checkbox', { name: 'Booked' })).toBeNull()
   })
 
   it('offers the pipeline stages, not the closed ones, when given the Active list', () => {
     render(<BookingFilters filter={FILTER} onChange={vi.fn()} shown={5} total={5} stages={ACTIVE_STAGES} />)
 
-    fireEvent.click(screen.getByLabelText('Filter By Stage'))
-    const listbox = screen.getByRole('listbox')
-    expect(within(listbox).getByText('Booked')).toBeTruthy()
-    expect(within(listbox).getByText('SPA Signed')).toBeTruthy()
-    expect(within(listbox).queryByText('Disbursed')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Filters' }))
+    const menu = screen.getByRole('dialog')
+    expect(within(menu).getByRole('checkbox', { name: 'Booked' })).toBeTruthy()
+    expect(within(menu).getByRole('checkbox', { name: 'SPA Signed' })).toBeTruthy()
+    expect(within(menu).queryByRole('checkbox', { name: 'Disbursed' })).toBeNull()
   })
 
   it('reports the picked stage back through onChange', () => {
     const onChange = vi.fn()
     render(<BookingFilters filter={FILTER} onChange={onChange} shown={5} total={5} stages={ACTIVE_STAGES} />)
 
-    fireEvent.click(screen.getByLabelText('Filter By Stage'))
-    fireEvent.click(within(screen.getByRole('listbox')).getByText('Booked'))
+    fireEvent.click(screen.getByRole('button', { name: 'Filters' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Booked' }))
 
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ stage: 'booked' }))
   })
@@ -49,11 +49,12 @@ describe('BookingFilters', () => {
     const onChange = vi.fn()
     render(<BookingFilters filter={FILTER} onChange={onChange} shown={5} total={5} stages={ACTIVE_STAGES} />)
 
+    fireEvent.click(screen.getByRole('button', { name: 'Filters' }))
     fireEvent.click(screen.getByRole('checkbox', { name: 'Stalled Only' }))
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ stalledOnly: true }))
   })
 
-  it('renders Active and Closed tabs and calls onViewChange on tab switch', () => {
+  it('renders Active and Closed filter options and calls onViewChange on selection', () => {
     const onViewChange = vi.fn()
     render(
       <BookingFilters
@@ -69,12 +70,9 @@ describe('BookingFilters', () => {
       />
     )
 
-    expect(screen.getByRole('tab', { name: 'Active (20)' })).toBeTruthy()
-    const closedTab = screen.getByRole('tab', { name: 'Closed (8)' })
-    expect(closedTab).toBeTruthy()
-
-    fireEvent.mouseDown(closedTab, { button: 0 })
-    fireEvent.click(closedTab)
+    fireEvent.click(screen.getByRole('button', { name: 'Filters' }))
+    expect(screen.getByRole('checkbox', { name: 'Active (20)' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Closed (8)' }))
     expect(onViewChange).toHaveBeenCalledWith('closed')
   })
 })

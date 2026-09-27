@@ -117,6 +117,11 @@ describe('ChasePage', () => {
 
   it('opens Sales Admin on the whole chase, header and tile included', () => {
     renderPage()
+    expect(document.querySelector('[data-tour="today-header"]')).toBeTruthy()
+    expect(document.querySelector('[data-tour="today-card"]')).toBeTruthy()
+    expect(document.querySelector('[data-tour="today-actions"]')).toBeTruthy()
+    expect(document.querySelector('[data-tour="today-quick-view"]')).toBeTruthy()
+    expect(document.querySelector('[data-tour="open-tasks"]')).toBeTruthy()
 
     // The Sales Administration Executive coordinates every booking to a
     // signed SPA, so their home is the whole queue, not one desk of it.

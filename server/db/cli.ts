@@ -1,6 +1,6 @@
-/** `bun run db:reset`: applies the schema, re-seeds the canonical dataset and prints the new `SimulationMeta`. */
+/** `bun run db:reset`: applies the schema and adds canonical demo data. */
 import { SQL } from 'bun'
-import { applySchema, resetDatabase } from './reset'
+import { addDemoData, applySchema } from './reset'
 
 const databaseUrl = process.env.DATABASE_URL
 if (!databaseUrl) {
@@ -10,6 +10,6 @@ if (!databaseUrl) {
 
 const sql = new SQL(databaseUrl)
 await applySchema(sql)
-const meta = await resetDatabase(sql)
+const meta = await addDemoData(sql)
 await sql.end()
-console.log(`reset complete — seed ${meta.seed}, reference ${meta.referenceDate}, resetAt ${meta.resetAt}`)
+console.log(`demo data ready — seed ${meta.seed}, reference ${meta.referenceDate}, resetAt ${meta.resetAt}`)

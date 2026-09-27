@@ -8,7 +8,7 @@
  */
 
 import { useMemo, useRef, useState } from 'react'
-import { Download, TriangleAlert } from 'lucide-react'
+import { Download } from 'lucide-react'
 import {
   PERSONA_STAFF,
   readBookingSheet,
@@ -31,6 +31,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { StatusPill } from '@/components/ui/status-pill'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
 import { notify } from '@/components/ui/toastConfig'
 
 /** The project most bookings belong to: where a sheet without a Project column lands. */
@@ -162,9 +163,9 @@ export function ImportPage() {
 
   return (
     <PageContainer>
-      <PageHeaderCard>
+      <PageHeaderCard tourTarget="import-header">
         <h1 className="text-[32px] font-semibold leading-[1.16] tracking-[-0.02em] text-foreground">Add Bookings</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Upload A Spreadsheet, Or Type Bookings In One By One.</p>
+        <InfoTooltip text="Upload A Spreadsheet, Or Enter Bookings One At A Time." />
       </PageHeaderCard>
 
       <Tabs defaultValue="upload" className="mt-4">
@@ -177,8 +178,9 @@ export function ImportPage() {
           <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] [&>*]:min-w-0">
             <Card>
               <CardContent className="flex flex-col gap-3 p-4">
-                <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                  Booking Sheet
+                <h2 className="flex items-center text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                  Booking Sheet{' '}
+                  <InfoTooltip text="The Sheet Is Read In Your Browser. Only The Rows You Import Are Sent To Mortar." />
                 </h2>
                 <DropZone key={zoneKey} onFile={(next) => void onFile(next)} detail={detail} badge={badge} />
                 {readError ? <p className="text-[13px] text-status-danger-fg">{readError}</p> : null}
@@ -192,30 +194,19 @@ export function ImportPage() {
                     </Button>
                   </div>
                 ) : null}
-                <p className="text-[13px] text-muted-foreground">
-                  The Sheet Is Read In Your Browser. Only The Rows You Import Are Sent To Mortar.
-                </p>
-                <p className="flex items-start gap-1.5 text-[13px] text-status-warning-fg">
-                  <TriangleAlert aria-hidden="true" className="mt-px size-4 shrink-0" />
-                  This Demo Is Public And Has No Sign-In. Import Made-Up Buyers Only, Never Real Names, IC Numbers Or
-                  Incomes.
-                </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardContent className="flex flex-col gap-3 p-4">
-                <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                  What The Sheet Needs
+                <h2 className="flex items-center text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                  What The Sheet Needs{' '}
+                  <InfoTooltip text="Dates Read Day First, Unless The Column Shows Month First. The Buyer’s Age Comes From The IC." />
                 </h2>
                 <ul className="flex flex-col gap-2 text-[13px] text-muted-foreground">
                   <li>One Row Per Unit Booking, Under A Row Of Column Names.</li>
                   <li>Unit, Buyer Name, IC Number, Phone, Price, Booking Date And Gross Monthly Income.</li>
                   <li>Optional: Monthly Commitments, Properties Owned, Project, Sales Agent And Solicitor.</li>
-                  <li>
-                    Dates Read Day First, As In 2/9/2026, Unless The Column Shows Month First. The Buyer&apos;s Age
-                    Comes From The IC.
-                  </li>
                 </ul>
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                   <Button variant="secondary" size="sm" asChild>
@@ -232,10 +223,7 @@ export function ImportPage() {
                     Or The CSV Version
                   </a>
                 </div>
-                <p className="text-[13px] text-muted-foreground">
-                  The Excel Template Opens In Excel And In Google Sheets (File, Import). Its Second Sheet Explains Every
-                  Column.
-                </p>
+                <InfoTooltip text="The Excel Template Opens In Excel And Google Sheets. Its Second Sheet Explains Every Column." />
               </CardContent>
             </Card>
           </div>

@@ -267,6 +267,59 @@ const answerOf = async (res: Response) => ((await res.json()) as { answer: strin
 const errorOf = async (res: Response) => ((await res.json()) as { error?: string }).error
 
 describe('POST /api/assistant', () => {
+  test('streams plain-language tool events, filtered citations, and four follow-ups', async () => {
+    const gemini = scriptedFetch([
+      { call: { name: 'get_case', args: { bookingId: 'BK-9001' } } },
+      { text: 'BK-9001 is waiting on a payslip.' }
+    ])
+    const request = new Request('http://test/api/assistant/stream', {
+      method: 'POST',
+      headers: { 'x-forwarded-for': '10.0.0.88' },
+      body: JSON.stringify(QUESTION)
+    })
+    const response = await makeApp(new FakeDb(), gemini.impl).fetch(request)
+    expect(response?.headers.get('content-type')).toContain('text/event-stream')
+    const events = (await response!.text())
+      .split('\n\n')
+      .filter(Boolean)
+      .map((line) => JSON.parse(line.slice(6)))
+    expect(events).toEqual([
+      { type: 'tool_call', label: 'Reading A Booking' },
+      { type: 'tool_result', label: 'Reading A Booking' },
+      { type: 'answer', answer: { answer: 'BK-9001 is waiting on a payslip.', citations: ['BK-9001'] } },
+      {
+        type: 'follow_ups',
+        questions: expect.arrayContaining([
+          expect.any(String),
+          expect.any(String),
+          expect.any(String),
+          expect.any(String)
+        ])
+      }
+    ])
+    expect((events[3] as { questions: string[] }).questions).toHaveLength(4)
+    expect(JSON.stringify(events)).not.toContain('get_case')
+    expect(JSON.stringify(events)).not.toContain('bookingId')
+  })
+
+  test('stops the model request when the reader cancels the stream', async () => {
+    let aborted = false
+    const waitingFetch = ((_input: Parameters<typeof fetch>[0], init?: RequestInit) =>
+      new Promise<Response>((_resolve, reject) => {
+        const signal = init?.signal as AbortSignal
+        signal.addEventListener('abort', () => {
+          aborted = true
+          reject(new DOMException('aborted', 'AbortError'))
+        })
+      })) as typeof fetch
+    const response = await makeApp(new FakeDb(), waitingFetch).fetch(
+      new Request('http://test/api/assistant/stream', { method: 'POST', body: JSON.stringify(QUESTION) })
+    )
+    await response!.body!.cancel()
+    await Bun.sleep(0)
+    expect(aborted).toBe(true)
+  })
+
   test('runs a tool call, feeds the result back, and answers from it', async () => {
     const db = new FakeDb()
     const gemini = scriptedFetch([

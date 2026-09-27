@@ -186,7 +186,15 @@ export const importBookings = (input: { bookings: BookingDraft[]; reportedBy: st
 export const undoImport = (importId: string, reportedBy: string) =>
   post<{ removed: string[] }>(`/api/imports/${importId}/undo`, { reportedBy })
 
-export const resetDemo = () => post<SimulationMeta>('/api/admin/reset')
+/** Removes one untouched booking; the server refuses any booking with progression data. */
+export const deleteBooking = (bookingId: string, reportedBy: string) =>
+  request<{ removed: string }>(`/api/bookings/${encodeURIComponent(bookingId)}`, {
+    method: 'DELETE',
+    body: JSON.stringify({ reportedBy })
+  })
+
+export const addDemoData = () => post<SimulationMeta>('/api/admin/demo/add')
+export const deleteDemoData = () => post<{ ok: true }>('/api/admin/demo/delete')
 
 /** A photo of a bank letter, a form or a WhatsApp message, up to 4 MB. */
 export interface AssistantImage {
@@ -200,6 +208,12 @@ export interface AssistantAnswer {
   /** The booking ids the answer named, which the panel renders as links. */
   citations: string[]
 }
+
+export type AssistantStreamEvent =
+  | { type: 'tool_call' | 'tool_result'; label: string }
+  | { type: 'answer'; answer: AssistantAnswer }
+  | { type: 'follow_ups'; questions: string[] }
+  | { type: 'error'; message: string }
 
 /**
  * Asks Mortar, the assistant. The server answers from its own bookings; with no
@@ -215,3 +229,48 @@ export const askAssistant = (input: {
   history?: { question: string; answer: string }[]
   image?: AssistantImage
 }) => post<AssistantAnswer>('/api/assistant', input, JEV_TIMEOUT_MS)
+
+export async function askAssistantStream(
+  input: Parameters<typeof askAssistant>[0],
+  onEvent: (event: AssistantStreamEvent) => void
+): Promise<void> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), JEV_TIMEOUT_MS)
+  let response: Response
+  try {
+    response = await fetch('/api/assistant/stream', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(input),
+      signal: controller.signal
+    })
+  } catch (error) {
+    clearTimeout(timer)
+    throw error
+  }
+  if (!response.ok || !response.body) {
+    clearTimeout(timer)
+    throw new ApiError('Ask Mortar Could Not Check. Try Again.', response.status)
+  }
+  try {
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    let pending = ''
+    while (true) {
+      const { value, done } = await reader.read()
+      pending += decoder.decode(value, { stream: !done })
+      const events = pending.split('\n\n')
+      pending = events.pop() ?? ''
+      for (const chunk of events) {
+        const line = chunk.split('\n').find((part) => part.startsWith('data: '))
+        if (!line) continue
+        const event = JSON.parse(line.slice(6)) as AssistantStreamEvent
+        if (event.type === 'error') throw new ApiError(event.message, 503)
+        onEvent(event)
+      }
+      if (done) break
+    }
+  } finally {
+    clearTimeout(timer)
+  }
+}
