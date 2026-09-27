@@ -63,7 +63,7 @@ export function DemoDataCard({
         <div className="flex items-center gap-2">
           <CardTitle className="text-base">Demo Data</CardTitle>
           <StatusPill tone="neutral">Simulated Data</StatusPill>
-          <InfoTooltip text="Example bookings and activity for exploring Mortar." />
+          <InfoTooltip label="About Demo Data" text="Example bookings and activity for exploring Mortar." />
         </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">

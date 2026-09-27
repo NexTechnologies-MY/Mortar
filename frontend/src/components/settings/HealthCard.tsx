@@ -35,7 +35,10 @@ export function HealthCard({ health, failed }: { health: Health | null; failed: 
       <CardHeader className="pb-2">
         <div className="flex items-center gap-2">
           <CardTitle className="text-base">System Status</CardTitle>
-          <InfoTooltip text="What The Server Reports Right Now. Jev Falls Back To Cached Answers When Unavailable." />
+          <InfoTooltip
+            label="About System Status"
+            text="What The Server Reports Right Now. Jev Falls Back To Cached Answers When Unavailable."
+          />
         </div>
       </CardHeader>
       <CardContent>

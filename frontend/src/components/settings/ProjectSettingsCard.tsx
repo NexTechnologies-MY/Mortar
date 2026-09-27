@@ -129,7 +129,10 @@ export function ProjectSettingsCard({ defaultProjectName }: { defaultProjectName
             </div>
             <div className="flex items-center gap-2">
               <h2 className="text-sm font-semibold text-foreground">Project & Unit Range Settings</h2>
-              <InfoTooltip text="Set Project Unit Inventory Boundaries, Unit Layout Models, And The Default Panel Law Firm." />
+              <InfoTooltip
+                label="About Project And Unit Range Settings"
+                text="Set Project Unit Inventory Boundaries, Unit Layout Models, And The Default Panel Law Firm."
+              />
             </div>
           </div>
         </div>
