@@ -22,7 +22,7 @@
 ![Vitest](https://img.shields.io/badge/Vitest_3-6E9F18?style=for-the-badge&logo=vitest&logoColor=white)
 ![MIT](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)
 
-[Live Prototype](https://mortar-ppdggwxxjq-as.a.run.app) ·
+[Live Prototype](https://mortar-d18f.onrender.com) ·
 [Figma](https://www.figma.com/design/CTy3FDK15W2QLQmB3h5f1I/Mortar-Design-System?node-id=0-1&t=BmfrHmxUj0uuvRDc-1)
 · [Design Spec](DESIGN.md) · [Problem Statement](source/problem-statement.md) ·
 [Interview](source/interview.md) · [AGENTS](../AGENTS.md)

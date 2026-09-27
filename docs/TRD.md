@@ -963,6 +963,12 @@ hours with nothing else.
 5. **Is It Live:** `/api/health` reports `commit`, the commit the running server
    was built from, so anyone can see a merge go live.
 
+The service lives at
+[mortar-d18f.onrender.com](https://mortar-d18f.onrender.com) and was created in
+the Render dashboard with the settings above. The old Cloud Run service no
+longer receives deploys. It serves its last build, against the same database,
+until the Google Cloud trial closes.
+
 ### Continuous Integration (CI)
 
 Every proposed change must satisfy local and remote verification gates:
