@@ -89,14 +89,15 @@ CRM, spreadsheets and WhatsApp, as practitioners in our survey describe.
 
 ### Daily Users
 
-Three internal administration roles use Mortar every working day. Each is
-described in full under [Who Uses Mortar](#who-uses-mortar).
+Four internal roles use Mortar every working day. Each is described in full
+under [Who Uses Mortar](#who-uses-mortar).
 
-| Daily User  | Owns The Stretch                    | Opens Mortar To                                    |
-| ----------- | ----------------------------------- | -------------------------------------------------- |
-| Sales Admin | Booking to complete buyer documents | Work the Today queue of stuck bookings             |
-| Loan Admin  | Bank submission to Letter of Offer  | See which bank applications are late or incomplete |
-| Legal Admin | Letter of Offer to signed SPA       | See which approved cases have not been signed      |
+| Daily User  | Owns The Stretch                    | Opens Mortar To                                                        |
+| ----------- | ----------------------------------- | ---------------------------------------------------------------------- |
+| Sales Admin | Booking to complete buyer documents | Work the Today queue of stuck bookings                                 |
+| Loan Admin  | Bank submission to Letter of Offer  | See which bank applications are late or incomplete                     |
+| Legal Admin | Letter of Offer to signed SPA       | See which approved cases have not been signed                          |
+| Manager     | Cross-department escalations        | Review overdue bookings across all desks and flag follow-ups for staff |
 
 ### Beneficiaries Who Do Not Log In Daily
 
@@ -104,8 +105,6 @@ described in full under [Who Uses Mortar](#who-uses-mortar).
   booking counts at face value.
 - **Sales Director:** keeps launch momentum, because Mortar advises on financing
   risk without blocking bookings.
-- **Management:** sees persistent stalls early enough to decide whether to
-  release a unit for resale.
 
 ### Deliberately Not Users
 
@@ -131,7 +130,7 @@ decide how simple the product has to be.
 
 ## Who Uses Mortar
 
-Mortar provides a single operational environment tailored for three distinct
+Mortar provides a single operational environment tailored for four distinct
 internal staff personas. Staff switch roles via the header persona menu, which
 persists the active role in browser storage and routes them to their dedicated
 workspace.
@@ -182,6 +181,22 @@ manage directly. Legal Admin Arvind Raj anchors his workflow on the Legal desk
 - **Panel Load:** Shows the count, median wait and value sitting with each firm,
   stated as load rather than as firm performance.
 
+### Project Management
+
+Project managers oversee conversion health and cross-department bottlenecks. In
+Mortar, Project Manager anchors their workflow on the Manager desk (`/manager`)
+with full visibility across every department.
+
+- **Overview Dashboard:** Tracks overdue cases (at least 50% past expected
+  wait), 30-day expected signings from the forecast engine, and open
+  manager-flagged tasks.
+- **Follow-Up Suggestions:** Reviews timing-based follow-ups and Jev confidence
+  scores for stalled bookings across sales, loan administration, and legal.
+- **Department Escalation:** Flags tasks or requests direct follow-ups from the
+  assigned sales, loan, or legal owner with one click.
+- **Company-Wide Scoping:** Maintains unrestricted access to every booking,
+  while individual staff desks remain scoped to assigned cases.
+
 ### Persona Comparison
 
 | Persona     | Representative Staff | Home Route  | Core Responsibility                       | Primary Value Delivered                                         |
@@ -189,6 +204,7 @@ manage directly. Legal Admin Arvind Raj anchors his workflow on the Legal desk
 | Sales Admin | Nurul Aina           | `/chase`    | Works the Today queue of stuck bookings   | Surfaces each stall reason with an actionable next step         |
 | Loan Admin  | Tan Mei Ling         | `/bookings` | Oversees multi-bank mortgage applications | Flags applications undecided past the bank guideline window     |
 | Legal Admin | Arvind Raj           | `/legal`    | Runs the SPA execution queue              | Puts a clock on every case sitting between approval and signing |
+| Manager     | Project Manager      | `/manager`  | Oversees cross-department bottlenecks     | Flags overdue cases and assigns follow-up tasks to staff        |
 
 ## What Mortar Does
 
@@ -210,10 +226,10 @@ preventing stale cases from masquerading as healthy pipeline.
 
 ### Waiting On
 
-Daily triage across the three desks comes down to four questions: where the unit
-is now, what is blocking it, who has to move next, and what that move is. The
-desk tables showed a booking's stage, age and risk, but not why it was stuck or
-what to do next.
+Daily triage across the desks comes down to four questions: where the unit is
+now, what is blocking it, who has to move next, and what that move is. The desk
+tables showed a booking's stage, age and risk, but not why it was stuck or what
+to do next.
 
 Every open case now names the party it waits on: the buyer, a panel bank, the
 solicitor or the developer's own staff. It also names what that party owes and

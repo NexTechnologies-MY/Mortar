@@ -10,26 +10,31 @@ Mortar is an internal operations tool for a Malaysian property developer. Sales,
 loan administration, and legal staff track every unit booking until the Sale &
 Purchase Agreement (SPA) is signed.
 
-The app is used as one of three personas, switched in the header and persisted
-in `localStorage` under `mortar.persona`:
+The app is used as one of four personas, switched in the header. The active
+profile ID is persisted in `localStorage` under `mortar.profile`, and
+`mortar.persona` is still written alongside it:
 
 | Persona     | Home Route  |
 | ----------- | ----------- |
 | Sales Admin | `/chase`    |
 | Loan Admin  | `/bookings` |
 | Legal Admin | `/legal`    |
+| Manager     | `/manager`  |
 
-Routes: `/` (landing), `/sign-in` (no real auth), `/app` (redirects to the
-active persona's home), `/bookings` (list), `/bookings/:id` (detail), `/chase`
-(Today), `/legal` (SPA execution queue), `/forecast` (projected signings),
-`/import` (Add Bookings).
+Routes: `/` (landing), `/faq` (FAQ), `/sign-in` (named demo profiles and a
+signed server session, still no password), `/app` (redirects to the active
+persona's home), `/manager` (Manager overview), `/bookings` (list),
+`/bookings/:id` (detail), `/chase` (Today), `/legal` (SPA execution queue),
+`/forecast` (projected signings), `/import` (Add Bookings), `/settings`
+(Settings).
 
 ## Stack
 
 Bun workspaces (`frontend`, `packages/*`). `frontend/` is React 19 + Vite +
 Tailwind 4 + shadcn/ui (Radix) + react-router 7 + recharts. `packages/core` is
-`@mortar/core`, the shared TypeScript package (`Persona` type today). ESLint
-flat config at the root, Prettier, husky + lint-staged.
+`@mortar/core`, the shared TypeScript package (domain types, demo profiles and
+access scoping rules, simulation, manager logic, forecasting, and booking
+intake). ESLint flat config at the root, Prettier, husky + lint-staged.
 
 ## Rules
 
