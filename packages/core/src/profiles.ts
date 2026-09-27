@@ -55,7 +55,7 @@ export function currentCaseAssignee(booking: Booking, summary: CaseSummary): Sta
   return null
 }
 
-/** Central booking boundary used by snapshots, direct-id routes, and Copilot tools. */
+/** Central booking boundary used by snapshots, direct-id routes, and Ask MortarAI tools. */
 export function canAccessBooking(booking: Booking, profile: StaffProfile, context?: AssignmentAccessContext): boolean {
   switch (profile.persona) {
     case 'manager':

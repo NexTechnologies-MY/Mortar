@@ -91,18 +91,19 @@ clean recording seed.
   Anything that reads `stallReasons` must filter on `open` (`isOpen` in
   `brain/helpers.ts`), never `isLive`; `brain.test.ts` pins Ask's stalled set to
   Today's so the two cannot drift apart again.
-- **Copilot Calls Gemini With Five Read-Only Tools.** `server/src/assistant/`
-  handles `POST /api/assistant` using `fetch` against Google's Gemini API
-  (`GEMINI_API_KEY`; model `GEMINI_MODEL`, default `gemini-3.5-flash-lite`).
-  Five read-only tools query the live snapshot (`find_bookings`, `get_case`,
-  `get_my_queue`, `get_forecast_summary`, `search_playbooks`) under a 30-second
-  budget (max 4 rounds). Messages reach the model fenced as untrusted data. When
-  `GEMINI_API_KEY` is unset or an API call fails, the route returns 503
-  `{ fallback: true }` and `AskPanel` falls back to the scripted `askBrain`
-  answers in `packages/core/src/brain/`. The key, images, and message bodies are
-  never logged. Data caveat: Gemini's free tier may use prompts to train
-  products; Copilot is strictly for simulated data, while real buyer data
-  requires a paid tier or Vertex AI under a PDPA agreement.
+- **Ask MortarAI Calls Gemini With Five Read-Only Tools.**
+  `server/src/assistant/` handles `POST /api/assistant` using `fetch` against
+  Google's Gemini API (`GEMINI_API_KEY`; model `GEMINI_MODEL`, default
+  `gemini-3.5-flash-lite`). Five read-only tools query the live snapshot
+  (`find_bookings`, `get_case`, `get_my_queue`, `get_forecast_summary`,
+  `search_playbooks`) under a 30-second budget (max 4 rounds). Messages reach
+  the model fenced as untrusted data. When `GEMINI_API_KEY` is unset or an API
+  call fails, the route returns 503 `{ fallback: true }` and `AskPanel` falls
+  back to the scripted `askBrain` answers in `packages/core/src/brain/`. The
+  key, images, and message bodies are never logged. Data caveat: Gemini's free
+  tier may use prompts to train products; Ask MortarAI is strictly for simulated
+  data, while real buyer data requires a paid tier or Vertex AI under a PDPA
+  agreement.
 - **Persona Pages Drive The Sidebar And Route Guard.**
   `frontend/src/lib/persona.tsx` (`PERSONA_PAGES`) maps the exact pages visible
   to each persona and their groups (Primary, More).
@@ -115,12 +116,13 @@ clean recording seed.
   access: sales gets only its owned bookings and linked records; departmental
   desks see current assignments or exact-name/role open tasks, with no
   historical entitlement after assignment ends; Manager covers every department.
-  Direct case APIs, writes, Copilot tools, forecasts and scripted fallback use
-  the same boundary. The profile id header must match the session, preventing a
-  second browser tab's role switch from widening the first tab's response. The
-  public demo selector is not production credential authentication.
+  Direct case APIs, writes, Ask MortarAI tools, forecasts and scripted fallback
+  use the same boundary. The profile id header must match the session,
+  preventing a second browser tab's role switch from widening the first tab's
+  response. The public demo selector is not production credential
+  authentication.
 - **Profile Switches Clear The Workspace.** `ProfileWorkspace` keys the snapshot
-  provider and routed app by profile id. Copilot cancels pending streams on
+  provider and routed app by profile id. Ask MortarAI cancels pending streams on
   unmount and its panel is also keyed by profile. Notifications have a separate
   browser storage namespace per profile.
 - **Manager Workflows.** `/manager` opens Suggestions before Overview, with the

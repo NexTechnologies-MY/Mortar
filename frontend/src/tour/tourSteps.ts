@@ -11,10 +11,10 @@ export const TOUR_STEPS: Record<Persona, TourStep[]> = {
       caption: 'See essential information across all departments. Open Suggestions to create manager follow-ups.'
     },
     {
-      label: 'Copilot',
+      label: 'Ask MortarAI',
       route: '/manager',
       target: '[data-tour="ask-mortar"]',
-      caption: 'Ask Copilot about any department. Manager access covers every booking.'
+      caption: 'Ask MortarAI about any department. Manager access covers every booking.'
     }
   ],
   'sales-admin': [
@@ -63,10 +63,10 @@ export const TOUR_STEPS: Record<Persona, TourStep[]> = {
       caption: 'Add bookings by uploading a sheet or entering them directly.'
     },
     {
-      label: 'Copilot',
+      label: 'Ask MortarAI',
       route: '/chase',
       target: '[data-tour="ask-mortar"]',
-      caption: 'Ask Copilot about the bookings your profile can access.'
+      caption: 'Ask MortarAI about the bookings your profile can access.'
     }
   ],
   'loan-admin': [
@@ -123,10 +123,10 @@ export const TOUR_STEPS: Record<Persona, TourStep[]> = {
       caption: 'See how many awaiting cases each panel firm is handling.'
     },
     {
-      label: 'Copilot',
+      label: 'Ask MortarAI',
       route: '/legal',
       target: '[data-tour="ask-mortar"]',
-      caption: 'Ask Copilot about the bookings your profile can access.'
+      caption: 'Ask MortarAI about the bookings your profile can access.'
     }
   ]
 }

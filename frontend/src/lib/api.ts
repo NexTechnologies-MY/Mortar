@@ -97,7 +97,7 @@ export interface Health {
   ok: boolean
   db: boolean
   jev: boolean
-  /** Whether the server was started with a Gemini key for Copilot. */
+  /** Whether the server was started with a Gemini key for Ask MortarAI. */
   assistant: boolean
   /** Stored `jev_answers` rows; `null` when the database is unreachable. */
   jevAnswers: number | null
@@ -278,7 +278,7 @@ export async function askAssistantStream(
     clearTimeout(timer)
     signal?.removeEventListener('abort', abort)
     if (response.status === 401 || response.status === 409) invalidateSession()
-    throw new ApiError('Copilot Could Not Check. Try Again.', response.status)
+    throw new ApiError('Ask MortarAI Could Not Check. Try Again.', response.status)
   }
   try {
     const reader = response.body.getReader()

@@ -107,11 +107,11 @@ describe('SettingsPage', () => {
     expect(within(row).queryByText('Connected')).toBeNull()
   })
 
-  it('says whether Copilot has a Gemini key, in the Jev row’s own words', async () => {
+  it('says whether Ask MortarAI has a Gemini key, in the Jev row’s own words', async () => {
     renderPage()
     const note = await screen.findByText('Whether A Gemini Key Is Configured')
     const row = note.closest('div')!.parentElement!
-    expect(within(row).getByText('Copilot')).toBeTruthy()
+    expect(within(row).getByText('Ask MortarAI')).toBeTruthy()
     // The panel falls back to its own answers without a key, so the row says
     // so rather than reporting a failure.
     expect(within(row).getByText('Configured')).toBeTruthy()

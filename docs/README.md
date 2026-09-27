@@ -258,7 +258,7 @@ in `asia-southeast1`, with keyless Workload Identity Federation.
 | State    | React Context for persona; case data from `/api`           |
 | Tests    | Vitest, Testing Library, jsdom                             |
 | Serving  | One Bun process serves `/api/*` and `frontend/dist`        |
-| AI       | Jev (TypeSafe SDK); Copilot (Gemini via assistant/)        |
+| AI       | Jev (TypeSafe SDK); Ask MortarAI (Gemini via assistant/)   |
 | Hosting  | Google Cloud Run (`asia-southeast1`)                       |
 
 <p align="right"><a href="#readme-top">&uarr;</a></p>
@@ -306,11 +306,11 @@ JEV_PROXY_MODEL=gemini-3.5-flash-lite   # model to route to (default shown)
 proxy. Use this only with made-up demo data, never with real buyer or booking
 information.
 
-### Copilot (Gemini Assistant)
+### Ask MortarAI (Gemini Assistant)
 
-Copilot connects to Google's Gemini API over `fetch` (`POST /api/assistant`) to
-answer questions grounded in the live snapshot using five read-only tools. Set
-`GEMINI_API_KEY` in `.env` to enable it:
+Ask MortarAI connects to Google's Gemini API over `fetch`
+(`POST /api/assistant`) to answer questions grounded in the live snapshot using
+five read-only tools. Set `GEMINI_API_KEY` in `.env` to enable it:
 
 ```sh
 GEMINI_API_KEY=                         # Google Gemini API key
@@ -380,8 +380,8 @@ AGENTS.md        Agent instructions: stack, routes, rules
   Income Tax Act 1967 s82); a server holding real data must set
   `MORTAR_DEMO_RESET=off`. See [Data Retention](TRD.md#data-retention).
 - **AI is an assistant, not a decider.** Rules flag risk; Jev structures
-  messages, and Copilot answers grounded inquiries, but neither ever writes to
-  records or makes credit, loan, or legal decisions.
+  messages, and Ask MortarAI answers grounded inquiries, but neither ever writes
+  to records or makes credit, loan, or legal decisions.
 
 <p align="right"><a href="#readme-top">&uarr;</a></p>
 

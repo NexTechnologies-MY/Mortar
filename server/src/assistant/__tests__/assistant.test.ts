@@ -297,7 +297,7 @@ async function chipsFor(turns: Turn[], ip = '10.0.0.7') {
 }
 
 describe('POST /api/assistant', () => {
-  test('Copilot tools hide cases from legal unless an open task names the internal profile', async () => {
+  test('Ask MortarAI tools hide cases from legal unless an open task names the internal profile', async () => {
     const db = new FakeDb()
     const legal = { id: 'legal-admin', name: 'Arvind Raj', persona: 'legal-admin' as const }
     expect(await runTool('get_case', { bookingId: 'BK-9002' }, legal, db as never)).toContain('not in Mortar')
@@ -478,7 +478,7 @@ describe('POST /api/assistant', () => {
     expect((await res.json()) as unknown as { citations: string[] }).toMatchObject({ citations: ['BK-9001'] })
   })
 
-  test('scopes Copilot tools and citations to the signed-in sales owner despite a forged manager persona', async () => {
+  test('scopes Ask MortarAI tools and citations to the signed-in sales owner despite a forged manager persona', async () => {
     const db = new FakeDb()
     db.bookings = db.bookings.map((booking) =>
       booking.id === 'BK-9002' ? { ...booking, salesOwner: 'Farah Izzati' } : booking
@@ -530,7 +530,7 @@ describe('POST /api/assistant', () => {
     const res = await post_(makeApp(new FakeDb(), slow, KEY, 120), QUESTION, '10.0.0.3')
 
     expect(res.status).toBe(503)
-    expect(await errorOf(res)).toBe('Copilot Took Too Long. Try Again.')
+    expect(await errorOf(res)).toBe('Ask MortarAI Took Too Long. Try Again.')
     // The deadline is the request's, so it cuts the loop short rather than
     // letting four rounds of thirty seconds each run.
     expect(seen).toBeLessThan(MAX_TOOL_ROUNDS)
@@ -687,7 +687,7 @@ describe('POST /api/assistant', () => {
       new Response('nope', { status: 500, statusText: 'Server Error' })) as unknown as typeof fetch
     const res = await post_(makeApp(new FakeDb(), failing), QUESTION)
     expect(res.status).toBe(503)
-    expect(await errorOf(res)).toBe('Copilot Could Not Check. Try Again.')
+    expect(await errorOf(res)).toBe('Ask MortarAI Could Not Check. Try Again.')
   })
 })
 

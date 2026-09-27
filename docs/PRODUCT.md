@@ -243,13 +243,13 @@ Clicking a unit code on Today or a row in Bookings opens the same side sheet
 Record An Update, and Open Full Case, allowing staff to unblock cases without
 leaving their queue.
 
-### Copilot
+### Ask MortarAI
 
-The top bar's sparkle button opens Copilot, an embedded assistant that answers
-natural-language questions from staff across any page in the app. It reads the
-live bookings snapshot using five read-only tools and returns grounded answers
-with booking citations. Copilot never modifies data or makes credit, loan, or
-legal decisions.
+The top bar's sparkle button opens Ask MortarAI, an embedded assistant that
+answers natural-language questions from staff across any page in the app. It
+reads the live bookings snapshot using five read-only tools and returns grounded
+answers with booking citations. Ask MortarAI never modifies data or makes
+credit, loan, or legal decisions.
 
 ### High-Density Ledger Design
 
@@ -347,6 +347,9 @@ Mortar enforces a strict architectural boundary between automated assistance and
 human authority. AI accelerates clerical extraction and semantic retrieval, but
 it is never permitted to make operational or financial decisions.
 
+MortarAI names Mortar's AI layer as a whole: Ask MortarAI, the Gemini assistant
+in the top bar, and Jev, the classifier that reads buyer and banker messages.
+
 ### Division Of Operational Responsibility
 
 | Operational Domain     | AI Role                                                     | Human Or Deterministic Governance                                     |
@@ -354,24 +357,24 @@ it is never permitted to make operational or financial decisions.
 | Message processing     | Extracts candidate dates, document types, and event classes | Staff confirm identity matches and verify material facts              |
 | Staff knowledge        | Retrieves and ranks vetted playbooks by contextual fit      | Experienced managers author, review, and approve playbook text        |
 | Task coordination      | Proposes next actions and estimates follow-up urgency       | Staff assign responsibilities, execute actions, and manage partners   |
-| Operational inquiries  | Copilot reads snapshot to answer grounded questions         | Staff evaluate answers; model never writes or decides                 |
+| Operational inquiries  | Ask MortarAI reads snapshot to answer grounded questions    | Staff evaluate answers; model never writes or decides                 |
 | Buyer sentiment        | Evaluates message response gaps and hesitation patterns     | Sales agents interpret relationship context and buyer motives         |
 | Financing risk         | Computes nothing; deterministic rules evaluate debt ratios  | Credit staff evaluate documentation; commercial banks decide credit   |
 | Legal milestones       | Assembles chronological document trails for case review     | Panel solicitors confirm statutory execution of the agreement         |
 | Conversion forecasting | Explains underlying statistical distributions               | Mathematical algorithms compute rates; Finance owns assumptions       |
 | Inventory management   | Highlights persistent stalls exceeding policy limits        | Authorized executives review evidence and authorize unit cancellation |
 
-### The Copilot Boundary
+### The Ask MortarAI Boundary
 
-Copilot operates as an internal conversational assistant for staff, accessed via
-the sparkle button in the top bar. It connects to Google's Gemini API
-(`server/src/assistant/`) and is grounded by five read-only snapshot tools
+Ask MortarAI operates as an internal conversational assistant for staff,
+accessed via the sparkle button in the top bar. It connects to Google's Gemini
+API (`server/src/assistant/`) and is grounded by five read-only snapshot tools
 (`find_bookings`, `get_case`, `get_my_queue`, `get_forecast_summary`, and
 `search_playbooks`).
 
 The architectural boundary is absolute:
 
-- **Read-Only Operation:** Copilot never executes database writes, state
+- **Read-Only Operation:** Ask MortarAI never executes database writes, state
   transitions, or task creations. It cannot modify booking records.
 - **No Operational Authority:** The model never makes credit, underwriting,
   loan, or legal decisions. It refuses off-topic requests and explicitly states
@@ -384,8 +387,8 @@ The architectural boundary is absolute:
   the endpoint returns 503 and the UI seamlessly degrades to scripted answers.
 - **Privacy Protection:** API keys, message contents, and user images are never
   logged. On Gemini's free tier, prompts may be retained by Google for model
-  training; Copilot is therefore restricted to simulated data until deployed
-  under an enterprise agreement.
+  training; Ask MortarAI is therefore restricted to simulated data until
+  deployed under an enterprise agreement.
 
 ### The Jev Boundary And Resilience
 
@@ -551,8 +554,9 @@ partners, Mortar defines clear functional boundaries:
   must confirm every milestone.
 - **Not A Customer-Facing Chatbot:** Mortar does not engage in customer
   conversations with external buyers. AI assistance is strictly internal: Jev
-  classifies events and scores structured fields, while Copilot answers staff
-  inquiries grounded in the live snapshot without making operational decisions.
+  classifies events and scores structured fields, while Ask MortarAI answers
+  staff inquiries grounded in the live snapshot without making operational
+  decisions.
 - **Not A Customer-Facing Portal:** Mortar is an internal operational tool for
   developer personnel. Panel bankers and panel solicitors keep their existing
   channels; their participation does not require a new portal.

@@ -1,5 +1,5 @@
 /**
- * Copilot knows the case page it was opened from.
+ * Ask MortarAI knows the case page it was opened from.
  *
  * `AskPanel` takes an optional `bookingId`; the trigger reads it off the route.
  * The panel is mocked here because what is under test is the one prop crossing
@@ -20,8 +20,8 @@ vi.mock('../AskPanel', () => ({
     const [draft, setDraft] = useState('')
     return (
       <div>
-        <div>Copilot</div>
-        <input aria-label="Copilot draft" value={draft} onChange={(event) => setDraft(event.target.value)} />
+        <div>Ask MortarAI</div>
+        <input aria-label="Ask MortarAI draft" value={draft} onChange={(event) => setDraft(event.target.value)} />
       </div>
     )
   }
@@ -48,7 +48,7 @@ describe('AskTrigger', () => {
 
   it('passes the open case id to Ask, so a person asking from a case gets that case', () => {
     renderAt('/bookings/BK-9001')
-    fireEvent.click(screen.getByRole('button', { name: 'Copilot' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Ask MortarAI' }))
 
     // Radix mounts the dialog content only once it opens, so the prop is read
     // after the click rather than on render.
@@ -57,7 +57,7 @@ describe('AskTrigger', () => {
 
   it('passes no case on a route that has none', () => {
     renderAt('/chase')
-    fireEvent.click(screen.getByRole('button', { name: 'Copilot' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Ask MortarAI' }))
 
     expect(mocks.bookingId).toBeUndefined()
   })
@@ -65,7 +65,7 @@ describe('AskTrigger', () => {
   it('still renders its own trigger, so nothing about the top bar changes', () => {
     renderAt('/bookings/BK-9001')
 
-    expect(screen.getByRole('button', { name: 'Copilot' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Ask MortarAI' })).toBeTruthy()
     expect(document.querySelector('[data-tour="ask-mortar"]')).toBeTruthy()
   })
 
@@ -88,11 +88,11 @@ describe('AskTrigger', () => {
         </MemoryRouter>
       </PersonaProvider>
     )
-    fireEvent.click(screen.getByRole('button', { name: 'Copilot' }))
-    fireEvent.change(screen.getByLabelText('Copilot draft'), { target: { value: 'A private question' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Ask MortarAI' }))
+    fireEvent.change(screen.getByLabelText('Ask MortarAI draft'), { target: { value: 'A private question' } })
 
     fireEvent.click(screen.getByText('Use Loan Profile'))
 
-    expect((screen.getByLabelText('Copilot draft') as HTMLInputElement).value).toBe('')
+    expect((screen.getByLabelText('Ask MortarAI draft') as HTMLInputElement).value).toBe('')
   })
 })

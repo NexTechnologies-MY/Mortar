@@ -1,5 +1,5 @@
 /**
- * Copilot — the panel that answers a question about today's bookings, from
+ * Ask MortarAI — the panel that answers a question about today's bookings, from
  * any app screen. The server runs a model grounded in Mortar's own data: it
  * asks for facts through read-only tools, never writes, and cites every booking
  * it names. When no model is configured, or a call fails, the panel falls back
@@ -275,7 +275,7 @@ export function AskPanel({ onNavigate, bookingId }: { onNavigate: () => void; bo
         <div className="flex items-center gap-3">
           <Mascot />
           <div className="min-w-0">
-            <DialogTitle>Copilot</DialogTitle>
+            <DialogTitle>Ask MortarAI</DialogTitle>
             <p className="text-xs text-muted-foreground">
               {profile?.name} &middot; {persona === 'manager' ? 'All Departments' : 'Your Permitted Bookings'}
             </p>

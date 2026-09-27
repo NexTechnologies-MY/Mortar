@@ -1,5 +1,5 @@
 /**
- * The Copilot button in the top bar, plus its Cmd/Ctrl-K shortcut.
+ * The Ask MortarAI button in the top bar, plus its Cmd/Ctrl-K shortcut.
  *
  * It holds nothing but the open flag on purpose. Every data hook lives in
  * `AskPanel`, which Radix only mounts once the dialog opens, so carrying Ask
@@ -41,14 +41,14 @@ export function AskTrigger() {
               <button
                 data-tour="ask-mortar"
                 type="button"
-                aria-label="Copilot"
+                aria-label="Ask MortarAI"
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
               >
                 <Sparkles className="h-5 w-5" />
               </button>
             </DialogTrigger>
           </TooltipTrigger>
-          <TooltipContent>Copilot</TooltipContent>
+          <TooltipContent>Ask MortarAI</TooltipContent>
         </Tooltip>
       </TooltipProvider>
       <DialogContent className="flex h-[80vh] w-[80vw] max-w-none flex-col overflow-hidden max-sm:h-[92vh] max-sm:w-[calc(100vw-1rem)]">
