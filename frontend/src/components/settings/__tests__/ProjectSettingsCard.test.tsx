@@ -27,6 +27,7 @@ describe('ProjectSettingsCard', () => {
     renderCard()
     expect(await screen.findByDisplayValue('Bukit Damai')).toBeTruthy()
     expect(screen.getByDisplayValue('A')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'About Project Settings' })).toBeTruthy()
     expect(screen.getByDisplayValue('1')).toBeTruthy()
     expect(screen.getByDisplayValue('35')).toBeTruthy()
     expect(screen.getByText('Default Panel Law Firm')).toBeTruthy()

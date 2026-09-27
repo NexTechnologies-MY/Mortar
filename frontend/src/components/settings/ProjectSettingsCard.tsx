@@ -15,6 +15,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { InfoTooltip } from '@/components/ui/InfoTooltip'
 import { notify } from '@/components/ui/toastConfig'
 
 export function ProjectSettingsCard() {
@@ -66,10 +67,13 @@ export function ProjectSettingsCard() {
     <Card className="border-border shadow-card">
       <CardContent className="flex flex-col gap-5 p-4 sm:p-5">
         <div>
-          <h2 className="text-base font-semibold">Project Settings</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Set The Available Blocks, Unit Range, Layouts, And Default Law Firm.
-          </p>
+          <h2 className="flex items-center text-base font-semibold">
+            Project Settings
+            <InfoTooltip
+              label="About Project Settings"
+              text="Set The Available Blocks, Unit Range, Layouts, And Default Law Firm."
+            />
+          </h2>
         </div>
         {!canEdit && (
           <p className="rounded-md border border-border p-3 text-sm text-muted-foreground">

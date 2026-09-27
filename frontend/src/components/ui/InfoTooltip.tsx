@@ -13,17 +13,20 @@ import { cn } from '@/lib/utils'
 
 /**
  * @param text - Plain-string tooltip body (alternative to `children`)
+ * @param label - Accessible name for the icon button, e.g. "About System Status"
  * @param children - Rich-content tooltip body; takes precedence over `text`
  * @param open - Controlled open state; omit for hover-driven behaviour
  * @param contentClassName - Tailwind classes applied to the tooltip content panel
  */
 export function InfoTooltip({
   text,
+  label,
   children,
   open,
   contentClassName
 }: {
   text?: string
+  label?: string
   children?: ReactNode
   open?: boolean
   contentClassName?: string
@@ -35,6 +38,7 @@ export function InfoTooltip({
           <button
             type="button"
             tabIndex={-1}
+            aria-label={label}
             className="ml-1 inline-flex align-middle text-muted-foreground hover:text-foreground"
           >
             <Info className="h-3.5 w-3.5" />

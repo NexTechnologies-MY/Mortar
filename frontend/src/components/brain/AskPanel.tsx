@@ -302,9 +302,12 @@ export function AskPanel({ onNavigate, bookingId }: { onNavigate: () => void; bo
                     {text ? (
                       <>
                         {turn.tools.length > 0 && (
-                          <button
+                          <Button
                             type="button"
-                            className="flex items-center gap-1 text-xs text-muted-foreground"
+                            variant="ghost"
+                            size="sm"
+                            aria-expanded={expandedTools.has(turn.id)}
+                            className="h-auto p-0 gap-1 text-xs text-muted-foreground hover:bg-transparent hover:text-foreground"
                             onClick={() =>
                               setExpandedTools((prev) => {
                                 const next = new Set(prev)
@@ -320,7 +323,7 @@ export function AskPanel({ onNavigate, bookingId }: { onNavigate: () => void; bo
                               <ChevronRight className="size-3" />
                             )}
                             {turn.tools.length} checks completed
-                          </button>
+                          </Button>
                         )}
                         {expandedTools.has(turn.id) &&
                           turn.tools.map((tool, index) => (
