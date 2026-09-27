@@ -96,5 +96,5 @@ function isAbort(e: unknown): boolean {
 /** What the route sends back on a call that could not be made. */
 export function modelErrorResponse(e: unknown): Response {
   const aborted = e instanceof Error && e.message === 'the model took too long to answer'
-  return error(503, aborted ? 'Ask Mortar Took Too Long. Try Again.' : 'Ask Mortar Could Not Check. Try Again.')
+  return error(503, aborted ? 'Copilot Took Too Long. Try Again.' : 'Copilot Could Not Check. Try Again.')
 }

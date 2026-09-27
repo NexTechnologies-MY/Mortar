@@ -12,7 +12,7 @@
  */
 import { afterAll, beforeAll, describe, expect, setDefaultTimeout, test } from 'bun:test'
 import { SQL } from 'bun'
-import { REFERENCE_DATE, summarizeCases, DEFAULT_PROJECT_SETTINGS } from '@mortar/core'
+import { REFERENCE_DATE, summarizeCases, DEFAULT_PROJECT_SETTINGS, PROJECT_NAME } from '@mortar/core'
 import type { Booking, BookingDraft, CaseEvent, Message, Task } from '@mortar/core'
 import { QUESTION_VERSION, jevInputHash, nextActionJob, signalsJob } from '@mortar/jev'
 import {
@@ -82,7 +82,7 @@ describe.skipIf(!TEST_DATABASE_URL)('database integration', () => {
 
   test('project settings and the signed-session secret round-trip through meta', async () => {
     await db.setProjectSettings({ ...DEFAULT_PROJECT_SETTINGS, blocks: ['A', 'B'] })
-    expect(await db.getProjectSettings()).toMatchObject({ projectName: 'Bukit Damai', blocks: ['A', 'B'] })
+    expect(await db.getProjectSettings()).toMatchObject({ projectName: PROJECT_NAME, blocks: ['A', 'B'] })
     const first = await db.sessionSecret()
     expect(first).toBeTruthy()
     expect(await db.sessionSecret()).toBe(first)

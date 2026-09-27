@@ -605,7 +605,70 @@ describe('createApp', () => {
     const managerApp = makeApp(db)
     const saved = await call(managerApp, '/api/settings', { ...post(payload), method: 'PUT' }, 'manager')
     expect(saved?.status).toBe(200)
-    expect(db.projectSettings?.projectName).toBe('Bukit Damai')
+    expect(db.projectSettings?.projectName).toBe(realCore.PROJECT_NAME)
+  })
+
+  test('marks the session cookie Secure when the proxy terminated TLS, and clears it the same way', async () => {
+    const app = makeApp()
+    const behindProxy = (path: string, init: RequestInit) =>
+      app.fetch(
+        new Request(`http://test${path}`, { ...init, headers: { 'x-forwarded-proto': 'https', ...init.headers } })
+      )
+    const set = await behindProxy('/api/session', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ profileId: 'sales-nurul-aina' })
+    })
+    expect(set?.headers.get('set-cookie')).toContain('; Secure')
+    const cleared = await behindProxy('/api/session', {
+      method: 'DELETE',
+      headers: { cookie: set?.headers.get('set-cookie')?.split(';')[0] ?? '' }
+    })
+    expect(cleared?.status).toBe(204)
+    expect(cleared?.headers.get('set-cookie')).toContain('; Secure')
+    // Plain http with no proxy header stays unset, so local dev keeps working.
+    const plain = await app.fetch(
+      new Request('http://test/api/session', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ profileId: 'sales-nurul-aina' })
+      })
+    )
+    expect(plain?.headers.get('set-cookie')).not.toContain('Secure')
+  })
+
+  test('GET /api/inventory lists only the project and unit of bookings that still hold theirs', async () => {
+    const db = new FakeDb()
+    const released: CaseEvent = {
+      id: 'EV-CANCELLED',
+      bookingId: 'BK-9002',
+      applicationId: null,
+      track: 'sales',
+      kind: 'cancelled',
+      occurredAt: '2026-09-10T10:00:00+08:00',
+      recordedAt: '2026-09-10T10:00:00+08:00',
+      reportedBy: 'Nurul Aina',
+      verifiedBy: null,
+      status: 'confirmed',
+      source: 'staff',
+      messageId: null,
+      document: null,
+      note: null
+    }
+    db.bookings = [
+      BOOKING,
+      { ...OTHER_BOOKING, id: 'BK-9002', unit: 'B-08-05' },
+      { ...OTHER_BOOKING, id: 'BK-9003', unit: 'A-05-11' },
+      { ...OTHER_BOOKING, id: 'BK-9004', unit: 'A-06-11' }
+    ]
+    db.events = [released, { ...released, id: 'EV-LAPSED', bookingId: 'BK-9003', kind: 'lapsed' }]
+    const res = await call(makeApp(db), '/api/inventory')
+    expect(res?.status).toBe(200)
+    const { held } = (await res?.json()) as { held: { project: string; unit: string }[] }
+    expect(held).toEqual([
+      { project: BOOKING.project, unit: BOOKING.unit },
+      { project: OTHER_BOOKING.project, unit: 'A-06-11' }
+    ])
   })
 
   test('unknown /api route is a json 404', async () => {
@@ -1559,7 +1622,7 @@ describe('createApp', () => {
         action: 'request_document',
         title: 'Review case',
         ownerRole: 'legal',
-        ownerName: 'Legal Admin',
+        ownerName: 'Arvind Raj',
         dueOn: '2026-09-19',
         origin: 'staff',
         status: 'open',
@@ -1633,7 +1696,7 @@ describe('createApp', () => {
       const response = await call(
         makeApp(db),
         '/api/tasks',
-        post({ ...valid, ownerRole: 'legal', ownerName: 'Legal Admin', managerFlaggedBy: 'Project Manager' }),
+        post({ ...valid, ownerRole: 'legal', ownerName: 'Arvind Raj', managerFlaggedBy: 'Project Manager' }),
         'manager'
       )
       expect(response?.status).toBe(409)

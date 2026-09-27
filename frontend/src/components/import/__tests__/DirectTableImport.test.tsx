@@ -15,7 +15,7 @@ vi.mock('@/lib/api', () => ({
   }))
 }))
 
-function renderImport(held = new Map([[unitKey('Bukit Damai', 'A-12-03'), 'BK-9001']])) {
+function renderImport(held = new Map([[unitKey(DEFAULT_PROJECT_SETTINGS.projectName, 'A-12-03'), 'BK-9001']])) {
   return render(
     <MemoryRouter>
       <PersonaProvider initialPersona="sales-admin">

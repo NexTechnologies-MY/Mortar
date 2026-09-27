@@ -139,7 +139,7 @@ export class RateLimiter {
   /** `null` when the request may go ahead, or the 429 to send. */
   check(ip: string, now: number = Date.now()): Response | null {
     if (this.day.filter((at) => now - at < DAY_MS).length >= REQUESTS_PER_DAY) {
-      return error(429, 'Ask Mortar has answered its daily allowance. Try again tomorrow.')
+      return error(429, 'Copilot has answered its daily allowance. Try again tomorrow.')
     }
     const recent = (this.hits.get(ip) ?? []).filter((at) => now - at < MINUTE_MS)
     if (recent.length >= REQUESTS_PER_MINUTE) {

@@ -38,7 +38,7 @@ describe('SignInPage', () => {
     renderSignIn()
 
     fireEvent.keyDown(screen.getByRole('combobox', { name: 'Sign In As' }), { key: 'ArrowDown' })
-    fireEvent.click(screen.getByRole('option', { name: 'Legal Admin · Legal Admin' }))
+    fireEvent.click(screen.getByRole('option', { name: 'Arvind Raj · Legal Admin' }))
     fireEvent.click(screen.getByRole('button', { name: 'Sign In As Guest' }))
 
     expect(window.localStorage.getItem(PERSONA_STORAGE_KEY)).toBe('legal-admin')
