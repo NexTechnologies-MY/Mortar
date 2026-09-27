@@ -22,9 +22,15 @@ const BASE = buildTourSnapshot()
 /** The first case still awaiting an SPA appointment: the step the panel opens on. */
 const CASE_ID = BASE.cases[0].bookingId
 
-vi.mock('@/lib/api', async () => {
+vi.mock('@/lib/api', async (importOriginal) => {
   const fixture = await import('@/components/bookings/__tests__/snapshotFixture')
+  const { DEFAULT_PROJECT_SETTINGS } = await import('@mortar/core')
+  const { ApiError } = await importOriginal<typeof import('@/lib/api')>()
   return {
+    ApiError,
+    fetchInventory: vi.fn(async () => ({ held: [] })),
+    fetchProjectSettings: vi.fn(async () => ({ settings: DEFAULT_PROJECT_SETTINGS })),
+    saveProjectSettings: vi.fn(async (settings: unknown) => ({ settings })),
     fetchSnapshot: vi.fn(async () => BASE.snapshot),
     fetchHealth: vi.fn(async () => ({ ok: true })),
     fetchSignals: vi.fn(async () => fixture.SIGNALS_9001),
@@ -48,6 +54,8 @@ vi.mock('@/components/ui/toastConfig', () => ({ notify: { success: vi.fn(), erro
 
 import { SnapshotProvider } from '@/lib/data'
 import { PersonaProvider } from '@/lib/persona'
+import { selectProfile } from '@/lib/session'
+import { profileForPersona } from '@mortar/core'
 import { ThemeProvider } from '@/hooks/useTheme'
 import { App } from '@/App'
 
@@ -63,14 +71,16 @@ const BREADCRUMB: Record<string, RegExp> = {
   '/bookings': /^Bookings$/,
   '/bookings/:id': new RegExp(`^Booking ${CASE_ID}$`),
   '/import': /^Add Bookings$/,
-  '/legal': /^Legal$/
+  '/legal': /^Legal$/,
+  '/manager': /^Overview$/
 }
 const PAGE_OF: Record<string, string> = {
   '/chase': 'Today',
   '/bookings': 'Bookings',
   '/bookings/:id': 'The Case Page',
   '/import': 'Add Bookings',
-  '/legal': 'Legal'
+  '/legal': 'Legal',
+  '/manager': 'Overview'
 }
 
 /** The route a step lands on. `TourProvider` resolves `:id` to the first stalled
@@ -81,6 +91,8 @@ function entryFor(route: string) {
 
 function renderTour(persona: Persona, entry: string) {
   window.localStorage.setItem('mortar.persona', persona)
+  // The active profile is read once at import; choose this tour's profile for each render.
+  selectProfile(profileForPersona(persona))
   return render(
     <MemoryRouter initialEntries={[entry]}>
       <ThemeProvider>

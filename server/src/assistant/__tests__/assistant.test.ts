@@ -286,7 +286,9 @@ async function chipsFor(turns: Turn[], ip = '10.0.0.7') {
     headers: { 'x-forwarded-for': ip },
     body: JSON.stringify(QUESTION)
   })
-  const response = await makeApp(new FakeDb(), scriptedFetch(turns).impl).fetch(request)
+  // The Manager may see every booking, so a citation is never dropped for access.
+  const app = makeApp(new FakeDb(), scriptedFetch(turns).impl)
+  const response = await app.fetch(await withSession(app, request, 'manager'))
   const events = (await response!.text())
     .split('\n\n')
     .filter(Boolean)
