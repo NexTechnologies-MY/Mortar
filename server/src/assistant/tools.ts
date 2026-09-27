@@ -9,7 +9,8 @@
  * through the existing buttons.
  */
 import { DEFAULT_ASSUMPTIONS, ballInCourt, forecast, searchPlaybooks, summarizeCases } from '@mortar/core'
-import type { CaseEvent, CaseSummary, DocumentKind, Message, Persona, Snapshot } from '@mortar/core'
+import { scopeSnapshot } from '@mortar/core'
+import type { CaseEvent, CaseSummary, DocumentKind, Message, Persona, StaffProfile, Snapshot } from '@mortar/core'
 import type { Database } from '../../db/index'
 
 /**
@@ -333,8 +334,8 @@ export interface ToolInput {
  * plain sentence when the arguments name nothing. A tool that throws would end
  * the request; a tool that finds nothing answers nothing instead.
  */
-export async function runTool(name: string, args: ToolInput, persona: Persona, db: Database): Promise<string> {
-  const snapshot = await db.snapshot()
+export async function runTool(name: string, args: ToolInput, profile: StaffProfile, db: Database): Promise<string> {
+  const snapshot = scopeSnapshot(await db.snapshot(), profile)
   const cases = casesFor(snapshot)
   const byId = new Map(cases.map((c) => [c.bookingId, c]))
 
@@ -374,12 +375,16 @@ export async function runTool(name: string, args: ToolInput, persona: Persona, d
 
     case 'get_my_queue': {
       const desk =
-        args.desk === 'loan-admin' || args.desk === 'legal-admin' || args.desk === 'sales-admin' ? args.desk : persona
+        profile.persona === 'manager' && ['loan-admin', 'legal-admin', 'sales-admin'].includes(args.desk ?? '')
+          ? (args.desk as Persona)
+          : profile.persona
       const limit = cap(args.limit, RESULT_LIMIT, 8)
       const stalled = cases
-        .filter((c) => c.stallReasons.length > 0 && deskOfNextMove(c) === desk)
+        .filter((c) => c.stallReasons.length > 0 && (desk === 'manager' || deskOfNextMove(c) === desk))
         .sort((a, b) => b.bookingAgeDays - a.bookingAgeDays)
-      const tasks = snapshot.tasks.filter((t) => t.status === 'open' && deskOfOwnerRole(t.ownerRole) === desk)
+      const tasks = snapshot.tasks.filter(
+        (t) => t.status === 'open' && (desk === 'manager' || deskOfOwnerRole(t.ownerRole) === desk)
+      )
       const lines = [
         `The ${desk.replace('-', ' ')} desk owns ${stalled.length} stalled booking(s) and has ${tasks.length} open task(s).`,
         `Stalled bookings waiting on this desk, longest first${stalled.length > 0 ? ':' : ' — none.'}`

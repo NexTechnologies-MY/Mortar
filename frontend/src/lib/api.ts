@@ -1,3 +1,4 @@
+import { activeProfileId, ensureSession, invalidateSession } from './session'
 /**
  * Typed fetchers for the `/api` routes on the Bun server. In dev, Vite proxies
  * `/api` to `localhost:8787`; in production the same origin serves both. Every
@@ -6,6 +7,7 @@
  * network drop or a timeout — never a raw status code or route.
  */
 import type {
+  ProjectSettings,
   Booking,
   BookingDraft,
   BuyerSignals,
@@ -47,13 +49,20 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit, timeoutMs = DEFAULT_TIMEOUT_MS): Promise<T> {
+  const profileId = activeProfileId()
+  await ensureSession()
+  if (profileId !== activeProfileId()) throw new ApiError('Profile changed. Please try again.', 409)
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
   let res: Response
   try {
     res = await fetch(path, {
-      headers: init?.body ? { 'content-type': 'application/json' } : undefined,
       ...init,
+      headers: {
+        ...(init?.body ? { 'content-type': 'application/json' } : {}),
+        ...init?.headers,
+        'X-Mortar-Profile': profileId
+      },
       signal: controller.signal
     })
   } catch (e) {
@@ -63,6 +72,8 @@ async function request<T>(path: string, init?: RequestInit, timeoutMs = DEFAULT_
   } finally {
     clearTimeout(timer)
   }
+  if (profileId !== activeProfileId()) throw new ApiError('Profile changed. Please try again.', 409)
+  if (res.status === 401 || res.status === 409) invalidateSession()
   const payload: unknown = await res.json().catch(() => null)
   if (!res.ok) {
     const serverMessage =
@@ -75,6 +86,7 @@ async function request<T>(path: string, init?: RequestInit, timeoutMs = DEFAULT_
     const message = serverMessage !== null && res.status < 500 ? serverMessage : SERVER_ERROR_MESSAGE
     throw new ApiError(message, res.status)
   }
+  if (profileId !== activeProfileId()) throw new ApiError('Profile changed. Please try again.', 409)
   return payload as T
 }
 
@@ -85,13 +97,18 @@ export interface Health {
   ok: boolean
   db: boolean
   jev: boolean
-  /** Whether the server was started with a Gemini key for Ask Mortar. */
+  /** Whether the server was started with a Gemini key for Copilot. */
   assistant: boolean
   /** Stored `jev_answers` rows; `null` when the database is unreachable. */
   jevAnswers: number | null
 }
 
 export const fetchHealth = () => request<Health>('/api/health')
+
+export const fetchProjectSettings = () => request<{ settings: ProjectSettings }>('/api/settings')
+export const saveProjectSettings = (settings: ProjectSettings) =>
+  request<{ settings: ProjectSettings }>('/api/settings', { method: 'PUT', body: JSON.stringify({ settings }) })
+export const fetchInventory = () => request<{ held: { project: string; unit: string }[] }>('/api/inventory')
 
 export const fetchSnapshot = () => request<Snapshot>('/api/snapshot')
 
@@ -167,6 +184,7 @@ export const postTask = (input: {
   ownerName: string
   dueOn: string
   origin: Task['origin']
+  managerFlaggedBy?: string
 }) => post<Task>('/api/tasks', input)
 
 export const updateTask = (taskId: string, status: Task['status']) =>
@@ -232,25 +250,35 @@ export const askAssistant = (input: {
 
 export async function askAssistantStream(
   input: Parameters<typeof askAssistant>[0],
-  onEvent: (event: AssistantStreamEvent) => void
+  onEvent: (event: AssistantStreamEvent) => void,
+  signal?: AbortSignal
 ): Promise<void> {
+  const profileId = activeProfileId()
+  await ensureSession()
+  if (profileId !== activeProfileId()) throw new ApiError('Profile changed. Please try again.', 409)
+  signal?.throwIfAborted()
   const controller = new AbortController()
+  const abort = () => controller.abort()
+  signal?.addEventListener('abort', abort, { once: true })
   const timer = setTimeout(() => controller.abort(), JEV_TIMEOUT_MS)
   let response: Response
   try {
     response = await fetch('/api/assistant/stream', {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', 'X-Mortar-Profile': profileId },
       body: JSON.stringify(input),
       signal: controller.signal
     })
   } catch (error) {
     clearTimeout(timer)
+    signal?.removeEventListener('abort', abort)
     throw error
   }
   if (!response.ok || !response.body) {
     clearTimeout(timer)
-    throw new ApiError('Ask Mortar Could Not Check. Try Again.', response.status)
+    signal?.removeEventListener('abort', abort)
+    if (response.status === 401 || response.status === 409) invalidateSession()
+    throw new ApiError('Copilot Could Not Check. Try Again.', response.status)
   }
   try {
     const reader = response.body.getReader()
@@ -266,11 +294,15 @@ export async function askAssistantStream(
         if (!line) continue
         const event = JSON.parse(line.slice(6)) as AssistantStreamEvent
         if (event.type === 'error') throw new ApiError(event.message, 503)
+        if (profileId !== activeProfileId() || controller.signal.aborted)
+          throw new DOMException('Profile changed', 'AbortError')
         onEvent(event)
       }
       if (done) break
     }
   } finally {
+    controller.abort()
+    signal?.removeEventListener('abort', abort)
     clearTimeout(timer)
   }
 }

@@ -5,6 +5,9 @@
  * Resolves straight to source — there is no build step.
  */
 export type * from './types'
+export * from './profiles'
+export * from './projectSettings'
+export * from './manager'
 export * from './sim'
 export * from './ball'
 export * from './import'

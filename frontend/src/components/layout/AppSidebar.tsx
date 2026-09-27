@@ -20,6 +20,7 @@ const SIDEBAR_COLLAPSED = 64
 
 /** Glyph per page, chosen by the work the page is for rather than by its rank. */
 const PAGE_ICONS: Record<string, LucideIcon> = {
+  '/manager': ClipboardList,
   '/chase': BellRing,
   '/bookings': ClipboardList,
   '/legal': Scale,

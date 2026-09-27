@@ -1,5 +1,5 @@
 /**
- * Ask Mortar — the panel that answers a question about today's bookings, from
+ * Copilot — the panel that answers a question about today's bookings, from
  * any app screen. The server runs a model grounded in Mortar's own data: it
  * asks for facts through read-only tools, never writes, and cites every booking
  * it names. When no model is configured, or a call fails, the panel falls back
@@ -8,7 +8,7 @@
  * Answers are frozen when asked. Raising a task refreshes the snapshot, and an
  * answer rewriting itself under someone mid-read is worse than a stale one.
  */
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronDown, ChevronRight, CornerDownLeft, Paperclip, X } from 'lucide-react'
 import type { AskAction, AskReply, Booking, DocumentKind } from '@mortar/core'
@@ -87,7 +87,9 @@ function Citations({ ids, onNavigate }: { ids: string[]; onNavigate: () => void 
 
 export function AskPanel({ onNavigate, bookingId }: { onNavigate: () => void; bookingId?: string }) {
   const { snapshot, loading, refresh } = useSnapshot()
-  const { persona } = usePersona()
+  const { persona, profile } = usePersona()
+  const requestController = useRef<AbortController | null>(null)
+  useEffect(() => () => requestController.current?.abort(), [])
   const [draft, setDraft] = useState('')
   const [turns, setTurns] = useState<Turn[]>([])
   const [acted, setActed] = useState<ReadonlySet<number>>(new Set())
@@ -142,6 +144,9 @@ export function AskPanel({ onNavigate, bookingId }: { onNavigate: () => void; bo
       if (!trimmed || !context || thinking) return
       setDraft('')
       const turnId = turns.length
+      requestController.current?.abort()
+      const controller = new AbortController()
+      requestController.current = controller
       setThinking(true)
       setActiveTools([])
       // The model reads the last few exchanges, so "what about the other one?"
@@ -171,7 +176,8 @@ export function AskPanel({ onNavigate, bookingId }: { onNavigate: () => void; bo
             history,
             ...(image ? { image: image.data } : {})
           },
-          handleEvent
+          handleEvent,
+          controller.signal
         )
         const result = streamed.answer
         if (!result) throw new Error('The assistant stream ended without an answer')
@@ -185,6 +191,7 @@ export function AskPanel({ onNavigate, bookingId }: { onNavigate: () => void; bo
           followUps: streamedFollowUps.slice(0, CHIP_LIMIT)
         }
       } catch {
+        if (controller.signal.aborted) return
         // No model key, a model that could not answer, or a dropped request.
         // The scripted answers count the same snapshot, so the panel still
         // says something true.
@@ -199,6 +206,7 @@ export function AskPanel({ onNavigate, bookingId }: { onNavigate: () => void; bo
           followUps: chips.map((chip) => chip.question)
         }
       }
+      if (controller.signal.aborted) return
       setTurns((prev) => [...prev, turn])
       setThinking(false)
       setActiveTools([])
@@ -267,7 +275,10 @@ export function AskPanel({ onNavigate, bookingId }: { onNavigate: () => void; bo
         <div className="flex items-center gap-3">
           <Mascot />
           <div className="min-w-0">
-            <DialogTitle>Ask Mortar</DialogTitle>
+            <DialogTitle>Copilot</DialogTitle>
+            <p className="text-xs text-muted-foreground">
+              {profile?.name} &middot; {persona === 'manager' ? 'All Departments' : 'Your Permitted Bookings'}
+            </p>
             <DialogDescription>
               Answers from Mortar&apos;s own bookings, on the desk you are working. It does not change anything.
             </DialogDescription>

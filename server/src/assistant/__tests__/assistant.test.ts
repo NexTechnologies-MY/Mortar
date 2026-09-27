@@ -112,6 +112,9 @@ class FakeDb {
   async meta(): Promise<StoredMeta> {
     return { seed: 20260918, referenceDate: TODAY, resetAt: null, resetAtWall: null }
   }
+  async sessionSecret() {
+    return 'test-session-secret'
+  }
   async caseData(): Promise<CaseData> {
     return { bookings: this.bookings, applications: this.applications, events: this.events, tasks: this.tasks }
   }
@@ -133,8 +136,8 @@ class FakeDb {
   throwOnWrite(): never {
     throw new Error('the assistant must not write')
   }
-  async getBooking() {
-    return null
+  async getBooking(id: string) {
+    return this.bookings.find((booking) => booking.id === id) ?? null
   }
   async getApplication() {
     return null
@@ -259,9 +262,18 @@ const ask = (body: unknown, ip = '10.0.0.1') =>
 const QUESTION = { question: 'Which of my bookings are stuck with the bank?', persona: 'loan-admin' }
 /** `createApp` returns `null` for anything that is not an API path; a route never does. */
 const post_ = async (app: App, body: unknown, ip = '10.0.0.1') => {
-  const res = await app.fetch(ask(body, ip))
+  const request = await withSession(app, ask(body, ip))
+  const res = await app.fetch(request)
   if (!res) throw new Error('the route did not answer')
   return res
+}
+async function withSession(app: App, request: Request, profileId = 'loan-tan-mei-ling'): Promise<Request> {
+  const selected = await app.fetch(
+    new Request('http://test/api/session', { method: 'POST', body: JSON.stringify({ profileId }) })
+  )
+  const headers = new Headers(request.headers)
+  headers.set('cookie', selected?.headers.get('set-cookie')?.split(';')[0] ?? '')
+  return new Request(request, { headers })
 }
 const answerOf = async (res: Response) => ((await res.json()) as { answer: string }).answer
 const errorOf = async (res: Response) => ((await res.json()) as { error?: string }).error
@@ -277,7 +289,8 @@ describe('POST /api/assistant', () => {
       headers: { 'x-forwarded-for': '10.0.0.88' },
       body: JSON.stringify(QUESTION)
     })
-    const response = await makeApp(new FakeDb(), gemini.impl).fetch(request)
+    const app = makeApp(new FakeDb(), gemini.impl)
+    const response = await app.fetch(await withSession(app, request))
     expect(response?.headers.get('content-type')).toContain('text/event-stream')
     const events = (await response!.text())
       .split('\n\n')
@@ -312,8 +325,12 @@ describe('POST /api/assistant', () => {
           reject(new DOMException('aborted', 'AbortError'))
         })
       })) as typeof fetch
-    const response = await makeApp(new FakeDb(), waitingFetch).fetch(
-      new Request('http://test/api/assistant/stream', { method: 'POST', body: JSON.stringify(QUESTION) })
+    const app = makeApp(new FakeDb(), waitingFetch)
+    const response = await app.fetch(
+      await withSession(
+        app,
+        new Request('http://test/api/assistant/stream', { method: 'POST', body: JSON.stringify(QUESTION) })
+      )
     )
     await response!.body!.cancel()
     await Bun.sleep(0)
@@ -324,12 +341,12 @@ describe('POST /api/assistant', () => {
     const db = new FakeDb()
     const gemini = scriptedFetch([
       { call: { name: 'get_my_queue', args: { desk: 'loan-admin' } } },
-      { text: 'BK-9002 is with Crestline Bank, waiting 9 days for a decision. Call the banker.' }
+      { text: 'BK-9001 is with Crestline Bank, waiting 9 days for a decision. Call the banker.' }
     ])
     const res = await post_(makeApp(db, gemini.impl), QUESTION)
 
     expect(res.status).toBe(200)
-    expect(await answerOf(res)).toContain('BK-9002')
+    expect(await answerOf(res)).toContain('BK-9001')
     // The model asked once, the tools answered, and the answer came back round
     // two rather than the panel timing out on one request.
     expect(gemini.seen).toHaveLength(2)
@@ -362,7 +379,8 @@ describe('POST /api/assistant', () => {
     const payload = (await res.json()) as { answer: string; citations: string[] }
     expect(payload.citations).toEqual(['BK-9001'])
     // The text is the model's, untouched: the filter is on links, not on prose.
-    expect(payload.answer).toContain('BK-9999')
+    expect(payload.answer).toContain('[unavailable booking]')
+    expect(payload.answer).not.toContain('BK-9999')
   })
 
   test('links the booking the panel is already looking at, without a tool call', async () => {
@@ -370,6 +388,34 @@ describe('POST /api/assistant', () => {
     const res = await post_(makeApp(new FakeDb(), gemini.impl), { ...QUESTION, bookingId: 'bk-9001' }, '10.0.0.2')
     // Lower case in, upper case out, and linked on the answer's own say-so.
     expect((await res.json()) as unknown as { citations: string[] }).toMatchObject({ citations: ['BK-9001'] })
+  })
+
+  test('scopes Copilot tools and citations to the signed-in sales owner despite a forged manager persona', async () => {
+    const db = new FakeDb()
+    db.bookings = db.bookings.map((booking) =>
+      booking.id === 'BK-9002' ? { ...booking, salesOwner: 'Farah Izzati' } : booking
+    )
+    const gemini = scriptedFetch([
+      { call: { name: 'get_case', args: { bookingId: 'BK-9002' } } },
+      { text: 'BK-9002 has a loan pending.' }
+    ])
+    const app = makeApp(db, gemini.impl)
+    const request = await withSession(app, ask({ ...QUESTION, persona: 'manager' }), 'sales-nurul-aina')
+    expect(
+      (
+        (await (
+          await app.fetch(
+            new Request('http://test/api/session', { headers: { cookie: request.headers.get('cookie')! } })
+          )
+        )?.json()) as { profile: { id: string } }
+      ).profile.id
+    ).toBe('sales-nurul-aina')
+    const response = await app.fetch(request)
+    const answer = (await response?.json()) as { answer: string; citations: string[] }
+    expect(response?.status).toBe(200)
+    expect(answer.citations).toEqual([])
+    expect(answer.answer).not.toContain('BK-9002')
+    expect(gemini.seen[1]?.body.contents).toBeDefined()
   })
 
   test('gives up on the whole request at one deadline, not four', async () => {
@@ -427,7 +473,8 @@ describe('POST /api/assistant', () => {
       { call: { name: 'get_case', args: { bookingId: 'BK-9001' } } },
       { text: 'The buyer says a payslip comes tomorrow.' }
     ])
-    await makeApp(db, gemini.impl).fetch(ask(QUESTION))
+    const app = makeApp(db, gemini.impl)
+    await app.fetch(await withSession(app, ask(QUESTION)))
 
     const result = (
       gemini.seen[1].body.contents as { parts: { functionResponse?: { response: { result: string } } }[] }[]
@@ -444,7 +491,8 @@ describe('POST /api/assistant', () => {
 
   test('names the desk the person works on, and never shows the key', async () => {
     const gemini = scriptedFetch([{ text: 'BK-9001 is waiting on a payslip.' }])
-    await makeApp(new FakeDb(), gemini.impl).fetch(ask({ ...QUESTION, persona: 'legal-admin' }))
+    const app = makeApp(new FakeDb(), gemini.impl)
+    await app.fetch(await withSession(app, ask({ ...QUESTION, persona: 'sales-admin' }), 'legal-admin'))
 
     const prompt = (gemini.seen[0].body.systemInstruction as { parts: { text: string }[] }).parts[0].text
     expect(prompt).toContain('Legal Admin')
@@ -457,7 +505,8 @@ describe('POST /api/assistant', () => {
 
   test('offers the five read-only tools and the model nothing else', async () => {
     const gemini = scriptedFetch([{ text: 'Nothing to say.' }])
-    await makeApp(new FakeDb(), gemini.impl).fetch(ask(QUESTION))
+    const app = makeApp(new FakeDb(), gemini.impl)
+    await app.fetch(await withSession(app, ask(QUESTION)))
     const declared = (gemini.seen[0].body.tools as { functionDeclarations: { name: string }[] }[])[0]
       .functionDeclarations
     expect(declared.map((d) => d.name)).toEqual([
@@ -474,7 +523,8 @@ describe('POST /api/assistant', () => {
     // as every case. A declared default saying otherwise would have the model
     // filtering a search the code never filtered.
     const gemini = scriptedFetch([{ text: 'Nothing to say.' }])
-    await makeApp(new FakeDb(), gemini.impl).fetch(ask(QUESTION))
+    const app = makeApp(new FakeDb(), gemini.impl)
+    await app.fetch(await withSession(app, ask(QUESTION)))
     const declarations = (
       gemini.seen[0].body.tools as {
         functionDeclarations: {
@@ -502,7 +552,15 @@ describe('POST /api/assistant', () => {
     test('refuses an empty question', () => refuses({ persona: 'loan-admin' }, /question is required/))
     test('refuses a question over the length cap', () =>
       refuses({ ...QUESTION, question: 'x'.repeat(1001) }, /at most 1000 characters/))
-    test('refuses an unknown desk', () => refuses({ ...QUESTION, persona: 'finance' }, /persona must be one of/))
+    test('uses the session persona when the body tries to select a different desk', async () => {
+      const gemini = scriptedFetch([{ text: 'Checked.' }])
+      const app = makeApp(new FakeDb(), gemini.impl)
+      const response = await app.fetch(await withSession(app, ask({ ...QUESTION, persona: 'manager' })))
+      expect(response?.status).toBe(200)
+      expect((gemini.seen[0]?.body.systemInstruction as { parts: { text: string }[] }).parts[0]?.text).toContain(
+        'Loan Admin'
+      )
+    })
     test('refuses a body that is not an object', () => refuses(null, /expected a JSON object body/))
     test('refuses a history that is not turns', () =>
       refuses({ ...QUESTION, history: ['hi'] }, /array of \{ question, answer \} turns/))

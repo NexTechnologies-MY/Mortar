@@ -103,7 +103,7 @@ function headlineFor(ownerFilter: 'all' | OwnerRole, ownDesk: OwnerRole, count: 
 export function ChasePage() {
   const { snapshot, loading, error, refresh } = useSnapshot()
   const cases = useCases()
-  const { persona } = usePersona()
+  const { persona, profile } = usePersona()
   // The persona's own desk, as the owner role its staff member works under.
   const deskRole = PERSONA_DESK_ROLE[persona]
   const [riskFilter, setRiskFilter] = useState<'all' | RiskLevel>('all')
@@ -217,8 +217,9 @@ export function ChasePage() {
 
   /** Open Tasks defaults to the active persona's own work, with an all-owners widen. */
   const shownTasks = useMemo(
-    () => (mineOnly ? openTasks.filter((t) => t.ownerName === PERSONA_STAFF[persona].name) : openTasks),
-    [openTasks, mineOnly, persona]
+    () =>
+      mineOnly ? openTasks.filter((t) => t.ownerName === (profile?.name ?? PERSONA_STAFF[persona].name)) : openTasks,
+    [openTasks, mineOnly, persona, profile?.name]
   )
 
   const setFlag = (set: Dispatch<SetStateAction<ReadonlySet<string>>>, id: string, on: boolean) =>
@@ -422,7 +423,7 @@ export function ChasePage() {
                 tasks={shownTasks}
                 completing={completing}
                 onComplete={(t) => void completeTask(t)}
-                emptyLabel={`No Open Tasks For ${PERSONA_STAFF[persona].name}.`}
+                emptyLabel={`No Open Tasks For ${profile?.name ?? PERSONA_STAFF[persona].name}.`}
               />
             </div>
           </section>

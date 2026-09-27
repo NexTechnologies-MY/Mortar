@@ -42,7 +42,7 @@ export function ImportedCard({
   /** Called after a successful undo, to drop the card and reload the desks. */
   onUndone: () => Promise<void>
 }) {
-  const { persona } = usePersona()
+  const { persona, profile } = usePersona()
   const [open, setOpen] = useState(false)
   const [undoing, setUndoing] = useState(false)
   const first = bookings[0]?.id
@@ -52,7 +52,7 @@ export function ImportedCard({
   const runUndo = async () => {
     setUndoing(true)
     try {
-      const { removed } = await undoImport(importId, PERSONA_STAFF[persona].name)
+      const { removed } = await undoImport(importId, profile?.name ?? PERSONA_STAFF[persona].name)
       notify.success(
         `Import undone: ${removed.length.toLocaleString()} ${removed.length === 1 ? 'booking' : 'bookings'} removed.`
       )

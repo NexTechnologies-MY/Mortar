@@ -1161,3 +1161,35 @@ benchmarks.
   binomial proportion. _Statistical Science_, 16(2), 101–133.
 - TypeSafe AI. (2026). Jev API Documentation: Choice, Score, and Noul
   Primitives. `https://docs.typesafe.ai/llms.txt`.
+
+## Approved Manager And Copilot Intake (#60)
+
+This intake supersedes the earlier shared-data persona behavior and forecast
+statistics document presentation.
+
+- Named Sales Admin profiles see only their own bookings throughout the app.
+  Loan and Legal Admin represent shared departmental desks. Manager can open
+  every desk and query every booking.
+- Manager opens a concise Overview with supporting details collapsed and a
+  Suggestions tab. Suggestions show elapsed and expected waiting durations and
+  flag cases at or beyond 150% of the expected wait, as clarified by the
+  requester. Forecast offers the same suggestions.
+- Managers can flag bookings and create follow-up tasks for the relevant sales,
+  loan or legal department. Recipients see the manager flag and an in-app
+  notification; repeated clicks must not duplicate open escalations.
+- Project and unit range settings are shared, editable only by Manager, and
+  disabled for other profiles. Projects support several blocks; booking entry
+  shows remaining units filtered by block, excluding held and draft-selected
+  units.
+- Type Them In is the first/default Add Bookings tab. Its responsive form keeps
+  buyer, block, unit, layout and price readable. Both entry paths reject unit
+  conflicts without overwriting an existing booking.
+- Forecast Documents is removed. The forecast answer remains visible and
+  supporting calculations use expandable sections.
+- Copilot replaces Ask Mortar. It reads only the selected profile's authorized
+  records through server-enforced tools; its scripted fallback reads that same
+  scoped snapshot. Profile changes clear chat and pending answers. Manager has
+  access to all department information.
+
+The synthetic demo keeps public profile selection. Production sign-in and
+identity verification remain outside this intake.

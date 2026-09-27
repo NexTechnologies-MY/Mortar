@@ -5,7 +5,7 @@
  * `mappers.ts` — handlers never see snake_case.
  */
 import { SQL } from 'bun'
-import { REFERENCE_DATE, summarizeCases, unitKey } from '@mortar/core'
+import { REFERENCE_DATE, summarizeCases, unitKey, canAccessBooking } from '@mortar/core'
 import type {
   Booking,
   BookingDraft,
@@ -19,13 +19,16 @@ import type {
   Message,
   Playbook,
   Snapshot,
-  Task
+  Task,
+  ProjectSettings,
+  StaffProfile
 } from '@mortar/core'
 import { QUESTION_VERSION, jevInputHash, nextActionJob, signalsJob } from '@mortar/jev'
 import {
   rowToApplication,
   rowToBooking,
   rowToEvent,
+  jsonb,
   rowToJevAnswer,
   rowToMessage,
   rowToPlaybook,
@@ -41,6 +44,9 @@ export interface Database {
   ping(): Promise<void>
   /** Simulation parameters, or `null` while the `seed` row is absent (pre-reset). */
   meta(): Promise<StoredMeta | null>
+  getProjectSettings(): Promise<ProjectSettings | null>
+  setProjectSettings(settings: ProjectSettings): Promise<void>
+  sessionSecret(): Promise<string>
   /** Whether `bookings` has any row at all; boot uses it to tell an empty database from one whose `meta` row went missing. */
   hasBookings(): Promise<boolean>
   /** The case-derivation input: bookings, applications, events and tasks. */
@@ -86,6 +92,7 @@ export interface Database {
    */
   replaceProposal(messageId: string, proposal: CaseEvent | null): Promise<CaseEvent | null>
   insertTask(task: Task): Promise<void>
+  flagManagerTask(task: Task): Promise<Task>
   /**
    * Numbers and stores imported bookings in one transaction, each with the
    * event `bookedEvent` builds for it, records the batch under `batch.id`, and
@@ -113,6 +120,7 @@ export interface Database {
    * bookings that have moved on.
    */
   undoImport(id: string, undoneBy: string, undoneAt: IsoDateTime): Promise<{ removed: string[] } | null>
+  canUndoImport(id: string, profile: StaffProfile): Promise<boolean>
   /** Removes a single untouched booking and records its minimal retention trace. */
   deleteBooking(id: string, removedBy: string, removedAt: IsoDateTime): Promise<boolean>
   updateTaskStatus(id: string, status: Task['status'], completedAt: IsoDateTime | null): Promise<Task | null>
@@ -265,6 +273,20 @@ export function createDatabase(sql: SQL): Database {
     },
 
     meta,
+    async getProjectSettings() {
+      const rows = await sql`select value from meta where key = 'project_settings'`
+      return rows.length ? jsonb<ProjectSettings>(rows[0]!.value) : null
+    },
+    async setProjectSettings(settings) {
+      await sql`insert into meta (key, value) values ('project_settings', ${JSON.stringify(settings)}::jsonb)
+        on conflict (key) do update set value = excluded.value`
+    },
+    async sessionSecret() {
+      await sql`insert into meta (key, value) values ('session_secret', ${JSON.stringify(crypto.randomUUID() + crypto.randomUUID())}::jsonb)
+        on conflict (key) do nothing`
+      const rows = await sql`select value from meta where key = 'session_secret'`
+      return jsonb<string>(rows[0]?.value)
+    },
     caseData,
     latestJevAnswers,
 
@@ -466,8 +488,34 @@ export function createDatabase(sql: SQL): Database {
         status: task.status,
         origin: task.origin,
         created_at: task.createdAt,
-        completed_at: task.completedAt
+        completed_at: task.completedAt,
+        manager_flagged_by: task.managerFlaggedBy ?? null
       })}`
+    },
+
+    async flagManagerTask(task) {
+      return sql.begin(async (tx) => {
+        await tx`select pg_advisory_xact_lock(20260927, hashtext(${`${task.bookingId}:${task.action}:${task.ownerRole}:${task.ownerName}`}))`
+        const existing = await tx`select * from tasks where booking_id = ${task.bookingId}
+          and action = ${task.action} and owner_role = ${task.ownerRole} and owner_name = ${task.ownerName}
+          and status = 'open' and manager_flagged_by is not null limit 1`
+        if (existing.length) return rowToTask(existing[0]!)
+        const rows = await tx`insert into tasks ${tx({
+          id: task.id,
+          booking_id: task.bookingId,
+          action: task.action,
+          title: task.title,
+          owner_role: task.ownerRole,
+          owner_name: task.ownerName,
+          due_on: task.dueOn,
+          status: task.status,
+          origin: task.origin,
+          created_at: task.createdAt,
+          completed_at: task.completedAt,
+          manager_flagged_by: task.managerFlaggedBy ?? null
+        })} returning *`
+        return rowToTask(rows[0]!)
+      })
     },
 
     async importBookings(batch, drafts, bookedEvent) {
@@ -543,6 +591,16 @@ export function createDatabase(sql: SQL): Database {
         })}`
         return bookings
       })
+    },
+
+    async canUndoImport(id, profile) {
+      const rows = await sql`select b.* from imports i
+        cross join unnest(i.booking_ids) as imported(booking_id)
+        join bookings b on b.id = imported.booking_id
+        where i.id = ${id} and i.undone_at is null`
+      return (
+        rows.length > 0 && rows.every((row: Record<string, unknown>) => canAccessBooking(rowToBooking(row), profile))
+      )
     },
 
     async undoImport(id, undoneBy, undoneAt) {

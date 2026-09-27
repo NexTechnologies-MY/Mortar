@@ -157,6 +157,7 @@ const OTHER_APPLICATION: LoanApplication = {
 }
 
 class FakeDb implements Database {
+  projectSettings: realCore.ProjectSettings | null = null
   bookings = [BOOKING]
   applications: LoanApplication[] = [APPLICATION]
   messages = [FIXTURE_MESSAGE]
@@ -175,6 +176,15 @@ class FakeDb implements Database {
   }
   async meta(): Promise<StoredMeta | null> {
     return { seed: 20260918, referenceDate: '2026-09-18', resetAt: this.resetAt, resetAtWall: this.resetAtWall }
+  }
+  async getProjectSettings() {
+    return this.projectSettings
+  }
+  async setProjectSettings(settings: realCore.ProjectSettings) {
+    this.projectSettings = settings
+  }
+  async sessionSecret() {
+    return 'test-session-secret'
   }
   async caseData(): Promise<CaseData> {
     return { bookings: this.bookings, applications: this.applications, events: this.events, tasks: this.tasks }
@@ -270,6 +280,20 @@ class FakeDb implements Database {
   async insertTask(task: Task) {
     this.tasks.push(task)
   }
+  async flagManagerTask(task: Task) {
+    const existing = this.tasks.find(
+      (candidate) =>
+        candidate.status === 'open' &&
+        candidate.bookingId === task.bookingId &&
+        candidate.action === task.action &&
+        candidate.ownerRole === task.ownerRole &&
+        candidate.ownerName === task.ownerName &&
+        candidate.managerFlaggedBy
+    )
+    if (existing) return existing
+    this.tasks.push(task)
+    return task
+  }
   imports = new Map<string, { ids: string[]; undoneBy: string | null; undoneAt: string | null }>()
   removals: { id: string; removedBy: string; removedAt: string }[] = []
   /** Mirrors the SQL: an open booking (no confirmed cancelled or lapsed) holds its unit. */
@@ -306,6 +330,17 @@ class FakeDb implements Database {
     this.events = this.events.filter((e) => !ids.includes(e.bookingId))
     this.imports.set(id, { ...record, undoneBy, undoneAt })
     return { removed: ids }
+  }
+  async canUndoImport(id: string, profile: realCore.StaffProfile) {
+    const row = this.imports.get(id)
+    return Boolean(
+      row &&
+      row.ids.length > 0 &&
+      row.ids.every((bookingId) => {
+        const booking = this.bookings.find((candidate) => candidate.id === bookingId)
+        return booking && realCore.canAccessBooking(booking, profile)
+      })
+    )
   }
   async deleteBooking(id: string, removedBy: string, removedAt: string) {
     const booking = this.bookings.find((b) => b.id === id)
@@ -387,7 +422,20 @@ const makeApp = (db = new FakeDb(), jev = fakeJev(), addDemoData?: () => Promise
     jevAvailable: false
   })
 
-const call = (app: App, path: string, init?: RequestInit) => app.fetch(new Request(`http://test${path}`, init))
+const sessions = new WeakMap<App, string>()
+const call = async (app: App, path: string, init?: RequestInit, profileId = 'sales-nurul-aina') => {
+  let cookie = sessions.get(app)
+  if (!cookie) {
+    const selected = await app.fetch(
+      new Request('http://test/api/session', { method: 'POST', body: JSON.stringify({ profileId }) })
+    )
+    cookie = selected?.headers.get('set-cookie')?.split(';')[0] ?? ''
+    sessions.set(app, cookie)
+  }
+  const headers = new Headers(init?.headers)
+  headers.set('cookie', cookie)
+  return app.fetch(new Request(`http://test${path}`, { ...init, headers }))
+}
 const post = (body?: unknown) => ({ method: 'POST', body: body === undefined ? undefined : JSON.stringify(body) })
 
 describe('DELETE /api/bookings/:id', () => {
@@ -402,7 +450,7 @@ describe('DELETE /api/bookings/:id', () => {
     expect(res?.status).toBe(200)
     expect(await res?.json()).toEqual({ removed: 'BK-9001' })
     expect(db.bookings).toHaveLength(0)
-    expect(db.removals).toEqual([{ id: 'BK-9001', removedBy: 'Loan Admin', removedAt: NOON }])
+    expect(db.removals).toEqual([{ id: 'BK-9001', removedBy: 'Nurul Aina', removedAt: NOON }])
   })
 
   test('refuses a booking with progression data and leaves it present', async () => {
@@ -468,6 +516,11 @@ describe('createApp', () => {
     })
   })
 
+  test('GET /api/health stays public for deployment probes', async () => {
+    const response = await makeApp().fetch(new Request('http://test/api/health'))
+    expect(response?.status).toBe(200)
+  })
+
   test('GET /api/health reports ok: false, from a dead database, not a hardcoded true', async () => {
     const db = new FakeDb()
     db.jevAnswers = 87
@@ -515,6 +568,32 @@ describe('createApp', () => {
     expect(res?.status).toBe(200)
     const snapshot = (await res?.json()) as Snapshot
     expect(snapshot.bookings[0].id).toBe('BK-9001')
+  })
+
+  test('requires a session, scopes sales by owner, and rejects a profile header that disagrees with the cookie', async () => {
+    const db = new FakeDb()
+    db.bookings.push({ ...OTHER_BOOKING, salesOwner: 'Farah Izzati' })
+    const app = makeApp(db)
+    const anonymous = await app.fetch(new Request('http://test/api/snapshot'))
+    expect(anonymous?.status).toBe(401)
+    const scoped = await call(app, '/api/snapshot')
+    expect(((await scoped?.json()) as Snapshot).bookings.map((booking) => booking.id)).toEqual(['BK-9001'])
+    const cookie = sessions.get(app)!
+    const mismatch = await app.fetch(
+      new Request('http://test/api/snapshot', { headers: { cookie, 'x-mortar-profile': 'manager' } })
+    )
+    expect(mismatch?.status).toBe(409)
+  })
+
+  test('allows only the manager profile to persist shared project settings', async () => {
+    const db = new FakeDb()
+    const app = makeApp(db)
+    const payload = { settings: realCore.DEFAULT_PROJECT_SETTINGS }
+    expect((await call(app, '/api/settings', { ...post(payload), method: 'PUT' }))?.status).toBe(403)
+    const managerApp = makeApp(db)
+    const saved = await call(managerApp, '/api/settings', { ...post(payload), method: 'PUT' }, 'manager')
+    expect(saved?.status).toBe(200)
+    expect(db.projectSettings?.projectName).toBe('Bukit Damai')
   })
 
   test('unknown /api route is a json 404', async () => {
@@ -1101,8 +1180,8 @@ describe('createApp', () => {
         kind: 'loan_submitted',
         occurredAt: '2026-09-15T12:00:00+08:00',
         recordedAt: '2026-09-18T12:00:00+08:00',
-        reportedBy: 'Tan Mei Ling',
-        verifiedBy: 'Tan Mei Ling',
+        reportedBy: 'Nurul Aina',
+        verifiedBy: 'Nurul Aina',
         status: 'confirmed',
         source: 'staff',
         note: null
@@ -1210,7 +1289,7 @@ describe('createApp', () => {
       expect(res?.status).toBe(200)
       const event = (await res?.json()) as CaseEvent
       expect(event.status).toBe(status as CaseEvent['status'])
-      expect(event.verifiedBy).toBe('Tan Mei Ling')
+      expect(event.verifiedBy).toBe('Nurul Aina')
     })
 
     test('rejects a bad decision', async () => {
@@ -1237,13 +1316,13 @@ describe('createApp', () => {
       const db = new FakeDb()
       db.events.push({ ...PROVISIONAL })
       await call(makeApp(db), '/api/events/EV-9001-9/review', post({ decision: 'confirm', reviewer: ' Tan Mei Ling ' }))
-      expect(db.events[0]).toMatchObject({ status: 'confirmed', verifiedBy: 'Tan Mei Ling' })
+      expect(db.events[0]).toMatchObject({ status: 'confirmed', verifiedBy: 'Nurul Aina' })
       expect(db.reviews).toEqual([
         {
           eventId: 'EV-9001-9',
           fromStatus: 'provisional',
           toStatus: 'confirmed',
-          reviewer: 'Tan Mei Ling',
+          reviewer: 'Nurul Aina',
           at: '2026-09-18T12:00:00+08:00'
         }
       ])
@@ -1259,7 +1338,7 @@ describe('createApp', () => {
       const stale = await review('dismiss', 'Nurul Aina')
       expect(stale?.status).toBe(409)
       expect(await errorOf(stale)).toBe('This update was already reviewed and confirmed.')
-      expect(db.events[0]).toMatchObject({ status: 'confirmed', verifiedBy: 'Tan Mei Ling' })
+      expect(db.events[0]).toMatchObject({ status: 'confirmed', verifiedBy: 'Nurul Aina' })
       expect(db.reviews).toHaveLength(1)
     })
 
@@ -1466,6 +1545,21 @@ describe('createApp', () => {
       expect(db.tasks).toHaveLength(1)
     })
 
+    test('only a manager can create a deduplicated task flag, and the flag records the session identity', async () => {
+      const db = new FakeDb()
+      const sales = await call(makeApp(db), '/api/tasks', post({ ...valid, managerFlaggedBy: 'Project Manager' }))
+      expect(sales?.status).toBe(403)
+      const app = makeApp(db)
+      const request = post({ ...valid, managerFlaggedBy: 'spoofed name' })
+      const first = await call(app, '/api/tasks', request, 'manager')
+      const second = await call(app, '/api/tasks', request, 'manager')
+      expect(first?.status).toBe(200)
+      expect(second?.status).toBe(200)
+      expect(((await first?.json()) as Task).managerFlaggedBy).toBe('Project Manager')
+      expect(((await second?.json()) as Task).id).toBe(db.tasks[0]?.id)
+      expect(db.tasks).toHaveLength(1)
+    })
+
     test.each([
       [{ ...valid, action: 'nap' }, 'action'],
       [{ ...valid, ownerRole: 'ceo' }, 'ownerRole'],
@@ -1527,10 +1621,46 @@ describe('createApp', () => {
         source: 'staff',
         occurredAt: '2026-09-02T09:00:00+08:00',
         recordedAt: '2026-09-18T12:00:00+08:00',
-        reportedBy: 'Tan Mei Ling',
-        verifiedBy: 'Tan Mei Ling',
+        reportedBy: 'Nurul Aina',
+        verifiedBy: 'Nurul Aina',
         note: 'Imported From september.xlsx'
       })
+    })
+
+    test('manager imports retain the selected sales owner', async () => {
+      const db = new FakeDb()
+      const res = await call(
+        makeApp(db),
+        '/api/bookings/import',
+        post({ ...valid, bookings: [{ ...draft, salesOwner: 'Kelvin Chow' }] }),
+        'manager'
+      )
+      expect(res?.status).toBe(200)
+      expect(db.bookings.find((booking) => booking.id === 'BK-0141')?.salesOwner).toBe('Kelvin Chow')
+    })
+
+    test('manager imports reject unknown owners before creating an inaccessible booking', async () => {
+      const db = new FakeDb()
+      const res = await call(
+        makeApp(db),
+        '/api/bookings/import',
+        post({ ...valid, bookings: [{ ...draft, salesOwner: 'Unknown Agent' }] }),
+        'manager'
+      )
+      expect(res?.status).toBe(400)
+      expect(db.bookings.some((booking) => booking.salesOwner === 'Unknown Agent')).toBe(false)
+    })
+
+    test('sales imports ignore a forged sales owner and use the signed-in profile', async () => {
+      const db = new FakeDb()
+      const res = await call(
+        makeApp(db),
+        '/api/bookings/import',
+        post({ ...valid, bookings: [{ ...draft, salesOwner: 'Kelvin Chow' }] }),
+        'sales-nurul-aina'
+      )
+      expect(res?.status).toBe(200)
+      expect(db.bookings.find((booking) => booking.id === 'BK-0141')?.salesOwner).toBe('Nurul Aina')
     })
 
     test('answers with the import id and the bookings, IC and phone masked', async () => {
@@ -1555,7 +1685,7 @@ describe('createApp', () => {
       expect(db.bookings.some((b) => b.id === 'BK-0141')).toBe(false)
       expect(db.events.some((e) => e.bookingId === 'BK-0141')).toBe(false)
       // The import itself stays on record, stamped with who undid it.
-      expect(db.imports.get(first.importId)).toMatchObject({ ids: ['BK-0141'], undoneBy: 'Farah Idris' })
+      expect(db.imports.get(first.importId)).toMatchObject({ ids: ['BK-0141'], undoneBy: 'Nurul Aina' })
       expect(db.imports.get(first.importId)?.undoneAt).toBeTruthy()
       expect((await call(app, `/api/imports/${first.importId}/undo`, undoBy))?.status).toBe(404)
 
@@ -1623,7 +1753,9 @@ describe('createApp', () => {
         post({ ...valid, bookings: [{ ...draft, unit: 'A-12-03' }] })
       )
       expect(held?.status).toBe(409)
-      expect(await errorOf(held)).toContain('BK-9001')
+      const message = await errorOf(held)
+      expect(message).toContain('held by another booking')
+      expect(message).not.toContain('BK-9001')
       const twice = await call(makeApp(), '/api/bookings/import', post({ ...valid, bookings: [draft, draft] }))
       expect(twice?.status).toBe(409)
     })
@@ -1681,6 +1813,11 @@ describe('createApp', () => {
   })
 
   describe('demo data routes', () => {
+    test('a sales session cannot add or delete shared demo data', async () => {
+      const app = makeApp()
+      expect((await call(app, '/api/admin/demo/add', post()))?.status).toBe(403)
+      expect((await call(app, '/api/admin/demo/delete', post()))?.status).toBe(403)
+    })
     test('Add Demo Data is refused while demo management is switched off', async () => {
       let ran = false
       const app = createApp({
@@ -1693,14 +1830,14 @@ describe('createApp', () => {
         deleteDemoData: async () => {},
         resetEnabled: false
       })
-      const res = await call(app, '/api/admin/demo/add', post())
+      const res = await call(app, '/api/admin/demo/add', post(), 'manager')
       expect(res?.status).toBe(403)
       expect(await errorOf(res)).toContain('MORTAR_DEMO_RESET=off')
       expect(ran).toBe(false)
     })
 
     test('adds demo data and returns SimulationMeta', async () => {
-      const res = await call(makeApp(), '/api/admin/demo/add', post())
+      const res = await call(makeApp(), '/api/admin/demo/add', post(), 'manager')
       expect(res?.status).toBe(200)
       const meta = (await res?.json()) as SimulationMeta
       expect(meta.seed).toBe(20260918)
@@ -1720,7 +1857,7 @@ describe('createApp', () => {
           deleted = true
         }
       })
-      const res = await call(app, '/api/admin/demo/delete', post())
+      const res = await call(app, '/api/admin/demo/delete', post(), 'manager')
       expect(res?.status).toBe(200)
       expect(deleted).toBe(true)
     })

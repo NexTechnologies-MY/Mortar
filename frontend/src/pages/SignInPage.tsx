@@ -74,7 +74,7 @@ export function SignInPage() {
                 aria-labelledby={personaLabelId}
                 value={chosen}
                 onValueChange={(value) => setChosen(value as Persona)}
-                className="flex gap-0 rounded-md bg-muted p-1"
+                className="grid grid-cols-2 gap-1 rounded-md bg-muted p-1"
               >
                 {PERSONAS.map((p) => (
                   <RadioGroupItem

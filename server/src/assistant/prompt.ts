@@ -10,7 +10,7 @@
  */
 import type { Persona } from '@mortar/core'
 
-/** The three desks, what each owns, and which moves are theirs. Copied from `MOVE_OWNER`; no frontend import. */
+/** The desks, what each owns, and which moves are theirs. Copied from `MOVE_OWNER`; no frontend import. */
 const DESKS: Record<Persona, { label: string; owns: string; moves: string }> = {
   'sales-admin': {
     label: 'Sales Admin',
@@ -26,6 +26,11 @@ const DESKS: Record<Persona, { label: string; owns: string; moves: string }> = {
     label: 'Legal Admin',
     owns: 'the law firms and the Sale and Purchase Agreement: getting an appointment set and the SPA signed',
     moves: 'asking a solicitor for a date and chasing a signed SPA'
+  },
+  manager: {
+    label: 'Project Manager',
+    owns: 'oversight of all project bookings and follow-through across desks',
+    moves: 'setting priorities and assigning follow-up to the responsible desk'
   }
 }
 

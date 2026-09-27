@@ -7,7 +7,6 @@ import { PageContainer } from '@/components/layout/PageContainer'
 import { PageHeaderCard } from '@/components/layout/PageHeaderCard'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { Skeleton } from '@/components/ui/skeleton'
-import { mainProject } from '@/pages/ImportPage'
 import { DemoDataCard } from '@/components/settings/DemoDataCard'
 import { ProjectSettingsCard } from '@/components/settings/ProjectSettingsCard'
 import { HealthCard } from '@/components/settings/HealthCard'
@@ -63,9 +62,9 @@ export function SettingsPage() {
           <Skeleton className="h-72" />
         </div>
       ) : snapshot ? (
-        <div className="grid items-stretch gap-4 py-4 lg:grid-cols-2">
+        <div className="grid grid-cols-1 items-stretch gap-4 py-4 lg:grid-cols-2">
           <DemoDataCard snapshot={snapshot} jevAnswers={health?.jevAnswers ?? null} onChange={onDemoDataChange} />
-          <ProjectSettingsCard defaultProjectName={mainProject(snapshot.bookings)} />
+          <ProjectSettingsCard />
           <div className="lg:col-span-2">
             <HealthCard health={health} failed={healthFailed} />
           </div>

@@ -91,7 +91,7 @@ pointing at a disposable database. Recording requires an explicit disposable
   Anything that reads `stallReasons` must filter on `open` (`isOpen` in
   `brain/helpers.ts`), never `isLive`; `brain.test.ts` pins Ask's stalled set to
   Today's so the two cannot drift apart again.
-- **Ask Mortar Calls Gemini With Five Read-Only Tools.** `server/src/assistant/`
+- **Copilot Calls Gemini With Five Read-Only Tools.** `server/src/assistant/`
   handles `POST /api/assistant` using `fetch` against Google's Gemini API
   (`GEMINI_API_KEY`; model `GEMINI_MODEL`, default `gemini-3.5-flash-lite`).
   Five read-only tools query the live snapshot (`find_bookings`, `get_case`,
@@ -101,7 +101,7 @@ pointing at a disposable database. Recording requires an explicit disposable
   `{ fallback: true }` and `AskPanel` falls back to the scripted `askBrain`
   answers in `packages/core/src/brain/`. The key, images, and message bodies are
   never logged. Data caveat: Gemini's free tier may use prompts to train
-  products; Ask Mortar is strictly for simulated data, while real buyer data
+  products; Copilot is strictly for simulated data, while real buyer data
   requires a paid tier or Vertex AI under a PDPA agreement.
 - **Persona Pages Drive The Sidebar And Route Guard.**
   `frontend/src/lib/persona.tsx` (`PERSONA_PAGES`) maps the exact pages visible
@@ -110,10 +110,33 @@ pointing at a disposable database. Recording requires an explicit disposable
   unauthorized visit redirects to the persona's home with a warning toast. The
   case page (`/bookings/:id`), `/app`, `/faq`, and public pages are never
   guarded. Switching persona in the top bar redirects to the new persona's home.
-- **No Data Masking.** `PERSONA_PERMISSIONS` is gone. Nothing in Mortar
-  partitions or hides data per persona; every persona sees identical figures
-  across all desks and cases. Persona sets defaults (such as preset filters and
-  home views), not data access.
+- **Named Profiles Define Data Access.** The synthetic demo offers named sales
+  staff, shared loan/legal desks, and Manager. A server session determines
+  access: sales gets only its owned bookings and linked records; departmental
+  desks cover their queues; Manager covers every department. Direct case APIs,
+  writes, Copilot tools, forecasts and scripted fallback use the same boundary.
+  The profile id header must match the session, preventing a second browser
+  tab's role switch from widening the first tab's response. The public demo
+  selector is not production credential authentication.
+- **Profile Switches Clear The Workspace.** `ProfileWorkspace` keys the snapshot
+  provider and routed app by profile id. Copilot cancels pending streams on
+  unmount and its panel is also keyed by profile. Notifications have a separate
+  browser storage namespace per profile.
+- **Manager Workflows.** `/manager` shows concise counts, collapsed booking
+  detail and Suggestions. The same suggestions appear in Forecast. They use
+  confirmed-event clocks and the existing stall-wait assumptions, triggering at
+  or beyond 150% of expected duration (50% overdue), with working days for bank
+  decisions. Flagged department tasks persist and appear in the recipient's
+  notification bell, refreshed every 30 seconds while visible.
+- **Shared Settings And Inventory.** Project settings live on the server and
+  only Manager can change them. `blocks` supports multiple blocks while old
+  `blockPrefix` records remain readable. The inventory API exposes held
+  project/unit pairs across all owners without buyer names or booking ids.
+  Manual entry opens first; all nonempty forms must be valid before submission.
+  Both manual and sheet imports retain atomic duplicate-unit protection.
+- **Forecast Detail Is Collapsible.** The document stack from #54/#61 was
+  explicitly reversed in #60. Headline figures stay visible; supporting
+  calculations use ordinary expandable sections.
 - **One Next Step Per Case (`nextStep.ts`).**
   `frontend/src/components/case/nextStep.ts` makes the rule-based move from
   `ballInCourt` the default everywhere (Today, Bookings table, and

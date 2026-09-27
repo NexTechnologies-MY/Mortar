@@ -804,10 +804,25 @@ architected for future corporate data onboarding:
   will apply once the forecast scores real buyers. The design already keeps AI
   outputs advisory: human officers must explicitly verify all status transitions
   and legal filings.
-- **Data Minimization:** Every persona sees the same figures and underlying case
-  data; persona sets workflow defaults, not access to data. Personal financial
-  documents and unneeded PII are excluded from client payloads by design,
-  keeping data minimized across all desks.
+- **Data Minimization:** Sales profiles receive only their own bookings and
+  linked records. Shared loan/legal desks receive departmental case data;
+  Manager has cross-department access. Server sessions authorize direct reads,
+  writes and Copilot tool calls. The public synthetic profile selector remains a
+  demo capability, not production identity verification.
+
+### Profile Sessions And Shared Configuration
+
+`POST /api/session` selects a known demo profile and issues an HttpOnly,
+SameSite cookie. `GET /api/session` reads it; `DELETE /api/session` clears it.
+The server verifies the cookie and checks the `X-Mortar-Profile` header against
+it, so a profile switch in another tab cannot silently widen access. Missing
+sessions fail closed for protected routes. The health endpoint remains public.
+
+`GET /api/settings` returns shared project settings; `PUT /api/settings` is
+manager-only. `GET /api/inventory` exposes held project/unit pairs without buyer
+names or booking identifiers. Existing import transaction locks continue to
+reject duplicate occupied units atomically. Manager flags are stored on tasks;
+the recipient's desk derives notifications from those persisted tasks.
 
 ### Data Retention
 

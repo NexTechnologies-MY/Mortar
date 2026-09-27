@@ -12,8 +12,8 @@
  */
 import { afterAll, beforeAll, describe, expect, setDefaultTimeout, test } from 'bun:test'
 import { SQL } from 'bun'
-import { REFERENCE_DATE, summarizeCases } from '@mortar/core'
-import type { Booking, BookingDraft, CaseEvent, Message } from '@mortar/core'
+import { REFERENCE_DATE, summarizeCases, DEFAULT_PROJECT_SETTINGS } from '@mortar/core'
+import type { Booking, BookingDraft, CaseEvent, Message, Task } from '@mortar/core'
 import { QUESTION_VERSION, jevInputHash, nextActionJob, signalsJob } from '@mortar/jev'
 import {
   BookingMovedOnError,
@@ -77,6 +77,43 @@ describe.skipIf(!TEST_DATABASE_URL)('database integration', () => {
 
   test('hasBookings is true once any booking exists', async () => {
     expect(await db.hasBookings()).toBe(true)
+  })
+
+  test('project settings and the signed-session secret round-trip through meta', async () => {
+    await db.setProjectSettings({ ...DEFAULT_PROJECT_SETTINGS, blocks: ['A', 'B'] })
+    expect(await db.getProjectSettings()).toMatchObject({ projectName: 'Bukit Damai', blocks: ['A', 'B'] })
+    const first = await db.sessionSecret()
+    expect(first).toBeTruthy()
+    expect(await db.sessionSecret()).toBe(first)
+  })
+
+  test('manager flags persist, deduplicate atomically, and remain on the task history', async () => {
+    const task: Task = {
+      id: 'W2TEST-FLAG-1',
+      bookingId: 'BK-9001',
+      action: 'call_buyer',
+      title: 'Manager follow-up',
+      ownerRole: 'sales',
+      ownerName: 'Nurul Aina',
+      dueOn: '2026-09-20',
+      status: 'open',
+      origin: 'staff',
+      createdAt: '2026-09-18T12:00:00+08:00',
+      completedAt: null,
+      managerFlaggedBy: 'Project Manager'
+    }
+    try {
+      const first = await db.flagManagerTask(task)
+      const duplicate = await db.flagManagerTask({ ...task, id: 'W2TEST-FLAG-2', title: 'Duplicate flag' })
+      expect(duplicate.id).toBe(first.id)
+      expect(first.managerFlaggedBy).toBe('Project Manager')
+      await db.updateTaskStatus(first.id, 'done', '2026-09-18T13:00:00+08:00')
+      expect((await db.snapshot()).tasks.find((candidate) => candidate.id === first.id)?.managerFlaggedBy).toBe(
+        'Project Manager'
+      )
+    } finally {
+      await sql`delete from tasks where id like 'W2TEST-FLAG-%'`
+    }
   })
 
   test('Add Demo Data does not create duplicate seed rows', async () => {

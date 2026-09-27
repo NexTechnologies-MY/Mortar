@@ -81,7 +81,7 @@ describe('FaqPage', () => {
     expect(screen.getAllByText(/bank negara malaysia/i).length).toBeGreaterThan(0)
   })
 
-  it('details persona pages, Today list, Ask Mortar, and stage labels', () => {
+  it('details persona pages, Today list, Copilot, and stage labels', () => {
     renderPage()
     expect(screen.getByText(/Sales Admin: Today \(home\), Bookings, Add Bookings, Forecast, Settings/i)).toBeTruthy()
     expect(screen.getByText(/Loan Admin: Bookings \(home\), Today, Forecast, Settings/i)).toBeTruthy()
@@ -89,7 +89,7 @@ describe('FaqPage', () => {
     expect(
       screen.getByText(/Who Holds Each Booking, filters the table by Buyer, Bank, Solicitor, Signed or Us/i)
     ).toBeTruthy()
-    expect(screen.getByText(/Ask Mortar, the sparkle button in the top bar/i)).toBeTruthy()
+    expect(screen.getByText(/Copilot, the sparkle button in the top bar/i)).toBeTruthy()
     expect(
       screen.getByText(
         /Stage labels read Booked, With Bank, Loan Approved, Loan Agreement, Disbursed, SPA Signed, Cancelled, Lapsed/i

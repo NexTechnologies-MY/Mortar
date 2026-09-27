@@ -14,7 +14,9 @@ import {
   DropdownMenuTrigger
 } from '@/components/ui/DropdownMenu'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { PERSONAS, usePersona, type PersonaMeta } from '@/lib/persona'
+import { DEMO_PROFILES, type StaffProfile } from '@mortar/core'
+import { signOut } from '@/lib/session'
+import { PERSONAS, usePersona } from '@/lib/persona'
 
 /**
  * Renders a dropdown of the three personas and updates the global persona context.
@@ -23,13 +25,13 @@ import { PERSONAS, usePersona, type PersonaMeta } from '@/lib/persona'
  * Highlights the active persona while keeping the trigger compact for nav placement.
  */
 export function PersonaSwitch() {
-  const { persona, meta, setPersona } = usePersona()
+  const { profile, meta, setProfile } = usePersona()
   const navigate = useNavigate()
 
-  const switchTo = (next: PersonaMeta) => {
-    if (next.id === persona) return
-    setPersona(next.id)
-    navigate(next.home)
+  const switchTo = (next: StaffProfile) => {
+    if (next.id === profile.id) return
+    setProfile(next)
+    navigate(PERSONAS.find((p) => p.id === next.persona)?.home ?? '/app')
   }
 
   return (
@@ -40,28 +42,37 @@ export function PersonaSwitch() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="h-9 gap-2 px-2 sm:px-3" aria-label="Switch persona">
                 <UserCog className="h-4 w-4" />
-                <span className="hidden text-sm sm:inline">{meta.label}</span>
+                <span className="hidden text-sm sm:inline">
+                  {profile.name} &middot; {meta.label}
+                </span>
               </Button>
             </DropdownMenuTrigger>
           </TooltipTrigger>
           <TooltipContent>Switch Persona</TooltipContent>
         </Tooltip>
       </TooltipProvider>
-      <DropdownMenuContent align="end" className="w-44">
-        {PERSONAS.map((p) => (
+      <DropdownMenuContent align="end" className="w-72">
+        {DEMO_PROFILES.map((p) => (
           <DropdownMenuItem
             key={p.id}
             onSelect={() => switchTo(p)}
-            className={persona === p.id ? 'font-semibold text-foreground' : 'text-muted-foreground'}
+            className={profile.id === p.id ? 'font-semibold text-foreground' : 'text-muted-foreground'}
           >
             <span className="flex w-full items-center justify-between gap-3">
-              <span>{p.label}</span>
-              {persona === p.id && <Check className="h-4 w-4 text-link" />}
+              <span>
+                {p.name} &middot; {PERSONAS.find((role) => role.id === p.persona)?.label}
+              </span>
+              {profile.id === p.id && <Check className="h-4 w-4 text-link" />}
             </span>
           </DropdownMenuItem>
         ))}
         <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={() => navigate('/sign-in')} className="text-muted-foreground">
+        <DropdownMenuItem
+          onSelect={() => {
+            void signOut().finally(() => navigate('/sign-in'))
+          }}
+          className="text-muted-foreground"
+        >
           <LogOut />
           <span>Sign Out</span>
         </DropdownMenuItem>

@@ -3,6 +3,20 @@ import type { Persona } from '@/lib/persona'
 export type TourStep = { label: string; route: string; target: string; caption: string }
 
 export const TOUR_STEPS: Record<Persona, TourStep[]> = {
+  manager: [
+    {
+      label: 'Overview',
+      route: '/manager',
+      target: '[data-tour="manager-header"]',
+      caption: 'See essential information across all departments. Open Suggestions to create manager follow-ups.'
+    },
+    {
+      label: 'Copilot',
+      route: '/manager',
+      target: '[data-tour="ask-mortar"]',
+      caption: 'Ask Copilot about any department. Manager access covers every booking.'
+    }
+  ],
   'sales-admin': [
     {
       label: 'Today',
@@ -49,10 +63,10 @@ export const TOUR_STEPS: Record<Persona, TourStep[]> = {
       caption: 'Add bookings by uploading a sheet or entering them directly.'
     },
     {
-      label: 'Ask Mortar',
+      label: 'Copilot',
       route: '/chase',
       target: '[data-tour="ask-mortar"]',
-      caption: 'Ask Mortar questions about the bookings and work in this account.'
+      caption: 'Ask Copilot about the bookings your profile can access.'
     }
   ],
   'loan-admin': [
@@ -109,10 +123,10 @@ export const TOUR_STEPS: Record<Persona, TourStep[]> = {
       caption: 'See how many awaiting cases each panel firm is handling.'
     },
     {
-      label: 'Ask Mortar',
+      label: 'Copilot',
       route: '/legal',
       target: '[data-tour="ask-mortar"]',
-      caption: 'Ask Mortar questions about the bookings and work in this account.'
+      caption: 'Ask Copilot about the bookings your profile can access.'
     }
   ]
 }

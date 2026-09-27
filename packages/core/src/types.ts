@@ -151,6 +151,8 @@ export interface Task {
   origin: 'jev' | 'staff'
   createdAt: IsoDateTime
   completedAt: IsoDateTime | null
+  /** Manager's durable attention flag; cleared when the task is closed. */
+  managerFlaggedBy?: string | null
 }
 
 // Derived Views -------------------------------------------------------------
@@ -373,7 +375,14 @@ export interface Snapshot extends Dataset {
 // Personas ------------------------------------------------------------------
 
 /** The three staff desks. Persisted in the browser under `mortar.persona`. */
-export type Persona = 'sales-admin' | 'loan-admin' | 'legal-admin'
+export type Persona = 'sales-admin' | 'loan-admin' | 'legal-admin' | 'manager'
+
+/** Named public-demo identity. Selection is not real authentication. */
+export interface StaffProfile {
+  id: string
+  name: string
+  persona: Persona
+}
 
 // Ask -----------------------------------------------------------------------
 

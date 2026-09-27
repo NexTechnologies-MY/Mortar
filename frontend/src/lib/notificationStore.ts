@@ -2,7 +2,7 @@
  * In-app notification store.
  *
  * Backs the bell icon in the app header with a localStorage-persisted list
- * (key `mortar.notifications`, capped at 50 entries). Components subscribe via
+ * (key `mortar.notifications.<profile>`, capped at 50 entries). Components subscribe via
  * `notificationStore.subscribe(listener)` and receive the full list on every
  * mutation; the convenience hook around this lives in
  * `components/ui/NotificationPopover.tsx`.
@@ -11,12 +11,20 @@
 import { REFERENCE_DATE, simNow } from '@mortar/core'
 import type { Notification } from '@/components/ui/NotificationPopover'
 
-const STORAGE_KEY = 'mortar.notifications'
+let profileId = (() => {
+  try {
+    return localStorage.getItem('mortar.profile') ?? 'sales-nurul-aina'
+  } catch {
+    return 'sales-nurul-aina'
+  }
+})()
+const storageKey = () => `mortar.notifications.${profileId}`
+let seenTasks = new Set<string>()
 
 /** Hydrates notifications from localStorage; returns `[]` on any parse error. */
 function loadNotifications(): Notification[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
+    const raw = localStorage.getItem(storageKey())
     if (!raw) return []
     return JSON.parse(raw) as Notification[]
   } catch {
@@ -26,7 +34,11 @@ function loadNotifications(): Notification[] {
 
 /** Serialises the notifications list to localStorage. */
 function saveNotifications(notifications: Notification[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(notifications))
+  try {
+    localStorage.setItem(storageKey(), JSON.stringify(notifications))
+  } catch {
+    /* Storage is optional. */
+  }
 }
 
 /** Subscriber callback type — receives the full notifications list. */
@@ -42,10 +54,39 @@ function emit() {
 }
 
 /**
- * App-wide toast/notification store backed by `localStorage` (key `mortar.notifications`, max 50 entries).
+ * Profile-scoped notification store backed by localStorage, max 50 entries per profile.
  * Subscribers receive the full list on every mutation.
  */
 export const notificationStore = {
+  setProfile: (id: string) => {
+    if (id === profileId) return
+    profileId = id
+    seenTasks = new Set()
+    notifications = loadNotifications()
+    emit()
+  },
+  managerTask: (task: {
+    id: string
+    title: string
+    managerFlaggedBy?: string | null
+    bookingId: string
+    createdAt: string
+  }) => {
+    const id = `manager-${task.id}`
+    if (seenTasks.has(id) || notifications.some((n) => n.id === id)) return
+    seenTasks.add(id)
+    notifications = [
+      {
+        id,
+        title: 'Manager Follow-Up',
+        description: `${task.managerFlaggedBy}: ${task.title} (${task.bookingId})`,
+        timestamp: task.createdAt,
+        read: false
+      },
+      ...notifications
+    ].slice(0, 50)
+    emit()
+  },
   /** Returns the current notifications list (newest first). */
   get: () => notifications,
 

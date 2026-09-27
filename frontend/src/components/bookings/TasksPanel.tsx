@@ -60,6 +60,9 @@ export function TasksPanel({ tasks, onChanged }: { tasks: Task[]; onChanged: () 
                     <OwnerBadge role={task.ownerRole} name={task.ownerName} />
                     <Badge variant="secondary">{NEXT_ACTION_LABELS[task.action]}</Badge>
                     <Badge variant="outline">{task.origin === 'jev' ? 'Jev' : 'Staff'}</Badge>
+                    {task.managerFlaggedBy && (
+                      <span className="text-xs font-medium">Manager Flag ? {task.managerFlaggedBy}</span>
+                    )}
                     <span className="text-[13px] text-muted-foreground">Due {formatDate(task.dueOn)}</span>
                   </div>
                 </div>

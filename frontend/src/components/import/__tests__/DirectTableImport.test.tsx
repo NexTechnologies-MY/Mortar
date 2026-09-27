@@ -1,187 +1,145 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { unitKey } from '@mortar/core'
+import { DEFAULT_PROJECT_SETTINGS, unitKey } from '@mortar/core'
 import { PersonaProvider } from '@/lib/persona'
-import { SnapshotProvider } from '@/lib/data'
-import { importBookings } from '@/lib/api'
 import { DirectTableImport } from '@/components/import/DirectTableImport'
+import { importBookings, fetchProjectSettings } from '@/lib/api'
 
-Element.prototype.scrollIntoView = vi.fn()
+vi.mock('@/lib/api', () => ({
+  fetchProjectSettings: vi.fn(async () => ({ settings: DEFAULT_PROJECT_SETTINGS })),
+  saveProjectSettings: vi.fn(),
+  importBookings: vi.fn(async ({ bookings }: { bookings: object[] }) => ({
+    importId: 'IMP-DIRECT-1',
+    bookings: bookings.map((booking, index) => ({ ...booking, id: `BK-${index + 1}` }))
+  }))
+}))
 
-vi.mock('@/lib/api', async () => {
-  const fixture = await import('@/components/bookings/__tests__/snapshotFixture')
-  const snapshot = fixture.buildSnapshot()
-  return {
-    fetchSnapshot: vi.fn(async () => snapshot),
-    importBookings: vi.fn(async ({ bookings }: { bookings: object[] }) => ({
-      importId: 'IMP-DIRECT-1',
-      bookings: bookings.map((b, i) => ({ ...b, id: `BK-${String(200 + i).padStart(4, '0')}` }))
-    }))
-  }
-})
-
-function renderDirectImport({
-  held = new Map([[unitKey('Bukit Damai', 'A-12-03'), 'BK-9001']]),
-  onImported = vi.fn()
-}: {
-  held?: Map<string, string>
-  onImported?: (result: { importId: string; bookings: unknown[] }) => void
-} = {}) {
-  const result = render(
+function renderImport(held = new Map([[unitKey('Bukit Damai', 'A-12-03'), 'BK-9001']])) {
+  return render(
     <MemoryRouter>
       <PersonaProvider initialPersona="sales-admin">
-        <SnapshotProvider>
-          <DirectTableImport held={held} onImported={onImported} />
-        </SnapshotProvider>
+        <DirectTableImport held={held} />
       </PersonaProvider>
     </MemoryRouter>
   )
-  return { ...result, onImported }
+}
+
+function renderAsNamedSalesProfile() {
+  window.localStorage.setItem('mortar.profile', 'sales-kelvin-chow')
+  return render(
+    <MemoryRouter>
+      <PersonaProvider>
+        <DirectTableImport held={new Map()} />
+      </PersonaProvider>
+    </MemoryRouter>
+  )
 }
 
 describe('DirectTableImport', () => {
   beforeEach(() => {
     window.localStorage.clear()
-    vi.mocked(importBookings).mockClear()
+    vi.clearAllMocks()
+    vi.mocked(fetchProjectSettings).mockResolvedValue({ settings: DEFAULT_PROJECT_SETTINGS })
   })
 
-  it('renders the entry ledger beside its booking settings', async () => {
-    renderDirectImport()
-    expect(await screen.findByText(/Type Bookings In/i)).toBeTruthy()
-    expect(screen.getByText('Buyer Name')).toBeTruthy()
-    expect(screen.getByRole('heading', { name: /Booking Settings/i })).toBeTruthy()
-    expect(screen.getByText('Project')).toBeTruthy()
-    expect(screen.getByText('Bukit Damai')).toBeTruthy()
-    expect(screen.getByText('Sales Agent')).toBeTruthy()
-    expect(screen.getAllByText('Nurul Aina').length).toBeGreaterThan(0)
-    expect(screen.getByText('Law Firm')).toBeTruthy()
-    expect(screen.getAllByText('Teh & Partners').length).toBeGreaterThan(0)
-    expect(screen.getByRole('link', { name: 'Settings' })).toBeTruthy()
-
-    // Exactly 1 row by default
-    const unitInputs = screen.getAllByPlaceholderText(/A-12-08/i)
-    expect(unitInputs).toHaveLength(1)
+  it('starts with one clear booking form and loads server settings', async () => {
+    renderImport()
+    expect(await screen.findByRole('heading', { name: 'Type Bookings In' })).toBeTruthy()
+    expect(screen.getByLabelText('Buyer Name')).toBeTruthy()
+    expect(screen.getByLabelText('Unit Number')).toBeTruthy()
+    expect(screen.getByLabelText('Block For Booking 1')).toBeTruthy()
+    expect(screen.getAllByRole('region', { name: /Booking/ })).toHaveLength(1)
+    expect(await screen.findByText(/Sales Agent:/)).toBeTruthy()
+    expect(fetchProjectSettings).toHaveBeenCalledOnce()
   })
 
-  it('drops down unsold units when focusing the unit input and filters on typing', async () => {
-    renderDirectImport()
-    await screen.findByText(/Type Bookings In/i)
-
-    const unitInput = screen.getByPlaceholderText(/A-12-08/i)
-    fireEvent.focus(unitInput)
-
-    // Dropdown header
-    expect(await screen.findByText(/Unsold Units/i)).toBeTruthy()
-
-    // Type "A-15" to filter units
-    fireEvent.change(unitInput, { target: { value: 'A-15' } })
-    expect(await screen.findByText('A-15-01')).toBeTruthy()
-
-    // Click unit from dropdown
-    const option = screen.getByText('A-15-01')
-    fireEvent.mouseDown(option)
-
-    // Unit is populated
-    expect(screen.getByDisplayValue('A-15-01')).toBeTruthy()
-  })
-
-  it('automatically updates the SPA price when a different layout model is selected', async () => {
-    renderDirectImport()
-    await screen.findByText(/Type Bookings In/i)
-
-    const modelSelect = screen.getByRole('combobox', { name: /Model \/ Layout/i })
-    expect(modelSelect).toBeTruthy()
-    expect(screen.getByDisplayValue('480000')).toBeTruthy()
-
-    // Change to Type B (RM 560,000)
-    fireEvent.click(modelSelect)
-    fireEvent.click(await screen.findByRole('option', { name: /Type B/i }))
-    expect(screen.getByDisplayValue('560000')).toBeTruthy()
-
-    // Change to Type C (RM 720,000)
-    fireEvent.click(modelSelect)
-    fireEvent.click(await screen.findByRole('option', { name: /Type C/i }))
-    expect(screen.getByDisplayValue('720000')).toBeTruthy()
-  })
-
-  it('allows changing panel law firm per case row', async () => {
-    renderDirectImport()
-    await screen.findByText(/Type Bookings In/i)
-
-    const lawFirmSelect = screen.getByRole('combobox', { name: /Panel Law Firm/i })
-    expect(lawFirmSelect).toBeTruthy()
-    expect(lawFirmSelect.textContent).toContain('Teh & Partners')
-
-    // Change to Cheah & Associates
-    fireEvent.click(lawFirmSelect)
-    fireEvent.click(await screen.findByRole('option', { name: /Cheah & Associates/i }))
-    expect(lawFirmSelect.textContent).toContain('Cheah & Associates')
-
-    const unitInput = screen.getByPlaceholderText(/A-12-08/i)
-    const nameInput = screen.getByPlaceholderText(/Nurul Huda Binti Ahmad/i)
-
-    fireEvent.change(unitInput, { target: { value: 'A-20-08' } })
-    fireEvent.change(nameInput, { target: { value: 'Norazlan Bin Hashim' } })
-
-    const importButton = screen.getByRole('button', { name: /Import 1 Booking/i })
-    fireEvent.click(importButton)
-
-    await waitFor(() => expect(importBookings).toHaveBeenCalledTimes(1))
-    const payload = vi.mocked(importBookings).mock.calls[0][0]
-    expect(payload.bookings[0].legalFirm).toBe('Cheah & Associates')
-  })
-
-  it('validates unit against range and existing held units', async () => {
-    renderDirectImport()
-    await screen.findByText(/Type Bookings In/i)
-
-    const unitInput = screen.getByPlaceholderText(/A-12-08/i)
-    const nameInput = screen.getByPlaceholderText(/Nurul Huda Binti Ahmad/i)
-
-    // Unit A-12-03 is held by BK-9001 in fixture
-    fireEvent.change(unitInput, { target: { value: 'A-12-03' } })
-    fireEvent.change(nameInput, { target: { value: 'John Tan' } })
-
-    expect(await screen.findByText(/Held by BK-9001/i)).toBeTruthy()
-
-    // Unit out of range
-    fireEvent.change(unitInput, { target: { value: 'Z-99-99' } })
-    expect(await screen.findByText(/Out of Range/i)).toBeTruthy()
-
-    // Valid unit
-    fireEvent.change(unitInput, { target: { value: 'A-15-05' } })
-    expect(await screen.findByRole('button', { name: /Import 1 Booking/i })).toBeTruthy()
-  })
-
-  it('submits valid row to importBookings with auto-assigned staff and law firm', async () => {
-    const { onImported } = renderDirectImport()
-    await screen.findByText(/Type Bookings In/i)
-
-    const unitInput = screen.getByPlaceholderText(/A-12-08/i)
-    const nameInput = screen.getByPlaceholderText(/Nurul Huda Binti Ahmad/i)
-
-    fireEvent.change(unitInput, { target: { value: 'A-20-08' } })
-    fireEvent.change(nameInput, { target: { value: 'Norazlan Bin Hashim' } })
-
-    const importButton = screen.getByRole('button', { name: /Import 1 Booking/i })
-    expect(importButton).toBeTruthy()
-    fireEvent.click(importButton)
-
-    await waitFor(() => expect(importBookings).toHaveBeenCalledTimes(1))
-    const payload = vi.mocked(importBookings).mock.calls[0][0]
-    expect(payload.source).toBe('Direct Table Entry')
-    expect(payload.bookings).toHaveLength(1)
-    expect(payload.bookings[0].unit).toBe('A-20-08')
-    expect(payload.bookings[0].buyer.name).toBe('Norazlan Bin Hashim')
-    expect(payload.bookings[0].legalFirm).toBe('Teh & Partners')
-    expect(payload.bookings[0].salesOwner).toBe('Nurul Aina')
-
-    await waitFor(() => expect(onImported).toHaveBeenCalledTimes(1))
-    expect(onImported).toHaveBeenCalledWith(
-      expect.objectContaining({
-        importId: 'IMP-DIRECT-1'
-      })
+  it('opens the unit list while empty, scopes it to the chosen block, and excludes units on other forms', async () => {
+    renderImport()
+    const input = await screen.findByLabelText('Unit Number')
+    await waitFor(() =>
+      expect((screen.getByRole('button', { name: 'Add Another Booking' }) as HTMLButtonElement).disabled).toBe(false)
     )
+    fireEvent.focus(input)
+    expect(await screen.findByText(/available/)).toBeTruthy()
+    expect(screen.getByText('A-01-01')).toBeTruthy()
+    fireEvent.change(input, { target: { value: 'A-15' } })
+    expect(await screen.findByText('A-15-01')).toBeTruthy()
+    fireEvent.click(screen.getByText('A-15-01'))
+    expect(screen.getByDisplayValue('A-15-01')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Add Another Booking' }))
+    const secondInput = screen.getAllByLabelText('Unit Number')[1]
+    fireEvent.mouseDown(secondInput)
+    fireEvent.focus(secondInput)
+    expect(screen.queryByText('A-15-01')).toBeNull()
+  })
+
+  it('requires every form to be valid and rejects duplicate units before submitting', async () => {
+    renderImport(new Map())
+    const firstUnit = await screen.findByLabelText('Unit Number')
+    await waitFor(() =>
+      expect((screen.getByRole('button', { name: 'Add Another Booking' }) as HTMLButtonElement).disabled).toBe(false)
+    )
+    fireEvent.change(firstUnit, { target: { value: 'A-15-01' } })
+    fireEvent.change(screen.getByLabelText('Buyer Name'), { target: { value: 'Sample Buyer' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add Another Booking' }))
+    const unitInputs = screen.getAllByLabelText('Unit Number')
+    fireEvent.change(unitInputs[1], { target: { value: 'A-15-01' } })
+    fireEvent.change(screen.getAllByLabelText('Buyer Name')[1], { target: { value: 'Second Buyer' } })
+    const submit = screen.getByRole('button', { name: 'Add 2 Bookings' })
+    expect((submit as HTMLButtonElement).disabled).toBe(true)
+    expect(importBookings).not.toHaveBeenCalled()
+  })
+
+  it('rejects malformed unit numbers and SPA prices below the booking minimum', async () => {
+    renderImport(new Map())
+    await waitFor(() => expect(screen.queryByText('Loading Project Settings…')).toBeNull())
+    fireEvent.change(screen.getByLabelText('Unit Number'), { target: { value: 'A-foo-12' } })
+    fireEvent.change(screen.getByLabelText('Buyer Name'), { target: { value: 'Sample Buyer' } })
+    expect(screen.getByText('Enter A Unit Number In The Configured Format')).toBeTruthy()
+    expect((screen.getByRole('button', { name: 'Add 1 Booking' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.change(screen.getByLabelText('Unit Number'), { target: { value: 'A-1-1' } })
+    expect(screen.getByText('Choose A Unit In The Configured Format')).toBeTruthy()
+    expect((screen.getByRole('button', { name: 'Add 1 Booking' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.change(screen.getByLabelText('Unit Number'), { target: { value: 'A-20-08' } })
+    fireEvent.change(screen.getByLabelText('SPA Price'), { target: { value: '9999' } })
+    expect(screen.getByText('Enter SPA Price From RM 10,000')).toBeTruthy()
+    expect((screen.getByRole('button', { name: 'Add 1 Booking' }) as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it('adds the full valid set with unmistakably synthetic buyer details', async () => {
+    renderImport(new Map())
+    const unit = await screen.findByLabelText('Unit Number')
+    await waitFor(() =>
+      expect((screen.getByRole('button', { name: 'Add Another Booking' }) as HTMLButtonElement).disabled).toBe(false)
+    )
+    fireEvent.change(unit, { target: { value: 'A-20-08' } })
+    fireEvent.change(screen.getByLabelText('Buyer Name'), { target: { value: 'Sample Buyer' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add 1 Booking' }))
+    await waitFor(() => expect(importBookings).toHaveBeenCalledOnce())
+    const payload = vi.mocked(importBookings).mock.calls[0][0]
+    expect(payload.bookings[0].buyer.ic).toBe('000000-00-0001')
+    expect(payload.bookings[0].buyer.phone).toBe('+60 00-000 0000')
+    expect(payload.bookings[0].salesOwner).toBe('Nurul Aina')
+  })
+
+  it('uses the active named sales profile as booking owner', async () => {
+    renderAsNamedSalesProfile()
+    await waitFor(() => expect(screen.queryByText('Loading Project Settings…')).toBeNull())
+    fireEvent.change(screen.getByLabelText('Unit Number'), { target: { value: 'A-20-08' } })
+    fireEvent.change(screen.getByLabelText('Buyer Name'), { target: { value: 'Sample Buyer' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add 1 Booking' }))
+    await waitFor(() => expect(importBookings).toHaveBeenCalledOnce())
+    const payload = vi.mocked(importBookings).mock.calls[0][0]
+    expect(payload.reportedBy).toBe('Kelvin Chow')
+    expect(payload.bookings[0].salesOwner).toBe('Kelvin Chow')
+  })
+
+  it('pauses entry and offers a retry when project settings fail to load', async () => {
+    vi.mocked(fetchProjectSettings).mockRejectedValueOnce(new Error('Could Not Reach The Server. Try Again.'))
+    renderImport()
+    expect(await screen.findByRole('alert')).toBeTruthy()
+    expect((screen.getByRole('button', { name: 'Add 1 Booking' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByRole('button', { name: 'Try Again' })).toBeTruthy()
   })
 })

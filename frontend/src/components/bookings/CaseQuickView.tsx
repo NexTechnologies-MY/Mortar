@@ -35,7 +35,7 @@ export function CaseQuickView({
   onClose: () => void
   onChanged: () => Promise<void>
 }) {
-  const { persona } = usePersona()
+  const { persona, profile } = usePersona()
   return (
     <Sheet open={row !== null} onOpenChange={(open) => (open ? undefined : onClose())}>
       {row ? (
@@ -86,7 +86,7 @@ export function CaseQuickView({
               applications={row.summary.applications}
               summary={row.summary}
               referenceDate={referenceDate}
-              reportedBy={PERSONA_STAFF[persona].name}
+              reportedBy={profile?.name ?? PERSONA_STAFF[persona].name}
               onRecorded={onChanged}
               collapsible
               className="border-t border-border pt-4"

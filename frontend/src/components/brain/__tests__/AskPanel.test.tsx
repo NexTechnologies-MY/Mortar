@@ -52,7 +52,7 @@ function renderPanel() {
 
 /** The server refusing to run a model, which is what an unset key looks like. */
 const noModel = () => {
-  const err = new Error('Ask Mortar is not set up')
+  const err = new Error('Copilot is not set up')
   Object.assign(err, { status: 503 })
   return Promise.reject(err)
 }
@@ -75,9 +75,9 @@ describe('AskPanel', () => {
     })
   })
 
-  it('is titled Ask Mortar, and says where the answers come from', () => {
+  it('is titled Copilot, and says where the answers come from', () => {
     renderPanel()
-    expect(screen.getByText('Ask Mortar')).toBeTruthy()
+    expect(screen.getByText('Copilot')).toBeTruthy()
     expect(screen.getByText("Answers Come From Mortar's Data. Check Before Acting.")).toBeTruthy()
   })
 

@@ -1,4 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+vi.mock('@/lib/session', () => ({
+  ensureSession: async () => {},
+  activeProfileId: () => 'sales-nurul-aina',
+  invalidateSession: () => {}
+}))
 import { ApiError, extractMessage, postTask, updateTask } from '@/lib/api'
 
 function jsonResponse(status: number, body: unknown): Response {

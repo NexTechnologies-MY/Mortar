@@ -34,7 +34,7 @@ const DAY_MS = 24 * 60 * 60 * 1000
 const IP_KEEP_MS = 10 * MINUTE_MS
 const MAX_TRACKED_IPS = 5_000
 
-export const PERSONAS: readonly Persona[] = ['sales-admin', 'loan-admin', 'legal-admin']
+export const PERSONAS: readonly Persona[] = ['sales-admin', 'loan-admin', 'legal-admin', 'manager']
 
 export interface AssistantImage {
   mimeType: (typeof IMAGE_MIME_TYPES)[number]
