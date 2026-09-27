@@ -119,7 +119,8 @@ Key files within each package include:
 - `server/db/schema.sql`: PostgreSQL table definitions applied idempotently on
   server start.
 - `server/db/__tests__/integration.test.ts`: Database integration suite running
-  against isolated `TEST_DATABASE_URL` (`mortar-test`).
+  against isolated `TEST_DATABASE_URL` (`mortar-test` locally, a Postgres
+  container in CI).
 - `server/fixtures/jev-cache.json`: Precomputed model responses for offline and
   resilient demo operation.
 - `frontend/src/lib/data.tsx`: React context providing `useSnapshot()` and
@@ -312,7 +313,13 @@ no third-party schema validation libraries are loaded.
   hash the answer was saved under, returning `stale: true` on a mismatch;
   `extract` is keyed to an immutable message and is never stale. This is a
   separate staleness check from the per-route fallback ladder described under
-  "Fallback And Caching Ladder" below.
+  "Fallback And Caching Ladder" below. The server builds one snapshot and shares
+  it between requests: every `Database` method that writes, and Add and Delete
+  Demo Data, drop it, so a write through this server shows on the next request.
+  A write made through another server on the same database shows within 10
+  seconds (`SNAPSHOT_TTL_MS`). Each profile's scoped body is rendered once per
+  built snapshot. On Render's Free instance this keeps a burst of page loads
+  from starving the process past its health check.
 - `POST /api/assistant`: Grounded assistant powered by Google's Gemini API
   (`server/src/assistant/`, default model `gemini-3.5-flash-lite` configured via
   `GEMINI_API_KEY` and `GEMINI_MODEL`). It grounds answers against the live
@@ -1016,8 +1023,8 @@ Located in `packages/jev/src/__tests__/`, `server/src/__tests__/`, and
   reads `TEST_DATABASE_URL` and skips cleanly when it is not set. It never reads
   `DATABASE_URL`, preventing accidental execution against production. An empty
   test database receives demo rows explicitly during suite setup; server boot
-  creates only the schema. The team's test database is an isolated Neon project,
-  `mortar-test`.
+  creates only the schema. Locally the team's test database is an isolated Neon
+  project, `mortar-test`; CI starts an empty Postgres 17 container for each run.
 - **Assistant Service And Tools:** Tests `server/src/assistant/` tool execution,
   read-only boundary enforcement, prompt fencing of untrusted messages, and
   graceful fallback to `askBrain` when the Gemini API key is missing or calls
