@@ -71,9 +71,11 @@ asynchronous classification workflows:
   using five read-only tools, with fenced untrusted message bodies, returning
   structured answers and booking citations with zero write access.
 - **Persona Navigation And Route Guarding:** `frontend/src/lib/persona.tsx`
-  defines permitted page mappings (`PERSONA_PAGES`) and
-  `frontend/src/components/layout/PersonaRoute.tsx` guards routes client-side,
-  redirecting unauthorized routes to persona homes without masking data.
+  defines the five named demo profiles, their permitted page mappings
+  (`PERSONA_PAGES`) and their home routes; `/team` is Manager-only and
+  `/manager` redirects to it. `frontend/src/components/layout/PersonaRoute.tsx`
+  guards routes client-side, redirecting unauthorized routes to persona homes
+  without masking data.
 - **Unified Next Step Derivation:** `frontend/src/components/case/nextStep.ts`
   establishes single rule-based moves from `ballInCourt` as the default across
   cards and side sheets, surfacing Jev alternatives when they differ.
@@ -126,8 +128,8 @@ Key files within each package include:
   resilient demo operation.
 - `frontend/src/lib/data.tsx`: React context providing `useSnapshot()` and
   `useCases()`.
-- `frontend/src/lib/persona.tsx`: Persona definitions and `PERSONA_PAGES` route
-  permissions map.
+- `frontend/src/lib/persona.tsx`: The five named demo profiles, home routes and
+  `PERSONA_PAGES` route permissions map.
 - `frontend/src/components/layout/PersonaRoute.tsx`: Route guard enforcing
   persona page boundaries with redirection.
 - `frontend/src/components/case/nextStep.ts`: Unified rule-based next step
