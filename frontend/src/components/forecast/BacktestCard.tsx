@@ -13,6 +13,21 @@ import { InfoTooltip } from '@/components/ui/InfoTooltip'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 export function BacktestCard({ backtest }: { backtest: Backtest }) {
+  if (backtest.support === 'insufficient-history') {
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Accuracy Check</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            No historical bookings are available to validate this method yet.
+          </p>
+        </CardContent>
+      </Card>
+    )
+  }
+
   const calibration = backtest.calibration.map((c) => ({
     bucket: c.bucket,
     predicted: Math.round(c.predicted * 100),

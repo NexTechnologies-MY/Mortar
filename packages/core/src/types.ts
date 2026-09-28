@@ -209,6 +209,17 @@ export interface StageRate {
   high: number
 }
 
+/** Case-free aggregate used to score live bookings across access scopes. */
+export interface ForecastModel {
+  version: 1
+  asOf: IsoDate
+  refreshedAt: IsoDateTime
+  nextRefreshAt: IsoDateTime
+  groups: Record<string, { signed: number; resolved: number }>
+  stages: { stage: Stage; signed: number; resolved: number }[]
+  overall: { signed: number; resolved: number }
+}
+
 export interface Forecast {
   asOf: IsoDate
   horizonDays: number
@@ -219,6 +230,7 @@ export interface Forecast {
   rangeHigh: number
   stageRates: StageRate[]
   perBooking: { bookingId: string; probability: number }[]
+  support: 'supported' | 'insufficient-history'
 }
 
 export interface Backtest {
@@ -227,6 +239,7 @@ export interface Backtest {
   observed: number
   brier: number
   calibration: { bucket: string; n: number; predicted: number; observed: number }[]
+  support: 'validated' | 'insufficient-history'
 }
 
 export type SourceTag = 'official' | 'industry' | 'anecdotal' | 'survey' | 'assumption'
@@ -366,6 +379,7 @@ export interface SimulationMeta {
 /** `GET /api/snapshot`: everything the app renders. */
 export interface Snapshot extends Dataset {
   meta: SimulationMeta
+  forecastModel?: ForecastModel
   messages: Message[]
   playbooks: Playbook[]
   tasks: Task[]

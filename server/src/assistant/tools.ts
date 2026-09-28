@@ -398,11 +398,17 @@ export async function runTool(name: string, args: ToolInput, profile: StaffProfi
     }
 
     case 'get_forecast_summary': {
-      const result = forecast(snapshot, snapshot.meta.referenceDate, { draws: 400 })
+      const result = forecast(snapshot, snapshot.meta.referenceDate, { draws: 400, model: snapshot.forecastModel })
+      const cadence = snapshot.forecastModel
+        ? `Historical rates updated ${snapshot.forecastModel.refreshedAt.slice(0, 10)}; next refresh ${snapshot.forecastModel.nextRefreshAt.slice(0, 10)}. Current bookings stay live.`
+        : 'Historical rates are unavailable.'
+      if (result.support === 'insufficient-history')
+        return `Forecast unavailable: there is not enough resolved booking history. ${cadence}`
       const byChance = [...result.perBooking].sort((a, b) => b.probability - a.probability)
       const top = byChance.slice(0, 5)
       const bottom = byChance.slice(-3).reverse()
       return [
+        cadence,
         `As of ${day(result.asOf)}, of ${result.liveBookings} live bookings, expect ${result.expectedSignings.toFixed(1)} to ` +
           `sign within ${result.horizonDays} days. The likely range is ${result.rangeLow} to ${result.rangeHigh}.`,
         `Most likely to sign: ${top.map((p) => `${p.bookingId} (${Math.round(p.probability * 100)}% chance)`).join('; ')}`,

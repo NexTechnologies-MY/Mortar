@@ -11,7 +11,10 @@ export function ManagerPage() {
   const { snapshot, error, loading } = useSnapshot()
   const cases = useCases()
   const result = useMemo(
-    () => (snapshot ? forecast(snapshot, snapshot.meta.referenceDate, { seed: snapshot.meta.seed }) : null),
+    () =>
+      snapshot
+        ? forecast(snapshot, snapshot.meta.referenceDate, { seed: snapshot.meta.seed, model: snapshot.forecastModel })
+        : null,
     [snapshot]
   )
   const suggested = useMemo(() => (snapshot ? managerSuggestions(snapshot) : []), [snapshot])
@@ -45,7 +48,7 @@ export function ManagerPage() {
                 />
                 <StatCard
                   label="Expected Signings"
-                  value={result ? String(Math.round(result.expectedSignings)) : '0'}
+                  value={result?.support === 'supported' ? String(Math.round(result.expectedSignings)) : 'Unavailable'}
                   info="Expected signed sale agreements within 30 days of booking."
                 />
                 <StatCard
@@ -54,6 +57,12 @@ export function ManagerPage() {
                   info="Follow-ups flagged by a manager and not yet completed."
                 />
               </div>
+              {snapshot?.forecastModel && (
+                <p className="text-sm text-muted-foreground">
+                  Historical rates updated on {snapshot.forecastModel.refreshedAt.slice(0, 10)}; next refresh on{' '}
+                  {snapshot.forecastModel.nextRefreshAt.slice(0, 10)}. Current bookings stay live.
+                </p>
+              )}
               <h2 className="text-base font-semibold">
                 Bookings Needing A Move ({cases.filter((c) => c.stallReasons.length > 0).length})
               </h2>

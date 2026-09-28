@@ -32,6 +32,7 @@ import { addDays, altDataset, datasetFor } from '@/components/forecast/forecast'
 export function ForecastPage() {
   const { persona } = usePersona()
   const { snapshot, loading, error } = useSnapshot()
+  const forecastModel = snapshot?.forecastModel
   const [altRuns, setAltRuns] = useState<SeedRun[]>([])
   const [running, setRunning] = useState(false)
 
@@ -41,7 +42,7 @@ export function ForecastPage() {
     const data = datasetFor(snapshot)
     return {
       asOf,
-      forecast: forecast(data, asOf, { seed: snapshot.meta.seed }),
+      forecast: forecast(data, asOf, { seed: snapshot.meta.seed, model: snapshot.forecastModel }),
       leakage: leakage(data, asOf),
       backtest: backtest(data, addDays(asOf, -HORIZON_DAYS))
     }
@@ -80,22 +81,36 @@ export function ForecastPage() {
       ) : result ? (
         <>
           <section className="mt-5" aria-label="Forecast answer">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-              Expected Within {result.forecast.horizonDays} Days
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <StatCard
-                label={`Expected Signings In ${result.forecast.horizonDays} Days`}
-                value={String(Math.round(result.forecast.expectedSignings))}
-                info="Sum of live signing probabilities."
-                exact={result.forecast.expectedSignings.toFixed(1)}
-              />
-              <StatCard
-                label="Forecast Range"
-                value={`${result.forecast.rangeLow} – ${result.forecast.rangeHigh}`}
-                info="10th – 90th percentile of simulated signings."
-              />
-            </div>
+            {forecastModel && (
+              <p className="mb-3 text-sm text-muted-foreground">
+                Historical rates updated on {forecastModel.refreshedAt.slice(0, 10)}; next refresh on{' '}
+                {forecastModel.nextRefreshAt.slice(0, 10)}. Current bookings stay live.
+              </p>
+            )}
+            {result.forecast.support === 'insufficient-history' ? (
+              <p role="status" className="mb-3 text-sm text-muted-foreground">
+                A forecast is unavailable because there is not enough resolved booking history yet.
+              </p>
+            ) : (
+              <>
+                <p className="mb-3 text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+                  Expected Within {result.forecast.horizonDays} Days
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  <StatCard
+                    label={`Expected Signings In ${result.forecast.horizonDays} Days`}
+                    value={String(Math.round(result.forecast.expectedSignings))}
+                    info="Sum of live signing probabilities."
+                    exact={result.forecast.expectedSignings.toFixed(1)}
+                  />
+                  <StatCard
+                    label="Forecast Range"
+                    value={`${result.forecast.rangeLow} – ${result.forecast.rangeHigh}`}
+                    info="10th – 90th percentile of simulated signings."
+                  />
+                </div>
+              </>
+            )}
           </section>
 
           <Tabs defaultValue="forecast" className="mt-5">
@@ -114,7 +129,13 @@ export function ForecastPage() {
                 <RecoveryCard leakage={result.leakage} />
               </Disclosure>
               <Disclosure title="Stage Conversion Rates">
-                <StageRatesCard stageRates={result.forecast.stageRates} />
+                {result.forecast.support === 'supported' ? (
+                  <StageRatesCard stageRates={result.forecast.stageRates} />
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Stage conversion rates will appear after resolved booking history is available.
+                  </p>
+                )}
               </Disclosure>
               <Disclosure title="How Well The Method Backtests">
                 <BacktestCard backtest={result.backtest} />

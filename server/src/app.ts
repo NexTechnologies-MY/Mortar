@@ -21,6 +21,7 @@ import {
   currentCaseAssignee,
   ballInCourt,
   canAccessBooking,
+  canManageTaskStatus,
   normalizeProjectSettings,
   DEFAULT_PROJECT_SETTINGS
 } from '@mortar/core'
@@ -798,6 +799,8 @@ export function createApp(options: AppOptions): App {
       'POST',
       '/api/bookings/import',
       async ({ req, profile }) => {
+        if (profile.persona !== 'sales-admin' && profile.persona !== 'manager')
+          return error(403, 'booking imports require Sales Admin or Manager access')
         const b = await body(req)
         if (!b) return error(400, 'expected a JSON object body')
         if (!Array.isArray(b.bookings) || b.bookings.length === 0)
@@ -956,6 +959,8 @@ export function createApp(options: AppOptions): App {
         const booking = current ? await db.getBooking(current.bookingId) : null
         if (!current || !booking || !(await canAccess(booking, profile)))
           return error(404, `task ${params.id} not found`)
+        if (!canManageTaskStatus(current, profile))
+          return error(403, 'only the task owner or a manager can change its status')
         const b = await body(req)
         if (!b) return error(400, 'expected a JSON object body')
         if (!isOneOf(b.status, TASK_STATUSES)) return error(400, `status must be one of: ${TASK_STATUSES.join(', ')}`)

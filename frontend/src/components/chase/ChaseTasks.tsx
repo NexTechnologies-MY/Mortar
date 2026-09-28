@@ -6,7 +6,7 @@
  */
 
 import { Link } from 'react-router-dom'
-import type { Task } from '@mortar/core'
+import { canManageTaskStatus, type StaffProfile, type Task } from '@mortar/core'
 import { OwnerBadge, formatDate } from '@/components/case'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -40,11 +40,13 @@ function groupTasks(tasks: Task[]): Map<string, Task[]> {
 
 export function ChaseTasks({
   tasks,
+  profile,
   completing,
   onComplete,
   emptyLabel
 }: {
   tasks: Task[]
+  profile: StaffProfile
   /** Task ids with a complete request in flight. */
   completing: ReadonlySet<string>
   onComplete: (task: Task) => void
@@ -87,16 +89,18 @@ export function ChaseTasks({
                         {task.managerFlaggedBy ? ' · Manager Follow-up' : ''}
                       </p>
                     </div>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      className="relative z-10"
-                      disabled={completing.has(task.id)}
-                      onClick={() => onComplete(task)}
-                    >
-                      {completing.has(task.id) ? 'Completing…' : 'Complete'}
-                    </Button>
+                    {canManageTaskStatus(task, profile) && (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        className="relative z-10"
+                        disabled={completing.has(task.id)}
+                        onClick={() => onComplete(task)}
+                      >
+                        {completing.has(task.id) ? 'Completing…' : 'Complete'}
+                      </Button>
+                    )}
                   </li>
                 ))}
               </ul>

@@ -1,4 +1,4 @@
-import type { Backtest, Dataset, Forecast, IsoDate, StageRate } from '../types'
+import type { Backtest, Dataset, Forecast, ForecastModel, IsoDate, IsoDateTime, StageRate } from '../types'
 import { deriveCase, FUNNEL_STAGES, groupBy, type CaseFacts } from './cases'
 import { dateOf, diffDays } from './dates'
 import { createRng } from './random'
@@ -27,6 +27,40 @@ interface RateModel {
   groups: Map<string, RateCell>
   stages: RateCell[]
   overall: RateCell
+}
+
+/** Build a serializable, case-free aggregate from the complete dataset. */
+export function buildForecastModel(
+  data: Dataset,
+  asOf: IsoDate,
+  refreshedAt: IsoDateTime,
+  nextRefreshAt: IsoDateTime
+): ForecastModel {
+  const { model } = buildModel(factsFor(data, asOf))
+  return {
+    version: 1,
+    asOf,
+    refreshedAt,
+    nextRefreshAt,
+    groups: Object.fromEntries(
+      [...model.groups].map(([key, cell]) => [key, { signed: cell.signed, resolved: cell.n }])
+    ),
+    stages: model.stages.map((cell, i) => ({ stage: FUNNEL_STAGES[i]!, signed: cell.signed, resolved: cell.n })),
+    overall: { signed: model.overall.signed, resolved: model.overall.n }
+  }
+}
+
+function modelFromAggregate(aggregate: ForecastModel): RateModel {
+  return {
+    groups: new Map(
+      Object.entries(aggregate.groups).map(([key, cell]) => [key, { signed: cell.signed, n: cell.resolved }])
+    ),
+    stages: FUNNEL_STAGES.map((stage) => {
+      const cell = aggregate.stages.find((candidate) => candidate.stage === stage)
+      return { signed: cell?.signed ?? 0, n: cell?.resolved ?? 0 }
+    }),
+    overall: { signed: aggregate.overall.signed, n: aggregate.overall.resolved }
+  }
 }
 
 const bucketOf = (age: number) => (age < 10 ? 0 : age < 20 ? 1 : age < 30 ? 2 : -1)
@@ -97,9 +131,15 @@ function factsFor(data: Dataset, asOf: IsoDate): CaseFacts[] {
 }
 
 /** Expected signings within the horizon for live bookings, with a range from repeated draws. */
-export function forecast(data: Dataset, asOf: IsoDate, options: { draws?: number; seed?: number } = {}): Forecast {
+export function forecast(
+  data: Dataset,
+  asOf: IsoDate,
+  options: { draws?: number; seed?: number; model?: ForecastModel } = {}
+): Forecast {
   const { draws = 2000, seed = DEFAULT_SEED } = options
-  const { model, live } = buildModel(factsFor(data, asOf))
+  const local = buildModel(factsFor(data, asOf))
+  const { live } = local
+  const model = options.model ? modelFromAggregate(options.model) : local.model
   const perBooking = live.map((f) => ({ bookingId: f.booking.id, probability: probability(f, model) }))
   const expectedSignings = perBooking.reduce((s, p) => s + p.probability, 0)
   const rng = createRng(seed)
@@ -123,7 +163,8 @@ export function forecast(data: Dataset, asOf: IsoDate, options: { draws?: number
     rangeLow: counts[Math.floor(0.1 * (draws - 1))],
     rangeHigh: counts[Math.floor(0.9 * (draws - 1))],
     stageRates,
-    perBooking
+    perBooking,
+    support: model.overall.n > 0 ? 'supported' : 'insufficient-history'
   }
 }
 
@@ -162,5 +203,12 @@ export function backtest(data: Dataset, cutoff: IsoDate): Backtest {
       observed: inBucket.length > 0 ? inBucket.reduce((s, r) => s + r.o, 0) / inBucket.length : 0
     }
   })
-  return { cutoff, predicted, observed: observedCount, brier, calibration }
+  return {
+    cutoff,
+    predicted,
+    observed: observedCount,
+    brier,
+    calibration,
+    support: rows.length > 0 && model.overall.n > 0 ? 'validated' : 'insufficient-history'
+  }
 }

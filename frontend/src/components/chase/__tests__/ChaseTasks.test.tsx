@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
-import type { Task } from '@mortar/core'
+import { profileFor, type Task } from '@mortar/core'
 import { ChaseTasks } from '@/components/chase/ChaseTasks'
 
 function LocationEcho() {
@@ -25,11 +25,15 @@ function task(overrides: Partial<Task> = {}): Task {
   }
 }
 
-function renderTasks(tasks: Task[], onComplete: (task: Task) => void) {
+function renderTasks(tasks: Task[], onComplete: (task: Task) => void, profileId = 'sales-nurul-aina') {
+  const profile = profileFor(profileId)!
   return render(
     <MemoryRouter initialEntries={['/']}>
       <Routes>
-        <Route path="/" element={<ChaseTasks tasks={tasks} completing={new Set()} onComplete={onComplete} />} />
+        <Route
+          path="/"
+          element={<ChaseTasks tasks={tasks} profile={profile} completing={new Set()} onComplete={onComplete} />}
+        />
         <Route path="/bookings/:id" element={<LocationEcho />} />
       </Routes>
     </MemoryRouter>
@@ -55,6 +59,11 @@ describe('ChaseTasks', () => {
 
     expect(onComplete).toHaveBeenCalledWith(t)
     expect(screen.queryByTestId('location')).toBeNull()
+  })
+
+  it('hides completion from a profile who does not own the task', () => {
+    renderTasks([task()], vi.fn(), 'sales-farah-izzati')
+    expect(screen.queryByRole('button', { name: 'Complete' })).toBeNull()
   })
 
   it('puts manager flagged follow-ups before tasks ordered only by due date', () => {

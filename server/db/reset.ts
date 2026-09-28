@@ -73,6 +73,7 @@ export async function addDemoData(sql: SQL): Promise<SimulationMeta> {
 
   await sql.begin(async (tx) => {
     await tx`select pg_advisory_xact_lock(20_260_917)`
+    await tx`delete from meta where key = 'forecast_model_v1'`
     const seeded = await tx`select exists(select 1 from bookings where demo_seed) as seeded`
     if (seeded[0]?.seeded) return
     // Multi-row inserts: one round trip per chunk instead of one per row.
@@ -213,5 +214,6 @@ export async function deleteDemoData(sql: SQL): Promise<void> {
     await tx`delete from playbooks where demo_seed`
     // Only the four keys Add Demo Data writes; any other key is the app's.
     await tx`delete from meta where key in ('seed', 'referenceDate', 'resetAt', 'resetAtWall')`
+    await tx`delete from meta where key = 'forecast_model_v1'`
   })
 }
