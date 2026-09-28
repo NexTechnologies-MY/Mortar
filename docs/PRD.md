@@ -285,8 +285,8 @@ using a seeded pseudo-random number generator (`sfc32` or `mulberry32`).
   ICs (`000000-00-0001` format) and phone numbers (`+60 00-000 0001` format)
   must be obviously fake.
 - **AC-1.11:** The system must export `PERSONA_STAFF` defining Sales Admin Nurul
-  Aina (`sales_admin`), Loan Admin Tan Mei Ling (`loan_admin`), and Legal Admin
-  Arvind Raj (`legal`).
+  Aina (`sales_admin`), Loan Admin Tan Mei Ling (`loan_admin`), Legal Admin
+  Arvind Raj (`legal`), and Manager Robert Khoo (`manager`).
 
 ### FR-2: Case Summarization And Stall Detection
 
@@ -561,11 +561,12 @@ whole column, with the row review stating the switch.
 
 The system must enforce persona routing and adhere to visual design standards.
 
-- **AC-14.1:** The active persona must persist in `localStorage` under key
-  `mortar.persona`. Navigating to `/app` or switching persona in the top bar
-  must navigate to the persona's designated home (`/chase` for Sales Admin,
-  `/bookings` for Loan Admin, `/legal` for Legal Admin). A retired identifier
-  `finance` must resolve to `legal-admin`.
+- **AC-14.1:** The active profile must persist in `localStorage` under key
+  `mortar.profile`, with its persona still written under `mortar.persona`.
+  Navigating to `/app` or switching profile in the top bar's profile menu must
+  navigate to the persona's designated home (`/chase` for Sales Admin and
+  Manager, `/bookings` for Loan Admin, `/legal` for Legal Admin). A retired
+  identifier `finance` must resolve to `legal-admin`.
 - **AC-14.2:** Page access must be defined centrally by `PERSONA_PAGES` in
   `frontend/src/lib/persona.tsx` and guarded by `PersonaRoute.tsx`. Each persona
   sees only its permitted pages in navigation:
@@ -575,6 +576,9 @@ The system must enforce persona routing and adhere to visual design standards.
     (`/forecast`), Settings (`/settings`).
   - Legal Admin: Legal (`/legal`, home), Today (`/chase`), Bookings
     (`/bookings`), Forecast (`/forecast`), Settings (`/settings`).
+  - Manager: Today (`/chase`, home), Team (`/team`), Bookings (`/bookings`),
+    Legal (`/legal`), Add Bookings (`/import`), Forecast (`/forecast`), Settings
+    (`/settings`). `/manager` redirects to `/team`.
 - **AC-14.3:** Navigating to an unpermitted route redirects to the persona's
   home route with a brief notice. Case detail (`/bookings/:id`), `/app`, `/faq`,
   and public routes (`/`, `/sign-in`) are never guarded.
@@ -1204,8 +1208,6 @@ again, and are marked below.
   with `/manager` redirecting to it. **Superseded:** the Suggestions and
   Overview tabs, their two lists of the same cases, and the percentages and Jev
   confidence scores those rows carried; the case list appears once, on Today.
-  **Superseded:** removal of the forecast documents, reversed in the redesign
-  that restored the #54 document stack under the headline figures.
 - Managers can flag bookings and create follow-up tasks for the relevant sales,
   loan or legal recipient, resolved from confirmed responsibility on the server.
   The button identifies that recipient; an external solicitor firm is not an
@@ -1215,7 +1217,8 @@ again, and are marked below.
   carrying the two figures, Your Tasks (on a Mine or Everyone switch) and Recent
   Bookings. On narrow screens the rail stacks above the queue. Recent Bookings
   uses a seven-day window on creation time, not booking date; unknown legacy
-  creation times are excluded.
+  creation times are excluded. **Superseded:** Today leading with assigned tasks
+  above the recommendations, with Recent Bookings folded.
 - Sign In As selects a named demo profile with its department and access scope.
   The header carries a profile menu whose persona card opens the switcher.
 - Project and unit range settings are shared, editable only by Manager, and
@@ -1225,9 +1228,10 @@ again, and are marked below.
 - Type Them In is the first/default Add Bookings tab. Its responsive form keeps
   buyer, block, unit, layout and price readable. Both entry paths reject unit
   conflicts without overwriting an existing booking.
-- The forecast documents sit in a stack above the headline figures, opened from
+- The forecast documents sit in a stack under the headline figures, opened from
   the chips above it. Each opens its document, and Ask MortarAI asks about that
-  document.
+  document. **Superseded:** removal of the forecast documents, reversed by
+  restoring the #54 document stack.
 - Ask MortarAI, formerly Ask Mortar, reads only the selected profile's
   authorized records through server-enforced tools; its scripted fallback reads
   that same scoped snapshot. Profile changes clear chat and pending answers.
