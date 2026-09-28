@@ -264,6 +264,7 @@ function cached<T extends { meta?: JevMeta }>(answer: unknown, stale: boolean): 
  * waits this long to show.
  */
 export const SNAPSHOT_TTL_MS = 10_000
+const FORECAST_LOCK_RETRY_LIMIT_MS = 15_000
 
 /** Methods that only read; every other method forgets the cached snapshot once it settles. */
 const SNAPSHOT_READS: ReadonlySet<keyof Database> = new Set<keyof Database>([
@@ -328,45 +329,59 @@ export function createDatabase(sql: SQL, clock: () => Date = () => new Date()): 
   }
 
   const forecastModel = async (referenceDate: string): Promise<ForecastModel> => {
-    const now = clock()
-    const cachedModel = await modelFromMeta()
-    if (!forecastModelExpired(cachedModel, now.getTime())) return cachedModel!
-    return sql.begin(async (tx) => {
-      // Share the demo reset lock so an empty/full history refresh cannot race
-      // addDemoData or deleteDemoData and persist a model from the old corpus.
-      await tx`select pg_advisory_xact_lock(20_260_917)`
-      const lockedRows = await tx`select value from meta where key = ${FORECAST_MODEL_KEY}`
-      let lockedModel: ForecastModel | null = null
-      if (lockedRows.length) {
-        try {
-          const parsed = jsonb<unknown>(lockedRows[0]!.value)
-          lockedModel = isForecastModel(parsed) ? parsed : null
-        } catch {
-          lockedModel = null
+    const retryDeadline = Date.now() + FORECAST_LOCK_RETRY_LIMIT_MS
+    let delayMs = 20
+    while (true) {
+      const cachedModel = await modelFromMeta()
+      if (!forecastModelExpired(cachedModel, clock().getTime())) return cachedModel!
+
+      const refreshed = await sql.begin(async (tx) => {
+        // Avoid parking pooled transactions behind another refresh or reset.
+        // On contention, commit before retrying and rechecking persisted rates.
+        const lockRows = await tx`select pg_try_advisory_xact_lock(20_260_917) as acquired`
+        if (!lockRows[0]?.acquired) return null
+
+        // Shared with addDemoData/deleteDemoData: rebuild from the post-reset
+        // corpus if either reset action was in progress when this read began.
+        const lockedRows = await tx`select value from meta where key = ${FORECAST_MODEL_KEY}`
+        let lockedModel: ForecastModel | null = null
+        if (lockedRows.length) {
+          try {
+            const parsed = jsonb<unknown>(lockedRows[0]!.value)
+            lockedModel = isForecastModel(parsed) ? parsed : null
+          } catch {
+            lockedModel = null
+          }
         }
-      }
-      const refreshedAt = clock()
-      if (!forecastModelExpired(lockedModel, refreshedAt.getTime())) return lockedModel!
-      const [bookings, applications, events] = await Promise.all([
-        tx`select * from bookings order by id`,
-        tx`select * from loan_applications order by id`,
-        tx`select * from events order by occurred_at, seq`
-      ])
-      const next = new Date(refreshedAt.getTime() + FORECAST_MODEL_TTL_MS)
-      const aggregate = buildForecastModel(
-        {
-          bookings: bookings.map(rowToBooking),
-          applications: applications.map(rowToApplication),
-          events: events.map(rowToEvent)
-        },
-        referenceDate,
-        refreshedAt.toISOString(),
-        next.toISOString()
-      )
-      await tx`insert into meta (key, value) values (${FORECAST_MODEL_KEY}, ${JSON.stringify(aggregate)}::jsonb)
-        on conflict (key) do update set value = excluded.value`
-      return aggregate
-    })
+        const refreshedAt = clock()
+        if (!forecastModelExpired(lockedModel, refreshedAt.getTime())) return lockedModel!
+        // Load corpus only once the lock is held; never promote an earlier
+        // pre-lock snapshot to the authoritative weekly rate model.
+        const [bookings, applications, events] = await Promise.all([
+          tx`select * from bookings order by id`,
+          tx`select * from loan_applications order by id`,
+          tx`select * from events order by occurred_at, seq`
+        ])
+        const next = new Date(refreshedAt.getTime() + FORECAST_MODEL_TTL_MS)
+        const aggregate = buildForecastModel(
+          {
+            bookings: bookings.map(rowToBooking),
+            applications: applications.map(rowToApplication),
+            events: events.map(rowToEvent)
+          },
+          referenceDate,
+          refreshedAt.toISOString(),
+          next.toISOString()
+        )
+        await tx`insert into meta (key, value) values (${FORECAST_MODEL_KEY}, ${JSON.stringify(aggregate)}::jsonb)
+          on conflict (key) do update set value = excluded.value`
+        return aggregate
+      })
+      if (refreshed) return refreshed
+      if (Date.now() >= retryDeadline) throw new Error('timed out waiting to refresh the weekly forecast model')
+      await new Promise((resolve) => setTimeout(resolve, delayMs))
+      delayMs = Math.min(delayMs * 2, 500)
+    }
   }
 
   const assembleSnapshot = async (): Promise<Snapshot> => {
