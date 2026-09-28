@@ -376,6 +376,7 @@ function AdminToday() {
             <div className="mt-3">
               <ChaseTasks
                 tasks={shownTasks}
+                profile={profile}
                 completing={completing}
                 onComplete={(t) => void completeTask(t)}
                 emptyLabel={`No Open Tasks For ${profile?.name ?? PERSONA_STAFF[persona].name}.`}

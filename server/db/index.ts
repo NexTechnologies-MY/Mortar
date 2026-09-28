@@ -9,6 +9,7 @@ import { cacheSnapshot, forgetOnWrite } from './snapshot-cache'
 import {
   REFERENCE_DATE,
   summarizeCases,
+  buildForecastModel,
   unitKey,
   canAccessBooking,
   createAssignmentAccessContext,
@@ -28,6 +29,7 @@ import type {
   Message,
   Playbook,
   Snapshot,
+  ForecastModel,
   Task,
   ProjectSettings,
   StaffProfile
@@ -47,6 +49,7 @@ import {
   type JevAnswerRow,
   type StoredMeta
 } from './mappers'
+import { FORECAST_MODEL_KEY, FORECAST_MODEL_TTL_MS, forecastModelExpired, isForecastModel } from './forecast-model'
 
 export interface Database {
   /** `select 1`; throws when the connection is down. */
@@ -261,6 +264,7 @@ function cached<T extends { meta?: JevMeta }>(answer: unknown, stale: boolean): 
  * waits this long to show.
  */
 export const SNAPSHOT_TTL_MS = 10_000
+const FORECAST_LOCK_RETRY_LIMIT_MS = 15_000
 
 /** Methods that only read; every other method forgets the cached snapshot once it settles. */
 const SNAPSHOT_READS: ReadonlySet<keyof Database> = new Set<keyof Database>([
@@ -285,7 +289,7 @@ const SNAPSHOT_READS: ReadonlySet<keyof Database> = new Set<keyof Database>([
   'jevGet'
 ])
 
-export function createDatabase(sql: SQL): Database {
+export function createDatabase(sql: SQL, clock: () => Date = () => new Date()): Database {
   const meta = async () => rowsToMeta(await sql`select key, value from meta`)
 
   const caseData = async (): Promise<CaseData> => {
@@ -313,6 +317,71 @@ export function createDatabase(sql: SQL): Database {
     return rows.map(rowToJevAnswer)
   }
 
+  const modelFromMeta = async (): Promise<ForecastModel | null> => {
+    const rows = await sql`select value from meta where key = ${FORECAST_MODEL_KEY}`
+    if (!rows.length) return null
+    try {
+      const parsed = jsonb<unknown>(rows[0]!.value)
+      return isForecastModel(parsed) ? parsed : null
+    } catch {
+      return null
+    }
+  }
+
+  const forecastModel = async (referenceDate: string): Promise<ForecastModel> => {
+    const retryDeadline = Date.now() + FORECAST_LOCK_RETRY_LIMIT_MS
+    let delayMs = 20
+    while (true) {
+      const cachedModel = await modelFromMeta()
+      if (!forecastModelExpired(cachedModel, clock().getTime())) return cachedModel!
+
+      const refreshed = await sql.begin(async (tx) => {
+        // Avoid parking pooled transactions behind another refresh or reset.
+        // On contention, commit before retrying and rechecking persisted rates.
+        const lockRows = await tx`select pg_try_advisory_xact_lock(20_260_917) as acquired`
+        if (!lockRows[0]?.acquired) return null
+
+        // Shared with addDemoData/deleteDemoData: rebuild from the post-reset
+        // corpus if either reset action was in progress when this read began.
+        const lockedRows = await tx`select value from meta where key = ${FORECAST_MODEL_KEY}`
+        let lockedModel: ForecastModel | null = null
+        if (lockedRows.length) {
+          try {
+            const parsed = jsonb<unknown>(lockedRows[0]!.value)
+            lockedModel = isForecastModel(parsed) ? parsed : null
+          } catch {
+            lockedModel = null
+          }
+        }
+        const refreshedAt = clock()
+        if (!forecastModelExpired(lockedModel, refreshedAt.getTime())) return lockedModel!
+        // Load corpus only once the lock is held; never promote an earlier
+        // pre-lock snapshot to the authoritative weekly rate model.
+        const bookings = await tx`select * from bookings order by id`
+        const applications = await tx`select * from loan_applications order by id`
+        const events = await tx`select * from events order by occurred_at, seq`
+        const next = new Date(refreshedAt.getTime() + FORECAST_MODEL_TTL_MS)
+        const aggregate = buildForecastModel(
+          {
+            bookings: bookings.map(rowToBooking),
+            applications: applications.map(rowToApplication),
+            events: events.map(rowToEvent)
+          },
+          referenceDate,
+          refreshedAt.toISOString(),
+          next.toISOString()
+        )
+        await tx`insert into meta (key, value) values (${FORECAST_MODEL_KEY}, ${JSON.stringify(aggregate)}::jsonb)
+          on conflict (key) do update set value = excluded.value`
+        return aggregate
+      })
+      if (refreshed) return refreshed
+      if (Date.now() >= retryDeadline) throw new Error('timed out waiting to refresh the weekly forecast model')
+      await new Promise((resolve) => setTimeout(resolve, delayMs))
+      delayMs = Math.min(delayMs * 2, 500)
+    }
+  }
+
   const assembleSnapshot = async (): Promise<Snapshot> => {
     const [metaRow, data, messageRows, playbooks, answers] = await Promise.all([
       meta(),
@@ -321,6 +390,7 @@ export function createDatabase(sql: SQL): Database {
       sql`select * from playbooks order by id`,
       latestJevAnswers()
     ])
+    const model = await forecastModel(metaRow?.referenceDate ?? REFERENCE_DATE)
     const messages = messageRows.map(rowToMessage)
 
     // One summarizeCases pass for the whole snapshot, then compare each
@@ -364,6 +434,7 @@ export function createDatabase(sql: SQL): Database {
       ...data,
       bookings: data.bookings.map(withMaskedContact),
       meta: metaRow ?? { seed: 0, referenceDate: REFERENCE_DATE, resetAt: null },
+      forecastModel: model,
       messages,
       playbooks: playbooks.map(rowToPlaybook),
       extractions,

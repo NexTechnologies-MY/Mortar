@@ -16,7 +16,8 @@ import type {
   Message,
   Playbook,
   Snapshot,
-  Task
+  Task,
+  ForecastModel
 } from '@mortar/core'
 import { PLAYBOOKS } from '@mortar/core'
 import { createApp, type App } from '../../app'
@@ -105,6 +106,7 @@ class FakeDb {
   messages: Message[] = MESSAGES
   tasks: Task[] = []
   playbooks: Playbook[] = PLAYBOOKS
+  forecastModel?: ForecastModel
 
   async ping() {}
   async hasBookings() {
@@ -122,6 +124,7 @@ class FakeDb {
   async snapshot(): Promise<Snapshot> {
     return {
       meta: (await this.meta()) as Snapshot['meta'],
+      forecastModel: this.forecastModel,
       bookings: this.bookings,
       applications: this.applications,
       events: this.events,
@@ -297,6 +300,66 @@ async function chipsFor(turns: Turn[], ip = '10.0.0.7') {
 }
 
 describe('POST /api/assistant', () => {
+  test('forecast tool uses the global aggregate for a restricted live-only desk and states refresh dates', async () => {
+    const db = new FakeDb()
+    db.tasks.push({
+      id: 'TSK-FORECAST-LEGAL',
+      bookingId: 'BK-9002',
+      action: 'schedule_spa',
+      title: 'Legal follow-up',
+      ownerRole: 'legal',
+      ownerName: 'Arvind Raj',
+      dueOn: TODAY,
+      status: 'open',
+      origin: 'staff',
+      createdAt: `${TODAY}T09:00:00+08:00`,
+      completedAt: null
+    })
+    db.forecastModel = {
+      version: 1,
+      asOf: TODAY,
+      refreshedAt: '2026-09-28T00:00:00.000Z',
+      nextRefreshAt: '2026-10-05T00:00:00.000Z',
+      groups: {},
+      stages: [],
+      overall: { signed: 10, resolved: 10 }
+    }
+    const answer = await runTool(
+      'get_forecast_summary',
+      {},
+      { id: 'legal-admin', name: 'Arvind Raj', persona: 'legal-admin' },
+      db as never
+    )
+    expect(answer).toContain('of 1 live bookings, expect 1.0')
+    expect(answer).toContain(
+      'Historical rates updated 2026-09-28; next refresh 2026-10-05. Current bookings stay live.'
+    )
+    expect(answer).not.toContain('BK-9001')
+  })
+
+  test('forecast tool marks empty global history unavailable without reporting a zero band', async () => {
+    const db = new FakeDb()
+    db.forecastModel = {
+      version: 1,
+      asOf: TODAY,
+      refreshedAt: '2026-09-28T00:00:00.000Z',
+      nextRefreshAt: '2026-10-05T00:00:00.000Z',
+      groups: {},
+      stages: [],
+      overall: { signed: 0, resolved: 0 }
+    }
+    const answer = await runTool(
+      'get_forecast_summary',
+      {},
+      { id: 'manager', name: 'Project Manager', persona: 'manager' },
+      db as never
+    )
+    expect(answer).toContain('Forecast unavailable')
+    expect(answer).toContain('Historical rates updated 2026-09-28')
+    expect(answer).not.toContain('0 to 0')
+    expect(answer).not.toContain('0.0 to sign')
+  })
+
   test('Ask MortarAI tools hide cases from legal unless an open task names the internal profile', async () => {
     const db = new FakeDb()
     const legal = { id: 'legal-admin', name: 'Arvind Raj', persona: 'legal-admin' as const }

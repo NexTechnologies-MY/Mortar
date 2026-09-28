@@ -1761,6 +1761,34 @@ describe('createApp', () => {
     }
     const valid = { bookings: [draft], reportedBy: 'Tan Mei Ling', source: 'september.xlsx' }
 
+    test.each([
+      ['loan administration', 'loan-tan-mei-ling'],
+      ['legal administration', 'legal-admin']
+    ])('%s cannot import bookings, even with forged role fields', async (_label, profileId) => {
+      const db = new FakeDb()
+      const originalBookings = structuredClone(db.bookings)
+      const originalEvents = structuredClone(db.events)
+      const originalImports = new Map(db.imports)
+      let importCalls = 0
+      db.importBookings = async () => {
+        importCalls += 1
+        throw new Error('denied import reached the database')
+      }
+      const res = await call(
+        makeApp(db),
+        '/api/bookings/import',
+        post({ ...valid, persona: 'sales-admin', role: 'manager' }),
+        profileId
+      )
+
+      expect(res?.status).toBe(403)
+      expect(await errorOf(res)).toBe('booking imports require Sales Admin or Manager access')
+      expect(importCalls).toBe(0)
+      expect(db.bookings).toEqual(originalBookings)
+      expect(db.events).toEqual(originalEvents)
+      expect(db.imports).toEqual(originalImports)
+    })
+
     test('numbers the bookings and records a confirmed booked event for each', async () => {
       const db = new FakeDb()
       const res = await call(makeApp(db), '/api/bookings/import', post(valid))
@@ -1956,13 +1984,92 @@ describe('createApp', () => {
       expect(task.completedAt).toBe('2026-09-18T12:00:00+08:00')
     })
 
+    test('only the matching named department owner or a manager can change status', async () => {
+      const run = async (task: Task, profileId: string, status: Task['status']) => {
+        const db = new FakeDb()
+        db.tasks.push(task)
+        if (profileId === 'sales-farah-izzati') db.bookings[0] = { ...db.bookings[0]!, salesOwner: 'Farah Izzati' }
+        if (profileId === 'sales-nurul-aina') db.bookings[0] = { ...db.bookings[0]!, salesOwner: 'Nurul Aina' }
+        const response = await call(
+          makeApp(db),
+          `/api/tasks/${task.id}`,
+          {
+            method: 'PATCH',
+            body: JSON.stringify({ status })
+          },
+          profileId
+        )
+        return { response, db }
+      }
+
+      for (const ownerRole of ['sales', 'sales_admin'] as const) {
+        const ownTask = { ...open, ownerRole, ownerName: 'Nurul Aina' }
+        expect((await run(ownTask, 'sales-nurul-aina', 'done')).response?.status).toBe(200)
+        expect((await run(ownTask, 'sales-farah-izzati', 'done')).response?.status).toBe(403)
+      }
+
+      const wrongDepartment = { ...open, ownerRole: 'loan_admin' as const, ownerName: 'Nurul Aina' }
+      expect((await run(wrongDepartment, 'sales-nurul-aina', 'done')).response?.status).toBe(403)
+      const loanTask = { ...open, ownerRole: 'loan_admin' as const, ownerName: 'Tan Mei Ling' }
+      expect((await run(loanTask, 'loan-tan-mei-ling', 'done')).response?.status).toBe(200)
+      const legalTask = { ...open, ownerRole: 'legal' as const, ownerName: 'Arvind Raj' }
+      expect((await run(legalTask, 'legal-admin', 'done')).response?.status).toBe(200)
+      expect((await run(open, 'manager', 'done')).response?.status).toBe(200)
+    })
+
+    test('denied owners cannot cancel or reopen tasks and inaccessible tasks stay hidden', async () => {
+      for (const status of ['done', 'cancelled', 'open'] as const) {
+        const task = { ...open, ownerRole: 'sales' as const, ownerName: 'Nurul Aina', status: 'open' as const }
+        const { response, db } = await (async () => {
+          const db = new FakeDb()
+          db.tasks.push(task)
+          db.bookings[0] = { ...db.bookings[0]!, salesOwner: 'Farah Izzati' }
+          return {
+            response: await call(
+              makeApp(db),
+              '/api/tasks/TSK-1',
+              { method: 'PATCH', body: JSON.stringify({ status }) },
+              'sales-farah-izzati'
+            ),
+            db
+          }
+        })()
+        expect(response?.status).toBe(403)
+        expect(db.tasks[0]?.status).toBe('open')
+      }
+      const db = new FakeDb()
+      db.tasks.push(open)
+      expect(
+        (
+          await call(
+            makeApp(db),
+            '/api/tasks/TSK-1',
+            {
+              method: 'PATCH',
+              body: JSON.stringify({ status: 'done' })
+            },
+            'sales-farah-izzati'
+          )
+        )?.status
+      ).toBe(404)
+    })
+
     test('bad status is a 400, unknown task a 404', async () => {
       const db = new FakeDb()
       db.tasks.push(open)
-      expect((await call(makeApp(db), '/api/tasks/TSK-1', { method: 'PATCH', body: '{}' }))?.status).toBe(400)
+      db.bookings[0] = { ...db.bookings[0]!, salesOwner: 'Nurul Aina' }
       expect(
-        (await call(makeApp(db), '/api/tasks/TSK-9', { method: 'PATCH', body: JSON.stringify({ status: 'done' }) }))
-          ?.status
+        (await call(makeApp(db), '/api/tasks/TSK-1', { method: 'PATCH', body: '{}' }, 'sales-nurul-aina'))?.status
+      ).toBe(400)
+      expect(
+        (
+          await call(
+            makeApp(db),
+            '/api/tasks/TSK-9',
+            { method: 'PATCH', body: JSON.stringify({ status: 'done' }) },
+            'sales-nurul-aina'
+          )
+        )?.status
       ).toBe(404)
     })
   })

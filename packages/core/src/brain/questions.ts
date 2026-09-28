@@ -111,13 +111,23 @@ export const ASK_QUESTIONS: AskQuestion[] = [
     answer: (ctx) => {
       const cases = live(ctx)
       if (cases.length === 0) return nothing('No booking is live right now.')
+      const model = ctx.snapshot.forecastModel
+      const refreshed = model
+        ? ` Historical rates updated on ${model.refreshedAt.slice(0, 10)}; next refresh on ${model.nextRefreshAt.slice(0, 10)}. Current bookings stay live.`
+        : ''
+      if (ctx.forecast.support === 'insufficient-history') {
+        return {
+          text: `A forecast is unavailable because there is not enough resolved booking history yet.${refreshed}`,
+          citations: cite(ctx, cases)
+        }
+      }
       const total = sumBy(cases, (c) => priceOf(ctx, c.bookingId))
       const weighted = sumBy(ctx.forecast.perBooking, (p) => p.probability * priceOf(ctx, p.bookingId))
       return {
         text:
           `The ${count(cases.length, 'live booking')} on the books are worth ${rmCompact(total)}. ` +
           `Weighting each by how often its stage reaches signing, about ${rmCompact(weighted)} should sign ` +
-          `within ${days(ctx.forecast.horizonDays)}.`,
+          `within ${days(ctx.forecast.horizonDays)}.${refreshed}`,
         citations: cite(ctx, cases)
       }
     }

@@ -62,9 +62,11 @@ export function SeedSpreadCard({
                     </Badge>
                   ) : null}
                 </TableCell>
-                <TableCell className="text-right tabular-nums">{forecast.expectedSignings.toFixed(1)}</TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {forecast.support === 'supported' ? forecast.expectedSignings.toFixed(1) : 'Insufficient history'}
+                </TableCell>
                 <TableCell className="text-right tabular-nums text-muted-foreground">
-                  {forecast.rangeLow} – {forecast.rangeHigh}
+                  {forecast.support === 'supported' ? `${forecast.rangeLow} – ${forecast.rangeHigh}` : '—'}
                 </TableCell>
                 <TableCell className="text-right tabular-nums text-muted-foreground">{forecast.liveBookings}</TableCell>
               </TableRow>

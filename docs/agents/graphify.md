@@ -5,9 +5,13 @@ documents are nodes; imports, calls and references are edges; related nodes are
 grouped into communities. Asking the graph costs a fraction of the tokens that
 reading files through repeated searches costs, so agents ask it first.
 
-Install it once with `uv tool install graphifyy` (or `pipx install graphifyy`),
-which provides the `graphify` command. In Claude Code, the `/graphify` skill
-wraps the same tool.
+Install it once with `uv tool install "graphifyy[sql]==0.9.71"` (or
+`pipx install "graphifyy[sql]==0.9.71"`), which provides the `graphify` command.
+Everyone installs the same version, because a different one extracts the same
+code differently and the graph churns. The `sql` extra reads
+`server/db/schema.sql`; without it those nodes vanish. In Claude Code, the
+`/graphify` skill wraps the same tool; `graphify install --platform claude` adds
+it.
 
 ## Ask The Graph First
 
@@ -45,7 +49,17 @@ The graph is committed, so `main` must always carry a current one.
   files by hand. Take either side, run `graphify update .` again, and commit the
   result.
 - `graphify update` refuses to write a graph with fewer nodes. After a refactor
-  that deletes code, pass `--force`.
+  that deletes code, pass `--force`. Otherwise a refusal means nodes are being
+  lost by mistake: check `graphify --version` and the install line above before
+  forcing anything.
+- Document nodes written by the model must carry `"_origin": "semantic"` in
+  `graph.json`. Without it, a node with a line number looks code-extracted, and
+  `graphify update` replaces it with bare headings. graphify stamps new nodes
+  itself.
+- Commit everything `graphify update` writes to `graphify-out/`, including
+  `.graphify_labels.json.sig`. It lets the next update keep the name of each
+  community that did not change. The dated snapshot folders and `cache/` are
+  local and ignored.
 - When `.graphifyignore` changes, or `graphify query` cannot find code you know
   exists, rebuild the whole graph with `/graphify .` instead of updating it.
 

@@ -4,7 +4,7 @@
  */
 
 import { useState } from 'react'
-import type { Task } from '@mortar/core'
+import { canManageTaskStatus, type Task } from '@mortar/core'
 import { OwnerBadge } from '@/components/case/OwnerBadge'
 import { formatDate } from '@/components/case/format'
 import { NEXT_ACTION_LABELS } from './labels'
@@ -14,8 +14,10 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
+import { usePersonaSafe } from '@/lib/persona'
 
 export function TasksPanel({ tasks, onChanged }: { tasks: Task[]; onChanged: () => Promise<void> }) {
+  const { profile } = usePersonaSafe()
   const [pendingId, setPendingId] = useState<string | null>(null)
   const ordered = [...tasks].sort((a, b) => {
     if (a.status !== b.status) return a.status === 'open' ? -1 : 1
@@ -66,7 +68,7 @@ export function TasksPanel({ tasks, onChanged }: { tasks: Task[]; onChanged: () 
                     <span className="text-[13px] text-muted-foreground">Due {formatDate(task.dueOn)}</span>
                   </div>
                 </div>
-                {task.status === 'open' && (
+                {task.status === 'open' && canManageTaskStatus(task, profile) && (
                   <Button
                     size="sm"
                     variant="ghost"
