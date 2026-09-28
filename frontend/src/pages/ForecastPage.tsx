@@ -28,6 +28,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { ManagerCases } from '@/components/manager/ManagerCases'
 import { usePersona } from '@/lib/persona'
 import { addDays, altDataset, datasetFor } from '@/components/forecast/forecast'
+import { formatDate } from '@/components/case/format'
 
 export function ForecastPage() {
   const { persona } = usePersona()
@@ -65,7 +66,8 @@ export function ForecastPage() {
       <PageHeaderCard>
         <h1 className="text-[32px] font-semibold leading-[1.16] tracking-[-0.02em] text-foreground">Forecast</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Expected signed sale agreements within 30 days of booking, and where follow-up could help.
+          Expected SPA signings within 30 days of booking
+          {forecastModel ? `, based on past bookings up to ${formatDate(forecastModel.refreshedAt)}.` : '.'}
         </p>
       </PageHeaderCard>
 
@@ -81,12 +83,6 @@ export function ForecastPage() {
       ) : result ? (
         <>
           <section className="mt-5" aria-label="Forecast answer">
-            {forecastModel && (
-              <p className="mb-3 text-sm text-muted-foreground">
-                Historical rates updated on {forecastModel.refreshedAt.slice(0, 10)}; next refresh on{' '}
-                {forecastModel.nextRefreshAt.slice(0, 10)}. Current bookings stay live.
-              </p>
-            )}
             {result.forecast.support === 'insufficient-history' ? (
               <p role="status" className="mb-3 text-sm text-muted-foreground">
                 A forecast is unavailable because there is not enough resolved booking history yet.

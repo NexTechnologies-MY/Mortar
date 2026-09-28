@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { CaseEvent, Snapshot } from '@mortar/core'
+import { buildForecastModel, type CaseEvent, type Snapshot } from '@mortar/core'
 import { PersonaProvider } from '@/lib/persona'
 import { booking, snapshot } from './mockSnapshot'
 
@@ -30,9 +30,10 @@ const SNAP: Snapshot = snapshot({
   ],
   events: [evidence('EV-1', 'BK-0001', 'booked', '2026-07-10'), evidence('EV-2', 'BK-0001', 'spa_signed', '2026-07-28')]
 })
+let current: Snapshot = SNAP
 
 vi.mock('@/lib/data', () => ({
-  useSnapshot: () => ({ snapshot: SNAP, loading: false, error: null, refresh: vi.fn() }),
+  useSnapshot: () => ({ snapshot: current, loading: false, error: null, refresh: vi.fn() }),
   useCases: () => []
 }))
 
@@ -61,7 +62,10 @@ function renderPage(profile = 'sales-nurul-aina') {
 }
 
 describe('ForecastPage', () => {
-  beforeEach(() => window.localStorage.clear())
+  beforeEach(() => {
+    window.localStorage.clear()
+    current = SNAP
+  })
 
   it('shows the forecast answer and folds detail into disclosures', () => {
     renderPage()
@@ -72,6 +76,26 @@ describe('ForecastPage', () => {
     expect(screen.getByRole('button', { name: 'Stage Conversion Rates' })).toBeTruthy()
     expect(screen.queryByText('Booking Leakage')).toBeNull()
     expect(screen.queryByRole('button', { name: 'Run It Again' })).toBeNull()
+  })
+
+  it('folds the rate refresh date into the lead line as one sentence', () => {
+    renderPage()
+    expect(screen.getByText('Expected SPA signings within 30 days of booking.')).toBeTruthy()
+
+    current = {
+      ...SNAP,
+      forecastModel: buildForecastModel(
+        SNAP,
+        SNAP.meta.referenceDate,
+        '2026-09-28T09:00:00+08:00',
+        '2026-10-05T09:00:00+08:00'
+      )
+    }
+    renderPage()
+    expect(
+      screen.getByText('Expected SPA signings within 30 days of booking, based on past bookings up to 28 Sep 2026.')
+    ).toBeTruthy()
+    expect(screen.queryByText(/Historical rates updated/)).toBeNull()
   })
 
   it('opens forecast details in place without a document stack or dialog', () => {
