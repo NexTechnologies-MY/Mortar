@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Mortar · 30-Minute Presentation</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        background: #e8e5dd;
+        color: #20201d;
+        font-family: Arial, Helvetica, sans-serif;
+      }
+      .slide {
+        display: none;
+        width: 100vw;
+        height: 100dvh;
+        background: #faf9f6;
+        padding: 4.2vh 6.5vw 8vh;
+        position: relative;
+        overflow: hidden;
+      }
+      .slide.active {
+        display: block;
+      }
+      .top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid #d8d3c8;
+        padding-bottom: 2vh;
+        font-size: clamp(12px, 1.1vw, 19px);
+      }
+      .top b {
+        font-size: 1.6em;
+        letter-spacing: -0.05em;
+      }
+      .top span {
+        font-family: monospace;
+        color: #6d665b;
+      }
+      .label {
+        margin-top: 4vh;
+        color: #a83d14;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        font-weight: bold;
+        font-size: clamp(11px, 1vw, 17px);
+      }
+      h1 {
+        font-size: clamp(28px, 4.1vw, 70px);
+        letter-spacing: -0.035em;
+        line-height: 1.08;
+        max-width: 90%;
+        margin: 2.7vh 0 3.5vh;
+        white-space: normal;
+      }
+      .bullets {
+        max-width: 93%;
+      }
+      .bullets p {
+        font-size: clamp(17px, 1.7vw, 28px);
+        line-height: 1.35;
+        margin: 1.8vh 0;
+        display: flex;
+        align-items: baseline;
+        gap: 1.2vw;
+      }
+      .bullets span {
+        font: 14px monospace;
+        color: #a83d14;
+        min-width: 24px;
+      }
+      .live {
+        display: inline-block;
+        padding: 10px 16px;
+        color: white;
+        background: #a83d14;
+        border-radius: 5px;
+        text-decoration: none;
+        font-size: clamp(13px, 1vw, 18px);
+        margin-top: 1vh;
+      }
+      footer {
+        position: absolute;
+        bottom: 4vh;
+        left: 6.5vw;
+        right: 6.5vw;
+        color: #716b61;
+        border-top: 1px solid #d8d3c8;
+        padding-top: 1.6vh;
+        font-size: clamp(11px, 0.95vw, 16px);
+        line-height: 1.35;
+      }
+      .controls {
+        position: fixed;
+        bottom: 8px;
+        right: 12px;
+        z-index: 10;
+        display: flex;
+        gap: 4px;
+        opacity: 0.65;
+      }
+      .controls:hover {
+        opacity: 1;
+      }
+      .controls button {
+        background: #20201d;
+        color: white;
+        border: 0;
+        padding: 8px 12px;
+        cursor: pointer;
+        border-radius: 4px;
+      }
+      .notes {
+        display: none;
+        position: fixed;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        width: min(650px, 58vw);
+        padding: 25px;
+        background: white;
+        box-shadow: -12px 0 50px #0003;
+        z-index: 20;
+        overflow: auto;
+        font-size: 14px;
+        line-height: 1.5;
+      }
+      .notes.open {
+        display: block;
+      }
+      .notes h2 {
+        font-size: 22px;
+      }
+      .notes table {
+        font-size: 11px;
+        border-collapse: collapse;
+      }
+      .notes th,
+      .notes td {
+        border: 1px solid #ddd;
+        padding: 5px;
+      }
+      .notes a {
+        color: #a83d14;
+        overflow-wrap: anywhere;
+      }
+      .notes .close {
+        float: right;
+      }
+      .notes code {
+        overflow-wrap: anywhere;
+      }
+      @media print {
+        html,
+        body {
+          background: white;
+        }
+        .slide {
+          display: block !important;
+          width: 297mm;
+          height: 210mm;
+          break-after: page;
+          page-break-after: always;
+          padding: 12mm 18mm 25mm;
+        }
+        .slide:last-of-type {
+          break-after: auto;
+        }
+        .top {
+          font-size: 10pt;
+          padding-bottom: 7mm;
+        }
+        .label {
+          font-size: 10pt;
+          margin-top: 12mm;
+        }
+        h1 {
+          font-size: 35pt;
+          margin: 9mm 0 9mm;
+          line-height: 1.1;
+        }
+        .bullets p {
+          font-size: 17pt;
+          margin: 5mm 0;
+          line-height: 1.32;
+        }
+        .bullets span {
+          font-size: 10pt;
+        }
+        footer {
+          left: 18mm;
+          right: 18mm;
+          bottom: 10mm;
+          font-size: 9pt;
+          padding-top: 5mm;
+        }
+        .live {
+          font-size: 10pt;
+          margin-top: 3mm;
+          padding: 3mm 5mm;
+        }
+        .controls,
+        .notes {
+          display: none !important;
+        }
+        @page {
+          size: A4 landscape;
+          margin: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <section class="slide" id="slide-1" aria-label="Page 1">
+      <div class="top"><b>Mortar</b><span>00:00–01:00 · 01/18</span></div>
+      <div class="label">Business outcome</div>
+      <h1>A booking is a promise.<br />A verified SPA is a conversion.</h1>
+      <div class="bullets">
+        <p><span>01</span>A stalled booking needs a next action.</p>
+        <p><span>02</span>A named person takes it.</p>
+        <p><span>03</span>Confirmed evidence shows what changed.</p>
+      </div>
+      <footer>The workflow comes first. The technology supports it.</footer>
+    </section>
+    <section class="slide" id="slide-2" aria-label="Page 2">
+      <div class="top"><b>Mortar</b><span>01:00–01:30 · 02/18</span></div>
+      <div class="label">Agenda</div>
+      <h1>Business → workflow → proof → adoption</h1>
+      <div class="bullets">
+        <p><span>01</span>Chin Hin context and evidence</p>
+        <p><span>02</span>Before, solution logic and live workflow</p>
+        <p><span>03</span>Forecast, impact and a twelve-week pilot</p>
+      </div>
+      <footer>30 minutes of presentation · Q&amp;A afterward</footer>
+    </section>
+    <section class="slide" id="slide-3" aria-label="Page 3">
+      <div class="top"><b>Mortar</b><span>01:30–04:00 · 03/18</span></div>
+      <div class="label">Official evidence + interpretation</div>
+      <h1>Fit the business.<br />Respect its existing systems.</h1>
+      <div class="bullets">
+        <p><span>01</span>Chin Hin Group and CHGP are different reporting scopes.</p>
+        <p><span>02</span>CHGP FY2025: RM976.7m revenue; RM2.18bn unbilled sales.</p>
+        <p><span>03</span>July 2026: Kingdee ERP transformation announced.</p>
+        <p><span>04</span>Unsigned bookings, unbilled sales and cash are distinct.</p>
+      </div>
+      <footer>
+        Sources: CHGP Annual Report 2025; One Chin Hin announcement · Interpretation: start with one project
+      </footer>
+    </section>
+    <section class="slide" id="slide-4" aria-label="Page 4">
+      <div class="top"><b>Mortar</b><span>04:00–06:00 · 04/18</span></div>
+      <div class="label">Survey evidence · n = 8</div>
+      <h1>Prioritise with evidence.<br />Validate on company records.</h1>
+      <div class="bullets">
+        <p><span>01</span>7 of 8: financing named the biggest leakage cause.</p>
+        <p><span>02</span>5 of 8: cases stall at bank credit assessment.</p>
+        <p><span>03</span>7 of 8: earlier eligibility checking preferred.</p>
+        <p><span>04</span>Mixed roles, convenience sample; no company cause-share estimate.</p>
+      </div>
+      <footer>Separate: sponsor brief · public evidence · survey · synthetic data · pilot assumptions</footer>
+    </section>
+    <section class="slide" id="slide-5" aria-label="Page 5">
+      <div class="top"><b>Mortar</b><span>06:00–07:30 · 05/18</span></div>
+      <div class="label">Challenge workflow · to validate</div>
+      <h1>Before: the update has no closed loop.</h1>
+      <div class="bullets">
+        <p><span>01</span>Booking → buyer / banker message</p>
+        <p><span>02</span>Requirement → unclear next responsibility</p>
+        <p><span>03</span>Follow-up → scattered notes</p>
+        <p><span>04</span>Management → conversion still uncertain</p>
+      </div>
+      <footer>A workflow model from the brief, not a measured Chin Hin baseline</footer>
+    </section>
+    <section class="slide" id="slide-6" aria-label="Page 6">
+      <div class="top"><b>Mortar</b><span>07:30–09:30 · 06/18</span></div>
+      <div class="label">Our solution logic</div>
+      <h1>Every blocker leads to<br />a responsible next move.</h1>
+      <div class="bullets">
+        <p><span>01</span>Evidence → confirmed case state</p>
+        <p><span>02</span>Blocker → action → owner → due date</p>
+        <p><span>03</span>Reply → human verification → changed case</p>
+        <p><span>04</span>Separate loan applications and legal milestones</p>
+      </div>
+      <footer>Confirmed events move the case. Proposals remain reviewable.</footer>
+    </section>
+    <section class="slide" id="slide-7" aria-label="Page 7">
+      <div class="top"><b>Mortar</b><span>09:30–10:15 · 07/18</span></div>
+      <div class="label">Working prototype · synthetic</div>
+      <h1>Make the demo boundaries visible.</h1>
+      <div class="bullets">
+        <p><span>01</span>Open Settings as Project Manager.</p>
+        <p><span>02</span>Show Simulated Data, seed and reference date.</p>
+        <p><span>03</span>Switch to Nurul Aina · Sales Admin.</p>
+        <p><span>04</span>Demo profiles are not production SSO.</p>
+      </div>
+      <a class="live" target="_blank" rel="noopener" href="https://mortar-d18f.onrender.com/settings"
+        >Open prototype /settings ↗</a
+      >
+      <footer>Demo day: 18 Sep 2026 · Do not reset the shared dataset</footer>
+    </section>
+    <section class="slide" id="slide-8" aria-label="Page 8">
+      <div class="top"><b>Mortar</b><span>10:15–12:15 · 08/18</span></div>
+      <div class="label">Live demonstration</div>
+      <h1>Today: a blocker becomes assigned work.</h1>
+      <div class="bullets">
+        <p><span>01</span>Find BK-9001 · A-12-03 · Raymond Tan.</p>
+        <p><span>02</span>Banker default; missing-document alternative.</p>
+        <p><span>03</span>Show the task owner and due date.</p>
+        <p><span>04</span>Open Quick View, then the full case.</p>
+      </div>
+      <a class="live" target="_blank" rel="noopener" href="https://mortar-d18f.onrender.com/chase"
+        >Open prototype /chase ↗</a
+      >
+      <footer>Task already open? Show it. Do not duplicate it.</footer>
+    </section>
+    <section class="slide" id="slide-9" aria-label="Page 9">
+      <div class="top"><b>Mortar</b><span>12:15–16:15 · 09/18</span></div>
+      <div class="label">Critical working workflow</div>
+      <h1>Message → confirmation<br />→ visible state change.</h1>
+      <div class="bullets">
+        <p><span>01</span>Review the banker’s payslip request.</p>
+        <p><span>02</span>Confirm → missing document becomes evidence.</p>
+        <p><span>03</span>Paste buyer reply; verify simulated receipt.</p>
+        <p><span>04</span>Confirm → payslip clears; bank decision remains.</p>
+      </div>
+      <a class="live" target="_blank" rel="noopener" href="https://mortar-d18f.onrender.com/bookings/BK-9001"
+        >Open prototype /bookings/BK-9001 ↗</a
+      >
+      <footer>Pause at both changes. Show source, verifier and dates.</footer>
+    </section>
+    <section class="slide" id="slide-10" aria-label="Page 10">
+      <div class="top"><b>Mortar</b><span>16:15–18:00 · 10/18</span></div>
+      <div class="label">Demonstrated operational change</div>
+      <h1>Before and after: what actually changed?</h1>
+      <div class="bullets">
+        <p><span>01</span>Before: generic bank wait; document proposal unconfirmed.</p>
+        <p><span>02</span>After review: specific document blocker and action.</p>
+        <p><span>03</span>After receipt: document cleared; bank still responsible.</p>
+        <p><span>04</span>An audit trail remains for the next administrator.</p>
+      </div>
+      <footer>Demonstrated mechanism ≠ measured time saving ≠ recovered sale</footer>
+    </section>
+    <section class="slide" id="slide-11" aria-label="Page 11">
+      <div class="top"><b>Mortar</b><span>18:00–19:30 · 11/18</span></div>
+      <div class="label">Department handoff</div>
+      <h1>Legal: approval still needs execution.</h1>
+      <div class="bullets">
+        <p><span>01</span>Switch to Arvind Raj · Legal Admin.</p>
+        <p><span>02</span>BK-9006: approved loan, no appointment.</p>
+        <p><span>03</span>Record Appointment opens the relevant action.</p>
+        <p><span>04</span>Verified signing—not scheduling—counts as conversion.</p>
+      </div>
+      <a class="live" target="_blank" rel="noopener" href="https://mortar-d18f.onrender.com/legal"
+        >Open prototype /legal ↗</a
+      >
+      <footer>Synthetic panel workload does not establish real firm performance.</footer>
+    </section>
+    <section class="slide" id="slide-12" aria-label="Page 12">
+      <div class="top"><b>Mortar</b><span>19:30–21:00 · 12/18</span></div>
+      <div class="label">Management intervention</div>
+      <h1>A follow-up reaches<br />a named internal owner.</h1>
+      <div class="bullets">
+        <p><span>01</span>Switch to Project Manager · Manager.</p>
+        <p><span>02</span>Suggestions → Why This Case.</p>
+        <p><span>03</span>Request Follow-Up From the responsible person.</p>
+        <p><span>04</span>Open their Today desk and show assigned work.</p>
+      </div>
+      <a class="live" target="_blank" rel="noopener" href="https://mortar-d18f.onrender.com/manager"
+        >Open prototype /manager ↗</a
+      >
+      <footer>“Sent” means an internal task. It does not mean WhatsApp was delivered.</footer>
+    </section>
+    <section class="slide" id="slide-13" aria-label="Page 13">
+      <div class="top"><b>Mortar</b><span>21:00–23:00 · 13/18</span></div>
+      <div class="label">Statistical estimate · synthetic</div>
+      <h1>Forecast signings with<br />an explicit horizon and limits.</h1>
+      <div class="bullets">
+        <p><span>01</span>Target: within 30 days of the original booking.</p>
+        <p><span>02</span>Comparable stage + age → probability.</p>
+        <p><span>03</span>Show sample sizes, range and backtest.</p>
+        <p><span>04</span>Company calibration and held-out validation remain.</p>
+      </div>
+      <a class="live" target="_blank" rel="noopener" href="https://mortar-d18f.onrender.com/forecast"
+        >Open prototype /forecast ↗</a
+      >
+      <footer>A signing forecast is not a cash forecast.</footer>
+    </section>
+    <section class="slide" id="slide-14" aria-label="Page 14">
+      <div class="top"><b>Mortar</b><span>23:00–24:00 · 14/18</span></div>
+      <div class="label">Technology second</div>
+      <h1>Keep the workflow explainable<br />and usable without a live model.</h1>
+      <div class="bullets">
+        <p><span>01</span>React desks · Bun API · PostgreSQL evidence record</p>
+        <p><span>02</span>Shared TypeScript rules for case state and forecast</p>
+        <p><span>03</span>Jev: structured proposals; Ask MortarAI: staff questions</p>
+        <p><span>04</span>Human review, labelled fallbacks and manual updates</p>
+      </div>
+      <footer>The daily operating loop is the reason for these choices.</footer>
+    </section>
+    <section class="slide" id="slide-15" aria-label="Page 15">
+      <div class="top"><b>Mortar</b><span>24:00–26:00 · 15/18</span></div>
+      <div class="label">Illustrative assumptions · not achieved</div>
+      <h1>40 × (40% − 20%) = 8 additional SPAs</h1>
+      <div class="bullets">
+        <p><span>01</span>Assume 40 eligible stalled cases.</p>
+        <p><span>02</span>Assume 20% ordinary vs 40% assisted conversion.</p>
+        <p><span>03</span>Five-point uplift → 2; zero uplift → 0.</p>
+        <p><span>04</span>Within a 100-booking cohort, +8 means +8 points.</p>
+      </div>
+      <footer>Primary measure: verified SPA within 30 days ÷ pre-defined eligible cohort</footer>
+    </section>
+    <section class="slide" id="slide-16" aria-label="Page 16">
+      <div class="top"><b>Mortar</b><span>26:00–28:00 · 16/18</span></div>
+      <div class="label">Proposed adoption</div>
+      <h1>One project. One daily owner.<br />A twelve-week evaluation.</h1>
+      <div class="bullets">
+        <p><span>01</span>Weeks 1–2: approved exports, reconciliation, baseline.</p>
+        <p><span>02</span>Weeks 3–4: daily queue and verified responses.</p>
+        <p><span>03</span>Enroll days 15–44; comparable ordinary follow-up.</p>
+        <p><span>04</span>Observe by day 74; Legal reconciles by day 84.</p>
+      </div>
+      <a class="live" target="_blank" rel="noopener" href="https://mortar-d18f.onrender.com/import"
+        >Open prototype /import ↗</a
+      >
+      <footer>Existing external channels continue. Integration follows demonstrated need.</footer>
+    </section>
+    <section class="slide" id="slide-17" aria-label="Page 17">
+      <div class="top"><b>Mortar</b><span>28:00–29:15 · 17/18</span></div>
+      <div class="label">Built / proposed / unproven</div>
+      <h1>Show the maturity honestly.</h1>
+      <div class="bullets">
+        <p><span>01</span>Built: case, tasks, review, legal, manager and forecast.</p>
+        <p><span>02</span>Proposed: production identity and approved integration.</p>
+        <p><span>03</span>Not built: automatic WhatsApp and document OCR.</p>
+        <p><span>04</span>Unproven: additional company SPAs, savings or cash uplift.</p>
+      </div>
+      <footer>Every member must understand the whole workflow and its limits.</footer>
+    </section>
+    <section class="slide" id="slide-18" aria-label="Page 18">
+      <div class="top"><b>Mortar</b><span>29:15–30:00 · 18/18</span></div>
+      <div class="label">Concrete next decision</div>
+      <h1>Agree the owner,<br />the evidence and the comparison.</h1>
+      <div class="bullets">
+        <p><span>01</span>One suitable project and one administrator</p>
+        <p><span>02</span>Approved booking and executed-SPA evidence</p>
+        <p><span>03</span>Twelve-week pilot with an ordinary-follow-up comparison</p>
+      </div>
+      <footer>Business first. Technology second. · Questions welcome.</footer>
+    </section>
+    <div class="controls">
+      <button onclick="move(-1)" aria-label="Previous slide">←</button
+      ><button onclick="move(1)" aria-label="Next slide">→</button><button onclick="toggleNotes()">Notes (N)</button
+      ><button onclick="window.open('presenter-guide.html')">Full script</button>
+    </div>
+    <aside class="notes" aria-label="Speaker notes">
+      <button class="close" onclick="toggleNotes()">Close</button>
+      <div id="notesbody"></div>
+    </aside>
+    <script>
+      const slides = [...document.querySelectorAll('.slide')]
+      let current = 0
+      const notes = [
+        '<p><strong>Time:<\/strong> 00:00–01:00. <strong>Screen:<\/strong> page 1, “A booking is a promise. A verified SPA is a conversion.” <strong>Cue:<\/strong> unit held → action → verified outcome.<\/p>\n<p><strong>Say:<\/strong><\/p>\n<p>“Imagine a project launches and the booking numbers look strong. Behind one of those bookings, the bank is still waiting for the buyer&#x27;s latest payslips. Sales knows the buyer is interested. Loan Administration knows the file is incomplete. Legal is waiting for the case to reach them.<\/p>\n<p>The business question is very practical: who takes the next action, and how do we know the booking actually moved forward?<\/p>\n<p>We built Mortar to help the developer follow a booking through to a verified Sale and Purchase Agreement, or identify a case that needs an authorised release decision. Today I will show the working sequence: a blocker, an owner, a task, evidence of what happened, and the resulting change to the case.”<\/p>\n<p><strong>Delivery:<\/strong> look at the audience. Pause after “who takes the next action?” Do not open with the software stack or a list of AI features.<\/p>',
+        '<p><strong>Time:<\/strong> 01:00–01:30. <strong>Screen:<\/strong> page 2, “Business → workflow → proof → adoption.”<\/p>\n<p><strong>Say:<\/strong><\/p>\n<p>“I will start with Chin Hin&#x27;s business context and the evidence behind our choices. Then we will follow the workflow before and after Mortar, including the critical steps in the prototype. After that, I will explain the forecast, the expected impact calculation, and how a twelve-week pilot could be adopted.<\/p>\n<p>We have reserved the full thirty minutes for the presentation. Questions can follow afterward, and we can return to any case or calculation.”<\/p>',
+        '<p><strong>Time:<\/strong> 01:30–04:00. <strong>Screen:<\/strong> page 3. <strong>Cue:<\/strong> correct entity → buyer journey → existing systems → business implication.<\/p>\n<p><strong>Say:<\/strong><\/p>\n<p>“We researched Chin Hin at two levels. Chin Hin Group Berhad is the broader listed group. Chin Hin Group Property Berhad, or CHGP, is the property business most directly relevant to this challenge. Figures from those two reporting entities must be labelled separately.<\/p>\n<p>CHGP&#x27;s 2025 annual report describes a focus on first-time owners and urban residential development. It reports approximately RM976.7 million in annual revenue and RM2.18 billion in unbilled sales at year-end. Those are reported company figures. They establish the scale and commercial context; they do not tell us how many unsigned bookings are stuck.<\/p>\n<p>Unbilled sales are contracted sales awaiting future recognition as projects progress. They are not the same as the unsigned booking pool Mortar addresses. Likewise, an SPA signing is not receipt of the entire property price.<\/p>\n<p>The company&#x27;s own first-homebuyer guide puts checking loan options and preparing documents before signing agreements. That supports focusing on the handoff between buyer documentation, bank assessment and legal execution.<\/p>\n<p>There is also an important system context. Chin Hin announced a Kingdee ERP transformation in July 2026. So our integration conversation must start with its actual operational systems and approved exports. IFCA appears in one practitioner&#x27;s survey response; it is not evidence that Chin Hin uses IFCA.<\/p>\n<p>Our interpretation is that Mortar should prove a small, useful follow-up workflow within that existing environment. The sponsor&#x27;s brief describes fragmented booking information, but we have not audited Chin Hin&#x27;s live files. We would validate the gap with its staff before deciding where Mortar belongs.<\/p>\n<p>We therefore propose starting with one project and one daily administrator, then testing whether confirmed follow-up produces more timely, verified SPAs.”<\/p>\n<p><strong>Evidence:<\/strong> <a href="https://cms.chinhinproperty.com/uploads/WEBSITE_Chin_Hin_Group_Property_Berhad_AR_2025_8757f6df1c.pdf">CHGP Annual Report 2025<\/a>, printed pp. 2–3; <a href="https://chinhinproperty.com/first-homebuyer-guide/">first-homebuyer guide<\/a>; <a href="https://www.chinhingroup.com/news/shaping-the-next-chapter-the-one-chin-hin-transformation/">One Chin Hin transformation, 29 July 2026<\/a>. Read <code>company-research.md<\/code> for the fuller briefing and source distinctions.<\/p>',
+        '<p><strong>Time:<\/strong> 04:00–06:00. <strong>Screen:<\/strong> page 4. <strong>Cue:<\/strong> brief ≠ survey ≠ simulation.<\/p>\n<p><strong>Say:<\/strong><\/p>\n<p>“We use four evidence categories. First, the sponsor&#x27;s challenge brief describes the problem it wants addressed. Second, official company publications provide business context. Third, our industry practitioner survey helps us prioritise what to investigate. Fourth, the prototype uses simulated cases to demonstrate the mechanics.<\/p>\n<p>The current survey has eight anonymous respondents, collected between the eighteenth and twenty-second of September. Seven named loan rejection or insufficient financing as the single biggest leakage cause. All eight placed it in their top three. Five named bank credit assessment as the stage where cases get stuck. Seven wanted an earlier financing eligibility check.<\/p>\n<p>This is a small convenience sample with mixed roles. Only one respondent covered loan administration and legal work. These are counts of respondents, not percentages of failed Chin Hin bookings. We cannot conclude that seven out of eight Chin Hin failures are caused by financing.<\/p>\n<p>The practitioner with loan and legal experience prioritised slow bank processing. That matters: we must test both financing problems and delayed follow-up, rather than assume one explanation covers every project.<\/p>\n<p>Our own logic is to make financing concerns visible and chase recoverable blockers early. We cannot overturn a bank&#x27;s credit decision. We can help staff complete documents, follow up, review alternative applications and escalate a genuinely stalled case.<\/p>\n<p>The missing evidence is Chin Hin&#x27;s actual leakage rate, cause distribution, staff workload and ordinary follow-up performance. Our pilot is designed to collect that evidence. The blank interview template is not a completed interview and we do not cite it as one.”<\/p>\n<p><strong>Source:<\/strong> repository <code>docs/research/practitioner-survey/README.md<\/code> and <code>docs/source/problem-statement.md<\/code>. Say “7 of 8 respondents,” never “87.5% of Chin Hin&#x27;s bookings.”<\/p>',
+        '<p><strong>Time:<\/strong> 06:00–07:30. <strong>Screen:<\/strong> page 5. <strong>Cue:<\/strong> update arrives → responsibility unclear → no verified next move.<\/p>\n<p><strong>Say:<\/strong><\/p>\n<p>“This is the workflow described by the brief, expressed as a concrete case. A booking exists. The buyer and banker exchange messages. A document request arrives. Someone has to identify the requirement, decide who should obtain it, and make sure the reply gets back into the booking record.<\/p>\n<p>When those steps are split across messages and departmental notes, a file can remain marked ‘with bank’ even though the real next move belongs to the buyer or an internal administrator. The important detail is who can act now.<\/p>\n<p>The delay continues if no one owns the chase, no due date is set, or a reply is not recorded. Legal may receive a case late, and management may see a booking without understanding how much of the conversion journey remains.<\/p>\n<p>This diagram is a model of the challenge, not a measured time-and-motion study of Chin Hin. We would check it with Sales, Loan Administration and Legal. The change we propose is to make the next move and its evidence explicit.”<\/p>\n<p><strong>Action:<\/strong> trace the diagram with the pointer. Do not introduce invented current-process timings or say Chin Hin has no existing system.<\/p>',
+        '<p><strong>Time:<\/strong> 07:30–09:30. <strong>Screen:<\/strong> page 6. <strong>Cue:<\/strong> evidence → blocker → owner → task → confirmation → updated case.<\/p>\n<p><strong>Say:<\/strong><\/p>\n<p>“Mortar starts with a case record for each booking. It tracks loan and legal events separately, because those activities can overlap. It also keeps bank applications separate, so one rejected application does not automatically mean the whole booking has failed.<\/p>\n<p>Our first rule is that confirmed events drive the case state. A proposed interpretation remains visible for review, but it does not move the milestone. We retain when an event happened, when it was recorded, who reported it and who verified it.<\/p>\n<p>Our second rule is to translate the case into the next practical action. If a document is outstanding, obtain it. If the complete application is waiting on a bank beyond the configured threshold, chase the banker. If financing is approved but no appointment is recorded, arrange the signing. If every reasonable recovery route has ended, bring the case to an authorised person for review.<\/p>\n<p>Our third rule is to turn that action into work with an owner and a due date. Then the next reply must be recorded and verified. That closes the loop.<\/p>\n<p>AI assists with interpreting short messages and suggesting actions. The business workflow remains explainable through the event record and the rules. An administrator can enter an update manually if the AI is unavailable or wrong.<\/p>\n<p>This is our solution logic: finding a case is useful only if somebody takes the next step and the system can show what happened afterward. We will now demonstrate that loop on one synthetic booking.”<\/p>',
+        '<p><strong>Time:<\/strong> 09:30–10:15. <strong>Screen:<\/strong> page 7, then <a href="https://mortar-d18f.onrender.com/settings">Settings<\/a> as <strong>Project Manager<\/strong>.<\/p>\n<p><strong>Action:<\/strong> point to “Simulated Data,” seed and reference date. Do not press Add Demo Data or Delete Demo Data during the presentation. Switch through the top-right “Switch persona” menu to <strong>Nurul Aina · Sales Admin<\/strong> afterward.<\/p>\n<p><strong>Say:<\/strong><\/p>\n<p>“The interface is working software, and the cases are synthetic. This dataset uses a fixed reference date, the eighteenth of September, so today on the screen is the demo&#x27;s day, not the calendar date of this presentation.<\/p>\n<p>The numbers illustrate the workflow and calculation. They do not represent Chin Hin&#x27;s records, and they do not prove commercial improvement. The named profiles demonstrate staff responsibilities and scoped case access; they are not production identity verification.”<\/p>',
+        '<p><strong>Time:<\/strong> 10:15–12:15. <strong>Screen:<\/strong> page 8 briefly, then <a href="https://mortar-d18f.onrender.com/chase">Today<\/a> as <strong>Nurul Aina · Sales Admin<\/strong>. <strong>Case:<\/strong> BK-9001, unit A-12-03, Raymond Tan Wei Hong.<\/p>\n<p><strong>Actions:<\/strong><\/p>\n<p class="bullet">• Locate BK-9001 by its reference, not its position in the queue.<\/p>\n<p class="bullet">• Point to the bank-delay blocker and the default “Call The Banker” action.<\/p>\n<p class="bullet">• Point to Jev&#x27;s alternative: “Ask For The Missing Document Instead.”<\/p>\n<p class="bullet">• If the payslip task already exists, point to “Task Open,” owner and due date. If it does not, select <strong>Do That Instead<\/strong> for the document chase and show the created task. Use <strong>Create Task<\/strong> only if its visible action matches the task you intend to demonstrate.<\/p>\n<p class="bullet">• Click the unit/buyer to open Quick View. Use its full-case link, or navigate directly to <code>/bookings/BK-9001<\/code>.<\/p>\n<p><strong>Say:<\/strong><\/p>\n<p>“This is the administrator&#x27;s daily work. Each case tells us the blocker and the next step. On Raymond&#x27;s case, the confirmed record says the bank has not decided. The default next step is to call the banker.<\/p>\n<p>But there is also a banker message that suggests a more specific issue: missing payslips. Jev offers that as an alternative. We have deliberately kept the confirmed state and the proposed interpretation distinct.<\/p>\n<p>Here is the action the system causes: an assigned document chase with a due date. [If present: This task is already open for Nurul Aina.] [If absent: I select the document action, and it becomes a task for the responsible staff member.]<\/p>\n<p>Mortar records the work; the administrator still contacts the buyer through the existing approved channel. This button is not sending a WhatsApp message to the buyer.<\/p>\n<p>Now let us inspect the evidence. We can open the case from this queue, so the administrator does not need to hunt through a separate departmental record.”<\/p>\n<p><strong>Hold:<\/strong> allow the audience to read the owner and due date for three seconds. Current live state on 28 September already contained a BK-9001 payslip task.<\/p>',
+        '<p><strong>Time:<\/strong> 12:15–16:15. <strong>Screen:<\/strong> page 9 briefly, then <a href="https://mortar-d18f.onrender.com/bookings/BK-9001">BK-9001<\/a>. Remain <strong>Nurul Aina · Sales Admin<\/strong> for the main demonstration.<\/p>\n<p><strong>Actions and spoken cues:<\/strong><\/p>\n<p class="bullet">• <strong>Case header and tracks.<\/strong> Point to “With Bank,” the loan track and the unconfirmed Documents Requested event.<\/p>\n<p>   “The bank submission is confirmed. This document request is still a proposal. Notice that a confident AI reading has not become a fact.”<\/p>\n<p class="bullet">• <strong>Banker message.<\/strong> Scroll to Kelvin Teo&#x27;s message containing “latest 3 months slip gaji.” Read the short relevant phrase, not the whole thread.<\/p>\n<p>   “The banker is asking for the latest three months&#x27; payslips. Jev proposes Documents Requested, Payslip, Sales. A person reviews that interpretation.”<\/p>\n<p class="bullet">• <strong>Confirm request.<\/strong> Select <strong>Confirm<\/strong> on that message&#x27;s proposal. Wait for the refreshed case. Point to Payslip Outstanding / the buyer-document wait and the now-confirmed event.<\/p>\n<p>   “I confirm the request. The case now reflects the missing document. The next action follows the evidence we just accepted.”<\/p>\n<p>   <strong>Pause for three seconds.<\/strong> This is the first visible proof moment.<\/p>\n<p class="bullet">• <strong>Simulated buyer reply.<\/strong> Select <strong>Paste A Message<\/strong>. Leave Sender Role as <strong>Buyer<\/strong> and the synthetic buyer name. Paste:<\/p>\n<p>   <code>Hi Nurul, slip gaji 3 bulan dah saya hantar ke Mei Ling tadi. Dokumen semua lengkap ya.<\/code><\/p>\n<p>   Leave the timestamp on the demo&#x27;s reference day and select <strong>Add Message<\/strong>. Wait for the proposal; show the source tag, especially if it says cached or unavailable.<\/p>\n<p>   “For this demonstration, we simulate the buyer saying the payslips have reached Loan Administration. The system reads the reply, but a message claiming receipt still needs verification.”<\/p>\n<p class="bullet">• <strong>Verify receipt.<\/strong> When Documents Received / Payslip appears, explain that the administrator has checked the receipt with Loan Administration in the demo scenario. Select <strong>Confirm<\/strong>. If the proposal is incorrect, dispute or dismiss it and use <strong>Record An Update → Documents Received → Payslip<\/strong> after verifying the simulated receipt. Choose <strong>Apex Bank<\/strong> when specifying the bank&#x27;s document receipt; save with <strong>Record Update<\/strong>.<\/p>\n<p>   “In the operating workflow, staff check that the document actually arrived. We represent that check here, then confirm the receipt. An AI interpretation alone is insufficient.”<\/p>\n<p class="bullet">• <strong>Show the changed case.<\/strong> Return to the header and loan track. The payslip should no longer be outstanding. The case still awaits the bank decision. Expand <strong>Show Full History<\/strong> to show the confirming actor and dates.<\/p>\n<p>   “The document blocker has cleared. We have not approved the mortgage. The bank still decides. What changed is the evidence, the next responsibility and the work required from the administrator.”<\/p>\n<p>   <strong>Pause for three seconds.<\/strong> This is the second proof moment.<\/p>\n<p class="bullet">• <strong>Complete work deliberately.<\/strong> Show the document task. Select <strong>Complete<\/strong> only when the demonstrated document-chase obligation has been fulfilled. Explain that confirming a receipt and completing a task are separate acts.<\/p>\n<p>   “The task is completed after the work is done. The evidence remains in the case, so the next administrator can see why the blocker cleared.”<\/p>\n<p><strong>Between actions, explain:<\/strong><\/p>\n<p>“We have shown a complete local loop: identify the issue, assign the chase, review the request, receive the reply, verify the receipt and update the case. No bank or solicitor has been required to adopt a new portal.<\/p>\n<p>Notice also that low financing risk did not mean this case was moving well. Affordability and operational progress are different questions. We need both the risk flag and the evidence-based workflow.”<\/p>\n<p><strong>If the initial request is already confirmed:<\/strong> show the recorded verifier and continue with the receipt step. <strong>If receipt is already confirmed:<\/strong> use a prepared recording of this same sequence or a rehearsed separate synthetic case. Never pretend that an already-completed transition just happened.<\/p>\n<p><strong>If AI takes too long:<\/strong> after roughly ten seconds say, “The manual evidence path is available while the model responds.” Demonstrate Record An Update. Do not announce a live AI result when the source tag identifies a fallback.<\/p>',
+        '<p><strong>Time:<\/strong> 16:15–18:00. <strong>Screen:<\/strong> page 10. Keep the case open in the adjacent tab.<\/p>\n<p><strong>Say:<\/strong><\/p>\n<p>“Let us compare exactly what changed. Before review, the confirmed case said ‘with bank’, while the more specific document issue existed in a message and an unconfirmed proposal. After review, the missing payslip became a recorded blocker with a responsible next action.<\/p>\n<p>Before the receipt was verified, the system could not safely treat the document as received. After confirmation, the outstanding document cleared and the case returned to waiting for the bank decision. The confirming person and timestamps remain available.<\/p>\n<p>We have demonstrated a change in operational state, not a measured reduction in processing time. We have not shown a recovered sale or a faster bank approval. Those are outcomes the pilot must measure.<\/p>\n<p>The practical improvement is that the next person does not need to reconstruct the file from memory. They can see the blocker, the action, the evidence and what responsibility remains.<\/p>\n<p>That is what the system causes: a specific follow-up and a verified handoff. The screen is the interface to that behaviour.”<\/p>',
+        '<p><strong>Time:<\/strong> 18:00–19:30. <strong>Screen:<\/strong> page 11, then <a href="https://mortar-d18f.onrender.com/legal">Legal<\/a> as <strong>Arvind Raj · Legal Admin<\/strong>. Use the top-right persona menu; the current menu includes the person&#x27;s name.<\/p>\n<p><strong>Actions:<\/strong> locate <strong>BK-9006 / A-23A-02 / Chen Jia Hao<\/strong> under No Appointment Yet. Select <strong>Record Appointment<\/strong> to show the preset form. In a prepared synthetic rehearsal, record the appointment as arranged on 18 September with the appointment on 19 September, then show it under Appointment Set, Not Signed. During a shared-demo walkthrough without a prepared state, show the form and cancel. Say explicitly which demonstration you performed.<\/p>\n<p><strong>Say:<\/strong><\/p>\n<p>“Our first case is still awaiting the bank. This second synthetic case has an approved loan, but no SPA appointment. It demonstrates the next handoff.<\/p>\n<p>Legal&#x27;s queue separates cases without an appointment from cases with an appointment that have not signed. The next action here is to arrange and record the appointment. The row opens the relevant update directly.<\/p>\n<p>An appointment does not count as a signed SPA. Once Legal verifies execution, they record the signing, and the case leaves this waiting queue. The business metric counts that verified execution, not a scheduled date.<\/p>\n<p>We also show panel workload, but the synthetic assignment of firms cannot establish which real solicitor performs better.”<\/p>',
+        '<p><strong>Time:<\/strong> 19:30–21:00. <strong>Screen:<\/strong> page 12, then <a href="https://mortar-d18f.onrender.com/manager">Manager<\/a> as <strong>Project Manager · Manager<\/strong>.<\/p>\n<p><strong>Actions:<\/strong> open <strong>Suggestions<\/strong>, then <strong>Why This Case<\/strong> on an overdue case. Show <strong>Request Follow-Up From [name]<\/strong>. In the prepared demo, select it and show <strong>Follow-Ups Already Sent<\/strong> or <strong>Awaiting [name]<\/strong>. Switch to that named recipient through the persona menu and show the task on <code>/chase<\/code>. Do not click multiple cases or duplicate an already-sent follow-up.<\/p>\n<p><strong>Say:<\/strong><\/p>\n<p>“The manager sees a cross-department view and the reason for the suggested intervention. Here the trigger is a wait beyond the configured expectation. These expectations are prototype settings, not measured service levels for Chin Hin&#x27;s banks or solicitors.<\/p>\n<p>The manager&#x27;s button creates or flags an internal follow-up for the person responsible for the case. We can then open that person&#x27;s Today page and see the work assigned to them. This is a concrete change in accountability.<\/p>\n<p>The word ‘sent’ here means an internal task has been assigned. It does not mean an external banker received a WhatsApp message. Staff still use their existing approved communication channels.<\/p>\n<p>Ask MortarAI is available for staff questions, but this presentation&#x27;s proof is the case-and-task workflow. An answer is useful when it helps staff inspect the evidence and choose an appropriate action.”<\/p>',
+        '<p><strong>Time:<\/strong> 21:00–23:00. <strong>Screen:<\/strong> page 13, then <a href="https://mortar-d18f.onrender.com/forecast">Forecast<\/a> as <strong>Project Manager<\/strong>.<\/p>\n<p><strong>Actions:<\/strong> show expected signings, forecast range and bookings in scope. Expand <strong>Stage Conversion Rates<\/strong>, <strong>How Well The Method Backtests<\/strong> and <strong>Assumptions<\/strong>. Read the values actually visible; avoid memorising a demo number. The inspected state showed approximately 21, range 17–25, 50 bookings.<\/p>\n<p><strong>Say:<\/strong><\/p>\n<p>“Management should not treat every unsigned booking as certain to convert. Mortar estimates the probability of a verified signing within thirty days of the original booking date. That is the outcome horizon used here; it is not a rolling forecast of cash arriving over the next thirty days.<\/p>\n<p>The method looks at resolved cases that reached a similar stage at a similar booking age. It uses a broader comparison when a narrow group has too few cases. Then it adds the estimated probabilities across the live bookings. The range comes from repeated simulated outcomes under those estimates.<\/p>\n<p>Stage rates show the sample size and uncertainty. The accuracy check looks back using the evidence available at the historical cutoff. It checks the method against what subsequently happened in the dataset.<\/p>\n<p>There are two limitations. First, the history here is synthetic, so this check demonstrates the calculation rather than predictive performance on Chin Hin records. Second, the range reflects the model&#x27;s assumptions. It does not capture every source of uncertainty or a market shock affecting many buyers at once.<\/p>\n<p>During a pilot we would calibrate the rates on appropriate company cohorts, compare against a simple baseline and evaluate held-out outcomes. We would also reconcile signed SPAs with Legal.<\/p>\n<p>Finance can use that as a more explicit conversion estimate. To estimate cash, we would additionally need payment schedules, billing milestones and actual collections. Multiplying expected SPAs by unit prices would not establish cash brought forward.”<\/p>',
+        '<p><strong>Time:<\/strong> 23:00–24:00. <strong>Screen:<\/strong> page 14. <strong>Cue:<\/strong> one record → shared rules → human verification → manual continuity.<\/p>\n<p><strong>Say:<\/strong><\/p>\n<p>“Now that the business workflow is visible, here is how we built it. The React interface presents the desks. A Bun server reads and writes the PostgreSQL case record. Shared TypeScript rules derive the stages, document blockers, responsibility and forecast, so the desks use consistent logic.<\/p>\n<p>Jev handles structured interpretation and suggestions. Ask MortarAI is a separate assistant for staff questions. Confirmed evidence and statistical rules drive the operational state and forecast.<\/p>\n<p>The server keeps model credentials out of the browser. A cached answer is labelled, and manual recording remains available. If an interpretation is wrong, staff can dispute it and record the correct evidence.<\/p>\n<p>The important engineering choice is that the daily workflow can continue without a successful live model call.”<\/p>\n<p><strong>Do not claim:<\/strong> production SSO, a universally reliable three-second response, automatic WhatsApp ingestion or independent production security approval.<\/p>',
+        '<p><strong>Time:<\/strong> 24:00–26:00. <strong>Screen:<\/strong> page 15. <strong>Cue:<\/strong> explicit assumption → calculation → pilot replacement.<\/p>\n<p><strong>Say:<\/strong><\/p>\n<p>“We measure one primary outcome: the share of eligible cohort bookings that reach a verified signed SPA within thirty days of booking. Eligibility and the denominator must be defined before the pilot starts, so difficult cases are not quietly excluded after the result is known.<\/p>\n<p>Here is an illustrative impact calculation, not a claim about Chin Hin. Suppose an audit identifies forty stalled bookings that could benefit from targeted follow-up. Suppose ordinary follow-up converts twenty percent within thirty days, and the assisted workflow converts forty percent.<\/p>\n<p>Forty multiplied by the twenty-percentage-point difference gives eight additional verified SPAs. At a five-point difference, the same group gives two additional SPAs. At no difference, it gives none.<\/p>\n<p>If those forty cases belong to a cohort of one hundred bookings, eight additional signings would increase the whole cohort&#x27;s rate by eight percentage points. A twenty-point improvement in a subgroup is not a twenty-point improvement across the entire cohort.<\/p>\n<p>Every input in this example is an assumption. We replace the eligible case count, baseline conversion and uplift with observed pilot data.<\/p>\n<p>We also record how quickly unresolved units reach an authorised release decision and how much staff effort the process requires. These are supporting checks. The primary result remains verified SPA conversion, with an ordinary follow-up comparison and a clear observation window.<\/p>\n<p>More dashboard visits would not establish success. More confirmed conversions would—and a credible comparison would tell us whether Mortar contributed.”<\/p>',
+        '<p><strong>Time:<\/strong> 26:00–28:00. <strong>Screen:<\/strong> page 16, then <a href="https://mortar-d18f.onrender.com/import">Add Bookings<\/a> as <strong>Project Manager<\/strong> or <strong>Nurul Aina · Sales Admin<\/strong>. Select <strong>Upload A Sheet<\/strong> to show intake without submitting a file during the talk. Keep a rehearsed synthetic sheet ready if you want to demonstrate row review.<\/p>\n<p><strong>Say:<\/strong><\/p>\n<p>“Adoption begins with existing booking data. The working prototype supports typed intake and spreadsheet upload with a review step. For the pilot we would agree the export fields, booking identifiers and reconciliation process with the existing system owner. We would avoid a second competing master record.<\/p>\n<p>In the first two weeks, one project and one Sales Administrator establish the baseline. They reconcile a sample of closed cases with Loan Administration and Legal, identify the main recoverable blocker and agree the first playbooks.<\/p>\n<p>In weeks three and four, the administrator uses the daily queue in a short morning routine. They choose the next action, contact the relevant party through existing channels, then record and verify the response. The manager reviews overdue internal tasks. We measure whether this saves work or adds duplicate entry.<\/p>\n<p>For the outcome comparison, we propose an intake cohort enrolled between days fifteen and forty-four, spanning the assisted-queue and live-operation periods. A comparable group continues ordinary follow-up. Where practical, assignment is randomised; otherwise, project, buyer mix, booking age and bank conditions need to be accounted for. We agree the comparison with the sponsor before starting.<\/p>\n<p>Each booking then gets the full thirty-day observation period. That ends by day seventy-four, with Legal&#x27;s reconciliation completed by day eighty-four. Weeks five to eight are the main intervention period; weeks nine to twelve complete the observation and audit.<\/p>\n<p>Buyers, bankers and solicitors continue using their existing channels. The internal administrator owns the new routine. We seek integration only after the pilot shows where manual intake creates a real burden, and in alignment with Chin Hin&#x27;s existing transformation programme.”<\/p>',
+        '<p><strong>Time:<\/strong> 28:00–29:15. <strong>Screen:<\/strong> page 17. <strong>Cue:<\/strong> demonstrated mechanism ≠ real-company impact.<\/p>\n<p><strong>Say:<\/strong><\/p>\n<p>“What exists today is the working case record, staff desks, task workflow, message proposals with human review, manual updates, legal queue, management follow-up and statistical forecast. The deployment uses synthetic records.<\/p>\n<p>What remains proposed includes live-company calibration, production identity controls and approved integration with existing operational systems. Automated WhatsApp ingestion, document OCR and the more ambitious mortgage-rescue ideas are not part of the workflow we demonstrated.<\/p>\n<p>The unknown is the business effect. We have not measured additional SPAs, inventory days saved or cash accelerated at Chin Hin. We have also not established the company&#x27;s current internal leakage causes or system-level permissions.<\/p>\n<p>Those boundaries determine the next step: a small, supervised pilot with a known owner, an agreed comparison and verified outcomes. Every team member should be able to explain that whole chain, including what the prototype does not yet prove.”<\/p>',
+        '<p><strong>Time:<\/strong> 29:15–30:00. <strong>Screen:<\/strong> page 18. Stop operating the browser and look at the audience.<\/p>\n<p><strong>Say:<\/strong><\/p>\n<p>“The change we are asking you to evaluate is simple: a stalled booking gets a specific next action, a responsible person and a verified record of what happened. Management then sees a conversion estimate grounded in that record.<\/p>\n<p>We have demonstrated the workflow on synthetic cases. We propose testing it on one suitable project with one administrator, approved data access and a twelve-week evaluation of thirty-day verified SPA conversion.<\/p>\n<p>The three things we need to agree are the pilot owner, the source of booking and signing evidence, and the comparison against ordinary follow-up.<\/p>\n<p>Thank you. We are ready to discuss the business logic, the workflow, the implementation and the parts that still need validation.”<\/p>'
+      ]
+      function show(i) {
+        current = Math.max(0, Math.min(slides.length - 1, i))
+        slides.forEach((s, n) => s.classList.toggle('active', n === current))
+        document.getElementById('notesbody').innerHTML = '<h2>Page ' + (current + 1) + '</h2>' + notes[current]
+        history.replaceState(null, '', '#slide-' + (current + 1))
+        document.title = 'Mortar · Page ' + (current + 1) + ' / 18'
+      }
+      function move(d) {
+        show(current + d)
+      }
+      function toggleNotes() {
+        document.querySelector('.notes').classList.toggle('open')
+      }
+      document.addEventListener('keydown', (e) => {
+        if (['ArrowRight', 'PageDown', ' '].includes(e.key)) {
+          e.preventDefault()
+          move(1)
+        }
+        if (['ArrowLeft', 'PageUp'].includes(e.key)) {
+          e.preventDefault()
+          move(-1)
+        }
+        if (e.key === 'Home') show(0)
+        if (e.key === 'End') show(17)
+        if (e.key.toLowerCase() === 'n') toggleNotes()
+        if (e.key === 'Escape') document.querySelector('.notes').classList.remove('open')
+      })
+      show((Number(location.hash.replace('#slide-', '')) || 1) - 1)
+    </script>
+  </body>
+</html>
