@@ -31,9 +31,10 @@ between booking deposit collection and SPA signing, transforming stalled cases
 into an actionable daily follow-up queue.
 
 A second goal is introducing structured artificial intelligence assistance
-without operational risk. Mortar employs TypeSafe Jev for typed message
-classification, document extraction, and playbook matching while reserving all
-case state transitions for verified human confirmation.
+without operational risk. MortarAI, Mortar's AI layer, has two engines: TypeSafe
+Jev for typed message classification, document extraction, and playbook
+matching, and Google Gemini for grounded answers in Ask MortarAI. All case state
+transitions stay reserved for verified human confirmation.
 
 Finally, the platform replaces speculative booking-face-value projections with a
 statistical, stage-weighted 30-day SPA conversion forecast grounded in
@@ -811,8 +812,9 @@ no second creation dialog.
 
 ### FR-23: Ask MortarAI Grounded Assistant
 
-The system must provide an intelligent assistant accessible via a sparkle button
-in the top navigation bar, grounded strictly on live operations data.
+The system must provide Ask MortarAI, the panel where staff question MortarAI's
+Gemini engine, opened with a sparkle button in the top navigation bar and
+grounded strictly on live operations data.
 
 **Status:** Built.
 

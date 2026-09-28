@@ -91,6 +91,15 @@ clean recording seed.
   Anything that reads `stallReasons` must filter on `open` (`isOpen` in
   `brain/helpers.ts`), never `isLive`; `brain.test.ts` pins Ask's stalled set to
   Today's so the two cannot drift apart again.
+- **MortarAI Is The AI Layer: Jev Classifies, Gemini Answers.** MortarAI names
+  both engines together. Jev (`packages/jev/`) turns messages into typed
+  proposals, next actions and playbook ranks; Gemini (`server/src/assistant/`)
+  answers staff questions in Ask MortarAI, the sparkle-button panel. Ask
+  MortarAI is the Gemini engine's surface. Say MortarAI for the layer, and name
+  the engine where behaviour differs: Jev proposes within 3 seconds and waits
+  for a person to confirm; Gemini reads with a 30-second budget and never
+  writes. Product wording lives in
+  [Where AI Helps](../PRODUCT.md#where-ai-helps-and-where-people-decide).
 - **Ask MortarAI Calls Gemini With Five Read-Only Tools.**
   `server/src/assistant/` handles `POST /api/assistant` using `fetch` against
   Google's Gemini API (`GEMINI_API_KEY`; model `GEMINI_MODEL`, default

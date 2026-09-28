@@ -60,15 +60,16 @@ asynchronous classification workflows:
   types, seeded PRNG simulation, event log derivation rules, financial risk
   formulas, forecasting math, and fixture datasets. Both browser and server
   import it.
-- **Server-Side Intelligence:** `@mortar/jev` wraps the TypeSafe SDK to run
-  probabilistic classifications server-side. The TypeSafe API key is restricted
-  to the server process and is never sent to the browser.
-- **Grounded Operational Assistant:** Ask MortarAI (`POST /api/assistant`)
-  provides LLM-driven operational answers via Google Gemini
-  (`gemini-3.5-flash-lite`), code in `server/src/assistant/`. It grounds answers
-  over the live memory snapshot using five read-only tools, with fenced
-  untrusted message bodies, returning structured answers and booking citations
-  with zero write access.
+- **Server-Side Intelligence:** MortarAI, Mortar's AI layer, has two engines,
+  both called only from the server. `@mortar/jev` (Jev) wraps the TypeSafe SDK
+  to run probabilistic classifications. The TypeSafe API key is restricted to
+  the server process and is never sent to the browser.
+- **Grounded Operational Assistant:** Ask MortarAI (`POST /api/assistant`) is
+  where staff question MortarAI's second engine, Google Gemini, for LLM-driven
+  operational answers (`gemini-3.5-flash-lite`), code in
+  `server/src/assistant/`. It grounds answers over the live memory snapshot
+  using five read-only tools, with fenced untrusted message bodies, returning
+  structured answers and booking citations with zero write access.
 - **Persona Navigation And Route Guarding:** `frontend/src/lib/persona.tsx`
   defines permitted page mappings (`PERSONA_PAGES`) and
   `frontend/src/components/layout/PersonaRoute.tsx` guards routes client-side,
