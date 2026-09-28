@@ -85,7 +85,16 @@ function Citations({ ids, onNavigate }: { ids: string[]; onNavigate: () => void 
   )
 }
 
-export function AskPanel({ onNavigate, bookingId }: { onNavigate: () => void; bookingId?: string }) {
+export function AskPanel({
+  onNavigate,
+  bookingId,
+  initialQuestion
+}: {
+  onNavigate: () => void
+  bookingId?: string
+  /** Sent as soon as the panel is ready, when a page opened it with a question. */
+  initialQuestion?: string
+}) {
   const { snapshot, loading, refresh } = useSnapshot()
   const { persona, profile } = usePersona()
   const requestController = useRef<AbortController | null>(null)
@@ -214,6 +223,14 @@ export function AskPanel({ onNavigate, bookingId }: { onNavigate: () => void; bo
     },
     [context, thinking, turns, persona, bookingId, image, dropImage, chips]
   )
+
+  // A page's question is sent once, as soon as there is a context to answer from.
+  const initialSent = useRef(false)
+  useEffect(() => {
+    if (!initialQuestion || initialSent.current || !context) return
+    initialSent.current = true
+    void ask(initialQuestion)
+  }, [initialQuestion, context, ask])
 
   const runAction = useCallback(
     async (turnId: number, action: AskAction) => {

@@ -52,7 +52,7 @@ export function AppLayout({ children, minimalNav }: AppLayoutProps) {
       <AppSidebar mobileOpen={mobileSidebarOpen} onMobileClose={() => setMobileSidebarOpen(false)} />
       <AppNav minimal={minimalNav} onMenuClick={() => setMobileSidebarOpen(true)} />
       <TourProvider>
-        <main className="flex-1 pt-14 lg:ml-16">{children}</main>
+        <main className="app-canvas flex-1 pt-14 lg:ml-16">{children}</main>
         <TourButton />
       </TourProvider>
     </div>

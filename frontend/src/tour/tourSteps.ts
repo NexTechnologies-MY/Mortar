@@ -5,14 +5,20 @@ export type TourStep = { label: string; route: string; target: string; caption: 
 export const TOUR_STEPS: Record<Persona, TourStep[]> = {
   manager: [
     {
-      label: 'Overview',
-      route: '/manager',
-      target: '[data-tour="manager-header"]',
-      caption: 'See essential information across all departments. Open Suggestions to create manager follow-ups.'
+      label: 'Today',
+      route: '/chase',
+      target: '[data-tour="today-header"]',
+      caption: 'Today lists the overdue cases waiting on a decision from you, across every desk.'
+    },
+    {
+      label: 'Team',
+      route: '/team',
+      target: '[data-tour="team-header"]',
+      caption: 'Team shows who each booking is waiting on, desk by desk, and where it is stuck.'
     },
     {
       label: 'Ask MortarAI',
-      route: '/manager',
+      route: '/chase',
       target: '[data-tour="ask-mortar"]',
       caption: 'Ask MortarAI about any department. Manager access covers every booking.'
     }

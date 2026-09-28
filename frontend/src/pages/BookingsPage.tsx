@@ -13,13 +13,19 @@
  * carries an Export To Excel button so a desk can pull that record out of
  * Mortar. Add Booking (issue #24) enters one booking by hand, validated the
  * same way an imported sheet row is.
+ *
+ * `?waitingOn=<profile id>` (a Team row) narrows the Active list to the open
+ * bookings whose next move sits with that person, by the same rule Team and the
+ * Manager's follow-ups use; a chip above the table names them and clears it.
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { AlertTriangle, ClipboardList, HelpCircle, Search, Trash2, ListPlus, Download, X } from 'lucide-react'
-import { ballInCourt, type EventKind, type Stage, type Task } from '@mortar/core'
+import { DEMO_PROFILES, ballInCourt, currentCaseAssignee, type EventKind, type Stage, type Task } from '@mortar/core'
 import { useCases, useSnapshot } from '@/lib/data'
 import { usePersona, type Persona } from '@/lib/persona'
+import { DESK_OF_PERSONA, RoleLabel } from '@/components/people/RoleLabel'
 import { STAGE_LABELS } from '@/components/case/StagePill'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { PageHeaderCard } from '@/components/layout/PageHeaderCard'
@@ -85,6 +91,17 @@ export function BookingsPage() {
   const { snapshot, loading, error, refresh } = useSnapshot()
   const cases = useCases()
   const { persona } = usePersona()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const waitingOn = DEMO_PROFILES.find((p) => p.id === searchParams.get('waitingOn')) ?? null
+  const clearWaitingOn = () =>
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.delete('waitingOn')
+        return next
+      },
+      { replace: true }
+    )
   const [filter, setFilter] = useState<BookingFilter>({
     stage: 'all',
     risk: 'all',
@@ -98,7 +115,9 @@ export function BookingsPage() {
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [bulkWorking, setBulkWorking] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
-  const [stripHolder, setStripHolder] = useState<PipelineStageId | null>(() => defaultHolderForPersona(persona))
+  const [stripHolder, setStripHolder] = useState<PipelineStageId | null>(() =>
+    waitingOn ? null : defaultHolderForPersona(persona)
+  )
   const lastPersonaRef = useRef(persona)
 
   useEffect(() => {
@@ -218,6 +237,8 @@ export function BookingsPage() {
         if (filter.risk !== 'all' && r.summary.risk.level !== filter.risk) return false
         if (filter.stalledOnly && !r.stalled) return false
         if (filter.unknownOnly && !r.summary.unknown) return false
+        if (waitingOn && (view !== 'active' || currentCaseAssignee(r.booking, r.summary)?.id !== waitingOn.id))
+          return false
 
         const needle = search.trim().toLocaleLowerCase()
         if (needle) {
@@ -244,7 +265,7 @@ export function BookingsPage() {
 
         return true
       }),
-    [viewRows, filter, view, stripHolder, search]
+    [viewRows, filter, view, stripHolder, search, waitingOn]
   )
 
   // Applied after filtering so the sort acts on what the reader can see.
@@ -446,6 +467,18 @@ export function BookingsPage() {
               />
             </div>
           )}
+
+          {waitingOn ? (
+            <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
+              <span className="text-muted-foreground">Waiting On</span>
+              <RoleLabel desk={DESK_OF_PERSONA[waitingOn.persona]} />
+              <span className="font-medium">{waitingOn.name}</span>
+              <Button type="button" variant="ghost" size="sm" onClick={clearWaitingOn}>
+                <X aria-hidden="true" />
+                Clear
+              </Button>
+            </div>
+          ) : null}
 
           {/* Single Filter Row including Active/Closed Tabs */}
           <div data-tour="booking-filters" className="mt-4">

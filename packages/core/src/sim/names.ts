@@ -65,7 +65,7 @@ const INDIAN_NAMES = [
   'Nisha Govind'
 ] as const
 
-const SALES_AGENTS = ['Farah Izzati', 'Kelvin Chow', 'Dinesh Rao', 'Mei Xuan', 'Hafiz Rahman', 'Jocelyn Ng'] as const
+const SALES_AGENTS = ['Nurul Aina', 'Farah Izzati'] as const
 
 export const BANKS = [
   'Sri Muda Bank',

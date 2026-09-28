@@ -131,9 +131,9 @@ decide how simple the product has to be.
 ## Who Uses Mortar
 
 Mortar provides a single operational environment tailored for four distinct
-internal staff personas. Staff switch roles via the header persona menu, which
-persists the active role in browser storage and routes them to their dedicated
-workspace.
+internal staff personas. Staff switch roles from the profile menu in the header,
+which persists the active profile in browser storage and routes them to their
+dedicated workspace.
 
 ### Sales Administration
 
@@ -183,17 +183,17 @@ manage directly. Legal Admin Arvind Raj anchors his workflow on the Legal desk
 
 ### Project Management
 
-Project managers oversee conversion health and cross-department bottlenecks. In
-Mortar, Project Manager anchors their workflow on the Manager desk (`/manager`)
-with full visibility across every department.
+Managers oversee conversion health and cross-department bottlenecks. In Mortar,
+Manager Robert Khoo works from Today (`/chase`) like every other persona, with
+the team view at `/team`.
 
-- **Overview Dashboard:** Tracks overdue cases (at least 50% past expected
-  wait), 30-day expected signings from the forecast engine, and open
-  manager-flagged tasks.
-- **Follow-Up Suggestions:** Reviews timing-based follow-ups and Jev confidence
-  scores for stalled bookings across sales, loan administration, and legal.
-- **Department Escalation:** Flags tasks or requests direct follow-ups from the
-  assigned sales, loan, or legal owner with one click.
+- **Decisions For You:** The Today queue holds the overdue cases not yet
+  followed up, each as an ordinary Today card naming the blocker, who it waits
+  on, and the elapsed overdue days.
+- **Desk Health:** `/team` reports the state of each desk in one table, with a
+  row per staff profile opening the bookings waiting on that person.
+- **Department Escalation:** Opens a case or requests a direct follow-up from
+  the assigned sales, loan, or legal owner with one click.
 - **Company-Wide Scoping:** Maintains unrestricted access to every booking,
   while individual staff desks remain scoped to assigned cases.
 
@@ -204,7 +204,7 @@ with full visibility across every department.
 | Sales Admin | Nurul Aina           | `/chase`    | Works the Today queue of stuck bookings   | Surfaces each stall reason with an actionable next step         |
 | Loan Admin  | Tan Mei Ling         | `/bookings` | Oversees multi-bank mortgage applications | Flags applications undecided past the bank guideline window     |
 | Legal Admin | Arvind Raj           | `/legal`    | Runs the SPA execution queue              | Puts a clock on every case sitting between approval and signing |
-| Manager     | Project Manager      | `/manager`  | Oversees cross-department bottlenecks     | Flags overdue cases and assigns follow-up tasks to staff        |
+| Manager     | Robert Khoo          | `/chase`    | Oversees cross-department bottlenecks     | Puts the overdue cases waiting on a decision in front of them   |
 
 ## What Mortar Does
 

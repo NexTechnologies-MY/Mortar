@@ -49,9 +49,9 @@ describe('SignInPage', () => {
   it('preserves the selected sales identity instead of using the first sales profile', () => {
     renderSignIn()
     fireEvent.keyDown(screen.getByRole('combobox', { name: 'Sign In As' }), { key: 'ArrowDown' })
-    fireEvent.click(screen.getByRole('option', { name: 'Kelvin Chow · Sales Admin' }))
+    fireEvent.click(screen.getByRole('option', { name: 'Farah Izzati · Sales Admin' }))
     fireEvent.click(screen.getByRole('button', { name: 'Sign In As Guest' }))
-    expect(window.localStorage.getItem('mortar.profile')).toBe('sales-kelvin-chow')
+    expect(window.localStorage.getItem('mortar.profile')).toBe('sales-farah-izzati')
     expect(screen.getByTestId('location').textContent).toBe('/chase')
   })
 

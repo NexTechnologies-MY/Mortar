@@ -68,7 +68,7 @@ describe('readSheetFile', { timeout: 30_000 }, () => {
     expect(sheet.rows.map((r) => r.draft?.priceRm)).toEqual([548000, 612800, 575500])
     expect(sheet.rows[1].draft).toMatchObject({
       unit: 'D-09-04',
-      salesOwner: 'Kelvin Chow',
+      salesOwner: 'Farah Izzati',
       legalFirm: 'Kuan & Teh Advocates',
       buyer: { ic: '880726-00-0002', monthlyCommitmentsRm: 1450, propertiesOwned: 1 }
     })

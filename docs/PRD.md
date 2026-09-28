@@ -66,7 +66,7 @@ unrealized revenue.
 
 ## Personas And Jobs To Be Done
 
-Mortar serves three distinct internal operational personas within a Malaysian
+Mortar serves four distinct internal operational personas within a Malaysian
 property development firm. Each persona operates from a dedicated home screen
 tailored to their daily responsibilities, while sharing the same underlying case
 records.
@@ -76,6 +76,7 @@ records.
 | Sales Admin | Nurul Aina    | `/chase`    | Daily stalled booking follow-ups, buyer communication, and task execution       |
 | Loan Admin  | Tan Mei Ling  | `/bookings` | Multi-bank application tracking, document completeness, and banker coordination |
 | Legal Admin | Arvind Raj    | `/legal`    | SPA execution: what sits between an approved loan and a signed agreement        |
+| Manager     | Robert Khoo   | `/chase`    | Cross-department escalation, desk health, and follow-ups awaiting a decision    |
 
 ### Sales Admin
 
@@ -124,6 +125,24 @@ was worth holding.
 been put on the log and no signing has followed it, I want that gap surfaced as
 its own condition, so that a booked appointment is not mistaken for a completed
 one.
+
+### Manager
+
+**Profile:** Robert Khoo oversees conversion health across Sales, Loan
+Administration and Legal. He does not work a queue of his own; he owns the
+cross-department stalls, and he can open every desk and every booking.
+
+**Job To Be Done 1 (Decisions Waiting On Me):** When a case has gone past its
+expected wait and nobody has followed it up, I want it on my own Today with the
+blocker, the desk it is waiting on, and how far overdue it is, so that I can
+open the case or request a follow-up with one click instead of assembling that
+list myself.
+
+**Job To Be Done 2 (Reading The Desks):** When I want to know which desk is
+holding the pipeline, I want one table with a row per staff profile carrying
+what waits on them, what has stalled, what is overdue, the longest wait and the
+value at risk, so that I can see where to push and open the bookings behind any
+row.
 
 ## User Stories Per Screen
 
@@ -266,8 +285,8 @@ using a seeded pseudo-random number generator (`sfc32` or `mulberry32`).
   ICs (`000000-00-0001` format) and phone numbers (`+60 00-000 0001` format)
   must be obviously fake.
 - **AC-1.11:** The system must export `PERSONA_STAFF` defining Sales Admin Nurul
-  Aina (`sales_admin`), Loan Admin Tan Mei Ling (`loan_admin`), and Legal Admin
-  Arvind Raj (`legal`).
+  Aina (`sales_admin`), Loan Admin Tan Mei Ling (`loan_admin`), Legal Admin
+  Arvind Raj (`legal`), and Manager Robert Khoo (`manager`).
 
 ### FR-2: Case Summarization And Stall Detection
 
@@ -542,11 +561,12 @@ whole column, with the row review stating the switch.
 
 The system must enforce persona routing and adhere to visual design standards.
 
-- **AC-14.1:** The active persona must persist in `localStorage` under key
-  `mortar.persona`. Navigating to `/app` or switching persona in the top bar
-  must navigate to the persona's designated home (`/chase` for Sales Admin,
-  `/bookings` for Loan Admin, `/legal` for Legal Admin). A retired identifier
-  `finance` must resolve to `legal-admin`.
+- **AC-14.1:** The active profile must persist in `localStorage` under key
+  `mortar.profile`, with its persona still written under `mortar.persona`.
+  Navigating to `/app` or switching profile in the top bar's profile menu must
+  navigate to the persona's designated home (`/chase` for Sales Admin and
+  Manager, `/bookings` for Loan Admin, `/legal` for Legal Admin). A retired
+  identifier `finance` must resolve to `legal-admin`.
 - **AC-14.2:** Page access must be defined centrally by `PERSONA_PAGES` in
   `frontend/src/lib/persona.tsx` and guarded by `PersonaRoute.tsx`. Each persona
   sees only its permitted pages in navigation:
@@ -556,6 +576,9 @@ The system must enforce persona routing and adhere to visual design standards.
     (`/forecast`), Settings (`/settings`).
   - Legal Admin: Legal (`/legal`, home), Today (`/chase`), Bookings
     (`/bookings`), Forecast (`/forecast`), Settings (`/settings`).
+  - Manager: Today (`/chase`, home), Team (`/team`), Bookings (`/bookings`),
+    Legal (`/legal`), Add Bookings (`/import`), Forecast (`/forecast`), Settings
+    (`/settings`). `/manager` redirects to `/team`.
 - **AC-14.3:** Navigating to an unpermitted route redirects to the persona's
   home route with a brief notice. Case detail (`/bookings/:id`), `/app`, `/faq`,
   and public routes (`/`, `/sign-in`) are never guarded.
@@ -1170,30 +1193,34 @@ benchmarks.
 ## Approved Manager And Ask MortarAI Intake (#60)
 
 This intake supersedes the earlier shared-data persona behavior and forecast
-statistics document presentation.
+statistics document presentation. Three of its points have since been superseded
+again, and are marked below.
 
 - Named Sales Admin profiles see only their own bookings throughout the app.
   Loan and Legal Admin see only current assigned cases or cases with an open
   task assigned to their internal identity. Previous responsibility does not
   retain access after handoff. Manager can open every desk and query every
   booking.
-- Manager opens Suggestions first; Overview is second. Compact case rows stay
-  visible, with evidence folded inside each case and no Forecast Detail in
-  Overview. Rows show unit/buyer, overdue duration and percentage, and current
-  Jev action confidence when available. The percentage is not a sale
-  probability. Suggestions flag cases at or beyond 150% of the expected wait;
-  ten expected days qualifies at day fifteen, five days and 50% overdue.
+- Manager's home is Today (`/chase`), like every other persona, and its queue is
+  "Decisions For You": the overdue cases not yet followed up, drawn as ordinary
+  Today cards naming the blocker, the desk it waits on, and Open Case and
+  Request Follow-Up. The team view replaces the old Manager page at `/team`,
+  with `/manager` redirecting to it. **Superseded:** the Suggestions and
+  Overview tabs, their two lists of the same cases, and the percentages and Jev
+  confidence scores those rows carried; the case list appears once, on Today.
 - Managers can flag bookings and create follow-up tasks for the relevant sales,
   loan or legal recipient, resolved from confirmed responsibility on the server.
   The button identifies that recipient; an external solicitor firm is not an
   internal assignee. Recipients see the manager flag and an in-app notification.
   Existing equivalent open tasks are flagged rather than duplicated.
-- Admin Today leads with assigned tasks, then actionable recommendations that
-  are not already covered by an open task. Recent Bookings is secondary and
-  initially folded; its seven-day window uses creation time, not booking date.
-  Unknown legacy creation times are excluded. Manager's Today route returns to
-  Suggestions so there is one decision queue.
+- Today leads with the work queue and its two filters, with a right-hand rail
+  carrying the two figures, Your Tasks (on a Mine or Everyone switch) and Recent
+  Bookings. On narrow screens the rail stacks above the queue. Recent Bookings
+  uses a seven-day window on creation time, not booking date; unknown legacy
+  creation times are excluded. **Superseded:** Today leading with assigned tasks
+  above the recommendations, with Recent Bookings folded.
 - Sign In As selects a named demo profile with its department and access scope.
+  The header carries a profile menu whose persona card opens the switcher.
 - Project and unit range settings are shared, editable only by Manager, and
   disabled for other profiles. Projects support several blocks; booking entry
   shows remaining units filtered by block, excluding held and draft-selected
@@ -1201,8 +1228,10 @@ statistics document presentation.
 - Type Them In is the first/default Add Bookings tab. Its responsive form keeps
   buyer, block, unit, layout and price readable. Both entry paths reject unit
   conflicts without overwriting an existing booking.
-- Forecast Documents is removed. The forecast answer remains visible and
-  supporting calculations use expandable sections.
+- The forecast documents sit in a stack under the headline figures, opened from
+  the chips above it. Each opens its document, and Ask MortarAI asks about that
+  document. **Superseded:** removal of the forecast documents, reversed by
+  restoring the #54 document stack.
 - Ask MortarAI, formerly Ask Mortar, reads only the selected profile's
   authorized records through server-enforced tools; its scripted fallback reads
   that same scoped snapshot. Profile changes clear chat and pending answers.

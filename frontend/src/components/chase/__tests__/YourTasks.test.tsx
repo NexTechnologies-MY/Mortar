@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
 import { profileFor, type Task } from '@mortar/core'
-import { ChaseTasks } from '@/components/chase/ChaseTasks'
+import { YourTasks } from '@/components/chase/TodayRail'
 
 function LocationEcho() {
   return <div data-testid="location">{useLocation().pathname}</div>
@@ -32,7 +32,18 @@ function renderTasks(tasks: Task[], onComplete: (task: Task) => void, profileId 
       <Routes>
         <Route
           path="/"
-          element={<ChaseTasks tasks={tasks} profile={profile} completing={new Set()} onComplete={onComplete} />}
+          element={
+            <YourTasks
+              mine={tasks}
+              everyone={tasks}
+              mineOnly
+              onMineOnly={vi.fn()}
+              profile={profile}
+              referenceDate="2026-09-18"
+              completing={new Set()}
+              onComplete={onComplete}
+            />
+          }
         />
         <Route path="/bookings/:id" element={<LocationEcho />} />
       </Routes>
@@ -40,7 +51,7 @@ function renderTasks(tasks: Task[], onComplete: (task: Task) => void, profileId 
   )
 }
 
-describe('ChaseTasks', () => {
+describe('YourTasks', () => {
   it('opens the booking case page when a task row title is clicked', () => {
     renderTasks([task()], vi.fn())
 
@@ -55,7 +66,7 @@ describe('ChaseTasks', () => {
     const t = task()
     renderTasks([t], onComplete)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Complete' }))
+    fireEvent.click(screen.getByRole('button', { name: `Complete: ${t.title}` }))
 
     expect(onComplete).toHaveBeenCalledWith(t)
     expect(screen.queryByTestId('location')).toBeNull()
@@ -63,7 +74,7 @@ describe('ChaseTasks', () => {
 
   it('hides completion from a profile who does not own the task', () => {
     renderTasks([task()], vi.fn(), 'sales-farah-izzati')
-    expect(screen.queryByRole('button', { name: 'Complete' })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Complete/ })).toBeNull()
   })
 
   it('puts manager flagged follow-ups before tasks ordered only by due date', () => {
@@ -74,7 +85,7 @@ describe('ChaseTasks', () => {
           id: 'TASK-FLAGGED',
           title: 'Manager Flagged Task',
           dueOn: '2026-09-22',
-          managerFlaggedBy: 'Project Manager'
+          managerFlaggedBy: 'Robert Khoo'
         })
       ],
       vi.fn()
@@ -82,7 +93,22 @@ describe('ChaseTasks', () => {
 
     const rows = screen.getAllByRole('listitem')
     expect(rows[0]?.textContent).toContain('Manager Flagged Task')
-    expect(rows[0]?.textContent).toContain('Manager Follow-up')
+    expect(rows[0]?.textContent).toContain('From Robert Khoo')
     expect(rows[1]?.textContent).toContain('Unflagged Urgent Task')
+  })
+
+  it('marks a task due today, an overdue one, and a later one', () => {
+    renderTasks(
+      [
+        task({ id: 'T-1', title: 'Late', dueOn: '2026-09-17' }),
+        task({ id: 'T-2', title: 'Now', dueOn: '2026-09-18' }),
+        task({ id: 'T-3', title: 'Later', dueOn: '2026-09-25' })
+      ],
+      vi.fn()
+    )
+    const rows = screen.getAllByRole('listitem')
+    expect(rows[0]?.textContent).toContain('Overdue')
+    expect(rows[1]?.textContent).toContain('Due Today')
+    expect(rows[2]?.textContent).toContain('Due 25 Sep')
   })
 })

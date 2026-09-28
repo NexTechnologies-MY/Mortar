@@ -131,7 +131,7 @@ const SAMPLES = [
     rm(9800),
     rm(1450),
     count(1),
-    'Kelvin Chow',
+    'Farah Izzati',
     'Kuan & Teh Advocates'
   ],
   [
@@ -144,7 +144,7 @@ const SAMPLES = [
     rm(6400),
     rm(300),
     count(0),
-    'Dinesh Rao',
+    'Nurul Aina',
     'Devan & Partners'
   ]
 ]

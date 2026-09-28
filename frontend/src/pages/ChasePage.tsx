@@ -1,7 +1,9 @@
 /**
- * Today (`/chase`) — every persona's home desk. The header answers the only
- * question the page opens with: how many bookings are stalled, and how many
- * tasks are due today. Two stat tiles follow, the filter row, then the cards.
+ * Today (`/chase`) — every persona's home desk, the Manager's included. The
+ * lead line answers the only question the page opens with: how many bookings
+ * are stalled, and how many tasks are due today. The work queue comes first;
+ * a rail beside it (stacked above it below 1280px) holds the two figures,
+ * Your Tasks and Recent Bookings, and stays in view while the queue scrolls.
  *
  * Sales Admin coordinates every booking to a signed SPA, so their home opens
  * on the whole chase — every desk, every owner. Loan Admin and Legal Admin open
@@ -15,16 +17,15 @@
  * cached answer appears only where it differs, as a single extra line. Clicking
  * the unit and buyer opens the same side sheet a row opens on the ledger.
  */
-import { useMemo, useState, type Dispatch, type SetStateAction } from 'react'
-import { AlertTriangle, Banknote, BellRing, ListChecks, SearchX, SlidersHorizontal, Users } from 'lucide-react'
-import { PERSONA_STAFF } from '@mortar/core'
+import { useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from 'react'
+import { AlertTriangle, Banknote, BellRing, SearchX, SlidersHorizontal, Users } from 'lucide-react'
+import { teamSummary } from '@mortar/core'
 import type { Booking, CaseSummary, EventKind, NextActionSuggestion, OwnerRole, RiskLevel, Task } from '@mortar/core'
 import { useCases, useSnapshot } from '@/lib/data'
 import { ApiError, fetchNextAction, postTask, updateTask } from '@/lib/api'
 import { notify } from '@/components/ui/toastConfig'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { PageHeaderCard } from '@/components/layout/PageHeaderCard'
-import { StatCard } from '@/components/StatCard'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { InfoTooltip } from '@/components/ui/InfoTooltip'
@@ -34,12 +35,28 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { CaseQuickView } from '@/components/bookings/CaseQuickView'
 import type { BookingRow } from '@/components/bookings/BookingsTable'
 import { ChaseCard } from '@/components/chase/ChaseCard'
-import { ChaseTasks } from '@/components/chase/ChaseTasks'
-import { ManagerCases } from '@/components/manager/ManagerCases'
+import {
+  BusiestDesk,
+  EYEBROW,
+  FollowUpsSent,
+  Rail,
+  RailFigures,
+  RecentBookings,
+  YourTasks
+} from '@/components/chase/TodayRail'
+import {
+  assignedTasksFor,
+  defaultOwnerFilter,
+  dueTodayCount,
+  dueTodayPhrase,
+  headlineFor
+} from '@/components/chase/today'
+import { ManagerCard } from '@/components/manager/ManagerCard'
+import { managerQueue } from '@/components/manager/managerQueue'
 import { NEXT_ACTION_LABELS, ownerName as resolveOwnerName } from '@/components/chase/chase'
-import { OWNER_ROLE_LABELS, formatRm, formatRmCompact } from '@/components/case'
+import { formatRm, formatRmCompact } from '@/components/case'
 import { nextStepFor, stepToTask, type NextStep } from '@/components/case/nextStep'
-import { PERSONA_DESK_ROLE, usePersona, type Persona } from '@/lib/persona'
+import { PERSONA_DESK_ROLE, usePersona } from '@/lib/persona'
 
 const RISK_OPTIONS: { value: 'all' | RiskLevel; label: string }[] = [
   { value: 'all', label: 'All Risk' },
@@ -56,22 +73,15 @@ const OWNER_OPTIONS: { value: 'all' | OwnerRole; label: string }[] = [
   { value: 'legal', label: 'Legal' }
 ]
 
-const QUEUE_PREVIEW = 9
-const RECENT_PREVIEW = 5
+/** The Manager's desks: a follow-up always goes to a person on one of these. */
+const MANAGER_DESK_OPTIONS: { value: 'all' | OwnerRole; label: string }[] = [
+  { value: 'all', label: 'All Desks' },
+  { value: 'sales_admin', label: 'Sales Admin' },
+  { value: 'loan_admin', label: 'Loan Admin' },
+  { value: 'legal', label: 'Legal Admin' }
+]
 
-/**
- * What the page opens on, per persona.
- *
- * Sales Admin coordinates every booking to a signed SPA, so their home is the
- * whole chase: every desk, and every owner's tasks. Loan Admin and Legal Admin
- * open on their own desk and their own work. One place decides all of it, so
- * the owner filter, the header and Open Tasks cannot drift apart.
- */
-function defaultsFor(persona: Persona): { owner: 'all' | OwnerRole; mineOnly: boolean } {
-  return persona === 'sales-admin'
-    ? { owner: 'all', mineOnly: true }
-    : { owner: PERSONA_DESK_ROLE[persona], mineOnly: true }
-}
+const QUEUE_PREVIEW = 8
 
 /** Creation time is optional for old/imported rows. Booking dates are not a substitute. */
 function createdWithinLastSevenDays(createdAt: string | null | undefined, referenceDate: string): boolean {
@@ -95,35 +105,6 @@ function matchesSuggestedTask(task: Task, booking: Booking, step: NextStep): boo
   )
 }
 
-/**
- * The header's count and the first tile, in the words a person would say.
- *
- * All desks count every stalled booking; one desk counts the cases waiting on
- * it. Either way the number is the size of the list on screen, so the sentence
- * and the queue can never describe different work. The tile drops the subject —
- * a tile reads "Need A Move From You" under the figure — and the sentence keeps
- * it, because a sentence with no subject is a headline. Every form reads
- * correctly in the singular: "1 Stalled Booking", "1 Booking Needs A Move From
- * You".
- */
-function headlineFor(ownerFilter: 'all' | OwnerRole, ownDesk: OwnerRole, count: number) {
-  if (ownerFilter === 'all') {
-    return {
-      count,
-      sentence: `${count} ${count === 1 ? 'Stalled Booking' : 'Stalled Bookings'}`,
-      tileLabel: 'Stalled Bookings',
-      tileInfo: 'Every booking that has stopped moving, whichever desk holds it.'
-    }
-  }
-  const from = ownerFilter === ownDesk ? 'You' : OWNER_ROLE_LABELS[ownerFilter]
-  return {
-    count,
-    sentence: `${count} ${count === 1 ? 'Booking Needs' : 'Bookings Need'} A Move From ${from}`,
-    tileLabel: `${count === 1 ? 'Needs' : 'Need'} A Move From ${from}`,
-    tileInfo: 'Stalled bookings whose next step is on this desk.'
-  }
-}
-
 function AdminToday() {
   const { snapshot, loading, error, refresh } = useSnapshot()
   const cases = useCases()
@@ -131,11 +112,9 @@ function AdminToday() {
   // The persona's own desk, as the owner role its staff member works under.
   const deskRole = PERSONA_DESK_ROLE[persona]
   const [riskFilter, setRiskFilter] = useState<'all' | RiskLevel>('all')
-  const [ownerFilter, setOwnerFilter] = useState<'all' | OwnerRole>(() => defaultsFor(persona).owner)
+  const [ownerFilter, setOwnerFilter] = useState<'all' | OwnerRole>(() => defaultOwnerFilter(persona))
   const [queueExpanded, setQueueExpanded] = useState(false)
-  const [recentOpen, setRecentOpen] = useState(false)
-  const [recentExpanded, setRecentExpanded] = useState(false)
-  const [mineOnly, setMineOnly] = useState(() => defaultsFor(persona).mineOnly)
+  const [mineOnly, setMineOnly] = useState(true)
   const [inspecting, setInspecting] = useState<string | null>(null)
 
   /** A changed filter re-folds the queue to its first few cards. */
@@ -195,22 +174,10 @@ function AdminToday() {
 
   const allStalled = useMemo(() => cases.filter((c) => c.stallReasons.length > 0), [cases])
   const openTasks = useMemo(() => (snapshot?.tasks ?? []).filter((t) => t.status === 'open'), [snapshot])
-  const assignedTasks = useMemo(
-    () =>
-      openTasks.filter(
-        (t) =>
-          t.ownerName === profile.name &&
-          (t.ownerRole === deskRole ||
-            (profile.persona === 'sales-admin' && (t.ownerRole === 'sales' || t.ownerRole === 'sales_admin')))
-      ),
-    [openTasks, profile.name, profile.persona, deskRole]
-  )
+  const assignedTasks = useMemo(() => assignedTasksFor(openTasks, profile), [openTasks, profile])
 
   const headline = headlineFor(ownerFilter, deskRole, stalled.length)
-  const dueToday = useMemo(() => {
-    if (!snapshot) return 0
-    return assignedTasks.filter((t) => t.dueOn <= snapshot.meta.referenceDate).length
-  }, [assignedTasks, snapshot])
+  const dueToday = snapshot ? dueTodayCount(assignedTasks, snapshot.meta.referenceDate) : 0
 
   /** Each booking's open task due soonest. */
   const openTaskByBooking = useMemo(() => {
@@ -273,9 +240,6 @@ function AdminToday() {
     }
   }, [inspecting, bookings, cases, confirmedKinds, openTaskByBooking])
 
-  /** Open Tasks defaults to the active persona's own work, with an all-owners widen. */
-  const shownTasks = useMemo(() => (mineOnly ? assignedTasks : openTasks), [openTasks, assignedTasks, mineOnly])
-
   const setFlag = (set: Dispatch<SetStateAction<ReadonlySet<string>>>, id: string, on: boolean) =>
     set((prev) => {
       const next = new Set(prev)
@@ -332,243 +296,355 @@ function AdminToday() {
     }
   }
 
+  const queueCount = recommended.length
+  return (
+    <TodayLayout
+      lead={`${headline.sentence} · ${dueTodayPhrase(dueToday)}`}
+      loading={loading && !snapshot}
+      failed={error && !snapshot ? error : null}
+      refreshFailed={!!error && !!snapshot}
+      onRetry={() => void refresh()}
+      rail={
+        <Rail label="Your day">
+          <RailFigures
+            figures={[
+              {
+                label: headline.label,
+                icon: AlertTriangle,
+                value: String(headline.count),
+                info: headline.info,
+                onClick: () => applyFilters('all', 'all')
+              },
+              {
+                label: 'Value At Risk',
+                icon: Banknote,
+                value: formatRmCompact(valueAtRisk),
+                exact: formatRm(valueAtRisk),
+                info: "Sum of every stalled booking's price.",
+                onClick: () => applyFilters('all', 'all')
+              }
+            ]}
+          />
+          <YourTasks
+            mine={assignedTasks}
+            everyone={openTasks}
+            mineOnly={mineOnly}
+            onMineOnly={setMineOnly}
+            profile={profile}
+            referenceDate={snapshot?.meta.referenceDate ?? ''}
+            completing={completing}
+            onComplete={(t) => void completeTask(t)}
+          />
+          <RecentBookings
+            bookings={recentBookings}
+            canOpen={(id) => cases.some((c) => c.bookingId === id)}
+            onOpen={setInspecting}
+          />
+        </Rail>
+      }
+    >
+      <QueueHeader title="Recommended Actions" info="Stalled Bookings, Most Overdue First.">
+        <FilterSelect
+          label="Filter by risk"
+          icon={SlidersHorizontal}
+          value={riskFilter}
+          options={RISK_OPTIONS}
+          onChange={(v) => applyFilters(v as 'all' | RiskLevel, ownerFilter)}
+        />
+        <FilterSelect
+          label="Filter by owner"
+          icon={Users}
+          value={ownerFilter}
+          options={OWNER_OPTIONS}
+          onChange={(v) => applyFilters(riskFilter, v as 'all' | OwnerRole)}
+        />
+      </QueueHeader>
+
+      {queueCount === 0 ? (
+        <EmptyState
+          icon={BellRing}
+          title="Nothing To Chase"
+          description={
+            allStalled.length === 0
+              ? 'No Live Booking Has A Stall Reason Right Now.'
+              : stalled.length === 0
+                ? 'No Stalled Booking Matches These Filters.'
+                : 'Open Tasks Already Cover These Recommended Actions.'
+          }
+        />
+      ) : (
+        <>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {(queueExpanded ? recommended : recommended.slice(0, QUEUE_PREVIEW)).map((summary) => {
+              const booking = bookings.get(summary.bookingId)
+              const next = steps.get(summary.bookingId)
+              if (!booking || !next) return null
+              return (
+                <ChaseCard
+                  tourTarget={summary === stalled[0] ? 'today-card' : undefined}
+                  actionsTarget={summary === stalled[0] ? 'today-actions' : undefined}
+                  quickViewTarget={summary === stalled[0] ? 'today-quick-view' : undefined}
+                  key={summary.bookingId}
+                  booking={booking}
+                  summary={summary}
+                  step={next.defaultStep}
+                  alternativeStep={next.alternativeStep}
+                  openTask={openTaskByBooking.get(summary.bookingId) ?? null}
+                  suggesting={suggesting.has(summary.bookingId)}
+                  creating={creating.has(summary.bookingId)}
+                  onInspect={() => setInspecting(summary.bookingId)}
+                  onSuggest={() => void suggest(summary.bookingId)}
+                  onCreateTask={(step) => void createTask(summary.bookingId, step)}
+                />
+              )
+            })}
+          </div>
+          <ShowMore total={queueCount} expanded={queueExpanded} onToggle={() => setQueueExpanded((v) => !v)} />
+        </>
+      )}
+
+      {/* The same side sheet a row opens on the ledger, so what happened
+          can be recorded from Today without leaving it. A save in here
+          refreshes the queue behind the sheet, as it does there. */}
+      <CaseQuickView
+        row={quickViewRow}
+        referenceDate={snapshot?.meta.referenceDate ?? ''}
+        suggestion={inspecting ? suggestions.get(inspecting) : undefined}
+        onClose={() => setInspecting(null)}
+        onChanged={refresh}
+      />
+    </TodayLayout>
+  )
+}
+
+/**
+ * The Manager's Today: the same page, with Decisions For You as its queue —
+ * the overdue cases no follow-up covers yet — and a rail of the overdue count,
+ * value at risk across every desk, the follow-ups already sent and a shortcut
+ * to the busiest desk on Team.
+ */
+function ManagerToday() {
+  const { snapshot, loading, error, refresh } = useSnapshot()
+  const cases = useCases()
+  const { profile } = usePersona()
+  const [riskFilter, setRiskFilter] = useState<'all' | RiskLevel>('all')
+  const [deskFilter, setDeskFilter] = useState<'all' | OwnerRole>('all')
+  const [expanded, setExpanded] = useState(false)
+
+  const queue = useMemo(
+    () => (snapshot ? managerQueue(snapshot, cases) : { decisions: [], sent: [] }),
+    [snapshot, cases]
+  )
+  const team = useMemo(() => (snapshot ? teamSummary(snapshot, cases) : null), [snapshot, cases])
+
+  const applyFilters = (risk: 'all' | RiskLevel, desk: 'all' | OwnerRole) => {
+    setRiskFilter(risk)
+    setDeskFilter(desk)
+    setExpanded(false)
+  }
+
+  const decisions = queue.decisions
+    .filter((c) => riskFilter === 'all' || c.summary.risk.level === riskFilter)
+    .filter((c) => deskFilter === 'all' || c.ownerRole === deskFilter)
+  const overdue = queue.decisions.length + queue.sent.length
+  const awaiting = queue.sent.filter((c) => c.followUp?.status === 'open').length
+  const busiest = team?.rows.find((r) => r.overdue > 0 || r.stalled > 0)
+
+  return (
+    <TodayLayout
+      lead={`${overdue} Overdue ${overdue === 1 ? 'Case' : 'Cases'} · ${awaiting} ${
+        awaiting === 1 ? 'Follow-Up' : 'Follow-Ups'
+      } Awaiting Reply`}
+      loading={loading && !snapshot}
+      failed={error && !snapshot ? error : null}
+      refreshFailed={!!error && !!snapshot}
+      onRetry={() => void refresh()}
+      rail={
+        <Rail label="Your overview">
+          <RailFigures
+            figures={[
+              {
+                label: 'Overdue Cases',
+                icon: AlertTriangle,
+                value: String(overdue),
+                tone: overdue > 0 ? 'alert' : 'default',
+                info: 'Open cases waiting at least half as long again as the step should take, across every desk.',
+                onClick: () => applyFilters('all', 'all')
+              },
+              {
+                label: 'Value At Risk',
+                icon: Banknote,
+                value: formatRmCompact(team?.valueAtRisk ?? 0),
+                exact: formatRm(team?.valueAtRisk ?? 0),
+                info: "Sum of every stalled booking's price, across every desk.",
+                to: '/team'
+              }
+            ]}
+          />
+          <FollowUpsSent cases={queue.sent} />
+          {busiest ? <BusiestDesk row={busiest} /> : null}
+        </Rail>
+      }
+    >
+      <QueueHeader
+        title={`Decisions For You · ${decisions.length}`}
+        info="Overdue Cases No Follow-Up Covers Yet, Most Overdue First."
+      >
+        <FilterSelect
+          label="Filter by risk"
+          icon={SlidersHorizontal}
+          value={riskFilter}
+          options={RISK_OPTIONS}
+          onChange={(v) => applyFilters(v as 'all' | RiskLevel, deskFilter)}
+        />
+        <FilterSelect
+          label="Filter by desk"
+          icon={Users}
+          value={deskFilter}
+          options={MANAGER_DESK_OPTIONS}
+          onChange={(v) => applyFilters(riskFilter, v as 'all' | OwnerRole)}
+        />
+      </QueueHeader>
+
+      {decisions.length === 0 ? (
+        <EmptyState
+          icon={BellRing}
+          title="No Decisions Waiting"
+          description={
+            queue.decisions.length === 0
+              ? 'Every Overdue Case Already Has A Follow-Up.'
+              : 'No Overdue Case Matches These Filters.'
+          }
+        />
+      ) : (
+        <>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {(expanded ? decisions : decisions.slice(0, QUEUE_PREVIEW)).map((item, i) => (
+              <ManagerCard
+                key={item.booking.id}
+                tourTarget={i === 0 ? 'today-card' : undefined}
+                item={item}
+                referenceDate={snapshot?.meta.referenceDate ?? ''}
+                managerName={profile.name}
+                onSent={refresh}
+              />
+            ))}
+          </div>
+          <ShowMore total={decisions.length} expanded={expanded} onToggle={() => setExpanded((v) => !v)} />
+        </>
+      )}
+    </TodayLayout>
+  )
+}
+
+/** Title, lead line, then the queue beside its rail (the rail first below 1280px). */
+function TodayLayout({
+  lead,
+  loading,
+  failed,
+  refreshFailed,
+  onRetry,
+  rail,
+  children
+}: {
+  lead: string
+  loading: boolean
+  /** The first load failed: there is nothing to show. */
+  failed: string | null
+  /** A refresh after a save failed: the page stays, with a way to retry. */
+  refreshFailed: boolean
+  onRetry: () => void
+  rail: ReactNode
+  children: ReactNode
+}) {
   return (
     <PageContainer>
       <PageHeaderCard tourTarget="today-header">
         <h1 className="text-[32px] font-semibold leading-[1.16] tracking-[-0.02em] text-foreground">Today</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {assignedTasks.length} Assigned {assignedTasks.length === 1 ? 'Task' : 'Tasks'} · {dueToday} Due Today
-        </p>
+        {!loading && !failed ? <p className="mt-1 text-sm text-muted-foreground">{lead}</p> : null}
       </PageHeaderCard>
 
-      {error && !snapshot ? (
+      {failed ? (
         <div className="mt-4">
-          <EmptyState icon={SearchX} title="Could Not Load Your Bookings" description={error} />
+          <EmptyState icon={SearchX} title="Could Not Load Your Bookings" description={failed} />
           <div className="mt-3 flex justify-center">
-            <Button variant="secondary" onClick={() => void refresh()}>
+            <Button variant="secondary" onClick={onRetry}>
               Try Again
             </Button>
           </div>
         </div>
-      ) : loading && !snapshot ? (
-        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-3">
-          {[0, 1, 2].map((i) => (
+      ) : loading ? (
+        <div className="mt-7 grid grid-cols-1 gap-4 md:grid-cols-2">
+          {[0, 1, 2, 3].map((i) => (
             <Skeleton key={i} className="h-48" />
           ))}
         </div>
       ) : (
         <>
-          {/* A create-task or complete-task save can land fine while the refresh after
-              it fails; the queue stays on screen with a way to retry rather than
-              vanishing behind it. */}
-          {error ? <RefreshErrorBanner onRetry={() => void refresh()} /> : null}
-          <section data-tour="open-tasks" className="mt-4">
-            <div className="flex flex-wrap items-center gap-3">
-              <h2 className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                <ListChecks aria-hidden="true" className="size-4 shrink-0" />
-                Assigned Tasks
-                <InfoTooltip text="Your Open Tasks, Ordered By Due Date." />
-              </h2>
-              <Button type="button" variant="ghost" size="sm" onClick={() => setMineOnly((v) => !v)}>
-                {mineOnly ? 'Show All Owners' : 'Show Mine Only'}
-              </Button>
-            </div>
-            <div className="mt-3">
-              <ChaseTasks
-                tasks={shownTasks}
-                profile={profile}
-                completing={completing}
-                onComplete={(t) => void completeTask(t)}
-                emptyLabel={`No Open Tasks For ${profile?.name ?? PERSONA_STAFF[persona].name}.`}
-              />
-            </div>
-          </section>
-
-          <div className="mt-4 flex flex-wrap gap-3">
-            <StatCard
-              label={headline.tileLabel}
-              icon={AlertTriangle}
-              value={String(headline.count)}
-              info={headline.tileInfo}
-              exact="Click To Clear The Filters"
-              onClick={() => applyFilters('all', 'all')}
-            />
-            <StatCard
-              label="Value At Risk"
-              icon={Banknote}
-              value={formatRmCompact(valueAtRisk)}
-              info="Sum of every stalled booking's price."
-              exact={formatRm(valueAtRisk)}
-            />
-          </div>
-
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <Select value={riskFilter} onValueChange={(v) => applyFilters(v as 'all' | RiskLevel, ownerFilter)}>
-              <SelectTrigger aria-label="Filter by risk" className="w-44">
-                <SlidersHorizontal aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {RISK_OPTIONS.map((o) => (
-                  <SelectItem key={o.value} value={o.value}>
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={ownerFilter} onValueChange={(v) => applyFilters(riskFilter, v as 'all' | OwnerRole)}>
-              <SelectTrigger aria-label="Filter by owner" className="w-44">
-                <Users aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {OWNER_OPTIONS.map((o) => (
-                  <SelectItem key={o.value} value={o.value}>
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {recommended.length === 0 ? (
-            <div className="mt-4">
-              <EmptyState
-                icon={BellRing}
-                title="Nothing To Chase"
-                description={
-                  allStalled.length === 0
-                    ? 'No Live Booking Has A Stall Reason Right Now.'
-                    : stalled.length === 0
-                      ? 'No Stalled Booking Matches These Filters.'
-                      : 'Open Tasks Already Cover These Recommended Actions.'
-                }
-              />
-            </div>
-          ) : (
-            <section className="mt-6">
-              <h2 className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                Recommended Actions
-                <InfoTooltip text="Stalled Bookings, Most Overdue First." />
-              </h2>
-              <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-3">
-                {(queueExpanded ? recommended : recommended.slice(0, QUEUE_PREVIEW)).map((summary) => {
-                  const booking = bookings.get(summary.bookingId)
-                  const next = steps.get(summary.bookingId)
-                  if (!booking || !next) return null
-                  return (
-                    <ChaseCard
-                      tourTarget={summary === stalled[0] ? 'today-card' : undefined}
-                      actionsTarget={summary === stalled[0] ? 'today-actions' : undefined}
-                      quickViewTarget={summary === stalled[0] ? 'today-quick-view' : undefined}
-                      key={summary.bookingId}
-                      booking={booking}
-                      summary={summary}
-                      step={next.defaultStep}
-                      alternativeStep={next.alternativeStep}
-                      openTask={openTaskByBooking.get(summary.bookingId) ?? null}
-                      suggesting={suggesting.has(summary.bookingId)}
-                      creating={creating.has(summary.bookingId)}
-                      onInspect={() => setInspecting(summary.bookingId)}
-                      onSuggest={() => void suggest(summary.bookingId)}
-                      onCreateTask={(step) => void createTask(summary.bookingId, step)}
-                    />
-                  )
-                })}
-              </div>
-              {recommended.length > QUEUE_PREVIEW ? (
-                <div className="mt-4 flex justify-center">
-                  <Button type="button" variant="secondary" onClick={() => setQueueExpanded((v) => !v)}>
-                    {queueExpanded ? 'Show Fewer' : `Show ${recommended.length - QUEUE_PREVIEW} More`}
-                  </Button>
-                </div>
-              ) : null}
+          {refreshFailed ? <RefreshErrorBanner onRetry={onRetry} /> : null}
+          <div className="mt-7 grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+            {rail}
+            <section aria-label="Work queue" className="flex min-w-0 flex-col gap-4 xl:col-start-1 xl:row-start-1">
+              {children}
             </section>
-          )}
-
-          <section className="mt-8" aria-label="Recent bookings">
-            <div className="flex flex-wrap items-center gap-3">
-              <h2 className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                Recent Bookings <span className="font-normal">({recentBookings.length})</span>
-              </h2>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                aria-expanded={recentOpen}
-                onClick={() => setRecentOpen((v) => !v)}
-              >
-                {recentOpen ? 'Hide Recent Bookings' : 'Show Recent Bookings'}
-              </Button>
-              {recentOpen && recentBookings.length > RECENT_PREVIEW ? (
-                <Button type="button" variant="ghost" size="sm" onClick={() => setRecentExpanded((v) => !v)}>
-                  {recentExpanded ? 'Show Fewer' : `Show ${recentBookings.length - RECENT_PREVIEW} More`}
-                </Button>
-              ) : null}
-            </div>
-            {recentOpen ? (
-              recentBookings.length === 0 ? (
-                <p className="mt-3 text-sm text-muted-foreground">No Bookings Created In The Last Seven Days.</p>
-              ) : (
-                <ul className="mt-3 divide-y divide-border rounded-md border border-card-border bg-card px-3">
-                  {(recentExpanded ? recentBookings : recentBookings.slice(0, RECENT_PREVIEW)).map((booking) => (
-                    <li key={booking.id} className="flex items-center justify-between gap-3 py-2.5">
-                      <div className="min-w-0">
-                        <span className="font-mono text-[13px]">{booking.unit}</span>
-                        <span className="ml-2 truncate text-sm">{booking.buyer.name}</span>
-                        <span className="ml-2 font-mono text-xs text-muted-foreground">{booking.id}</span>
-                      </div>
-                      {cases.some((c) => c.bookingId === booking.id) ? (
-                        <Button type="button" variant="secondary" size="sm" onClick={() => setInspecting(booking.id)}>
-                          Open
-                        </Button>
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
-              )
-            ) : null}
-          </section>
-
-          {/* The same side sheet a row opens on the ledger, so what happened
-              can be recorded from Today without leaving it. A save in here
-              refreshes the queue behind the sheet, as it does there. */}
-          <CaseQuickView
-            row={quickViewRow}
-            referenceDate={snapshot?.meta.referenceDate ?? ''}
-            suggestion={inspecting ? suggestions.get(inspecting) : undefined}
-            onClose={() => setInspecting(null)}
-            onChanged={refresh}
-          />
+          </div>
         </>
       )}
     </PageContainer>
   )
 }
 
-/** Manager's daily decisions share the same thresholds and task routing as Suggestions. */
-function ManagerToday() {
-  const { snapshot, loading, error, refresh } = useSnapshot()
+/** The queue's eyebrow title, with its filters on the right. */
+function QueueHeader({ title, info, children }: { title: string; info: string; children: ReactNode }) {
   return (
-    <PageContainer>
-      <PageHeaderCard tourTarget="today-header">
-        <h1 className="text-2xl font-semibold">Today</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          The overdue cases that need your decision, across every department.
-        </p>
-      </PageHeaderCard>
-      {error && <RefreshErrorBanner message={error} onRetry={() => void refresh()} />}
-      {loading && !snapshot ? (
-        <p className="mt-4" role="status">
-          Loading Your Decisions…
-        </p>
-      ) : snapshot ? (
-        <section className="mt-5 space-y-4" aria-label="Manager decisions">
-          <h2 className="text-base font-semibold">Decisions For You</h2>
-          <ManagerCases suggestionsOnly />
-        </section>
-      ) : null}
-    </PageContainer>
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <h2 className={`${EYEBROW} flex items-center gap-1`}>
+        {title}
+        <InfoTooltip text={info} />
+      </h2>
+      <div className="flex flex-wrap gap-2">{children}</div>
+    </div>
+  )
+}
+
+function FilterSelect({
+  label,
+  icon: Icon,
+  value,
+  options,
+  onChange
+}: {
+  label: string
+  icon: typeof Users
+  value: string
+  options: { value: string; label: string }[]
+  onChange: (value: string) => void
+}) {
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger aria-label={label} className="w-44 bg-card">
+        <Icon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((o) => (
+          <SelectItem key={o.value} value={o.value}>
+            {o.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  )
+}
+
+function ShowMore({ total, expanded, onToggle }: { total: number; expanded: boolean; onToggle: () => void }) {
+  if (total <= QUEUE_PREVIEW) return null
+  return (
+    <div className="flex justify-center pt-1">
+      <Button type="button" variant="secondary" onClick={onToggle}>
+        {expanded ? 'Show Fewer' : `Show ${total - QUEUE_PREVIEW} More`}
+      </Button>
+    </div>
   )
 }
 

@@ -42,7 +42,7 @@ binding, and nothing below reopens them.
 | Question        | Decision                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Look            | Flat ledger: white ground, white cards lifted off it by `Elevation/Card`, 6px radius. The one glass surface is the Bookings bulk-action island, which floats at the bottom centre while rows are selected, with a translucent card fill and a backdrop blur. Shared modal overlays and the sidebar scrim use the scrim blur token. No gradient or glow blob in the application; the landing's chromatic panel is the one sanctioned gradient. A card is separated from the page by its shadow, never by a coloured edge strip and never by a grey page band. |
-| Status colour   | Ink is the action colour everywhere, the landing included; the application carries no chromatic accent. The landing panel is the one chromatic surface, scoped to public pages. Six status tones carry every state, each always with a word.                                                                                                                                                                                                                                                                                                                 |
+| Status colour   | Ink is the action colour everywhere, the landing included; the application carries no chromatic accent. The landing panel is the one chromatic surface, scoped to public pages. Six status tones carry every state, each always with a word. The four desk colours, on the role label and the profile avatar only, say whose work it is.                                                                                                                                                                                                                     |
 | Type            | Geist for UI, Geist Mono for unit codes and IDs. Nine text styles. No third family.                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | Density         | Controls 36px, table rows 44px, body 14px. Built for a working day in lists.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | Native controls | None. Select, date picker, menu, tooltip, file drop, checkbox and scrollbar are Mortar components (Radix/shadcn restyled). No alert/confirm/prompt.                                                                                                                                                                                                                                                                                                                                                                                                          |
@@ -117,7 +117,9 @@ title above it stays Title Case.
 Mortar components consume semantic tokens defined in CSS custom properties and
 never write raw hex values. The primitives collection contains 18 calibrated
 values across two neutral families, `ink` and `paper`. There is no chromatic
-family: every colour in the application lives in the six status tones. The one
+family: every state in the application lives in the six status tones. The one
+named exception is the four [Desk Colours](#desk-colours), which say whose work
+something is and appear only on the role label and the profile avatar. The one
 chromatic surface in the product is the landing panel, whose hues are
 public-page tokens listed in [Landing Panel Tokens](#landing-panel-tokens).
 
@@ -198,10 +200,11 @@ Rules that are not obvious from the table:
 - **Ink Is The Action Colour:** Ink — `#0A0A0A` in light mode, `#FAFAFA` in dark
   — carries `--primary`, `--link` and `--ring`, and a grey step of the same ramp
   carries the `--selected` row ground. There is no chromatic accent anywhere in
-  the application: colour appears only in the six status tones. The landing
-  panel is the single chromatic surface and it is scoped to the public pages;
-  ink still carries the button, the link and the focus ring on the landing
-  itself.
+  the application: colour appears only in the six status tones and, as the one
+  named exception, the four [Desk Colours](#desk-colours) on the role label and
+  the profile avatar. The landing panel is the single chromatic surface and it
+  is scoped to the public pages; ink still carries the button, the link and the
+  focus ring on the landing itself.
 - **Red is strictly for danger:** `--status-danger` and `--destructive` are
   restricted to risk conditions and irreversible actions (e.g. cancelling a
   booking).
@@ -223,6 +226,31 @@ Rules that are not obvious from the table:
   with theme modes.
 - **No row tinting or zebra stripes:** Table rows remain neutral white or paper.
   Never tint an entire row with risk colours.
+
+### Desk Colours
+
+Four muted pairs name a desk: who a booking is waiting on, who owns a task, who
+is signed in. They are identity, never state, so they never colour a figure, a
+pill, a row or a chart.
+
+| Desk        | Tokens                      | fg (Light / Dark)     | bg (Light / Dark)     | Icon                | Contrast (Light / Dark) |
+| ----------- | --------------------------- | --------------------- | --------------------- | ------------------- | ----------------------- |
+| Sales Admin | `--desk-sales-fg` / `-bg`   | `#0E5A55` / `#8ED4CB` | `#E6F2F0` / `#0F2421` | `Handshake`         | 7.0:1 / 9.6:1           |
+| Loan Admin  | `--desk-loan-fg` / `-bg`    | `#4B5316` / `#CBD58C` | `#F1F3E2` / `#1F2210` | `Landmark`          | 7.3:1 / 10.4:1          |
+| Legal Admin | `--desk-legal-fg` / `-bg`   | `#4A3990` / `#C5BAF2` | `#EFECFA` / `#1C182F` | `Scale`             | 7.9:1 / 9.6:1           |
+| Manager     | `--desk-manager-fg` / `-bg` | `#782A69` / `#E9B1DD` | `#F8ECF5` / `#2A1426` | `BriefcaseBusiness` | 7.8:1 / 9.6:1           |
+
+Rules that are not obvious from the table:
+
+- **Two Places Only:** The [Role Label](#role-label) and the profile avatar (the
+  [Profile Menu](#profile-menu), Team's rows and the switcher). Nothing else may
+  read the desk tokens.
+- **Always With The Word:** A desk colour travels with its word and its icon,
+  never alone, so the label reads the same to someone who cannot tell the hues
+  apart.
+- **Clear Of The Status Tones:** The four hues were picked away from the six
+  status tones (no red, amber, green or bank blue), so a label is never mistaken
+  for a state.
 
 ### Landing Panel Tokens
 
@@ -276,7 +304,9 @@ Corner rounding is strictly restrained. There are no pill-shaped buttons:
   items, calendar day cells, tooltips.
 - `radius/md` (6px, `--radius-md`): buttons, input fields, select triggers,
   cards, menus, popovers, drop zones, dialog panels.
-- `radius/full` (9999px): scrollbar thumbs, stage tracker bars.
+- `radius/full` (9999px): scrollbar thumbs, stage tracker bars, avatars, the
+  Today Rail's Complete control, and the Forecast Document Stack's previous and
+  next buttons.
 
 Two larger steps exist for the public pages alone. The application shell is
 still restricted to 4px and 6px, and `--radius-lg` and `--radius-xl` resolve to
@@ -338,9 +368,19 @@ Iconography is provided exclusively by Lucide (`lucide-react`).
   9.  `MessageCircle`: Chase card panel banker contact action.
   10. `Clock`: Elapsed duration and stage timing indicators.
   11. `SlidersHorizontal`: Filter select prefix.
-  12. `Users`: Owner select prefix and persona switch.
+  12. `Users`: Owner select prefix.
   13. `Plus`: Create Task and other create actions.
   14. `RefreshCw`: Re-Run Jev and other re-run actions.
+  15. `UserRound`: The profile avatar's silhouette.
+  16. `ChevronsUpDown`: The persona card's switch affordance.
+  17. `LogOut`: Sign Out.
+  18. `Send`: Request Follow-Up on the Manager card.
+  19. `UsersRound`: The Team page in the sidebar.
+  20. `ArrowUpRight`, `Sparkles`: Open Document and Ask MortarAI on a forecast
+      document.
+- **Desk glyphs:** One per desk, set in the desk colour inside the
+  [Role Label](#role-label): `Handshake` (Sales Admin), `Landmark` (Loan Admin),
+  `Scale` (Legal Admin), `BriefcaseBusiness` (Manager).
 - **Stat tile glyphs:** One per tile, set in `--muted-foreground` beside the
   eyebrow, never beside the figure. `AlertTriangle` (stalled), `Flame` (high
   risk), `ListChecks` (tasks), `Banknote` (money).
@@ -748,6 +788,82 @@ control, and none appears. Do not "fix" this by removing the input.
   sort by days overdue descending, then value at risk. Snoozed cards disappear
   until their snooze date arrives.
 
+### Manager Card
+
+- **Purpose:** One overdue case in the Manager's Decisions For You, drawn as a
+  Chase Card so the Manager's Today reads like everyone else's.
+- **Anatomy:** The Chase Card's surface and stack: unit and buyer with an
+  "Overdue N d" danger pill (N counted in the rule's own unit), the blocker
+  sentence, a meta line (stage, last update, price), "Waiting On" with the
+  person's [Role Label](#role-label) and name, then a footer with a ghost Open
+  Case link on the left and a primary Request Follow-Up button on the right.
+- **Rules:** No percentages and no Jev scores: the blocker sentence says why the
+  case is here. A case with a standing follow-up leaves the queue for the rail's
+  Follow-Ups You Sent, so no case shows twice.
+
+### Role Label
+
+- **Purpose:** Says whose desk something belongs to: a card's next step, a
+  task's owner, a Team row, the signed-in persona.
+- **Anatomy:** 20px high, 6px horizontal padding, 4px radius, Label/Small (Geist
+  Medium 12/16). The desk's 12px icon, then its word, on the desk's `bg` with
+  the desk's `fg` (see [Desk Colours](#desk-colours)). It may carry a name after
+  the word ("Loan Admin · Tan Mei Ling").
+- **Rules:** Never a status. Never clickable on its own. Replaces the old muted
+  "· Loan Admin" suffix everywhere a desk is named.
+
+### Profile Menu
+
+- **Purpose:** Who is signed in, a way to switch demo profile, and Sign Out.
+- **Anatomy:**
+  - Trigger: a 32px round avatar at the far right of the top bar, `UserRound` on
+    the desk colour. No name or role in the top bar; the accessible name carries
+    both ("Nurul Aina, Sales Admin. Open profile menu"). While open it gets a
+    2px ink ring with a 2px offset.
+  - Panel: a 336px popover, 12px padding. "Signed In As" eyebrow; the persona
+    card (1px `--border`, 6px radius, 14px padding): a 48px square avatar, the
+    name in Heading/Section and the Role Label, a hairline, then two figures
+    from that persona's Today in 24px Display/Figure. A full-width outline Sign
+    Out closes the panel.
+  - Switcher: the persona card opens a 312px menu of every profile: a 24px
+    avatar, the name, the Role Label without its icon, and a `Check` on the
+    active one.
+- **Rules:** Picking a profile opens that persona's home. Esc closes the
+  switcher, then the panel, returning focus to what opened each.
+
+### Today Rail
+
+- **Purpose:** Keeps the day's summary beside the work queue instead of above
+  it.
+- **Anatomy:** From 1280px, a 320px column beside the queue that stays in view
+  while the queue scrolls (`top: 72px`), scrolling on its own when taller than
+  the window. Below 1280px it stacks above the queue. Cards, 16px apart:
+  - Figures: two figures in one card (a two-up row below 1280px), each an
+    eyebrow with its glyph over a 30/36 figure. Each applies the filter behind
+    its number.
+  - Your Tasks: "Your Tasks · N" with a Mine/Everyone segmented control; rows
+    with a 20px circular Complete control, the task title linking to its case,
+    the booking ID in Mono and one due pill (Overdue, Due Today or the date).
+    Five rows, then Show All.
+  - Recent Bookings: one folded line until opened.
+  - Manager only: Follow-Ups You Sent (case, blocker, recipient, Awaiting Reply
+    or Answered) and a Busiest Desk shortcut to Team.
+- **Rules:** The rail summarises; it never holds the only copy of a list.
+
+### Forecast Document Stack
+
+- **Purpose:** The detail behind the forecast as documents to pick from (#54).
+- **Anatomy:** Chips above the stack pick a document. The front card is 16:9 (up
+  to 768px wide), 32px padding: "Document N Of M" eyebrow, the title in 24/32, a
+  two-line summary, then two text actions (Open Document with `ArrowUpRight`,
+  Ask MortarAI with `Sparkles`). A square monochrome motif fills the card's
+  right side, inverted in dark mode. Two cards peek out beneath. Round outline
+  previous and next buttons sit either side (below it on phones).
+- **Rules:** Click, swipe and the arrow keys move the stack. Open Document reads
+  the document in a bottom sheet; Ask MortarAI opens the assistant with a
+  question about that document already sent. Below 640px the motif is hidden and
+  the card sizes to its text.
+
 ### Drop Zone
 
 - **Purpose:** File upload target for importing booking sheets.
@@ -812,15 +928,18 @@ motion suppressing transitions.
 
 ### Layout
 
-The application shell organizes the internal operations dashboard across three
-staff roles:
+The application shell organizes the internal operations dashboard across four
+personas:
 
 - **Persona routing:** The home route `/app` evaluates the stored persona and
   redirects to that role's primary desk:
   - Sales Admin: `/chase` (stuck bookings and daily follow-up targets).
   - Loan Admin: `/bookings` (unit pipeline and bank submission tracker).
   - Legal Admin: `/legal` (approved loans with no signed SPA, longest wait
-    first). `/forecast` is the shared projection and is homed to no desk.
+    first).
+  - Manager: `/chase` (Today, whose queue is Decisions For You), with `/team`
+    beside it. `/manager` redirects to `/team`. `/forecast` is the shared
+    projection and is homed to no desk.
 - **Navigation sidebar:** Fixed 64px width collapsed, expanding to 200px on
   hover over content. The active persona's primary home view sits at the top of
   the navigation items. Built with a solid `--sidebar` (`#FFFFFF` light /
@@ -833,13 +952,19 @@ staff roles:
   the drawer when tapped. Shared Dialog and Sheet overlays use this same dimming
   and blur treatment.
 - **Top bar:** Fixed 56px height, containing breadcrumbs, with a right-hand
-  cluster running, left to right, notification bell, theme switch, then the
-  persona switch at the far right. Solid `--sidebar` ground with a 1px bottom
-  border in `--border`.
+  cluster running, left to right, Ask MortarAI, notification bell, theme switch,
+  then the [Profile Menu](#profile-menu) avatar at the far right. Solid
+  `--sidebar` ground with a 1px bottom border in `--border`.
 - **Content canvas:** Centered layout capped at a maximum width of 1280px with
   32px horizontal gutters (24px below 1280px). Pages open with a page header
   (Display/Page title + one descriptive line), followed by up to four stat
-  tiles, followed by the active working list or table.
+  tiles, followed by the active working list or table. Today puts its figures in
+  the [Today Rail](#today-rail) instead.
+- **Canvas dot grid:** Behind the cards on every signed-in page, the page ground
+  carries 1px dots every 20px (`.app-canvas`, `--canvas-dot`: ink at 16% in
+  light mode, white at 11% in dark), like a sketchbook page. It is the one
+  sanctioned pattern in the application. Cards, the sidebar, the top bar,
+  popovers and dialogs stay solid over it, and the public pages never use it.
 
 ### Navigation
 
@@ -1053,18 +1178,22 @@ sidebar, or footer.
     Ticks visually on click, but persists no state.
   - Dead button: "Sign In" (permanently disabled, 1px `--input` border,
     background transparent, text `--disabled-foreground`, cursor `not-allowed`).
-  - Persona picker: "Signing In As" selection group offering Sales Admin, Loan
-    Admin, and Legal Admin.
+  - Profile picker: a "Sign In As" select listing the five demo profiles as name
+    and role (Nurul Aina · Sales Admin, Farah Izzati · Sales Admin, Tan Mei Ling
+    · Loan Admin, Arvind Raj · Legal Admin, Robert Khoo · Manager). A muted line
+    under it names the access: "Access to your assigned cases only." or, for the
+    Manager, "Access to all cases."
   - Live button: "Sign In As Guest" (full width, 36px high, corner radius 6px,
-    background `--primary`, text `--primary-foreground`). On click, writes the
-    selected role to `localStorage` key `mortar.persona` and navigates
-    immediately to that persona's home route (`/chase`, `/bookings`, or
-    `/forecast`).
+    background `--primary`, text `--primary-foreground`). On click, stores the
+    selected profile under `localStorage` key `mortar.profile` (its persona
+    still under `mortar.persona`) and navigates immediately to that persona's
+    home route (`/chase` for Sales Admin and Manager, `/bookings` for Loan
+    Admin, `/legal` for Legal Admin).
 - **Right pane (hero plate):** Hidden below 900px. Displays a decorative SVG
   plate featuring Mortar's joinery mark in `--foreground` and
   `--muted-foreground` on a `--selected` ground.
-- **Sign out flow:** A "Sign out" item in the top bar's persona menu navigates
-  to `/sign-in` and clears nothing from `localStorage`. The persona persists so
+- **Sign out flow:** Sign Out in the top bar's profile menu navigates to
+  `/sign-in` and clears nothing from `localStorage`. The profile persists so
   signing back in returns to the previous working desk.
 
 ## Acceptance
@@ -1164,7 +1293,8 @@ and dark modes:
   the page. The page ground is `--background` and the shadow does the
   separating.
 - **Do not** introduce a chromatic accent of any kind outside the six status
-  tones — ink and grey carry every action, link, focus ring and selection — or
+  tones and the four desk colours, which stay on the role label and the profile
+  avatar — ink and grey carry every action, link, focus ring and selection — or
   use red for anything other than severe risk and irreversible destructive
   actions. The landing panel is the single chromatic surface, scoped to public
   pages; its hue tokens may not be referenced from a desk.

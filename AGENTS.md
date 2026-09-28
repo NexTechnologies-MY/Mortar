@@ -19,14 +19,14 @@ profile ID is persisted in `localStorage` under `mortar.profile`, and
 | Sales Admin | `/chase`    |
 | Loan Admin  | `/bookings` |
 | Legal Admin | `/legal`    |
-| Manager     | `/manager`  |
+| Manager     | `/chase`    |
 
 Routes: `/` (landing), `/faq` (FAQ), `/sign-in` (named demo profiles and a
 signed server session, still no password), `/app` (redirects to the active
-persona's home), `/manager` (Manager overview), `/bookings` (list),
-`/bookings/:id` (detail), `/chase` (Today), `/legal` (SPA execution queue),
-`/forecast` (projected signings), `/import` (Add Bookings), `/settings`
-(Settings).
+persona's home), `/team` (Manager-only team view; `/manager` redirects here),
+`/bookings` (list), `/bookings/:id` (detail), `/chase` (Today), `/legal` (SPA
+execution queue), `/forecast` (projected signings), `/import` (Add Bookings),
+`/settings` (Settings).
 
 ## Stack
 

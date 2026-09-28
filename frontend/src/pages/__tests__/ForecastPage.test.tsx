@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildForecastModel, type CaseEvent, type Snapshot } from '@mortar/core'
@@ -67,15 +67,21 @@ describe('ForecastPage', () => {
     current = SNAP
   })
 
-  it('shows the forecast answer and folds detail into disclosures', () => {
+  it('shows the forecast answer, then the documents as a stack with their chips', () => {
     renderPage()
     expect(screen.getByRole('heading', { level: 1, name: 'Forecast' })).toBeTruthy()
     expect(screen.getByText('Expected Signings In 30 Days')).toBeTruthy()
     expect(screen.getByText('Forecast Range')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Where Bookings Leak' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Stage Conversion Rates' })).toBeTruthy()
-    expect(screen.queryByText('Booking Leakage')).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Run It Again' })).toBeNull()
+    expect(screen.getByText('Bookings In The Forecast')).toBeTruthy()
+    const chips = screen.getByRole('group', { name: 'Choose a forecast document' })
+    expect(
+      within(chips)
+        .getAllByRole('button')
+        .map((b) => b.textContent)
+    ).toEqual(['Where Bookings Leak', 'Stage Conversion Rates', 'How Well The Method Backtests', 'Assumptions'])
+    expect(screen.getByRole('group', { name: 'Forecast documents' })).toBeTruthy()
+    expect(screen.queryByRole('tab')).toBeNull()
+    expect(screen.queryByRole('dialog')).toBeNull()
   })
 
   it('folds the rate refresh date into the lead line as one sentence', () => {
@@ -98,17 +104,41 @@ describe('ForecastPage', () => {
     expect(screen.queryByText(/Historical rates updated/)).toBeNull()
   })
 
-  it('opens forecast details in place without a document stack or dialog', () => {
+  it('opens the chosen document in a sheet', () => {
     renderPage()
     fireEvent.click(screen.getByRole('button', { name: 'Stage Conversion Rates' }))
-    expect(screen.getByText('Signed / Resolved')).toBeTruthy()
-    expect(screen.getByText('Likely Range')).toBeTruthy()
-    expect(screen.queryByRole('dialog')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Open Document' }))
+    const sheet = screen.getByRole('dialog')
+    expect(within(sheet).getByText('Signed / Resolved')).toBeTruthy()
+    expect(within(sheet).getByText('Likely Range')).toBeTruthy()
+  })
+
+  it('moves through the stack with its buttons and the arrow keys', () => {
+    renderPage()
+    const stack = screen.getByRole('group', { name: 'Forecast documents' })
+    expect(within(stack).getByText('Document 1 Of 4')).toBeTruthy()
+    fireEvent.click(screen.getAllByRole('button', { name: 'Next document' })[0]!)
+    expect(within(stack).getByText('Document 2 Of 4')).toBeTruthy()
+    fireEvent.keyDown(stack, { key: 'ArrowLeft' })
+    fireEvent.keyDown(stack, { key: 'ArrowLeft' })
+    expect(within(stack).getByText('Document 4 Of 4')).toBeTruthy()
+  })
+
+  it('asks MortarAI about the document on screen', () => {
+    const asked: string[] = []
+    const listen = (event: Event) => asked.push((event as CustomEvent<{ question: string }>).detail.question)
+    window.addEventListener('mortar:ask', listen)
+    renderPage()
+    fireEvent.click(screen.getByRole('button', { name: 'Ask MortarAI' }))
+    window.removeEventListener('mortar:ask', listen)
+    expect(asked).toHaveLength(1)
+    expect(asked[0]).toMatch(/leaking/)
   })
 
   it('keeps the assumptions table folded until its own control is opened', () => {
     renderPage()
     fireEvent.click(screen.getByRole('button', { name: 'Assumptions' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Open Document' }))
     const toggle = screen.getByRole('button', { name: /Show \d+ Assumptions/ })
     expect(toggle.getAttribute('aria-expanded')).toBe('false')
     fireEvent.click(toggle)
@@ -116,18 +146,19 @@ describe('ForecastPage', () => {
     expect(screen.getByText('1 working day')).toBeTruthy()
   })
 
-  it('shows the manager suggestions desk only for the manager profile', () => {
+  it('adds the Seed Spread document for the Manager only', () => {
     const { unmount } = renderPage()
-    expect(screen.queryByRole('tab', { name: 'Suggestions' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Seed Spread' })).toBeNull()
     unmount()
     renderPage('manager')
-    expect(screen.getByRole('tab', { name: 'Suggestions' })).toBeTruthy()
-    expect(screen.getByRole('tab', { name: 'Suggestions' }).getAttribute('aria-selected')).toBe('false')
+    expect(screen.getByRole('button', { name: 'Seed Spread' })).toBeTruthy()
+    expect(screen.queryByRole('tab', { name: 'Suggestions' })).toBeNull()
   })
 
   it('lets the manager run another browser-only seed beside the canonical run', async () => {
     renderPage('manager')
     fireEvent.click(screen.getByRole('button', { name: 'Seed Spread' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Open Document' }))
     fireEvent.click(screen.getByRole('button', { name: 'Run It Again' }))
     expect(await screen.findByText('20260919')).toBeTruthy()
     expect(screen.getByText('This Run')).toBeTruthy()

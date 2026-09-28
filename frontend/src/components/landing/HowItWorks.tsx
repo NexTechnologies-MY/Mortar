@@ -23,8 +23,8 @@ type Moment = {
 const MOMENTS: Moment[] = [
   {
     base: 'chasecard',
-    width: 1216,
-    height: 490,
+    width: 920,
+    height: 620,
     title: 'The Stall Is Named',
     body: 'Every morning the Today list holds the stalled bookings — the blocker in plain words, the financing risk, and Jev’s suggested next action with its owner. Nothing waits to be noticed.',
     alt: 'A stalled booking on Today: unit, buyer, blocker and the suggested next action.',
@@ -32,8 +32,8 @@ const MOMENTS: Moment[] = [
   },
   {
     base: 'message',
-    width: 1612,
-    height: 508,
+    width: 1596,
+    height: 444,
     title: 'A Message Becomes A Proposal',
     body: 'A banker’s message — English, Malay, Chinese or Manglish — is read by Jev into a typed proposal: the event, the document, the owner, with a probability and a confidence. Nothing moves the case until a person confirms it.',
     alt: "A banker's message on a booking's evidence log, with Jev's proposed reading beside it.",
@@ -41,21 +41,21 @@ const MOMENTS: Moment[] = [
   },
   {
     base: 'tasks',
-    width: 1824,
-    height: 462,
+    width: 1868,
+    height: 1210,
     title: 'The Task Has An Owner',
-    body: 'One click turns the suggestion into a task with an owner and a due date. The open tasks group by owner on the same desk, so who chases what is never ambiguous.',
-    alt: 'Open tasks on Today grouped by owner, each with its booking and due date.',
-    caption: 'Open tasks on Today, grouped by owner. Simulated data.'
+    body: 'One click turns the suggestion into a task with an owner and a due date. It lands in that person’s Your Tasks beside the queue, so who chases what is never ambiguous.',
+    alt: 'Your Tasks on Today: each open task with its booking, due date and owner.',
+    caption: 'Your Tasks on Today, every owner shown. Simulated data.'
   },
   {
     base: 'forecast',
     width: 2200,
-    height: 1375,
+    height: 1376,
     title: 'A Number Finance Can Sign Off',
     body: 'The forecast counts expected signings inside 30 days — each live booking weighted by how cases at its stage actually resolved, with the range, the sample sizes and the backtest in the open.',
-    alt: 'The Forecast desk: expected SPA signings within 30 days, the range, stage conversion and the backtest.',
-    caption: 'Expected signings within 30 days, with the backtest. Simulated data.'
+    alt: 'The Forecast desk: expected SPA signings within 30 days, the range, and the stack of forecast documents.',
+    caption: 'Expected signings within 30 days, with the detail as documents. Simulated data.'
   }
 ]
 

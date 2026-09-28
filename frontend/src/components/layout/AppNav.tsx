@@ -6,7 +6,7 @@
 import { Link, useLocation, useParams } from 'react-router-dom'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
-import { PersonaSwitch } from '@/components/layout/PersonaSwitch'
+import { ProfileMenu } from '@/components/layout/ProfileMenu'
 import { NotificationPopover } from '@/components/ui/NotificationPopover'
 import { AskTrigger } from '@/components/brain/AskTrigger'
 import { usePersona } from '@/lib/persona'
@@ -15,7 +15,7 @@ import { ChevronRight, Home, Menu } from 'lucide-react'
 type Crumb = { label: string; to?: string; icon?: React.ReactNode; short?: string }
 
 const ROUTE_LABELS: Record<string, string> = {
-  '/manager': 'Overview',
+  '/team': 'Team',
   '/bookings': 'Bookings',
   '/chase': 'Today',
   '/legal': 'Legal',
@@ -112,7 +112,7 @@ export function AppNav({ minimal, onMenuClick }: { minimal?: boolean; onMenuClic
           <AskTrigger />
           <NotificationPopover />
           <ThemeToggle />
-          <PersonaSwitch />
+          <ProfileMenu />
         </div>
       </div>
     </nav>

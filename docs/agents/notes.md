@@ -77,8 +77,8 @@ clean recording seed.
   profile scoping. Counts and refresh dates travel with the scoped snapshot;
   other profiles' case records do not. The aggregate is persisted in `meta`
   under `forecast_model_v1` and refreshed on the next read after seven days of
-  wall-clock time. Demo-data changes invalidate it. Forecast, Manager overview
-  and both assistant paths use those rates against the selected profile's
+  wall-clock time. Demo-data changes invalidate it. Forecast, the Manager's
+  Today and both assistant paths use those rates against the selected profile's
   current authorized bookings and confirmed events. Missing history is
   unavailable, rather than a supported zero; a measured zero remains valid.
   Historical backtests train only on evidence available at their cutoff.
@@ -154,28 +154,34 @@ clean recording seed.
   provider and routed app by profile id. Ask MortarAI cancels pending streams on
   unmount and its panel is also keyed by profile. Notifications have a separate
   browser storage namespace per profile.
-- **Manager Workflows.** `/manager` opens Suggestions before Overview, with the
-  case list visible and supporting detail folded inside each case. Overview has
-  no Forecast Detail. The same suggestions appear in Forecast. They use
-  confirmed-event clocks and the existing stall-wait assumptions, triggering at
-  or beyond 150% of expected duration (50% overdue), with working days for bank
-  decisions. Flagged department tasks persist and appear in the recipient's
+- **Manager Workflows.** The Manager's home is Today (`/chase`), the same page
+  every other persona gets. Its queue is "Decisions For You": the overdue cases
+  not yet followed up, drawn as ordinary Today cards with an "Overdue N d" pill,
+  the blocker sentence, and Open Case and Request Follow-Up. No percentages and
+  no Jev scores appear anywhere. Overdue means at or beyond 150% of the expected
+  duration, using the existing stall-wait assumptions, with working days for
+  bank decisions. The rail carries Overdue Cases, Value At Risk, Follow-Ups You
+  Sent and a Busiest Desk shortcut. `/team` replaces `/manager` (which
+  redirects), with four figures and a desks table, one row per staff profile,
+  whose row opens Bookings filtered to the bookings waiting on that person.
+  "Waiting On Them" uses the same responsibility rule the server uses for
+  follow-ups. Flagged department tasks persist and appear in the recipient's
   notification bell, refreshed every 30 seconds while visible. The server
   resolves recipients using `currentCaseAssignee` and revalidates before
-  sending; manager flags reuse equivalent ordinary open tasks. Manager Today
-  stays on `/chase` and shows the same compact decision queue as Suggestions,
-  with case details folded. Manager retains Suggestions and Overview at
-  `/manager`. Admin Today leads with assigned tasks, then recommendations and
-  folded recent bookings using `Booking.createdAt`, never `bookingDate`.
+  sending; manager flags reuse equivalent ordinary open tasks. Today leads with
+  the work queue and its two filters, with a right rail carrying the two
+  figures, Your Tasks (a Mine or Everyone switch) and Recent Bookings; below
+  1280px the rail stacks above the queue. Recent Bookings uses
+  `Booking.createdAt`, never `bookingDate`.
+- **Forecast Documents Are Back.** The #54/#61 document stack, removed in #60,
+  sits above the headline figures with its chips, and each card carries Open
+  Document and Ask MortarAI. The Suggestions tab and the Forecast tabs are gone.
 - **Shared Settings And Inventory.** Project settings live on the server and
   only Manager can change them. `blocks` supports multiple blocks while old
   `blockPrefix` records remain readable. The inventory API exposes held
   project/unit pairs across all owners without buyer names or booking ids.
   Manual entry opens first; all nonempty forms must be valid before submission.
   Both manual and sheet imports retain atomic duplicate-unit protection.
-- **Forecast Detail Is Collapsible.** The document stack from #54/#61 was
-  explicitly reversed in #60. Headline figures stay visible; supporting
-  calculations use ordinary expandable sections.
 - **One Next Step Per Case (`nextStep.ts`).**
   `frontend/src/components/case/nextStep.ts` makes the rule-based move from
   `ballInCourt` the default everywhere (Today, Bookings table, and

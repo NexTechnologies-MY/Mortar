@@ -126,6 +126,16 @@
   --color-status-signed-fg: var(--status-signed-fg);
   --color-status-signed-bg: var(--status-signed-bg);
 
+  /* Desk colour tokens — identity, never status; role labels and avatars only */
+  --color-desk-sales-fg: var(--desk-sales-fg);
+  --color-desk-sales-bg: var(--desk-sales-bg);
+  --color-desk-loan-fg: var(--desk-loan-fg);
+  --color-desk-loan-bg: var(--desk-loan-bg);
+  --color-desk-legal-fg: var(--desk-legal-fg);
+  --color-desk-legal-bg: var(--desk-legal-bg);
+  --color-desk-manager-fg: var(--desk-manager-fg);
+  --color-desk-manager-bg: var(--desk-manager-bg);
+
   /* Sidebar colour tokens */
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
@@ -232,6 +242,20 @@
   --status-signed-fg: #ffffff;
   --status-signed-bg: #0a0a0a;
 
+  /* Desk colours — who a label or avatar belongs to, never a state. Muted hues
+     kept clear of the status tones; each always travels with its word. */
+  --desk-sales-fg: #0e5a55;
+  --desk-sales-bg: #e6f2f0;
+  --desk-loan-fg: #4b5316;
+  --desk-loan-bg: #f1f3e2;
+  --desk-legal-fg: #4a3990;
+  --desk-legal-bg: #efecfa;
+  --desk-manager-fg: #782a69;
+  --desk-manager-bg: #f8ecf5;
+
+  /* Canvas — the faint dot grid behind the cards on every signed-in page */
+  --canvas-dot: color-mix(in oklab, var(--color-ink-950) 16%, transparent);
+
   /* Charts — status solids as series colours (signed, info, positive, warning, danger) */
 
   /* Sidebar (aliases — follow the semantic tokens in both modes) */
@@ -334,6 +358,19 @@
   --status-signed: #fafafa;
   --status-signed-fg: #0a0a0a;
   --status-signed-bg: #fafafa;
+
+  /* Desk colours */
+  --desk-sales-fg: #8ed4cb;
+  --desk-sales-bg: #0f2421;
+  --desk-loan-fg: #cbd58c;
+  --desk-loan-bg: #1f2210;
+  --desk-legal-fg: #c5baf2;
+  --desk-legal-bg: #1c182f;
+  --desk-manager-fg: #e9b1dd;
+  --desk-manager-bg: #2a1426;
+
+  /* Canvas */
+  --canvas-dot: color-mix(in oklab, #fafafa 11%, transparent);
 
   /* Scrim */
   --scrim: color-mix(in oklab, black 45%, transparent);
@@ -452,6 +489,16 @@ select:focus-visible,
 
 [data-sidebar]:hover .sidebar-logo-divider::after {
   opacity: 0;
+}
+
+/* CANVAS — the signed-in page ground: a faint dot grid behind the cards, like a
+   sketchbook page. The one sanctioned pattern in the application; cards, the
+   sidebar, the top bar and every overlay stay solid over it. */
+.app-canvas {
+  background-color: var(--background);
+  background-image: radial-gradient(var(--canvas-dot) 1px, transparent 1.25px);
+  background-size: 20px 20px;
+  background-position: 10px 10px;
 }
 
 /* SIDEBAR TRANSITION — defined in CSS so it's never re-set by React renders */

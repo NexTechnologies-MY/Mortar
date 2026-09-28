@@ -6,7 +6,8 @@ import { ThemeProvider } from '@/hooks/useTheme'
 import { AppNav } from '../AppNav'
 
 vi.mock('@/lib/data', () => ({
-  useSnapshot: () => ({ snapshot: null, loading: false, error: null, refresh: vi.fn() })
+  useSnapshot: () => ({ snapshot: null, loading: false, error: null, refresh: vi.fn() }),
+  useCases: () => []
 }))
 
 // jsdom lacks matchMedia, which the theme hook calls for the system theme.

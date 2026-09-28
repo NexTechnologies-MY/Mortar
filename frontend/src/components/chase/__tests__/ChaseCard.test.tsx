@@ -146,8 +146,9 @@ describe('ChaseCard', () => {
     renderCard(null, undefined, summary(), 'sales-admin')
 
     const step = screen.getByText('Call The Banker').parentElement!
-    const desk = within(step).getByText('· Loan Admin')
-    expect(desk.className).toContain('text-muted-foreground')
+    // A role label in the Loan Admin desk colour, never a status tone.
+    const desk = within(step).getByText('Loan Admin')
+    expect(desk.className).toContain('text-desk-loan-fg')
   })
 
   it('leaves the desk out when the step is the reader’s own to make', () => {
@@ -164,7 +165,7 @@ describe('ChaseCard', () => {
     renderCard(null, undefined, caseSummary, 'sales-admin')
 
     const step = screen.getByText('Wait For The Bank').parentElement!
-    expect(within(step).getByText('· Loan Admin')).toBeTruthy()
+    expect(within(step).getByText('Loan Admin')).toBeTruthy()
   })
 
   it('offers Jev’s differing move as one muted line with its own button', () => {

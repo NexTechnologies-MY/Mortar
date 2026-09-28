@@ -85,6 +85,13 @@ describe('generate', () => {
     expect(generate({ ...OPTIONS, seed: 1 })).not.toEqual(data)
   })
 
+  it('splits the canonical seed’s sales ownership between the two sales admins', () => {
+    const owned = (owner: string) =>
+      [...data.bookings, ...STORIES.map((s) => s.booking)].filter((b) => b.salesOwner === owner).length
+    expect(owned('Nurul Aina')).toBe(77)
+    expect(owned('Farah Izzati')).toBe(71)
+  })
+
   it('emits nothing after the reference date', () => {
     for (const e of data.events) {
       expect(dateOf(e.occurredAt) <= REFERENCE_DATE).toBe(true)
