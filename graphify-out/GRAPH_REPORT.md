@@ -2,7 +2,7 @@
 
 ## Corpus Check
 
-- 372 files · ~295,233 words
+- 372 files · ~295,237 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 16 file(s) not represented in the graph (top: (none) 9, .css 3,
   .example 1)
@@ -1594,13 +1594,20 @@ _Questions this graph is uniquely positioned to answer:_
   `TypeSafe Jev Service (model: jev-latest)` and
   `Health `jev` Reports Wiring, Not Last Success`?** _Edge tagged AMBIGUOUS
   (relation: references) - confidence is low._
-- **Why does `Button Component` connect `.prettierrc.json` to
-  `Perch Landing Teardown`, `api.ts`?** _High betweenness centrality (0.055) -
-  this node is a cross-community bridge._
-- **Why does `Mortar (project README)` connect `sim.ts` to
-  `Reviews And Merging`, `react`, `Design Surfaces, Motion, Chrome`, `Persona`,
-  `Keep It Current`, `react`?** _High betweenness centrality (0.044) - this node
-  is a cross-community bridge._
-- **Why does `readBookingSheet` connect `generate.ts` to
-  `A Company Brain For Booking-To-SPA Conversion`, `jev/package.json`?** _High
-  betweenness centrality (0.038) - this node is a cross-community bridge._
+- **Why does `dependencies` connect `WaitingOn.tsx` to `react`,
+  `core/vitest.config.ts`, `WaitingOn.tsx`, `jev/vitest.config.ts`,
+  `ref_node_assert`, `Deploy Prototype Workflow`, `Tailwind Merge Utility`,
+  `Tailwind Animate Plugin`, `Spreadsheet Export Dependency`, `api.ts`,
+  `.scrollIntoView`, `Personas And Jobs To Be Done`, `Draft While Unfinished`,
+  `react`, `ForecastPage.tsx`?** _High betweenness centrality (0.054) - this
+  node is a cross-community bridge._
+- **Why does `react` connect `api.ts` to `WaitingOn.tsx`,
+  `Mortar Demo Recorder`?** _High betweenness centrality (0.054) - this node is
+  a cross-community bridge._
+- **Why does `cn()` connect `api.ts` to `Booking Record Update Forms`,
+  `Chase Task And Next Step Logic`, `BookingsPage.tsx`,
+  `Booking Record Update Forms`, `Chase Task And Next Step Logic`,
+  `Mortar Demo Recorder`, `Page Container And Card Primitives`, `Checklist`,
+  `App Shell And Navigation`, `Booking`, `Conversion Forecasting Accuracy`,
+  `CaseSummary`?** _High betweenness centrality (0.053) - this node is a
+  cross-community bridge._

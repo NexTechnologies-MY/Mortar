@@ -58842,7 +58842,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "server/db/index.ts",
-      "source_location": "L389",
+      "source_location": "L387",
       "weight": 1.0
     },
     {
@@ -58854,7 +58854,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "server/db/index.ts",
-      "source_location": "L390",
+      "source_location": "L388",
       "weight": 1.0
     },
     {
@@ -58866,7 +58866,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "server/db/index.ts",
-      "source_location": "L393",
+      "source_location": "L391",
       "weight": 1.0
     },
     {
@@ -58878,7 +58878,7 @@
       "confidence_score": 1.0,
       "context": "call",
       "source_file": "server/db/index.ts",
-      "source_location": "L417",
+      "source_location": "L415",
       "weight": 1.0
     },
     {
@@ -157076,5 +157076,5 @@
       "source_file": "docs/PRD.md"
     }
   ],
-  "built_at_commit": "663908e74847f7cef4262ebf0a44fe7ac05f4005"
+  "built_at_commit": "473c844026396aeb2ac9de47d2efa6ccf8c2b6fa"
 }
