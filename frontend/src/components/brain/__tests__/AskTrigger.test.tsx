@@ -5,18 +5,22 @@
  * The panel is mocked here because what is under test is the one prop crossing
  * that boundary, not the panel's own grounding (covered in `AskPanel.test.tsx`).
  */
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { useState } from 'react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DEMO_PROFILES } from '@mortar/core'
 import { PersonaProvider, usePersona } from '@/lib/persona'
 
-const mocks = vi.hoisted(() => ({ bookingId: undefined as string | undefined }))
+const mocks = vi.hoisted(() => ({
+  bookingId: undefined as string | undefined,
+  initialQuestion: undefined as string | undefined
+}))
 
 vi.mock('../AskPanel', () => ({
-  AskPanel: (props: { onNavigate: () => void; bookingId?: string }) => {
+  AskPanel: (props: { onNavigate: () => void; bookingId?: string; initialQuestion?: string }) => {
     mocks.bookingId = props.bookingId
+    mocks.initialQuestion = props.initialQuestion
     const [draft, setDraft] = useState('')
     return (
       <div>
@@ -28,6 +32,7 @@ vi.mock('../AskPanel', () => ({
 }))
 
 import { AskTrigger } from '../AskTrigger'
+import { askMortarAI } from '../askBus'
 
 function renderAt(path: string) {
   return render(
@@ -44,6 +49,18 @@ function renderAt(path: string) {
 describe('AskTrigger', () => {
   beforeEach(() => {
     mocks.bookingId = undefined
+    mocks.initialQuestion = undefined
+  })
+
+  it('opens with a question a page sent, and starts empty when opened again from the top bar', () => {
+    renderAt('/chase')
+    act(() => askMortarAI('Where are our bookings leaking?'))
+    expect(screen.getByRole('dialog')).toBeTruthy()
+    expect(mocks.initialQuestion).toBe('Where are our bookings leaking?')
+
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
+    fireEvent.click(screen.getByRole('button', { name: 'Ask MortarAI' }))
+    expect(mocks.initialQuestion).toBeUndefined()
   })
 
   it('passes the open case id to Ask, so a person asking from a case gets that case', () => {
