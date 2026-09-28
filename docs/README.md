@@ -258,7 +258,7 @@ checks pass.
 | State    | React Context for persona; case data from `/api`           |
 | Tests    | Vitest, Testing Library, jsdom                             |
 | Serving  | One Bun process serves `/api/*` and `frontend/dist`        |
-| AI       | Jev (TypeSafe SDK); Ask MortarAI (Gemini via assistant/)   |
+| AI       | MortarAI: Jev (TypeSafe SDK) and Gemini (`assistant/`)     |
 | Hosting  | Render web service, Free instance (Singapore)              |
 
 <p align="right"><a href="#readme-top">&uarr;</a></p>
@@ -306,11 +306,13 @@ JEV_PROXY_MODEL=gemini-3.5-flash-lite   # model to route to (default shown)
 proxy. Use this only with made-up demo data, never with real buyer or booking
 information.
 
-### Ask MortarAI (Gemini Assistant)
+### Ask MortarAI (MortarAI's Gemini Engine)
 
-Ask MortarAI connects to Google's Gemini API over `fetch`
-(`POST /api/assistant`) to answer questions grounded in the live snapshot using
-five read-only tools. Set `GEMINI_API_KEY` in `.env` to enable it:
+MortarAI is Mortar's AI layer: Jev classifies messages, and Gemini answers staff
+questions in Ask MortarAI. Ask MortarAI connects to Google's Gemini API over
+`fetch` (`POST /api/assistant`) to answer questions grounded in the live
+snapshot using five read-only tools. Set `GEMINI_API_KEY` in `.env` to enable
+it:
 
 ```sh
 GEMINI_API_KEY=                         # Google Gemini API key
@@ -379,9 +381,10 @@ AGENTS.md        Agent instructions: stack, routes, rules
 - **Retention.** Transaction records are kept 7 years (Companies Act 2016 s245,
   Income Tax Act 1967 s82); a server holding real data must set
   `MORTAR_DEMO_RESET=off`. See [Data Retention](TRD.md#data-retention).
-- **AI is an assistant, not a decider.** Rules flag risk; Jev structures
-  messages, and Ask MortarAI answers grounded inquiries, but neither ever writes
-  to records or makes credit, loan, or legal decisions.
+- **AI is an assistant, not a decider.** Rules flag risk; MortarAI's Jev engine
+  structures messages and its Gemini engine answers grounded inquiries in Ask
+  MortarAI, but neither ever writes to records or makes credit, loan, or legal
+  decisions.
 
 <p align="right"><a href="#readme-top">&uarr;</a></p>
 

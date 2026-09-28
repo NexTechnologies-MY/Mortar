@@ -347,8 +347,11 @@ Mortar enforces a strict architectural boundary between automated assistance and
 human authority. AI accelerates clerical extraction and semantic retrieval, but
 it is never permitted to make operational or financial decisions.
 
-MortarAI names Mortar's AI layer as a whole: Ask MortarAI, the Gemini assistant
-in the top bar, and Jev, the classifier that reads buyer and banker messages.
+MortarAI is Mortar's AI layer, and it has two engines. Jev (TypeSafe) classifies
+buyer, banker and solicitor messages into typed proposals, suggests next actions
+and ranks playbooks. Gemini (Google) answers staff questions in Ask MortarAI,
+the panel behind the sparkle button in the top bar. Ask MortarAI is where staff
+talk to MortarAI, not a third engine.
 
 ### Division Of Operational Responsibility
 
@@ -357,20 +360,20 @@ in the top bar, and Jev, the classifier that reads buyer and banker messages.
 | Message processing     | Extracts candidate dates, document types, and event classes | Staff confirm identity matches and verify material facts              |
 | Staff knowledge        | Retrieves and ranks vetted playbooks by contextual fit      | Experienced managers author, review, and approve playbook text        |
 | Task coordination      | Proposes next actions and estimates follow-up urgency       | Staff assign responsibilities, execute actions, and manage partners   |
-| Operational inquiries  | Ask MortarAI reads snapshot to answer grounded questions    | Staff evaluate answers; model never writes or decides                 |
+| Operational inquiries  | Gemini reads the snapshot to answer in Ask MortarAI         | Staff evaluate answers; model never writes or decides                 |
 | Buyer sentiment        | Evaluates message response gaps and hesitation patterns     | Sales agents interpret relationship context and buyer motives         |
 | Financing risk         | Computes nothing; deterministic rules evaluate debt ratios  | Credit staff evaluate documentation; commercial banks decide credit   |
 | Legal milestones       | Assembles chronological document trails for case review     | Panel solicitors confirm statutory execution of the agreement         |
 | Conversion forecasting | Explains underlying statistical distributions               | Mathematical algorithms compute rates; Finance owns assumptions       |
 | Inventory management   | Highlights persistent stalls exceeding policy limits        | Authorized executives review evidence and authorize unit cancellation |
 
-### The Ask MortarAI Boundary
+### The Gemini Boundary (Ask MortarAI)
 
-Ask MortarAI operates as an internal conversational assistant for staff,
-accessed via the sparkle button in the top bar. It connects to Google's Gemini
-API (`server/src/assistant/`) and is grounded by five read-only snapshot tools
-(`find_bookings`, `get_case`, `get_my_queue`, `get_forecast_summary`, and
-`search_playbooks`).
+Ask MortarAI is the internal conversational panel where staff put questions to
+MortarAI's Gemini engine, opened with the sparkle button in the top bar. It
+connects to Google's Gemini API (`server/src/assistant/`) and is grounded by
+five read-only snapshot tools (`find_bookings`, `get_case`, `get_my_queue`,
+`get_forecast_summary`, and `search_playbooks`).
 
 The architectural boundary is absolute:
 
@@ -392,9 +395,10 @@ The architectural boundary is absolute:
 
 ### The Jev Boundary And Resilience
 
-Mortar integrates TypeSafe Jev as a server-side classification and scoring
-engine. Jev accepts plain text and returns structured, typed TypeScript objects
-with probabilities and confidence values; it never generates arbitrary text.
+Jev, MortarAI's classification engine, runs TypeSafe server-side for
+classification and scoring. Jev accepts plain text and returns structured, typed
+TypeScript objects with probabilities and confidence values; it never generates
+arbitrary text.
 
 ```text
 Incoming Message ──► Jev Fan-Out Request ──► Structured Output
@@ -553,10 +557,10 @@ partners, Mortar defines clear functional boundaries:
   forfeits buyer deposits, or modifies official legal agreements. Human staff
   must confirm every milestone.
 - **Not A Customer-Facing Chatbot:** Mortar does not engage in customer
-  conversations with external buyers. AI assistance is strictly internal: Jev
-  classifies events and scores structured fields, while Ask MortarAI answers
-  staff inquiries grounded in the live snapshot without making operational
-  decisions.
+  conversations with external buyers. AI assistance is strictly internal:
+  MortarAI's Jev engine classifies events and scores structured fields, and its
+  Gemini engine answers staff inquiries in Ask MortarAI, grounded in the live
+  snapshot, without making operational decisions.
 - **Not A Customer-Facing Portal:** Mortar is an internal operational tool for
   developer personnel. Panel bankers and panel solicitors keep their existing
   channels; their participation does not require a new portal.
