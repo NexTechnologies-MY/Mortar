@@ -5,7 +5,9 @@ import {
   DEFAULT_SEED,
   PLAYBOOKS,
   REFERENCE_DATE,
+  currentCaseAssignee,
   generate,
+  summarizeCases,
   type CaseEvent,
   type Booking,
   type Snapshot
@@ -163,6 +165,35 @@ describe('BookingsPage', () => {
     // Under Loan Admin preset (Bank), 13 of 20 bookings match
     expect(screen.getByText('13 Of 20 Bookings')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Add Booking' })).toBeNull()
+  })
+
+  it('narrows Active to the bookings waiting on the person a Team row names, then clears', async () => {
+    const fixture = await import('@/components/bookings/__tests__/snapshotFixture')
+    const snapshot = fixture.buildSnapshot()
+    const cases = summarizeCases(snapshot, snapshot.meta.referenceDate)
+    const held = snapshot.bookings.filter((b) => {
+      const summary = cases.find((c) => c.bookingId === b.id)
+      return summary && currentCaseAssignee(b, summary)?.id === 'loan-tan-mei-ling'
+    })
+    render(
+      <MemoryRouter initialEntries={['/bookings?waitingOn=loan-tan-mei-ling']}>
+        <PersonaProvider initialPersona="manager">
+          <SnapshotProvider>
+            <Routes>
+              <Route path="/bookings" element={<BookingsPage />} />
+            </Routes>
+          </SnapshotProvider>
+        </PersonaProvider>
+      </MemoryRouter>
+    )
+
+    const clear = await screen.findByRole('button', { name: 'Clear' })
+    expect(screen.getAllByText('Tan Mei Ling').length).toBeGreaterThan(0)
+    expect(held.length).toBeGreaterThan(0)
+    expect(screen.getByText(`${held.length} Of 20 Bookings`)).toBeTruthy()
+
+    fireEvent.click(clear)
+    expect(screen.queryByRole('button', { name: 'Clear' })).toBeNull()
   })
 
   it('searches unit, buyer and booking id and removes the duplicate Add Booking entry point', async () => {

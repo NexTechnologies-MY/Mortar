@@ -72,7 +72,7 @@ const BREADCRUMB: Record<string, RegExp> = {
   '/bookings/:id': new RegExp(`^Booking ${CASE_ID}$`),
   '/import': /^Add Bookings$/,
   '/legal': /^Legal$/,
-  '/manager': /^Overview$/
+  '/team': /^Team$/
 }
 const PAGE_OF: Record<string, string> = {
   '/chase': 'Today',
@@ -80,7 +80,7 @@ const PAGE_OF: Record<string, string> = {
   '/bookings/:id': 'The Case Page',
   '/import': 'Add Bookings',
   '/legal': 'Legal',
-  '/manager': 'Overview'
+  '/team': 'Team'
 }
 
 /** The route a step lands on. `TourProvider` resolves `:id` to the first stalled

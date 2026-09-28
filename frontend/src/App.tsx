@@ -13,7 +13,6 @@ import { AppShell } from './components/layout/AppShell'
 import { PersonaRoute } from './components/layout/PersonaRoute'
 import { SiteShell } from './components/layout/SiteShell'
 import { usePersona } from './lib/persona'
-import { ManagerPage } from './pages/ManagerPage'
 import { BookingsPage } from './pages/BookingsPage'
 import { BookingDetailPage } from './pages/BookingDetailPage'
 import { ChasePage } from './pages/ChasePage'
@@ -25,6 +24,7 @@ import { LandingPage } from './pages/LandingPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { SignInPage } from './pages/SignInPage'
+import { TeamPage } from './pages/TeamPage'
 
 /** Sends `/app` to the current persona's home route. */
 function HomeRedirect() {
@@ -53,7 +53,9 @@ export function App() {
           element={
             <PersonaRoute>
               <Routes>
-                <Route path="/manager" element={<ManagerPage />} />
+                <Route path="/team" element={<TeamPage />} />
+                {/* The old Manager page became Team; keep its links working. */}
+                <Route path="/manager" element={<Navigate to="/team" replace />} />
                 <Route path="/bookings" element={<BookingsPage />} />
                 <Route path="/chase" element={<ChasePage />} />
                 <Route path="/legal" element={<LegalPage />} />

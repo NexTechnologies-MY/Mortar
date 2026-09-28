@@ -25,7 +25,7 @@ export const PERSONAS: PersonaMeta[] = [
   { id: 'sales-admin', label: 'Sales Admin', home: '/chase' },
   { id: 'loan-admin', label: 'Loan Admin', home: '/bookings' },
   { id: 'legal-admin', label: 'Legal Admin', home: '/legal' },
-  { id: 'manager', label: 'Manager', home: '/manager' }
+  { id: 'manager', label: 'Manager', home: '/chase' }
 ]
 
 /** Persona used before the user expresses a preference. */
@@ -52,7 +52,6 @@ export type PersonaPage = {
 }
 
 export const PERSONA_PAGES: readonly PersonaPage[] = [
-  { to: '/manager', label: 'Manager', group: 'primary', personas: ['manager'], home: 'manager' },
   {
     to: '/chase',
     label: 'Today',
@@ -60,6 +59,7 @@ export const PERSONA_PAGES: readonly PersonaPage[] = [
     personas: ['sales-admin', 'loan-admin', 'legal-admin', 'manager'],
     home: 'sales-admin'
   },
+  { to: '/team', label: 'Team', group: 'primary', personas: ['manager'] },
   {
     to: '/bookings',
     label: 'Bookings',
