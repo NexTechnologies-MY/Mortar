@@ -6,3 +6,5 @@ last_query_stamp
 stat-index.json
 .graphify_chunk_*.json
 .needs_update
+# Dated snapshots graphify takes before it overwrites a labelled graph.
+/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/
