@@ -245,9 +245,11 @@ could forget to apply. The consequences are worn openly:
   doomed units are released early, rather than blocking bookings upstream with
   stricter pre-qualification
 
-Every persona lands on the same Today. The desk colours mark the role and the
-avatar, never a status, and the top bar carries only a silhouette avatar, so the
-signed-in profile, its figures and the switcher live in one popover.
+Every persona gets the same Today; Sales Admin and the Manager land on it, and
+Loan Admin and Legal Admin on their own queues. The desk colours mark the role
+and the avatar, never a status, and the top bar carries only a silhouette
+avatar, so the signed-in profile, its figures and the switcher live in one
+popover.
 
 Measured, not estimated.
 
