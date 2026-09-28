@@ -137,50 +137,26 @@ describe.skipIf(!TEST_DATABASE_URL)('database integration', () => {
   })
 
   test('persists weekly rate across stores, refreshes at seven days, and serializes concurrent refreshes', async () => {
-    const diagnosticSql = TEST_DATABASE_URL ? new SQL(TEST_DATABASE_URL) : null
-    const diagnostics = setInterval(async () => {
-      if (!diagnosticSql) return
-      try {
-        const activity = await diagnosticSql`select pid, state, wait_event_type, wait_event, left(query, 200) as query
-          from pg_stat_activity where datname = current_database() and pid <> pg_backend_pid() order by pid`
-        const locks = await diagnosticSql`select pid, granted, classid, objid, objsubid
-          from pg_locks where locktype = 'advisory' and database = (select oid from pg_database where datname = current_database()) order by pid`
-        console.log('[weekly-forecast db diagnostic]', JSON.stringify({ activity, locks }))
-      } catch (error) {
-        console.log('[weekly-forecast db diagnostic error]', String(error))
-      }
-    }, 2_000)
-    try {
-      await sql`delete from meta where key = ${FORECAST_MODEL_KEY}`
-      console.log('[weekly-forecast phase] deleted-model')
-      let wall = Date.now()
-      const clock = () => new Date(wall)
-      const first = await createDatabase(sql, clock).snapshot()
-      console.log('[weekly-forecast phase] initial-snapshot')
-      const persisted = first.forecastModel!
-      expect(persisted).toBeTruthy()
-      wall += FORECAST_MODEL_TTL_MS - 1
-      expect((await createDatabase(sql, clock).snapshot()).forecastModel).toEqual(persisted)
-      console.log('[weekly-forecast phase] before-expiry-recreated-store')
+    await sql`delete from meta where key = ${FORECAST_MODEL_KEY}`
+    let wall = Date.now()
+    const clock = () => new Date(wall)
+    const first = await createDatabase(sql, clock).snapshot()
+    const persisted = first.forecastModel!
+    expect(persisted).toBeTruthy()
+    wall += FORECAST_MODEL_TTL_MS - 1
+    expect((await createDatabase(sql, clock).snapshot()).forecastModel).toEqual(persisted)
 
-      wall += 1
-      const atExpiry = await createDatabase(sql, clock).snapshot()
-      console.log('[weekly-forecast phase] exact-expiry')
-      expect(atExpiry.forecastModel?.refreshedAt).toBe(clock().toISOString())
-      wall += FORECAST_MODEL_TTL_MS
-      console.log('[weekly-forecast phase] concurrent-start')
-      const concurrent = await Promise.all(Array.from({ length: 4 }, () => createDatabase(sql, clock).snapshot()))
-      console.log('[weekly-forecast phase] concurrent-complete')
-      expect(concurrent.every((snapshot) => snapshot.forecastModel?.refreshedAt === clock().toISOString())).toBe(true)
-      expect(
-        concurrent.every(
-          (snapshot) => snapshot.forecastModel?.nextRefreshAt === concurrent[0]?.forecastModel?.nextRefreshAt
-        )
-      ).toBe(true)
-    } finally {
-      clearInterval(diagnostics)
-      if (diagnosticSql) await diagnosticSql.end()
-    }
+    wall += 1
+    const atExpiry = await createDatabase(sql, clock).snapshot()
+    expect(atExpiry.forecastModel?.refreshedAt).toBe(clock().toISOString())
+    wall += FORECAST_MODEL_TTL_MS
+    const concurrent = await Promise.all(Array.from({ length: 4 }, () => createDatabase(sql, clock).snapshot()))
+    expect(concurrent.every((snapshot) => snapshot.forecastModel?.refreshedAt === clock().toISOString())).toBe(true)
+    expect(
+      concurrent.every(
+        (snapshot) => snapshot.forecastModel?.nextRefreshAt === concurrent[0]?.forecastModel?.nextRefreshAt
+      )
+    ).toBe(true)
   })
 
   test('booking evidence remains live between weekly model refreshes', async () => {

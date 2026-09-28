@@ -357,11 +357,9 @@ export function createDatabase(sql: SQL, clock: () => Date = () => new Date()): 
         if (!forecastModelExpired(lockedModel, refreshedAt.getTime())) return lockedModel!
         // Load corpus only once the lock is held; never promote an earlier
         // pre-lock snapshot to the authoritative weekly rate model.
-        const [bookings, applications, events] = await Promise.all([
-          tx`select * from bookings order by id`,
-          tx`select * from loan_applications order by id`,
-          tx`select * from events order by occurred_at, seq`
-        ])
+        const bookings = await tx`select * from bookings order by id`
+        const applications = await tx`select * from loan_applications order by id`
+        const events = await tx`select * from events order by occurred_at, seq`
         const next = new Date(refreshedAt.getTime() + FORECAST_MODEL_TTL_MS)
         const aggregate = buildForecastModel(
           {
