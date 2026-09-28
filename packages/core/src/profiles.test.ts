@@ -3,15 +3,20 @@ import {
   canAccessBooking,
   createAssignmentAccessContext,
   DEFAULT_PROJECT_SETTINGS,
+  DEFAULT_SEED,
   DEMO_PROFILES,
+  generate,
   normalizeProjectSettings,
   PERSONA_STAFF,
   profileFor,
   PROJECT_NAME,
+  REFERENCE_DATE,
   scopeSnapshot,
   STORIES
 } from './index'
 import type { Snapshot } from './types'
+
+const OPTIONS = { seed: DEFAULT_SEED, referenceDate: REFERENCE_DATE, bookings: 140 }
 
 const booking = STORIES[0]!.booking
 const other = { ...booking, id: 'BK-9910', unit: 'A-99-10', salesOwner: 'Farah Izzati' }
@@ -31,24 +36,23 @@ const snapshot: Snapshot = {
 
 describe('staff profiles and snapshot scope', () => {
   test('provides a selectable profile for every fixture sales owner and each shared desk', () => {
-    expect(DEMO_PROFILES.map((profile) => profile.name)).toEqual(
-      expect.arrayContaining([
-        'Nurul Aina',
-        'Farah Izzati',
-        'Kelvin Chow',
-        'Dinesh Rao',
-        'Mei Xuan',
-        'Hafiz Rahman',
-        'Jocelyn Ng',
-        'Tan Mei Ling',
-        'Arvind Raj',
-        'Project Manager'
-      ])
-    )
+    expect(DEMO_PROFILES).toEqual([
+      { id: 'sales-nurul-aina', name: 'Nurul Aina', persona: 'sales-admin' },
+      { id: 'sales-farah-izzati', name: 'Farah Izzati', persona: 'sales-admin' },
+      { id: 'loan-tan-mei-ling', name: 'Tan Mei Ling', persona: 'loan-admin' },
+      { id: 'legal-admin', name: 'Arvind Raj', persona: 'legal-admin' },
+      { id: 'manager', name: 'Robert Khoo', persona: 'manager' }
+    ])
     expect(profileFor('manager')?.persona).toBe('manager')
+    // Every sales owner the sim generates must be somebody the user can sign in as,
+    // otherwise a generated booking would be invisible on the Today list.
+    for (const b of generate(OPTIONS).bookings) {
+      expect(DEMO_PROFILES.some((profile) => profile.name === b.salesOwner)).toBe(true)
+    }
     // The legal desk is a person in the UI, so the profile must carry the same
     // name the sim gives its legal staff member.
     expect(profileFor('legal-admin')?.name).toBe(PERSONA_STAFF['legal-admin'].name)
+    expect(profileFor('manager')?.name).toBe(PERSONA_STAFF['manager'].name)
   })
 
   test('restricts sales to assigned ownership while manager sees all bookings', () => {

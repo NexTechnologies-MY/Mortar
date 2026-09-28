@@ -16,14 +16,9 @@ export function createAssignmentAccessContext(data: CaseData, asOf: IsoDate): As
 export const DEMO_PROFILES: StaffProfile[] = [
   { id: 'sales-nurul-aina', name: 'Nurul Aina', persona: 'sales-admin' },
   { id: 'sales-farah-izzati', name: 'Farah Izzati', persona: 'sales-admin' },
-  { id: 'sales-kelvin-chow', name: 'Kelvin Chow', persona: 'sales-admin' },
-  { id: 'sales-dinesh-rao', name: 'Dinesh Rao', persona: 'sales-admin' },
-  { id: 'sales-mei-xuan', name: 'Mei Xuan', persona: 'sales-admin' },
-  { id: 'sales-hafiz-rahman', name: 'Hafiz Rahman', persona: 'sales-admin' },
-  { id: 'sales-jocelyn-ng', name: 'Jocelyn Ng', persona: 'sales-admin' },
   { id: 'loan-tan-mei-ling', name: 'Tan Mei Ling', persona: 'loan-admin' },
   { id: 'legal-admin', name: 'Arvind Raj', persona: 'legal-admin' },
-  { id: 'manager', name: 'Project Manager', persona: 'manager' }
+  { id: 'manager', name: 'Robert Khoo', persona: 'manager' }
 ]
 
 export function profileFor(id: string): StaffProfile | null {

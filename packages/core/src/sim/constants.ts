@@ -15,5 +15,5 @@ export const PERSONA_STAFF: Record<
   'sales-admin': { name: 'Nurul Aina', role: 'sales_admin' },
   'loan-admin': { name: 'Tan Mei Ling', role: 'loan_admin' },
   'legal-admin': { name: 'Arvind Raj', role: 'legal' },
-  manager: { name: 'Project Manager', role: 'manager' }
+  manager: { name: 'Robert Khoo', role: 'manager' }
 }

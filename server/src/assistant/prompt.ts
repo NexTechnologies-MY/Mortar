@@ -28,7 +28,7 @@ const DESKS: Record<Persona, { label: string; owns: string; moves: string }> = {
     moves: 'asking a solicitor for a date and chasing a signed SPA'
   },
   manager: {
-    label: 'Project Manager',
+    label: 'Manager',
     owns: 'oversight of all project bookings and follow-through across desks',
     moves: 'setting priorities and assigning follow-up to the responsible desk'
   }

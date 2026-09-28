@@ -351,7 +351,7 @@ describe('POST /api/assistant', () => {
     const answer = await runTool(
       'get_forecast_summary',
       {},
-      { id: 'manager', name: 'Project Manager', persona: 'manager' },
+      { id: 'manager', name: 'Robert Khoo', persona: 'manager' },
       db as never
     )
     expect(answer).toContain('Forecast unavailable')

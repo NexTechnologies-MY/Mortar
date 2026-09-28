@@ -26,7 +26,7 @@ function renderImport(held = new Map([[unitKey(DEFAULT_PROJECT_SETTINGS.projectN
 }
 
 function renderAsNamedSalesProfile() {
-  window.localStorage.setItem('mortar.profile', 'sales-kelvin-chow')
+  window.localStorage.setItem('mortar.profile', 'sales-farah-izzati')
   return render(
     <MemoryRouter>
       <PersonaProvider>
@@ -131,8 +131,8 @@ describe('DirectTableImport', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add 1 Booking' }))
     await waitFor(() => expect(importBookings).toHaveBeenCalledOnce())
     const payload = vi.mocked(importBookings).mock.calls[0][0]
-    expect(payload.reportedBy).toBe('Kelvin Chow')
-    expect(payload.bookings[0].salesOwner).toBe('Kelvin Chow')
+    expect(payload.reportedBy).toBe('Farah Izzati')
+    expect(payload.bookings[0].salesOwner).toBe('Farah Izzati')
   })
 
   it('pauses entry and offers a retry when project settings fail to load', async () => {

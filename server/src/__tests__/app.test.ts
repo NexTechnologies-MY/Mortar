@@ -1687,7 +1687,7 @@ describe('createApp', () => {
 
     test('only a manager can create a deduplicated task flag, and the flag records the session identity', async () => {
       const db = new FakeDb()
-      const sales = await call(makeApp(db), '/api/tasks', post({ ...valid, managerFlaggedBy: 'Project Manager' }))
+      const sales = await call(makeApp(db), '/api/tasks', post({ ...valid, managerFlaggedBy: 'Robert Khoo' }))
       expect(sales?.status).toBe(403)
       const app = makeApp(db)
       const ordinary = await call(makeApp(db), '/api/tasks', post(valid))
@@ -1697,7 +1697,7 @@ describe('createApp', () => {
       const second = await call(app, '/api/tasks', request, 'manager')
       expect(first?.status).toBe(200)
       expect(second?.status).toBe(200)
-      expect(((await first?.json()) as Task).managerFlaggedBy).toBe('Project Manager')
+      expect(((await first?.json()) as Task).managerFlaggedBy).toBe('Robert Khoo')
       expect(((await second?.json()) as Task).id).toBe(db.tasks[0]?.id)
       expect(db.tasks[0]?.id).toBe(originalTask.id)
       expect(db.tasks).toHaveLength(1)
@@ -1708,7 +1708,7 @@ describe('createApp', () => {
       const response = await call(
         makeApp(db),
         '/api/tasks',
-        post({ ...valid, ownerRole: 'legal', ownerName: 'Arvind Raj', managerFlaggedBy: 'Project Manager' }),
+        post({ ...valid, ownerRole: 'legal', ownerName: 'Arvind Raj', managerFlaggedBy: 'Robert Khoo' }),
         'manager'
       )
       expect(response?.status).toBe(409)
@@ -1815,11 +1815,11 @@ describe('createApp', () => {
       const res = await call(
         makeApp(db),
         '/api/bookings/import',
-        post({ ...valid, bookings: [{ ...draft, salesOwner: 'Kelvin Chow' }] }),
+        post({ ...valid, bookings: [{ ...draft, salesOwner: 'Farah Izzati' }] }),
         'manager'
       )
       expect(res?.status).toBe(200)
-      expect(db.bookings.find((booking) => booking.id === 'BK-0141')?.salesOwner).toBe('Kelvin Chow')
+      expect(db.bookings.find((booking) => booking.id === 'BK-0141')?.salesOwner).toBe('Farah Izzati')
     })
 
     test('manager imports reject unknown owners before creating an inaccessible booking', async () => {
@@ -1839,7 +1839,7 @@ describe('createApp', () => {
       const res = await call(
         makeApp(db),
         '/api/bookings/import',
-        post({ ...valid, bookings: [{ ...draft, salesOwner: 'Kelvin Chow' }] }),
+        post({ ...valid, bookings: [{ ...draft, salesOwner: 'Farah Izzati' }] }),
         'sales-nurul-aina'
       )
       expect(res?.status).toBe(200)

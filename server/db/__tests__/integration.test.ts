@@ -105,7 +105,7 @@ describe.skipIf(!TEST_DATABASE_URL)('database integration', () => {
       origin: 'staff',
       createdAt: '2026-09-18T12:00:00+08:00',
       completedAt: null,
-      managerFlaggedBy: 'Project Manager'
+      managerFlaggedBy: 'Robert Khoo'
     }
     try {
       const ordinary = await db.insertTask({ ...task, managerFlaggedBy: null })
@@ -115,10 +115,10 @@ describe.skipIf(!TEST_DATABASE_URL)('database integration', () => {
       ])
       expect(first.id).toBe(ordinary.id)
       expect(duplicate.id).toBe(first.id)
-      expect(first.managerFlaggedBy).toBe('Project Manager')
+      expect(first.managerFlaggedBy).toBe('Robert Khoo')
       await db.updateTaskStatus(first.id, 'done', '2026-09-18T13:00:00+08:00')
       expect((await db.snapshot()).tasks.find((candidate) => candidate.id === first.id)?.managerFlaggedBy).toBe(
-        'Project Manager'
+        'Robert Khoo'
       )
       const rejected = await db
         .flagManagerTask({ ...task, ownerRole: 'legal', ownerName: 'Legal Admin' })
