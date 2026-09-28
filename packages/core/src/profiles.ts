@@ -81,6 +81,18 @@ export function canAccessBooking(booking: Booking, profile: StaffProfile, contex
   }
 }
 
+/** Whether a profile may change the status of a task already on an accessible booking. */
+export function canManageTaskStatus(task: Task, profile: StaffProfile): boolean {
+  if (profile.persona === 'manager') return true
+
+  const roleMatches =
+    (profile.persona === 'sales-admin' && (task.ownerRole === 'sales' || task.ownerRole === 'sales_admin')) ||
+    (profile.persona === 'loan-admin' && task.ownerRole === 'loan_admin') ||
+    (profile.persona === 'legal-admin' && task.ownerRole === 'legal')
+
+  return roleMatches && task.ownerName === profile.name
+}
+
 /** Filter all booking-linked snapshot collections as one consistent scope. */
 export function scopeSnapshot(snapshot: Snapshot, profile: StaffProfile): Snapshot {
   const context = createAssignmentAccessContext(

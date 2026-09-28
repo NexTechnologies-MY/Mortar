@@ -12,7 +12,7 @@
  */
 import { afterAll, beforeAll, describe, expect, setDefaultTimeout, test } from 'bun:test'
 import { SQL } from 'bun'
-import { REFERENCE_DATE, summarizeCases, DEFAULT_PROJECT_SETTINGS, PROJECT_NAME } from '@mortar/core'
+import { REFERENCE_DATE, summarizeCases, DEFAULT_PROJECT_SETTINGS, PROJECT_NAME, forecast } from '@mortar/core'
 import type { Booking, BookingDraft, CaseEvent, Message, Task } from '@mortar/core'
 import { QUESTION_VERSION, jevInputHash, nextActionJob, signalsJob } from '@mortar/jev'
 import {
@@ -25,6 +25,7 @@ import {
   createDatabase
 } from '../index'
 import { addDemoData, applySchema, deleteDemoData } from '../reset'
+import { FORECAST_MODEL_TTL_MS, FORECAST_MODEL_KEY } from '../forecast-model'
 
 const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL
 
@@ -133,6 +134,78 @@ describe.skipIf(!TEST_DATABASE_URL)('database integration', () => {
     expect(await db.snapshot()).toBe(first)
     await db.setProjectSettings({ ...DEFAULT_PROJECT_SETTINGS, blocks: ['A', 'B'] })
     expect(await db.snapshot()).not.toBe(first)
+  })
+
+  test('persists weekly rate across stores, refreshes at seven days, and serializes concurrent refreshes', async () => {
+    await sql`delete from meta where key = ${FORECAST_MODEL_KEY}`
+    let wall = Date.now()
+    const clock = () => new Date(wall)
+    const first = await createDatabase(sql, clock).snapshot()
+    const persisted = first.forecastModel!
+    expect(persisted).toBeTruthy()
+    wall += FORECAST_MODEL_TTL_MS - 1
+    expect((await createDatabase(sql, clock).snapshot()).forecastModel).toEqual(persisted)
+
+    wall += 1
+    const atExpiry = await createDatabase(sql, clock).snapshot()
+    expect(atExpiry.forecastModel?.refreshedAt).toBe(clock().toISOString())
+    wall += FORECAST_MODEL_TTL_MS
+    const concurrent = await Promise.all(Array.from({ length: 4 }, () => createDatabase(sql, clock).snapshot()))
+    expect(concurrent.every((snapshot) => snapshot.forecastModel?.refreshedAt === clock().toISOString())).toBe(true)
+    expect(
+      concurrent.every(
+        (snapshot) => snapshot.forecastModel?.nextRefreshAt === concurrent[0]?.forecastModel?.nextRefreshAt
+      )
+    ).toBe(true)
+  })
+
+  test('booking evidence remains live between weekly model refreshes', async () => {
+    const first = await createDatabase(sql).snapshot()
+    const target = forecast(first, first.meta.referenceDate, { model: first.forecastModel }).perBooking[0]
+    expect(target).toBeTruthy()
+    const booking = first.bookings.find((candidate) => candidate.id === target!.bookingId)!
+    const eventId = 'W2TEST-FORECAST-LIVE-EVENT'
+    try {
+      await db.insertEvent({
+        id: eventId,
+        bookingId: booking.id,
+        applicationId: null,
+        track: 'legal',
+        kind: 'spa_signed',
+        occurredAt: `${booking.bookingDate}T12:00:00+08:00`,
+        recordedAt: `${first.meta.referenceDate}T12:00:00+08:00`,
+        reportedBy: 'Test',
+        verifiedBy: 'Test',
+        status: 'confirmed',
+        source: 'staff',
+        messageId: null,
+        document: null,
+        note: null
+      })
+      const after = await createDatabase(sql).snapshot()
+      expect(after.forecastModel).toEqual(first.forecastModel)
+      expect(
+        forecast(after, after.meta.referenceDate, { model: after.forecastModel }).perBooking.some(
+          (row) => row.bookingId === booking.id
+        )
+      ).toBe(false)
+    } finally {
+      await sql`delete from events where id = ${eventId}`
+      db.forgetSnapshot()
+    }
+  })
+
+  test('demo add and delete invalidate the persisted weekly aggregate', async () => {
+    await createDatabase(sql).snapshot()
+    const priorModel = await sql`select value from meta where key = ${FORECAST_MODEL_KEY}`
+    expect(priorModel).toHaveLength(1)
+    await deleteDemoData(sql)
+    db.forgetSnapshot()
+    expect(await sql`select key from meta where key = ${FORECAST_MODEL_KEY}`).toHaveLength(0)
+    await sql`insert into meta (key, value) values (${FORECAST_MODEL_KEY}, ${JSON.stringify(priorModel[0]!.value)}::jsonb)`
+    await addDemoData(sql)
+    db.forgetSnapshot()
+    expect(await sql`select key from meta where key = ${FORECAST_MODEL_KEY}`).toHaveLength(0)
   })
 
   test('Add Demo Data does not create duplicate seed rows', async () => {

@@ -10,13 +10,14 @@ import type {
   Dataset,
   FinancingRisk,
   Forecast,
+  ForecastModel,
   IsoDate,
   IsoDateTime,
   Task
 } from './types'
 import { DEFAULT_ASSUMPTIONS } from './sim/assumptions'
 import { summarizeCases as summarize } from './sim/cases'
-import { forecast as runForecast, backtest as runBacktest } from './sim/forecast'
+import { forecast as runForecast, backtest as runBacktest, buildForecastModel } from './sim/forecast'
 import { generateDataset } from './sim/generate'
 import { financingRiskFor } from './sim/risk'
 
@@ -24,8 +25,10 @@ export { DEFAULT_SEED, REFERENCE_DATE, HORIZON_DAYS, PERSONA_STAFF } from './sim
 export { PROJECT_NAME } from './sim/names'
 export { leakage } from './sim/leakage'
 export { byOccurred } from './sim/cases'
+export { FUNNEL_STAGES } from './sim/cases'
 export type { Leakage, LeakageCause, RecoveryEstimate } from './sim/leakage'
 export { DEFAULT_ASSUMPTIONS }
+export { buildForecastModel }
 
 export interface GeneratorOptions {
   seed: number
@@ -67,7 +70,11 @@ export function financingRisk(booking: Booking, assumptions: Assumption[] = DEFA
 }
 
 /** Expected signings within the horizon for live bookings, with a range from repeated draws. */
-export function forecast(data: Dataset, asOf: IsoDate, options: { draws?: number; seed?: number } = {}): Forecast {
+export function forecast(
+  data: Dataset,
+  asOf: IsoDate,
+  options: { draws?: number; seed?: number; model?: ForecastModel } = {}
+): Forecast {
   return runForecast(data, asOf, options)
 }
 

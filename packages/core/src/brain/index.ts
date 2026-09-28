@@ -149,7 +149,11 @@ export function buildAskContext(snapshot: Snapshot): AskContext {
     },
     snapshot.meta.referenceDate
   )
-  return { snapshot, cases, forecast: forecast(snapshot, snapshot.meta.referenceDate) }
+  return {
+    snapshot,
+    cases,
+    forecast: forecast(snapshot, snapshot.meta.referenceDate, { model: snapshot.forecastModel })
+  }
 }
 
 /** The question a query resolves to, or `null` when nothing is a confident fit. */

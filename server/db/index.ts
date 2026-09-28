@@ -9,6 +9,7 @@ import { cacheSnapshot, forgetOnWrite } from './snapshot-cache'
 import {
   REFERENCE_DATE,
   summarizeCases,
+  buildForecastModel,
   unitKey,
   canAccessBooking,
   createAssignmentAccessContext,
@@ -28,6 +29,7 @@ import type {
   Message,
   Playbook,
   Snapshot,
+  ForecastModel,
   Task,
   ProjectSettings,
   StaffProfile
@@ -47,6 +49,7 @@ import {
   type JevAnswerRow,
   type StoredMeta
 } from './mappers'
+import { FORECAST_MODEL_KEY, FORECAST_MODEL_TTL_MS, forecastModelExpired, isForecastModel } from './forecast-model'
 
 export interface Database {
   /** `select 1`; throws when the connection is down. */
@@ -285,7 +288,7 @@ const SNAPSHOT_READS: ReadonlySet<keyof Database> = new Set<keyof Database>([
   'jevGet'
 ])
 
-export function createDatabase(sql: SQL): Database {
+export function createDatabase(sql: SQL, clock: () => Date = () => new Date()): Database {
   const meta = async () => rowsToMeta(await sql`select key, value from meta`)
 
   const caseData = async (): Promise<CaseData> => {
@@ -313,6 +316,59 @@ export function createDatabase(sql: SQL): Database {
     return rows.map(rowToJevAnswer)
   }
 
+  const modelFromMeta = async (): Promise<ForecastModel | null> => {
+    const rows = await sql`select value from meta where key = ${FORECAST_MODEL_KEY}`
+    if (!rows.length) return null
+    try {
+      const parsed = jsonb<unknown>(rows[0]!.value)
+      return isForecastModel(parsed) ? parsed : null
+    } catch {
+      return null
+    }
+  }
+
+  const forecastModel = async (referenceDate: string): Promise<ForecastModel> => {
+    const now = clock()
+    const cachedModel = await modelFromMeta()
+    if (!forecastModelExpired(cachedModel, now.getTime())) return cachedModel!
+    return sql.begin(async (tx) => {
+      // Share the demo reset lock so an empty/full history refresh cannot race
+      // addDemoData or deleteDemoData and persist a model from the old corpus.
+      await tx`select pg_advisory_xact_lock(20_260_917)`
+      const lockedRows = await tx`select value from meta where key = ${FORECAST_MODEL_KEY}`
+      let lockedModel: ForecastModel | null = null
+      if (lockedRows.length) {
+        try {
+          const parsed = jsonb<unknown>(lockedRows[0]!.value)
+          lockedModel = isForecastModel(parsed) ? parsed : null
+        } catch {
+          lockedModel = null
+        }
+      }
+      const refreshedAt = clock()
+      if (!forecastModelExpired(lockedModel, refreshedAt.getTime())) return lockedModel!
+      const [bookings, applications, events] = await Promise.all([
+        tx`select * from bookings order by id`,
+        tx`select * from loan_applications order by id`,
+        tx`select * from events order by occurred_at, seq`
+      ])
+      const next = new Date(refreshedAt.getTime() + FORECAST_MODEL_TTL_MS)
+      const aggregate = buildForecastModel(
+        {
+          bookings: bookings.map(rowToBooking),
+          applications: applications.map(rowToApplication),
+          events: events.map(rowToEvent)
+        },
+        referenceDate,
+        refreshedAt.toISOString(),
+        next.toISOString()
+      )
+      await tx`insert into meta (key, value) values (${FORECAST_MODEL_KEY}, ${JSON.stringify(aggregate)}::jsonb)
+        on conflict (key) do update set value = excluded.value`
+      return aggregate
+    })
+  }
+
   const assembleSnapshot = async (): Promise<Snapshot> => {
     const [metaRow, data, messageRows, playbooks, answers] = await Promise.all([
       meta(),
@@ -321,6 +377,7 @@ export function createDatabase(sql: SQL): Database {
       sql`select * from playbooks order by id`,
       latestJevAnswers()
     ])
+    const model = await forecastModel(metaRow?.referenceDate ?? REFERENCE_DATE)
     const messages = messageRows.map(rowToMessage)
 
     // One summarizeCases pass for the whole snapshot, then compare each
@@ -364,6 +421,7 @@ export function createDatabase(sql: SQL): Database {
       ...data,
       bookings: data.bookings.map(withMaskedContact),
       meta: metaRow ?? { seed: 0, referenceDate: REFERENCE_DATE, resetAt: null },
+      forecastModel: model,
       messages,
       playbooks: playbooks.map(rowToPlaybook),
       extractions,

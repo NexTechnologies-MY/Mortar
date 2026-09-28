@@ -72,6 +72,26 @@ clean recording seed.
 
 ## Gotchas
 
+- **Forecast Rates Refresh Weekly; Booking State Stays Live (#79).** The server
+  builds a case-free aggregate from the full resolved booking history before
+  profile scoping. Counts and refresh dates travel with the scoped snapshot;
+  other profiles' case records do not. The aggregate is persisted in `meta`
+  under `forecast_model_v1` and refreshed on the next read after seven days of
+  wall-clock time. Demo-data changes invalidate it. Forecast, Manager overview
+  and both assistant paths use those rates against the selected profile's
+  current authorized bookings and confirmed events. Missing history is
+  unavailable, rather than a supported zero; a measured zero remains valid.
+  Historical backtests train only on evidence available at their cutoff.
+- **Booking Imports Require Sales Admin Or Manager (#80).** The import API
+  checks the signed session's profile before processing or writing a batch. Loan
+  and Legal Admin receive 403 even when a request body claims another role;
+  hiding the Add Bookings page is not the authorization boundary.
+- **Task Status Changes Require The Named Assignee Or Manager (#81).**
+  `canManageTaskStatus` requires the exact owner name and matching department,
+  with a Manager override. The task's booking must still be accessible.
+  Completion, cancellation and reopening use the same server check. Today and
+  the case task panel show completion controls only to permitted profiles.
+
 - **`/` Is The Landing; `/app` Is Persona-Relative.** `/app` sends the active
   persona to their home. `/`, `/faq` and `/sign-in` sit outside `AppShell`.
   `PublicShell` wraps `/` and `/faq` only, and it is the one thing that mounts
