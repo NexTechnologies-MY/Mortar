@@ -963,8 +963,8 @@ personas:
   tiles, followed by the active working list or table. Today puts its figures in
   the [Today Rail](#today-rail) instead.
 - **Canvas dot grid:** Behind the cards on every signed-in page, the page ground
-  carries 1px dots every 20px (`.app-canvas`, `--canvas-dot`: ink at 16% in
-  light mode, white at 11% in dark), like a sketchbook page. It is the one
+  carries 1px dots every 20px (`.app-canvas`, `--canvas-dot`: ink at 12% in
+  light mode, white at 8% in dark), like a sketchbook page. It is the one
   sanctioned pattern in the application. Cards, the sidebar, the top bar,
   popovers and dialogs stay solid over it, and the public pages never use it.
 

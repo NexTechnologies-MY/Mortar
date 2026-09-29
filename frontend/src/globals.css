@@ -254,7 +254,7 @@
   --desk-manager-bg: #f8ecf5;
 
   /* Canvas — the faint dot grid behind the cards on every signed-in page */
-  --canvas-dot: color-mix(in oklab, var(--color-ink-950) 16%, transparent);
+  --canvas-dot: color-mix(in oklab, var(--color-ink-950) 12%, transparent);
 
   /* Charts — status solids as series colours (signed, info, positive, warning, danger) */
 
@@ -370,7 +370,7 @@
   --desk-manager-bg: #2a1426;
 
   /* Canvas */
-  --canvas-dot: color-mix(in oklab, #fafafa 11%, transparent);
+  --canvas-dot: color-mix(in oklab, #fafafa 8%, transparent);
 
   /* Scrim */
   --scrim: color-mix(in oklab, black 45%, transparent);
