@@ -3,7 +3,7 @@
  * (#54). The chips above the stack pick a document; the front card shows its
  * title and summary beside a square motif, and the cards behind it peek out
  * underneath. Previous and next buttons, the arrow keys and a swipe move
- * through the stack. Open Document reads it in a sheet; Ask MortarAI opens the
+ * through the stack. Open Document reads it in a centred dialog; Ask MortarAI opens the
  * assistant with a question about it already sent.
  */
 
@@ -29,6 +29,7 @@ const SWIPE = 48
 export function ForecastDocuments({ documents }: { documents: ForecastDocument[] }) {
   const [activeIndex, setActiveIndex] = useState(0)
   const [open, setOpen] = useState(false)
+  const openDocumentRef = useRef<HTMLButtonElement>(null)
   const pointerStart = useRef<number | null>(null)
   const index = Math.min(activeIndex, documents.length - 1)
   const active = documents[index]
@@ -124,7 +125,7 @@ export function ForecastDocuments({ documents }: { documents: ForecastDocument[]
           <article
             aria-roledescription="slide"
             aria-label={`Document ${index + 1} of ${documents.length}: ${active.title}`}
-            className="relative z-10 flex flex-col gap-6 rounded-md border border-card-border bg-card p-6 shadow-card sm:aspect-video sm:flex-row sm:items-stretch sm:p-8"
+            className="relative z-10 flex flex-col gap-6 rounded-md border border-card-border bg-card p-6 shadow-card sm:aspect-[2/1] sm:flex-row sm:items-stretch sm:p-8"
           >
             <div className="flex min-w-0 flex-1 flex-col justify-between gap-6">
               <span className="text-[11px] font-semibold uppercase leading-[14px] tracking-[0.08em] text-muted-foreground">
@@ -138,6 +139,7 @@ export function ForecastDocuments({ documents }: { documents: ForecastDocument[]
               </span>
               <span className="flex flex-wrap items-center gap-x-5 gap-y-2">
                 <button
+                  ref={openDocumentRef}
                   type="button"
                   onClick={() => setOpen(true)}
                   className="flex items-center gap-1 text-sm font-medium text-foreground underline-offset-4 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
@@ -171,7 +173,13 @@ export function ForecastDocuments({ documents }: { documents: ForecastDocument[]
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="top-auto bottom-0 left-1/2 max-h-[min(90vh,900px)] w-[min(860px,calc(100vw-2rem))] max-w-none translate-y-0 rounded-t-md rounded-b-none border-b-0 bg-card p-0 shadow-[var(--shadow-overlay)] data-[state=open]:slide-in-from-bottom-full data-[state=closed]:slide-out-to-bottom-full sm:bottom-6 sm:rounded-md sm:border-b sm:translate-y-0">
+        <DialogContent
+          onCloseAutoFocus={(event) => {
+            event.preventDefault()
+            openDocumentRef.current?.focus()
+          }}
+          className="flex max-h-[min(90vh,900px)] w-[min(860px,calc(100vw-2rem))] max-w-none flex-col gap-0 overflow-hidden rounded-md bg-card p-0 shadow-[var(--shadow-overlay)]"
+        >
           <div className="border-b border-border px-8 pb-5 pt-8 sm:px-12 sm:pt-10">
             <DialogHeader>
               <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
@@ -181,7 +189,7 @@ export function ForecastDocuments({ documents }: { documents: ForecastDocument[]
               <DialogDescription>{active.summary}</DialogDescription>
             </DialogHeader>
           </div>
-          <div className="max-h-[calc(min(90vh,900px)-150px)] space-y-4 overflow-y-auto px-6 py-6 sm:px-12 sm:py-8">
+          <div className="min-h-0 max-h-[calc(min(90vh,900px)-150px)] space-y-4 overflow-y-auto px-6 py-6 sm:px-12 sm:py-8">
             {active.content}
           </div>
         </DialogContent>

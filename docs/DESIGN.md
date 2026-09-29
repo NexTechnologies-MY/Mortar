@@ -853,16 +853,18 @@ control, and none appears. Do not "fix" this by removing the input.
 ### Forecast Document Stack
 
 - **Purpose:** The detail behind the forecast as documents to pick from (#54).
-- **Anatomy:** Chips above the stack pick a document. The front card is 16:9 (up
+- **Anatomy:** Chips above the stack pick a document. The front card is 2:1 (up
   to 768px wide), 32px padding: "Document N Of M" eyebrow, the title in 24/32, a
   two-line summary, then two text actions (Open Document with `ArrowUpRight`,
   Ask MortarAI with `Sparkles`). A square monochrome motif fills the card's
   right side, inverted in dark mode. Two cards peek out beneath. Round outline
   previous and next buttons sit either side (below it on phones).
 - **Rules:** Click, swipe and the arrow keys move the stack. Open Document reads
-  the document in a bottom sheet; Ask MortarAI opens the assistant with a
-  question about that document already sent. Below 640px the motif is hidden and
-  the card sizes to its text.
+  the document in a centred Dialog, with long content scrolling inside it;
+  Escape and the close button dismiss it, returning focus to Open Document. Ask
+  MortarAI opens the assistant with a question about that document already sent.
+  Below 640px the motif is hidden, the card sizes to its text, and the controls
+  stay below it as before.
 
 ### Drop Zone
 
