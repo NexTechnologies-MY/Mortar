@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { Assumption, Booking, CaseEvent, Dataset, LoanApplication } from './types'
+import type { Assumption, Booking, CaseEvent, Dataset, LoanApplication, Snapshot } from './types'
 import {
   backtest,
   DEFAULT_ASSUMPTIONS,
@@ -14,10 +14,13 @@ import {
 } from './sim'
 import { deriveCase, STAGE_RANK } from './sim/cases'
 import { ballInCourt } from './ball'
+import { managerSuggestions } from './manager'
+import { currentCaseAssignee } from './profiles'
 import { STORIES } from './fixtures/stories'
 import { wilsonInterval } from './sim/forecast'
 import { monthlyInstalment } from './sim/risk'
 import { addDays, dateOf, diffDays } from './sim/dates'
+import { teamSummary } from './team'
 
 const OPTIONS = { seed: DEFAULT_SEED, referenceDate: REFERENCE_DATE, bookings: 140 }
 const emptyData: Dataset = { bookings: [], applications: [], events: [] }
@@ -90,6 +93,48 @@ describe('generate', () => {
       [...data.bookings, ...STORIES.map((s) => s.booking)].filter((b) => b.salesOwner === owner).length
     expect(owned('Nurul Aina')).toBe(77)
     expect(owned('Farah Izzati')).toBe(71)
+  })
+
+  it('seeds three overdue Today cards per Sales Admin and keeps the Manager queue stable', () => {
+    const dataset = withStories(DEFAULT_SEED)
+    const seededSnapshot: Snapshot = {
+      meta: { seed: DEFAULT_SEED, referenceDate: REFERENCE_DATE, resetAt: null },
+      ...dataset,
+      tasks: [],
+      messages: STORIES.flatMap((story) => story.messages),
+      playbooks: [],
+      extractions: [],
+      signals: [],
+      nextActions: []
+    }
+    const summaries = summarizeCases({ ...dataset, tasks: [] }, REFERENCE_DATE)
+    const summaryById = new Map(summaries.map((summary) => [summary.bookingId, summary]))
+    const team = teamSummary(seededSnapshot, summaries)
+
+    const expected = {
+      'Nurul Aina': { todayCards: 21, overdueToday: 3 },
+      'Farah Izzati': { todayCards: 9, overdueToday: 3 }
+    }
+
+    for (const [name, counts] of Object.entries(expected)) {
+      const owned = dataset.bookings.filter((booking) => booking.salesOwner === name)
+      const todayCards = owned.filter((booking) => summaryById.get(booking.id)?.stallReasons.length)
+      const overdueToday = owned.filter((booking) => {
+        const summary = summaryById.get(booking.id)
+        return (
+          summary &&
+          summary.stallReasons.length > 0 &&
+          summary.daysSinceEvidence >= 10 &&
+          currentCaseAssignee(booking, summary)?.name === name
+        )
+      })
+
+      expect(todayCards).toHaveLength(counts.todayCards)
+      expect(overdueToday).toHaveLength(counts.overdueToday)
+      expect(team.rows.find((row) => row.name === name)?.overdue).toBe(1)
+    }
+
+    expect(managerSuggestions(seededSnapshot)).toHaveLength(10)
   })
 
   it('emits nothing after the reference date', () => {

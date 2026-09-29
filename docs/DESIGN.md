@@ -327,11 +327,11 @@ still restricted to 4px and 6px, and `--radius-lg` and `--radius-xl` resolve to
   `0 1px 2px color-mix(in oklab, var(--color-ink-950) 5%, transparent), 0 6px 16px -4px color-mix(in oklab, var(--color-ink-950) 8%, transparent)`,
   over a 1px border in `--card-border`
   (`color-mix(in oklab, var(--color-ink-950) 6%, transparent)`). Carried by
-  every card surface in the application: chase cards, stat tiles, panel cards
-  and the bookings table panel. The page ground stays white, so the shadow is
-  the only thing separating card from page. The hairline softens from `--border`
-  to `--card-border` because a full `#D8D8D8` line underneath a shadow reads as
-  a doubled edge.
+  every card surface in the application: chase cards, stat tiles, panel cards,
+  and the Bookings and Legal table panels. The page ground stays white, so the
+  shadow is the only thing separating card from page. The hairline softens from
+  `--border` to `--card-border` because a full `#D8D8D8` line underneath a
+  shadow reads as a doubled edge.
 - **Card hover elevation (`--shadow-card-hover`):**
   `0 1px 2px color-mix(in oklab, var(--color-ink-950) 6%, transparent), 0 10px 24px -6px color-mix(in oklab, var(--color-ink-950) 12%, transparent)`
   plus a 1px upward translate, on interactive cards only, over 160ms
@@ -853,16 +853,18 @@ control, and none appears. Do not "fix" this by removing the input.
 ### Forecast Document Stack
 
 - **Purpose:** The detail behind the forecast as documents to pick from (#54).
-- **Anatomy:** Chips above the stack pick a document. The front card is 16:9 (up
+- **Anatomy:** Chips above the stack pick a document. The front card is 2:1 (up
   to 768px wide), 32px padding: "Document N Of M" eyebrow, the title in 24/32, a
   two-line summary, then two text actions (Open Document with `ArrowUpRight`,
   Ask MortarAI with `Sparkles`). A square monochrome motif fills the card's
   right side, inverted in dark mode. Two cards peek out beneath. Round outline
   previous and next buttons sit either side (below it on phones).
 - **Rules:** Click, swipe and the arrow keys move the stack. Open Document reads
-  the document in a bottom sheet; Ask MortarAI opens the assistant with a
-  question about that document already sent. Below 640px the motif is hidden and
-  the card sizes to its text.
+  the document in a centred Dialog, with long content scrolling inside it;
+  Escape and the close button dismiss it, returning focus to Open Document. Ask
+  MortarAI opens the assistant with a question about that document already sent.
+  Below 640px the motif is hidden, the card sizes to its text, and the controls
+  stay below it as before.
 
 ### Drop Zone
 
@@ -961,8 +963,8 @@ personas:
   tiles, followed by the active working list or table. Today puts its figures in
   the [Today Rail](#today-rail) instead.
 - **Canvas dot grid:** Behind the cards on every signed-in page, the page ground
-  carries 1px dots every 20px (`.app-canvas`, `--canvas-dot`: ink at 16% in
-  light mode, white at 11% in dark), like a sketchbook page. It is the one
+  carries 1px dots every 20px (`.app-canvas`, `--canvas-dot`: ink at 12% in
+  light mode, white at 8% in dark), like a sketchbook page. It is the one
   sanctioned pattern in the application. Cards, the sidebar, the top bar,
   popovers and dialogs stay solid over it, and the public pages never use it.
 

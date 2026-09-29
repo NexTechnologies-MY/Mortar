@@ -15,11 +15,13 @@ import type {
   IsoDateTime,
   Task
 } from './types'
+import { DEFAULT_SEED } from './sim/constants'
 import { DEFAULT_ASSUMPTIONS } from './sim/assumptions'
 import { summarizeCases as summarize } from './sim/cases'
 import { forecast as runForecast, backtest as runBacktest, buildForecastModel } from './sim/forecast'
 import { generateDataset } from './sim/generate'
 import { financingRiskFor } from './sim/risk'
+import { addDays } from './sim/dates'
 
 export { DEFAULT_SEED, REFERENCE_DATE, HORIZON_DAYS, PERSONA_STAFF } from './sim/constants'
 export { PROJECT_NAME } from './sim/names'
@@ -39,11 +41,81 @@ export interface GeneratorOptions {
   assumptions?: Record<string, number>
 }
 
+const CANONICAL_DEMO_BOOKINGS = 140
+const FARAH_OVERDUE_EXAMPLE_ID = 'BK-0017'
+
+/** Keep a second Sales Admin overdue example in the shipped demo seed only. */
+function addFarahOverdueExample(dataset: Dataset, referenceDate: IsoDate): Dataset {
+  const booking = dataset.bookings.find((candidate) => candidate.id === FARAH_OVERDUE_EXAMPLE_ID)
+  if (!booking || booking.salesOwner !== 'Farah Izzati') return dataset
+
+  const bookingEvents = dataset.events.filter((event) => event.bookingId === booking.id)
+  const lastEvent = bookingEvents[bookingEvents.length - 1]
+  if (!lastEvent || lastEvent.kind !== 'buyer_contacted') return dataset
+
+  const overdueDate = addDays(referenceDate, -20)
+  const updateDate = (dateTime: IsoDateTime) => `${overdueDate}${dateTime.slice(10)}`
+  return {
+    ...dataset,
+    events: dataset.events.map((event) =>
+      event.id === lastEvent.id
+        ? { ...event, occurredAt: updateDate(event.occurredAt), recordedAt: updateDate(event.recordedAt) }
+        : event
+    )
+  }
+}
+
+/** Keep three sales-held Today cards with an Overdue pill for each admin in the canonical seed. */
+function addSalesTodayOverdueExamples(dataset: Dataset, referenceDate: IsoDate): Dataset {
+  const overdueDate = addDays(referenceDate, -10)
+  const shiftDate = (dateTime: IsoDateTime, days: number) =>
+    `${addDays(dateTime.slice(0, 10), days)}${dateTime.slice(10)}`
+
+  return {
+    ...dataset,
+    bookings: dataset.bookings.map((booking) => {
+      if (booking.id === 'BK-0016') return { ...booking, bookingDate: addDays(booking.bookingDate, -5) }
+      if (booking.id === 'BK-0025') return { ...booking, bookingDate: addDays(booking.bookingDate, -10) }
+      return booking
+    }),
+    events: dataset.events.map((event) => {
+      if (event.bookingId === 'BK-0016' || event.bookingId === 'BK-0025') {
+        const days = event.bookingId === 'BK-0016' ? -5 : -10
+        return {
+          ...event,
+          occurredAt: shiftDate(event.occurredAt, days),
+          recordedAt: shiftDate(event.recordedAt, days)
+        }
+      }
+
+      if (event.bookingId === 'BK-0022' && event.occurredAt.slice(0, 10) > overdueDate) {
+        return {
+          ...event,
+          occurredAt: shiftDate(event.occurredAt, -10),
+          recordedAt: shiftDate(event.recordedAt, -10)
+        }
+      }
+
+      if (event.bookingId === 'BK-0066' && event.kind === 'loan_rejected') {
+        return {
+          ...event,
+          occurredAt: shiftDate(event.occurredAt, -10),
+          recordedAt: shiftDate(event.recordedAt, -10)
+        }
+      }
+
+      return event
+    })
+  }
+}
+
 export type CaseData = Dataset & { tasks: Task[] }
 
 /** Seeded stage-transition Monte Carlo: the same options always give the same dataset. */
 export function generate(options: GeneratorOptions): Dataset {
-  return generateDataset(options)
+  const dataset = generateDataset(options)
+  if (options.seed !== DEFAULT_SEED || options.bookings !== CANONICAL_DEMO_BOOKINGS) return dataset
+  return addSalesTodayOverdueExamples(addFarahOverdueExample(dataset, options.referenceDate), options.referenceDate)
 }
 
 /**

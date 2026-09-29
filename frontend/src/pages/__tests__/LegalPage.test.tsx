@@ -173,6 +173,22 @@ describe('LegalPage', () => {
     expect(screen.getByText(/Appointment Set, Not Signed \(2\)/)).toBeTruthy()
   })
 
+  it('puts each queue table on a solid card surface', () => {
+    renderPage()
+    const sections = [
+      screen.getByText(/No Appointment Yet/).closest('section'),
+      screen.getByText(/Appointment Set, Not Signed/).closest('section')
+    ]
+    for (const section of sections) {
+      const table = section?.querySelector('table')
+      expect(table).toBeTruthy()
+      const surface = table?.closest('[data-slot="table-container"]')?.parentElement
+      expect(surface?.className).toContain('bg-card')
+      expect(surface?.className).toContain('border-card-border')
+      expect(surface?.className).toContain('shadow-card')
+    }
+  })
+
   it('renders Days Since Loan Approved column header instead of Days Since LO', () => {
     renderPage()
     expect(screen.getAllByRole('columnheader', { name: 'Days Since Loan Approved' }).length).toBeGreaterThan(0)

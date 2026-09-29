@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildForecastModel, type CaseEvent, type Snapshot } from '@mortar/core'
@@ -104,13 +104,18 @@ describe('ForecastPage', () => {
     expect(screen.queryByText(/Historical rates updated/)).toBeNull()
   })
 
-  it('opens the chosen document in a sheet', () => {
+  it('opens the chosen document in a dialog and restores focus after Escape', async () => {
     renderPage()
     fireEvent.click(screen.getByRole('button', { name: 'Stage Conversion Rates' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Open Document' }))
-    const sheet = screen.getByRole('dialog')
-    expect(within(sheet).getByText('Signed / Resolved')).toBeTruthy()
-    expect(within(sheet).getByText('Likely Range')).toBeTruthy()
+    const trigger = screen.getByRole('button', { name: 'Open Document' })
+    trigger.focus()
+    fireEvent.click(trigger)
+    const dialog = screen.getByRole('dialog')
+    expect(within(dialog).getByText('Signed / Resolved')).toBeTruthy()
+    expect(within(dialog).getByText('Likely Range')).toBeTruthy()
+    fireEvent.keyDown(dialog, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(document.activeElement).toBe(trigger)
   })
 
   it('moves through the stack with its buttons and the arrow keys', () => {
