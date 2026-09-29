@@ -4,6 +4,152 @@
   "graph": {
     "hyperedges": [
       {
+        "id": "docs_prd_mortarai_two_engine_architecture",
+        "label": "MortarAI Two-Engine Architecture (Jev + Gemini)",
+        "nodes": [
+          "docs_prd_mortarai_ai_layer",
+          "docs_prd_typesafe_jev",
+          "docs_prd_gemini_assistant",
+          "docs_prd_ask_mortarai_renamed"
+        ],
+        "relation": "form",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "source_file": "docs/PRD.md",
+        "_origin": "semantic"
+      },
+      {
+        "id": "docs_prd_redesign_supersedes_intake_60_points",
+        "label": "Redesign Supersedes #60 Points (Suggestions Tabs, Forecast Documents Removal)",
+        "nodes": [
+          "docs_prd_intake_60",
+          "docs_prd_manager_suggestions_first",
+          "docs_prd_forecast_documents_removed",
+          "docs_prd_decisions_for_you",
+          "docs_prd_team_page",
+          "docs_prd_forecast_document_stack"
+        ],
+        "relation": "participate_in",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "source_file": "docs/PRD.md",
+        "_origin": "semantic"
+      },
+      {
+        "id": "live_walkthrough_cross_desk_handoff",
+        "label": "Cross-Desk Booking Handoff In The Live Walkthrough",
+        "nodes": [
+          "docs_demo_mortar_pitch_deck_persona_sales_admin",
+          "docs_demo_mortar_pitch_deck_persona_loan_admin",
+          "docs_demo_mortar_pitch_deck_persona_legal_admin",
+          "docs_demo_mortar_pitch_deck_persona_manager"
+        ],
+        "relation": "participate_in",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "source_file": "docs/demo/mortar-pitch-deck.html",
+        "_origin": "semantic"
+      },
+      {
+        "id": "live_walkthrough_seven_step_flow",
+        "label": "Seven-Step Live Walkthrough Sequence",
+        "nodes": [
+          "docs_demo_pitch_script_walkthrough_step1_queue_cards",
+          "docs_demo_pitch_script_walkthrough_step2_waiting_on_view",
+          "docs_demo_pitch_script_walkthrough_step3_confirm_jev_suggestion",
+          "docs_demo_pitch_script_walkthrough_step4_paste_message_confirm",
+          "docs_demo_pitch_script_walkthrough_step5_record_appointment",
+          "docs_demo_pitch_script_walkthrough_step6_request_followup",
+          "docs_demo_pitch_script_walkthrough_step7_forecast_numbers"
+        ],
+        "relation": "form",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "source_file": "docs/demo/pitch-script.md",
+        "_origin": "semantic"
+      },
+      {
+        "id": "mortarai_two_engine_system",
+        "label": "MortarAI's Two-Engine System (Jev Reads, Gemini Answers)",
+        "nodes": [
+          "docs_demo_mortar_pitch_deck_mortarai",
+          "docs_demo_mortar_pitch_deck_jev",
+          "docs_demo_mortar_pitch_deck_gemini_engine",
+          "docs_demo_mortar_pitch_deck_ask_mortarai"
+        ],
+        "relation": "form",
+        "confidence": "EXTRACTED",
+        "confidence_score": 1.0,
+        "source_file": "docs/demo/mortar-pitch-deck.html",
+        "_origin": "semantic"
+      },
+      {
+        "id": "desk_never_waits_on_ai",
+        "label": "The Desk Never Waits On AI: Budgets And Fallbacks",
+        "nodes": [
+          "docs_demo_pitch_script_graceful_degradation",
+          "docs_demo_pitch_script_jev_three_second_budget",
+          "docs_demo_pitch_script_contingency_jev_slow_or_wrong",
+          "docs_demo_pitch_script_contingency_gemini_fallback_counted",
+          "docs_demo_pitch_script_q_ai_wrong_or_down",
+          "docs_demo_pitch_script_10_technology_second_b_1_minute"
+        ],
+        "relation": "participate_in",
+        "confidence": "INFERRED",
+        "confidence_score": 0.85,
+        "source_file": "docs/demo/pitch-script.md",
+        "_origin": "semantic"
+      },
+      {
+        "id": "docs_prd_manager_oversight_flow",
+        "label": "Manager Oversight Flow (Decisions For You, Follow-Up, Team View)",
+        "nodes": [
+          "docs_demo_mortar_pitch_deck_persona_manager",
+          "docs_prd_jtbd_decisions_waiting_on_me",
+          "docs_prd_decisions_for_you",
+          "docs_prd_manager_flagging",
+          "docs_prd_jtbd_reading_the_desks",
+          "docs_prd_team_page"
+        ],
+        "relation": "form",
+        "confidence": "INFERRED",
+        "confidence_score": 0.85,
+        "source_file": "docs/PRD.md",
+        "_origin": "semantic"
+      },
+      {
+        "id": "jev_checkable_proposal_flow",
+        "label": "Jev Picks, Scores Its Confidence, A Person Confirms",
+        "nodes": [
+          "docs_demo_pitch_script_jev",
+          "docs_demo_pitch_script_jev_fixed_answers_calibrated_confidence",
+          "docs_demo_pitch_script_needs_review_threshold",
+          "docs_demo_pitch_script_jev_picks_never_writes",
+          "docs_demo_pitch_script_ai_proposes_people_confirm",
+          "docs_demo_pitch_script_walkthrough_step3_confirm_jev_suggestion"
+        ],
+        "relation": "form",
+        "confidence": "INFERRED",
+        "confidence_score": 0.85,
+        "source_file": "docs/demo/pitch-script.md",
+        "_origin": "semantic"
+      },
+      {
+        "id": "pitch_deck_evidence_base",
+        "label": "Evidence Base Cited Across The Pitch Deck",
+        "nodes": [
+          "docs_demo_mortar_pitch_deck_source_practitioner_survey",
+          "docs_demo_mortar_pitch_deck_source_rehda_industry_survey",
+          "docs_demo_mortar_pitch_deck_source_chgp_2q_2026_results",
+          "docs_demo_mortar_pitch_deck_source_chin_hin_challenge_brief"
+        ],
+        "relation": "form",
+        "confidence": "INFERRED",
+        "confidence_score": 0.85,
+        "source_file": "docs/demo/mortar-pitch-deck.html",
+        "_origin": "semantic"
+      },
+      {
         "id": "ai_never_the_decider_guardrails",
         "label": "AI never the decider: proposals, low-confidence flags and outage fallbacks",
         "nodes": [
@@ -64,36 +210,6 @@
         "confidence": "EXTRACTED",
         "confidence_score": 1.0,
         "source_file": "scripts/demo/README.md"
-      },
-      {
-        "id": "docs_prd_mortarai_two_engine_architecture",
-        "label": "MortarAI Two-Engine Architecture (Jev + Gemini)",
-        "nodes": [
-          "docs_prd_mortarai_ai_layer",
-          "docs_prd_typesafe_jev",
-          "docs_prd_gemini_assistant",
-          "docs_prd_ask_mortarai_renamed"
-        ],
-        "relation": "form",
-        "confidence": "EXTRACTED",
-        "confidence_score": 1.0,
-        "source_file": "docs/PRD.md"
-      },
-      {
-        "id": "docs_prd_redesign_supersedes_intake_60_points",
-        "label": "Redesign Supersedes #60 Points (Suggestions Tabs, Forecast Documents Removal)",
-        "nodes": [
-          "docs_prd_intake_60",
-          "docs_prd_manager_suggestions_first",
-          "docs_prd_forecast_documents_removed",
-          "docs_prd_decisions_for_you",
-          "docs_prd_team_page",
-          "docs_prd_forecast_document_stack"
-        ],
-        "relation": "participate_in",
-        "confidence": "EXTRACTED",
-        "confidence_score": 1.0,
-        "source_file": "docs/PRD.md"
       },
       {
         "id": "docs_product_manager_today_and_team",
@@ -241,37 +357,6 @@
         "source_file": "docs/research/design/README.md"
       },
       {
-        "id": "live_walkthrough_cross_desk_handoff",
-        "label": "Cross-Desk Booking Handoff In The Live Walkthrough",
-        "nodes": [
-          "docs_demo_mortar_pitch_deck_persona_sales_admin",
-          "docs_demo_mortar_pitch_deck_persona_loan_admin",
-          "docs_demo_mortar_pitch_deck_persona_legal_admin",
-          "docs_demo_mortar_pitch_deck_persona_manager"
-        ],
-        "relation": "participate_in",
-        "confidence": "EXTRACTED",
-        "confidence_score": 1.0,
-        "source_file": "docs/demo/mortar-pitch-deck.html"
-      },
-      {
-        "id": "live_walkthrough_seven_step_flow",
-        "label": "Seven-Step Live Walkthrough Sequence",
-        "nodes": [
-          "docs_demo_pitch_script_walkthrough_step1_queue_cards",
-          "docs_demo_pitch_script_walkthrough_step2_waiting_on_view",
-          "docs_demo_pitch_script_walkthrough_step3_confirm_jev_suggestion",
-          "docs_demo_pitch_script_walkthrough_step4_paste_message_confirm",
-          "docs_demo_pitch_script_walkthrough_step5_record_appointment",
-          "docs_demo_pitch_script_walkthrough_step6_request_followup",
-          "docs_demo_pitch_script_walkthrough_step7_forecast_numbers"
-        ],
-        "relation": "form",
-        "confidence": "EXTRACTED",
-        "confidence_score": 1.0,
-        "source_file": "docs/demo/pitch-script.md"
-      },
-      {
         "id": "mortar_public_page_chrome",
         "label": "Public Page Chrome (Landing, Footer, Sign-In)",
         "nodes": [
@@ -315,20 +400,6 @@
         "confidence": "EXTRACTED",
         "confidence_score": 1.0,
         "source_file": "docs/README.md"
-      },
-      {
-        "id": "mortarai_two_engine_system",
-        "label": "MortarAI's Two-Engine System (Jev Reads, Gemini Answers)",
-        "nodes": [
-          "docs_demo_mortar_pitch_deck_mortarai",
-          "docs_demo_mortar_pitch_deck_jev",
-          "docs_demo_mortar_pitch_deck_gemini_engine",
-          "docs_demo_mortar_pitch_deck_ask_mortarai"
-        ],
-        "relation": "form",
-        "confidence": "EXTRACTED",
-        "confidence_score": 1.0,
-        "source_file": "docs/demo/mortar-pitch-deck.html"
       },
       {
         "id": "production_path_to_pilot",
@@ -394,22 +465,6 @@
         "source_file": "scripts/demo/README.md"
       },
       {
-        "id": "desk_never_waits_on_ai",
-        "label": "The Desk Never Waits On AI: Budgets And Fallbacks",
-        "nodes": [
-          "docs_demo_pitch_script_graceful_degradation",
-          "docs_demo_pitch_script_jev_three_second_budget",
-          "docs_demo_pitch_script_contingency_jev_slow_or_wrong",
-          "docs_demo_pitch_script_contingency_gemini_fallback_counted",
-          "docs_demo_pitch_script_q_ai_wrong_or_down",
-          "docs_demo_pitch_script_10_technology_second_b_1_minute"
-        ],
-        "relation": "participate_in",
-        "confidence": "INFERRED",
-        "confidence_score": 0.85,
-        "source_file": "docs/demo/pitch-script.md"
-      },
-      {
         "id": "docs_agents_graphify_churn_safeguards",
         "label": "Safeguards Against Graph Churn And Node Loss",
         "nodes": [
@@ -458,22 +513,6 @@
         "confidence": "INFERRED",
         "confidence_score": 0.85,
         "source_file": "docs/agents/notes.md"
-      },
-      {
-        "id": "docs_prd_manager_oversight_flow",
-        "label": "Manager Oversight Flow (Decisions For You, Follow-Up, Team View)",
-        "nodes": [
-          "docs_demo_mortar_pitch_deck_persona_manager",
-          "docs_prd_jtbd_decisions_waiting_on_me",
-          "docs_prd_decisions_for_you",
-          "docs_prd_manager_flagging",
-          "docs_prd_jtbd_reading_the_desks",
-          "docs_prd_team_page"
-        ],
-        "relation": "form",
-        "confidence": "INFERRED",
-        "confidence_score": 0.85,
-        "source_file": "docs/PRD.md"
       },
       {
         "id": "forecast_aggregate_consumers",
@@ -554,22 +593,6 @@
         "source_file": ".github/workflows/ci.yml"
       },
       {
-        "id": "jev_checkable_proposal_flow",
-        "label": "Jev Picks, Scores Its Confidence, A Person Confirms",
-        "nodes": [
-          "docs_demo_pitch_script_jev",
-          "docs_demo_pitch_script_jev_fixed_answers_calibrated_confidence",
-          "docs_demo_pitch_script_needs_review_threshold",
-          "docs_demo_pitch_script_jev_picks_never_writes",
-          "docs_demo_pitch_script_ai_proposes_people_confirm",
-          "docs_demo_pitch_script_walkthrough_step3_confirm_jev_suggestion"
-        ],
-        "relation": "form",
-        "confidence": "INFERRED",
-        "confidence_score": 0.85,
-        "source_file": "docs/demo/pitch-script.md"
-      },
-      {
         "id": "mortar_flat_ledger_surface_system",
         "label": "Flat Ledger Surface System",
         "nodes": [
@@ -584,20 +607,6 @@
         "confidence": "INFERRED",
         "confidence_score": 0.85,
         "source_file": "docs/DESIGN.md"
-      },
-      {
-        "id": "pitch_deck_evidence_base",
-        "label": "Evidence Base Cited Across The Pitch Deck",
-        "nodes": [
-          "docs_demo_mortar_pitch_deck_source_practitioner_survey",
-          "docs_demo_mortar_pitch_deck_source_rehda_industry_survey",
-          "docs_demo_mortar_pitch_deck_source_chgp_2q_2026_results",
-          "docs_demo_mortar_pitch_deck_source_chin_hin_challenge_brief"
-        ],
-        "relation": "form",
-        "confidence": "INFERRED",
-        "confidence_score": 0.85,
-        "source_file": "docs/demo/mortar-pitch-deck.html"
       },
       {
         "id": "github_workflows_ci_test_database_wiring",
@@ -31197,6 +31206,7 @@
       "contributor": null,
       "file_type": "concept",
       "norm_label": "gemini (answering engine)",
+      "rationale": "Gemini answers only from the staff member's authorised bookings using five read-only tools. It cites bookings, reads bank-letter photos and never changes records; a scripted answer steps in if Gemini is unavailable.",
       "source_file": "docs/demo/pitch-script.md",
       "source_location": null,
       "source_url": null
@@ -31212,7 +31222,7 @@
       "contributor": null,
       "file_type": "concept",
       "norm_label": "jev (reading engine)",
-      "rationale": "Chosen because a case update has to be checkable, not eloquent: Jev picks from fixed answers with a calibrated confidence instead of writing text.",
+      "rationale": "Jev reads messages, including Manglish, and chooses from fixed answers instead of writing free text. Its calibrated confidence flags proposals below 0.60 for Needs Review, a person confirms, and a cached answer backs the three-second budget.",
       "source_file": "docs/demo/pitch-script.md",
       "source_location": null,
       "source_url": null
@@ -31363,6 +31373,7 @@
       "contributor": null,
       "file_type": "document",
       "norm_label": "slide 6: how jev works",
+      "rationale": "Jev chooses from a fixed list, shows calibrated confidence, and routes proposals below 0.60 to Needs Review for a person.",
       "source_file": "docs/demo/pitch-script.md",
       "source_location": null,
       "source_url": null
@@ -31378,6 +31389,7 @@
       "contributor": null,
       "file_type": "document",
       "norm_label": "6. meet mortarai \u2014 b, 1 minute",
+      "rationale": "Slide 6 contrasts Jev's fixed answers and calibrated confidence with free-writing chatbots, and Gemini's authorised-booking scope and read-only access.",
       "source_file": "docs/demo/pitch-script.md",
       "source_location": null,
       "source_url": null
@@ -31606,7 +31618,7 @@
       "contributor": null,
       "file_type": "rationale",
       "norm_label": "jev picks fixed answers with a calibrated confidence",
-      "rationale": "The answers come from Mortar's own fixed list, so Jev cannot invent a status; its 'how sure' is trained to match how often it is right, so the number can gate a proposal.",
+      "rationale": "Unlike general chatbots, Jev chooses from a fixed list and shows calibrated confidence; proposals below 0.60 go to Needs Review rather than inventing a status.",
       "source_file": "docs/demo/pitch-script.md",
       "source_location": null,
       "source_url": null
@@ -33482,8 +33494,8 @@
       "source_url": null
     },
     {
-      "id": "docs_prd_ocr_deferred",
-      "label": "Document OCR And Computer Vision (Deferred)",
+      "id": "docs_prd_fr22_add_bookings",
+      "label": "FR-22 Add Bookings Intake",
       "_origin": "semantic",
       "author": null,
       "captured_at": null,
@@ -33491,7 +33503,7 @@
       "community_name": "Import area",
       "contributor": null,
       "file_type": "concept",
-      "norm_label": "document ocr and computer vision (deferred)",
+      "norm_label": "fr-22 add bookings intake",
       "source_file": "docs/PRD.md",
       "source_location": null,
       "source_url": null
@@ -33627,21 +33639,6 @@
       "contributor": null,
       "file_type": "concept",
       "norm_label": "bk-9001 (booking)",
-      "source_file": "docs/demo/mortar-pitch-deck.html",
-      "source_location": "07 Live Walkthrough",
-      "source_url": null
-    },
-    {
-      "id": "docs_demo_mortar_pitch_deck_booking_bk_9006",
-      "label": "BK-9006 (booking)",
-      "_origin": "semantic",
-      "author": null,
-      "captured_at": null,
-      "community": 125,
-      "community_name": "This Week. What We Need.",
-      "contributor": null,
-      "file_type": "concept",
-      "norm_label": "bk-9006 (booking)",
       "source_file": "docs/demo/mortar-pitch-deck.html",
       "source_location": "07 Live Walkthrough",
       "source_url": null
@@ -33794,21 +33791,6 @@
       "norm_label": "nurul aina (sales admin staff, task owner)",
       "source_file": "docs/demo/mortar-pitch-deck.html",
       "source_location": "07 Live Walkthrough",
-      "source_url": null
-    },
-    {
-      "id": "docs_demo_mortar_pitch_deck_persona_legal_admin",
-      "label": "Legal Admin (persona)",
-      "_origin": "semantic",
-      "author": null,
-      "captured_at": null,
-      "community": 125,
-      "community_name": "This Week. What We Need.",
-      "contributor": null,
-      "file_type": "concept",
-      "norm_label": "legal admin (persona)",
-      "source_file": "docs/demo/mortar-pitch-deck.html",
-      "source_location": "03 The Workflow Today",
       "source_url": null
     },
     {
@@ -34052,21 +34034,6 @@
       "source_url": null
     },
     {
-      "id": "docs_demo_mortar_pitch_deck_workflow_stage_spa_drafted",
-      "label": "SPA Drafted (workflow stage \u2014 Legal Admin \u00b7 Law Firm)",
-      "_origin": "semantic",
-      "author": null,
-      "captured_at": null,
-      "community": 125,
-      "community_name": "This Week. What We Need.",
-      "contributor": null,
-      "file_type": "concept",
-      "norm_label": "spa drafted (workflow stage \u2014 legal admin \u00b7 law firm)",
-      "source_file": "docs/demo/mortar-pitch-deck.html",
-      "source_location": "03 The Workflow Today",
-      "source_url": null
-    },
-    {
       "id": "docs_demo_mortar_pitch_deck_workflow_stage_spa_signed",
       "label": "SPA Signed \u2014 The Sale (workflow stage)",
       "_origin": "semantic",
@@ -34092,21 +34059,6 @@
       "contributor": null,
       "file_type": "concept",
       "norm_label": "jtbd: message intake",
-      "source_file": "docs/PRD.md",
-      "source_location": null,
-      "source_url": null
-    },
-    {
-      "id": "docs_prd_jtbd_seeing_what_stopped",
-      "label": "JTBD: Seeing What Has Stopped",
-      "_origin": "semantic",
-      "author": null,
-      "captured_at": null,
-      "community": 125,
-      "community_name": "This Week. What We Need.",
-      "contributor": null,
-      "file_type": "concept",
-      "norm_label": "jtbd: seeing what has stopped",
       "source_file": "docs/PRD.md",
       "source_location": null,
       "source_url": null
@@ -34321,21 +34273,6 @@
       "rationale": "Up to three bank applications per booking are tracked apart, so a single bank rejection does not end the booking.",
       "source_file": "docs/demo/mortar-pitch-deck.html",
       "source_location": "05 Solution Logic",
-      "source_url": null
-    },
-    {
-      "id": "docs_prd_days_since_derivation",
-      "label": "daysSinceLoanApproved / daysSinceSpaSet",
-      "_origin": "semantic",
-      "author": null,
-      "captured_at": null,
-      "community": 125,
-      "community_name": "This Week. What We Need.",
-      "contributor": null,
-      "file_type": "rationale",
-      "norm_label": "dayssinceloanapproved / dayssincespaset",
-      "source_file": "docs/PRD.md",
-      "source_location": null,
       "source_url": null
     },
     {
@@ -36537,6 +36474,36 @@
       "source_url": null
     },
     {
+      "id": "docs_prd_jtbd_stall_resolution",
+      "label": "JTBD: Stall Resolution",
+      "_origin": "semantic",
+      "author": null,
+      "captured_at": null,
+      "community": 142,
+      "community_name": "FR-8 Statistical Conversion Forecasting",
+      "contributor": null,
+      "file_type": "concept",
+      "norm_label": "jtbd: stall resolution",
+      "source_file": "docs/PRD.md",
+      "source_location": null,
+      "source_url": null
+    },
+    {
+      "id": "docs_prd_lad_clock",
+      "label": "Late-Delivery Damages Clock (PJD Regency)",
+      "_origin": "semantic",
+      "author": null,
+      "captured_at": null,
+      "community": 142,
+      "community_name": "FR-8 Statistical Conversion Forecasting",
+      "contributor": null,
+      "file_type": "concept",
+      "norm_label": "late-delivery damages clock (pjd regency)",
+      "source_file": "docs/PRD.md",
+      "source_location": null,
+      "source_url": null
+    },
+    {
       "id": "docs_prd_live_booking_definition",
       "label": "Live And Resolved Booking Definitions",
       "_origin": "semantic",
@@ -36547,6 +36514,21 @@
       "contributor": null,
       "file_type": "concept",
       "norm_label": "live and resolved booking definitions",
+      "source_file": "docs/PRD.md",
+      "source_location": null,
+      "source_url": null
+    },
+    {
+      "id": "docs_prd_metrics",
+      "label": "Metrics",
+      "_origin": "semantic",
+      "author": null,
+      "captured_at": null,
+      "community": 142,
+      "community_name": "FR-8 Statistical Conversion Forecasting",
+      "contributor": null,
+      "file_type": "concept",
+      "norm_label": "metrics",
       "source_file": "docs/PRD.md",
       "source_location": null,
       "source_url": null
@@ -36567,6 +36549,36 @@
       "source_url": null
     },
     {
+      "id": "docs_prd_sale_purchase_agreement",
+      "label": "Sale And Purchase Agreement (SPA)",
+      "_origin": "semantic",
+      "author": null,
+      "captured_at": null,
+      "community": 142,
+      "community_name": "FR-8 Statistical Conversion Forecasting",
+      "contributor": null,
+      "file_type": "concept",
+      "norm_label": "sale and purchase agreement (spa)",
+      "source_file": "docs/PRD.md",
+      "source_location": null,
+      "source_url": null
+    },
+    {
+      "id": "docs_prd_secondary_metrics",
+      "label": "Secondary Operational Metrics",
+      "_origin": "semantic",
+      "author": null,
+      "captured_at": null,
+      "community": 142,
+      "community_name": "FR-8 Statistical Conversion Forecasting",
+      "contributor": null,
+      "file_type": "concept",
+      "norm_label": "secondary operational metrics",
+      "source_file": "docs/PRD.md",
+      "source_location": null,
+      "source_url": null
+    },
+    {
       "id": "docs_prd_stage_age_buckets",
       "label": "Stage-Age Buckets And Rate Fallback",
       "_origin": "semantic",
@@ -36577,6 +36589,36 @@
       "contributor": null,
       "file_type": "concept",
       "norm_label": "stage-age buckets and rate fallback",
+      "source_file": "docs/PRD.md",
+      "source_location": null,
+      "source_url": null
+    },
+    {
+      "id": "docs_prd_stall_rules",
+      "label": "Deterministic Stall Rules",
+      "_origin": "semantic",
+      "author": null,
+      "captured_at": null,
+      "community": 142,
+      "community_name": "FR-8 Statistical Conversion Forecasting",
+      "contributor": null,
+      "file_type": "concept",
+      "norm_label": "deterministic stall rules",
+      "source_file": "docs/PRD.md",
+      "source_location": null,
+      "source_url": null
+    },
+    {
+      "id": "docs_prd_thirty_day_verified_spa_rate",
+      "label": "30-Day Verified SPA Rate",
+      "_origin": "semantic",
+      "author": null,
+      "captured_at": null,
+      "community": 142,
+      "community_name": "FR-8 Statistical Conversion Forecasting",
+      "contributor": null,
+      "file_type": "concept",
+      "norm_label": "30-day verified spa rate",
       "source_file": "docs/PRD.md",
       "source_location": null,
       "source_url": null
@@ -36622,6 +36664,21 @@
       "contributor": null,
       "file_type": "concept",
       "norm_label": "us-16 historical backtesting",
+      "source_file": "docs/PRD.md",
+      "source_location": null,
+      "source_url": null
+    },
+    {
+      "id": "docs_prd_value_at_risk",
+      "label": "Value At Risk",
+      "_origin": "semantic",
+      "author": null,
+      "captured_at": null,
+      "community": 142,
+      "community_name": "FR-8 Statistical Conversion Forecasting",
+      "contributor": null,
+      "file_type": "concept",
+      "norm_label": "value at risk",
       "source_file": "docs/PRD.md",
       "source_location": null,
       "source_url": null
@@ -36717,6 +36774,21 @@
       "source_url": null
     },
     {
+      "id": "docs_prd_honest_accounting",
+      "label": "Honest Accounting",
+      "_origin": "semantic",
+      "author": null,
+      "captured_at": null,
+      "community": 142,
+      "community_name": "FR-8 Statistical Conversion Forecasting",
+      "contributor": null,
+      "file_type": "rationale",
+      "norm_label": "honest accounting",
+      "source_file": "docs/PRD.md",
+      "source_location": null,
+      "source_url": null
+    },
+    {
       "id": "docs_prd_stall_no_horizon_gate",
       "label": "No 30-Day Horizon Gate On Stall Detection",
       "_origin": "semantic",
@@ -36727,6 +36799,21 @@
       "contributor": null,
       "file_type": "rationale",
       "norm_label": "no 30-day horizon gate on stall detection",
+      "source_file": "docs/PRD.md",
+      "source_location": null,
+      "source_url": null
+    },
+    {
+      "id": "docs_prd_visibility_gap",
+      "label": "Visibility Gap Between Deposit And SPA Signing",
+      "_origin": "semantic",
+      "author": null,
+      "captured_at": null,
+      "community": 142,
+      "community_name": "FR-8 Statistical Conversion Forecasting",
+      "contributor": null,
+      "file_type": "rationale",
+      "norm_label": "visibility gap between deposit and spa signing",
       "source_file": "docs/PRD.md",
       "source_location": null,
       "source_url": null
@@ -39128,7 +39215,7 @@
     },
     {
       "id": "docs_demo_mortar_pitch_deck_gemini_edge_asker_bookings_only",
-      "label": "Gemini's Edge \u2014 Reads Only The Asker's Bookings (can't change a record)",
+      "label": "Gemini's Differentiator: Booking-Scoped, Read-Only Answers",
       "_origin": "semantic",
       "author": null,
       "captured_at": null,
@@ -39136,8 +39223,8 @@
       "community_name": "Meet MortarAI. One Reads, One Answers.",
       "contributor": null,
       "file_type": "rationale",
-      "norm_label": "gemini's edge \u2014 reads only the asker's bookings (can't change a record)",
-      "rationale": "Gemini reads only the asking staff member's own bookings and can never change a record, so Ask MortarAI answers stay scoped and read-only.",
+      "norm_label": "gemini's differentiator: booking-scoped, read-only answers",
+      "rationale": "Unlike a general chatbot, Gemini answers only from the asker's authorised bookings using five read-only tools. It cites the booking, reads bank-letter photos and cannot change records; a scripted answer steps in if Gemini is unavailable.",
       "source_file": "docs/demo/mortar-pitch-deck.html",
       "source_location": "06 Meet MortarAI",
       "source_url": null
@@ -39160,7 +39247,7 @@
     },
     {
       "id": "docs_demo_mortar_pitch_deck_jev_edge_fixed_answers_calibrated",
-      "label": "Jev's Edge \u2014 Fixed Answers With A Calibrated How-Sure (can't invent a status)",
+      "label": "Jev's Differentiator: Fixed Answers, No Invented Statuses",
       "_origin": "semantic",
       "author": null,
       "captured_at": null,
@@ -39168,8 +39255,8 @@
       "community_name": "Meet MortarAI. One Reads, One Answers.",
       "contributor": null,
       "file_type": "rationale",
-      "norm_label": "jev's edge \u2014 fixed answers with a calibrated how-sure (can't invent a status)",
-      "rationale": "Jev does not write; it picks. Mortar hands it the message and the booking's facts and asks fixed questions (what happened, which document, who acts next); Jev ticks one answer each and says how sure it is, so it cannot invent a status, and below 0.60 the proposal is marked Needs Review.",
+      "norm_label": "jev's differentiator: fixed answers, no invented statuses",
+      "rationale": "Chatbots write freely; Jev picks set answers, so it cannot invent statuses. Its calibrated confidence flags proposals below 0.60 for Needs Review.",
       "source_file": "docs/demo/mortar-pitch-deck.html",
       "source_location": "06 Meet MortarAI",
       "source_url": null
@@ -40261,21 +40348,6 @@
       "source_url": null
     },
     {
-      "id": "docs_prd_fr22_add_bookings",
-      "label": "FR-22 Add Bookings Intake",
-      "_origin": "semantic",
-      "author": null,
-      "captured_at": null,
-      "community": 162,
-      "community_name": "Manager (persona)",
-      "contributor": null,
-      "file_type": "concept",
-      "norm_label": "fr-22 add bookings intake",
-      "source_file": "docs/PRD.md",
-      "source_location": null,
-      "source_url": null
-    },
-    {
       "id": "docs_prd_fr24_walkthrough",
       "label": "FR-24 Guided Walkthrough",
       "_origin": "semantic",
@@ -40428,6 +40500,22 @@
       "source_url": null
     },
     {
+      "id": "docs_prd_personas_and_jobs",
+      "label": "Personas And Jobs To Be Done",
+      "_origin": "semantic",
+      "author": null,
+      "captured_at": null,
+      "community": 162,
+      "community_name": "Manager (persona)",
+      "contributor": null,
+      "file_type": "concept",
+      "norm_label": "personas and jobs to be done",
+      "rationale": "Each persona has a dedicated home for its workflow; access to case records follows the signed-in staff profile.",
+      "source_file": "docs/PRD.md",
+      "source_location": null,
+      "source_url": null
+    },
+    {
       "id": "docs_prd_project_unit_settings",
       "label": "Shared Project And Unit Range Settings",
       "_origin": "semantic",
@@ -40473,21 +40561,6 @@
       "source_url": null
     },
     {
-      "id": "docs_prd_typesafe_jev",
-      "label": "TypeSafe Jev",
-      "_origin": "semantic",
-      "author": null,
-      "captured_at": null,
-      "community": 162,
-      "community_name": "Manager (persona)",
-      "contributor": null,
-      "file_type": "concept",
-      "norm_label": "typesafe jev",
-      "source_file": "docs/PRD.md",
-      "source_location": null,
-      "source_url": null
-    },
-    {
       "id": "docs_prd_us23_persona_pages_route_guard",
       "label": "US-23 Persona Pages And Route Guard",
       "_origin": "semantic",
@@ -40503,23 +40576,8 @@
       "source_url": null
     },
     {
-      "id": "docs_prd_us26_panel_load",
-      "label": "US-26 Panel Load",
-      "_origin": "semantic",
-      "author": null,
-      "captured_at": null,
-      "community": 162,
-      "community_name": "Manager (persona)",
-      "contributor": null,
-      "file_type": "concept",
-      "norm_label": "us-26 panel load",
-      "source_file": "docs/PRD.md",
-      "source_location": null,
-      "source_url": null
-    },
-    {
       "id": "docs_prd_persona_defaults_not_access",
-      "label": "Personas Set Defaults Not Data Access",
+      "label": "Persona Workflow Defaults; Named Profile Access",
       "_origin": "semantic",
       "author": null,
       "captured_at": null,
@@ -40527,22 +40585,8 @@
       "community_name": "Manager (persona)",
       "contributor": null,
       "file_type": "rationale",
-      "norm_label": "personas set defaults not data access",
-      "source_file": "docs/PRD.md",
-      "source_location": null,
-      "source_url": null
-    },
-    {
-      "id": "docs_prd_production_signin_out_of_scope",
-      "label": "Production Sign-In Out Of Scope",
-      "_origin": "semantic",
-      "author": null,
-      "captured_at": null,
-      "community": 162,
-      "community_name": "Manager (persona)",
-      "contributor": null,
-      "file_type": "rationale",
-      "norm_label": "production sign-in out of scope",
+      "norm_label": "persona workflow defaults; named profile access",
+      "rationale": "Persona sets workflow defaults such as the landing route and queue filters; the signed-in profile sets data access. Sales Admin profiles see only their own bookings. Loan and Legal Admin see cases currently assigned to their internal identity or with an open task assigned to them. Handoff ends a former assignee's access; Manager can open every desk and booking.",
       "source_file": "docs/PRD.md",
       "source_location": null,
       "source_url": null
@@ -41711,6 +41755,156 @@
       "norm_label": "team: nextechnologies (@alaskantuna, @andersonnn7788, @drxgclanpc, @chaosiris)",
       "source_file": "docs/README.md",
       "source_location": "L729",
+      "source_url": null
+    },
+    {
+      "id": "docs_prd_booking_fee_prohibition",
+      "label": "Booking Fee Prohibition (Reg 11(2) 1989)",
+      "_origin": "semantic",
+      "author": null,
+      "captured_at": null,
+      "community": 192,
+      "community_name": "Open Questions",
+      "contributor": null,
+      "file_type": "concept",
+      "norm_label": "booking fee prohibition (reg 11(2) 1989)",
+      "source_file": "docs/PRD.md",
+      "source_location": null,
+      "source_url": null
+    },
+    {
+      "id": "docs_prd_erp_integration_out_of_scope",
+      "label": "Direct Core ERP Integration (Out Of Scope)",
+      "_origin": "semantic",
+      "author": null,
+      "captured_at": null,
+      "community": 192,
+      "community_name": "Open Questions",
+      "contributor": null,
+      "file_type": "concept",
+      "norm_label": "direct core erp integration (out of scope)",
+      "source_file": "docs/PRD.md",
+      "source_location": null,
+      "source_url": null
+    },
+    {
+      "id": "docs_prd_nfr8_synthetic_data_pdpa",
+      "label": "NFR-8 Synthetic Data And PDPA",
+      "_origin": "semantic",
+      "author": null,
+      "captured_at": null,
+      "community": 192,
+      "community_name": "Open Questions",
+      "contributor": null,
+      "file_type": "concept",
+      "norm_label": "nfr-8 synthetic data and pdpa",
+      "source_file": "docs/PRD.md",
+      "source_location": null,
+      "source_url": null
+    },
+    {
+      "id": "docs_prd_open_questions",
+      "label": "Open Questions",
+      "_origin": "semantic",
+      "author": null,
+      "captured_at": null,
+      "community": 192,
+      "community_name": "Open Questions",
+      "contributor": null,
+      "file_type": "concept",
+      "norm_label": "open questions",
+      "source_file": "docs/PRD.md",
+      "source_location": null,
+      "source_url": null
+    },
+    {
+      "id": "docs_prd_operational_constraints",
+      "label": "Operational Constraints",
+      "_origin": "semantic",
+      "author": null,
+      "captured_at": null,
+      "community": 192,
+      "community_name": "Open Questions",
+      "contributor": null,
+      "file_type": "concept",
+      "norm_label": "operational constraints",
+      "source_file": "docs/PRD.md",
+      "source_location": null,
+      "source_url": null
+    },
+    {
+      "id": "docs_prd_pdpa_2024",
+      "label": "Personal Data Protection (Amendment) Act 2024",
+      "_origin": "semantic",
+      "author": null,
+      "captured_at": null,
+      "community": 192,
+      "community_name": "Open Questions",
+      "contributor": null,
+      "file_type": "concept",
+      "norm_label": "personal data protection (amendment) act 2024",
+      "source_file": "docs/PRD.md",
+      "source_location": null,
+      "source_url": null
+    },
+    {
+      "id": "docs_prd_schedule_h_termination",
+      "label": "Schedule H Clause 5(3) Post-SPA Termination",
+      "_origin": "semantic",
+      "author": null,
+      "captured_at": null,
+      "community": 192,
+      "community_name": "Open Questions",
+      "contributor": null,
+      "file_type": "concept",
+      "norm_label": "schedule h clause 5(3) post-spa termination",
+      "source_file": "docs/PRD.md",
+      "source_location": null,
+      "source_url": null
+    },
+    {
+      "id": "docs_prd_seven_year_retention",
+      "label": "Seven-Year Record Retention",
+      "_origin": "semantic",
+      "author": null,
+      "captured_at": null,
+      "community": 192,
+      "community_name": "Open Questions",
+      "contributor": null,
+      "file_type": "concept",
+      "norm_label": "seven-year record retention",
+      "source_file": "docs/PRD.md",
+      "source_location": null,
+      "source_url": null
+    },
+    {
+      "id": "docs_prd_statutory_constraints",
+      "label": "Statutory And Legal Constraints",
+      "_origin": "semantic",
+      "author": null,
+      "captured_at": null,
+      "community": 192,
+      "community_name": "Open Questions",
+      "contributor": null,
+      "file_type": "concept",
+      "norm_label": "statutory and legal constraints",
+      "source_file": "docs/PRD.md",
+      "source_location": null,
+      "source_url": null
+    },
+    {
+      "id": "docs_prd_hdcl_regulations",
+      "label": "Housing Development (Control and Licensing) Regulations",
+      "_origin": "semantic",
+      "author": null,
+      "captured_at": null,
+      "community": 192,
+      "community_name": "Open Questions",
+      "contributor": null,
+      "file_type": "paper",
+      "norm_label": "housing development (control and licensing) regulations",
+      "source_file": "docs/PRD.md",
+      "source_location": null,
       "source_url": null
     },
     {
@@ -49354,21 +49548,6 @@
       "source_url": null
     },
     {
-      "id": "docs_prd_booking_fee_prohibition",
-      "label": "Booking Fee Prohibition (Reg 11(2) 1989)",
-      "_origin": "semantic",
-      "author": null,
-      "captured_at": null,
-      "community": 51,
-      "community_name": "Sources",
-      "contributor": null,
-      "file_type": "concept",
-      "norm_label": "booking fee prohibition (reg 11(2) 1989)",
-      "source_file": "docs/PRD.md",
-      "source_location": null,
-      "source_url": null
-    },
-    {
       "id": "docs_prd_debt_service_ratio",
       "label": "Debt Service Ratio (DSR)",
       "_origin": "semantic",
@@ -49474,21 +49653,6 @@
       "source_url": null
     },
     {
-      "id": "docs_prd_lad_clock",
-      "label": "Late-Delivery Damages Clock (PJD Regency)",
-      "_origin": "semantic",
-      "author": null,
-      "captured_at": null,
-      "community": 51,
-      "community_name": "Sources",
-      "contributor": null,
-      "file_type": "concept",
-      "norm_label": "late-delivery damages clock (pjd regency)",
-      "source_file": "docs/PRD.md",
-      "source_location": null,
-      "source_url": null
-    },
-    {
       "id": "docs_prd_loan_tenure",
       "label": "Loan Tenure (35 Years / Age 70)",
       "_origin": "semantic",
@@ -49549,51 +49713,6 @@
       "source_url": null
     },
     {
-      "id": "docs_prd_nfr8_synthetic_data_pdpa",
-      "label": "NFR-8 Synthetic Data And PDPA",
-      "_origin": "semantic",
-      "author": null,
-      "captured_at": null,
-      "community": 51,
-      "community_name": "Sources",
-      "contributor": null,
-      "file_type": "concept",
-      "norm_label": "nfr-8 synthetic data and pdpa",
-      "source_file": "docs/PRD.md",
-      "source_location": null,
-      "source_url": null
-    },
-    {
-      "id": "docs_prd_open_questions",
-      "label": "Open Questions",
-      "_origin": "semantic",
-      "author": null,
-      "captured_at": null,
-      "community": 51,
-      "community_name": "Sources",
-      "contributor": null,
-      "file_type": "concept",
-      "norm_label": "open questions",
-      "source_file": "docs/PRD.md",
-      "source_location": null,
-      "source_url": null
-    },
-    {
-      "id": "docs_prd_pdpa_2024",
-      "label": "Personal Data Protection (Amendment) Act 2024",
-      "_origin": "semantic",
-      "author": null,
-      "captured_at": null,
-      "community": 51,
-      "community_name": "Sources",
-      "contributor": null,
-      "file_type": "concept",
-      "norm_label": "personal data protection (amendment) act 2024",
-      "source_file": "docs/PRD.md",
-      "source_location": null,
-      "source_url": null
-    },
-    {
       "id": "docs_prd_risk_levels",
       "label": "Advisory Risk Levels",
       "_origin": "semantic",
@@ -49604,36 +49723,6 @@
       "contributor": null,
       "file_type": "concept",
       "norm_label": "advisory risk levels",
-      "source_file": "docs/PRD.md",
-      "source_location": null,
-      "source_url": null
-    },
-    {
-      "id": "docs_prd_schedule_h_termination",
-      "label": "Schedule H Clause 5(3) Post-SPA Termination",
-      "_origin": "semantic",
-      "author": null,
-      "captured_at": null,
-      "community": 51,
-      "community_name": "Sources",
-      "contributor": null,
-      "file_type": "concept",
-      "norm_label": "schedule h clause 5(3) post-spa termination",
-      "source_file": "docs/PRD.md",
-      "source_location": null,
-      "source_url": null
-    },
-    {
-      "id": "docs_prd_seven_year_retention",
-      "label": "Seven-Year Record Retention",
-      "_origin": "semantic",
-      "author": null,
-      "captured_at": null,
-      "community": 51,
-      "community_name": "Sources",
-      "contributor": null,
-      "file_type": "concept",
-      "norm_label": "seven-year record retention",
       "source_file": "docs/PRD.md",
       "source_location": null,
       "source_url": null
@@ -49654,21 +49743,6 @@
       "source_url": null
     },
     {
-      "id": "docs_prd_statutory_constraints",
-      "label": "Statutory And Legal Constraints",
-      "_origin": "semantic",
-      "author": null,
-      "captured_at": null,
-      "community": 51,
-      "community_name": "Sources",
-      "contributor": null,
-      "file_type": "concept",
-      "norm_label": "statutory and legal constraints",
-      "source_file": "docs/PRD.md",
-      "source_location": null,
-      "source_url": null
-    },
-    {
       "id": "docs_prd_us13_risk_in_plain_words",
       "label": "US-13 Risk In Plain Words",
       "_origin": "semantic",
@@ -49679,6 +49753,7 @@
       "contributor": null,
       "file_type": "concept",
       "norm_label": "us-13 risk in plain words",
+      "rationale": "Risk chips are shown in plain words for cases within the signed-in profile's data access scope.",
       "source_file": "docs/PRD.md",
       "source_location": null,
       "source_url": null
@@ -49709,21 +49784,6 @@
       "contributor": null,
       "file_type": "concept",
       "norm_label": "us-18 client-side seed variance",
-      "source_file": "docs/PRD.md",
-      "source_location": null,
-      "source_url": null
-    },
-    {
-      "id": "docs_prd_value_at_risk",
-      "label": "Value At Risk",
-      "_origin": "semantic",
-      "author": null,
-      "captured_at": null,
-      "community": 51,
-      "community_name": "Sources",
-      "contributor": null,
-      "file_type": "concept",
-      "norm_label": "value at risk",
       "source_file": "docs/PRD.md",
       "source_location": null,
       "source_url": null
@@ -49849,21 +49909,6 @@
       "source_url": null
     },
     {
-      "id": "docs_prd_hdcl_regulations",
-      "label": "Housing Development (Control and Licensing) Regulations",
-      "_origin": "semantic",
-      "author": null,
-      "captured_at": null,
-      "community": 51,
-      "community_name": "Sources",
-      "contributor": null,
-      "file_type": "paper",
-      "norm_label": "housing development (control and licensing) regulations",
-      "source_file": "docs/PRD.md",
-      "source_location": null,
-      "source_url": null
-    },
-    {
       "id": "docs_prd_pjd_regency_case",
       "label": "PJD Regency Sdn Bhd v Tribunal Tuntutan Pembeli Rumah (2021)",
       "_origin": "semantic",
@@ -49894,16 +49939,16 @@
       "source_url": null
     },
     {
-      "id": "docs_prd_honest_accounting",
-      "label": "Honest Accounting",
+      "id": "docs_prd_buyer_signals",
+      "label": "Buyer Signals (responsiveness/hesitation)",
       "_origin": "semantic",
       "author": null,
       "captured_at": null,
-      "community": 51,
-      "community_name": "Sources",
+      "community": 52,
+      "community_name": "Functional Requirements",
       "contributor": null,
-      "file_type": "rationale",
-      "norm_label": "honest accounting",
+      "file_type": "concept",
+      "norm_label": "buyer signals (responsiveness/hesitation)",
       "source_file": "docs/PRD.md",
       "source_location": null,
       "source_url": null
@@ -49919,6 +49964,21 @@
       "contributor": null,
       "file_type": "concept",
       "norm_label": "closedexport excel export",
+      "source_file": "docs/PRD.md",
+      "source_location": null,
+      "source_url": null
+    },
+    {
+      "id": "docs_prd_copilot_readonly_tools",
+      "label": "Assistant Read-Only Tool Set",
+      "_origin": "semantic",
+      "author": null,
+      "captured_at": null,
+      "community": 52,
+      "community_name": "Functional Requirements",
+      "contributor": null,
+      "file_type": "concept",
+      "norm_label": "assistant read-only tool set",
       "source_file": "docs/PRD.md",
       "source_location": null,
       "source_url": null
@@ -49954,21 +50014,6 @@
       "source_url": null
     },
     {
-      "id": "docs_prd_fr15_spa_execution_desk",
-      "label": "FR-15 SPA Execution Desk",
-      "_origin": "semantic",
-      "author": null,
-      "captured_at": null,
-      "community": 52,
-      "community_name": "Functional Requirements",
-      "contributor": null,
-      "file_type": "concept",
-      "norm_label": "fr-15 spa execution desk",
-      "source_file": "docs/PRD.md",
-      "source_location": null,
-      "source_url": null
-    },
-    {
       "id": "docs_prd_fr16_leakage_analysis",
       "label": "FR-16 Leakage Analysis And Recovery Sizing",
       "_origin": "semantic",
@@ -49994,6 +50039,21 @@
       "contributor": null,
       "file_type": "concept",
       "norm_label": "fr-19 record an update",
+      "source_file": "docs/PRD.md",
+      "source_location": null,
+      "source_url": null
+    },
+    {
+      "id": "docs_prd_fr20_message_timing",
+      "label": "FR-20 Message Timing And Buyer Response",
+      "_origin": "semantic",
+      "author": null,
+      "captured_at": null,
+      "community": 52,
+      "community_name": "Functional Requirements",
+      "contributor": null,
+      "file_type": "concept",
+      "norm_label": "fr-20 message timing and buyer response",
       "source_file": "docs/PRD.md",
       "source_location": null,
       "source_url": null
@@ -50044,6 +50104,21 @@
       "source_url": null
     },
     {
+      "id": "docs_prd_fr7_scoring",
+      "label": "FR-7 Next Action, Playbook Fit And Buyer Signals",
+      "_origin": "semantic",
+      "author": null,
+      "captured_at": null,
+      "community": 52,
+      "community_name": "Functional Requirements",
+      "contributor": null,
+      "file_type": "concept",
+      "norm_label": "fr-7 next action, playbook fit and buyer signals",
+      "source_file": "docs/PRD.md",
+      "source_location": null,
+      "source_url": null
+    },
+    {
       "id": "docs_prd_functional_requirements",
       "label": "Functional Requirements",
       "_origin": "semantic",
@@ -50074,8 +50149,8 @@
       "source_url": null
     },
     {
-      "id": "docs_prd_jtbd_closing_out_appointments",
-      "label": "JTBD: Closing Out Appointments",
+      "id": "docs_prd_jtbd_guidance_retrieval",
+      "label": "JTBD: Guidance Retrieval",
       "_origin": "semantic",
       "author": null,
       "captured_at": null,
@@ -50083,14 +50158,14 @@
       "community_name": "Functional Requirements",
       "contributor": null,
       "file_type": "concept",
-      "norm_label": "jtbd: closing out appointments",
+      "norm_label": "jtbd: guidance retrieval",
       "source_file": "docs/PRD.md",
       "source_location": null,
       "source_url": null
     },
     {
-      "id": "docs_prd_jtbd_stall_resolution",
-      "label": "JTBD: Stall Resolution",
+      "id": "docs_prd_minisearch",
+      "label": "MiniSearch Playbook Index",
       "_origin": "semantic",
       "author": null,
       "captured_at": null,
@@ -50098,22 +50173,7 @@
       "community_name": "Functional Requirements",
       "contributor": null,
       "file_type": "concept",
-      "norm_label": "jtbd: stall resolution",
-      "source_file": "docs/PRD.md",
-      "source_location": null,
-      "source_url": null
-    },
-    {
-      "id": "docs_prd_metrics",
-      "label": "Metrics",
-      "_origin": "semantic",
-      "author": null,
-      "captured_at": null,
-      "community": 52,
-      "community_name": "Functional Requirements",
-      "contributor": null,
-      "file_type": "concept",
-      "norm_label": "metrics",
+      "norm_label": "minisearch playbook index",
       "source_file": "docs/PRD.md",
       "source_location": null,
       "source_url": null
@@ -50179,8 +50239,8 @@
       "source_url": null
     },
     {
-      "id": "docs_prd_sale_purchase_agreement",
-      "label": "Sale And Purchase Agreement (SPA)",
+      "id": "docs_prd_sent_at_validation",
+      "label": "sentAt Validation And Clock Skew",
       "_origin": "semantic",
       "author": null,
       "captured_at": null,
@@ -50188,67 +50248,7 @@
       "community_name": "Functional Requirements",
       "contributor": null,
       "file_type": "concept",
-      "norm_label": "sale and purchase agreement (spa)",
-      "source_file": "docs/PRD.md",
-      "source_location": null,
-      "source_url": null
-    },
-    {
-      "id": "docs_prd_secondary_metrics",
-      "label": "Secondary Operational Metrics",
-      "_origin": "semantic",
-      "author": null,
-      "captured_at": null,
-      "community": 52,
-      "community_name": "Functional Requirements",
-      "contributor": null,
-      "file_type": "concept",
-      "norm_label": "secondary operational metrics",
-      "source_file": "docs/PRD.md",
-      "source_location": null,
-      "source_url": null
-    },
-    {
-      "id": "docs_prd_spa_appointment_note_format",
-      "label": "Appointment On YYYY-MM-DD Note Format",
-      "_origin": "semantic",
-      "author": null,
-      "captured_at": null,
-      "community": 52,
-      "community_name": "Functional Requirements",
-      "contributor": null,
-      "file_type": "concept",
-      "norm_label": "appointment on yyyy-mm-dd note format",
-      "source_file": "docs/PRD.md",
-      "source_location": null,
-      "source_url": null
-    },
-    {
-      "id": "docs_prd_stall_rules",
-      "label": "Deterministic Stall Rules",
-      "_origin": "semantic",
-      "author": null,
-      "captured_at": null,
-      "community": 52,
-      "community_name": "Functional Requirements",
-      "contributor": null,
-      "file_type": "concept",
-      "norm_label": "deterministic stall rules",
-      "source_file": "docs/PRD.md",
-      "source_location": null,
-      "source_url": null
-    },
-    {
-      "id": "docs_prd_thirty_day_verified_spa_rate",
-      "label": "30-Day Verified SPA Rate",
-      "_origin": "semantic",
-      "author": null,
-      "captured_at": null,
-      "community": 52,
-      "community_name": "Functional Requirements",
-      "contributor": null,
-      "file_type": "concept",
-      "norm_label": "30-day verified spa rate",
+      "norm_label": "sentat validation and clock skew",
       "source_file": "docs/PRD.md",
       "source_location": null,
       "source_url": null
@@ -50284,8 +50284,8 @@
       "source_url": null
     },
     {
-      "id": "docs_prd_us24_spa_execution_queue",
-      "label": "US-24 Two-Section SPA Execution Queue",
+      "id": "docs_prd_us12_playbook_retrieval",
+      "label": "US-12 Playbook Knowledge Retrieval",
       "_origin": "semantic",
       "author": null,
       "captured_at": null,
@@ -50293,22 +50293,7 @@
       "community_name": "Functional Requirements",
       "contributor": null,
       "file_type": "concept",
-      "norm_label": "us-24 two-section spa execution queue",
-      "source_file": "docs/PRD.md",
-      "source_location": null,
-      "source_url": null
-    },
-    {
-      "id": "docs_prd_us25_inline_appointment_records",
-      "label": "US-25 Inline Appointment And Signing Records",
-      "_origin": "semantic",
-      "author": null,
-      "captured_at": null,
-      "community": 52,
-      "community_name": "Functional Requirements",
-      "contributor": null,
-      "file_type": "concept",
-      "norm_label": "us-25 inline appointment and signing records",
+      "norm_label": "us-12 playbook knowledge retrieval",
       "source_file": "docs/PRD.md",
       "source_location": null,
       "source_url": null
@@ -50339,21 +50324,6 @@
       "contributor": null,
       "file_type": "rationale",
       "norm_label": "stated root-cause attribution order",
-      "source_file": "docs/PRD.md",
-      "source_location": null,
-      "source_url": null
-    },
-    {
-      "id": "docs_prd_visibility_gap",
-      "label": "Visibility Gap Between Deposit And SPA Signing",
-      "_origin": "semantic",
-      "author": null,
-      "captured_at": null,
-      "community": 52,
-      "community_name": "Functional Requirements",
-      "contributor": null,
-      "file_type": "rationale",
-      "norm_label": "visibility gap between deposit and spa signing",
       "source_file": "docs/PRD.md",
       "source_location": null,
       "source_url": null
@@ -56176,21 +56146,6 @@
       "source_url": null
     },
     {
-      "id": "docs_prd_erp_integration_out_of_scope",
-      "label": "Direct Core ERP Integration (Out Of Scope)",
-      "_origin": "semantic",
-      "author": null,
-      "captured_at": null,
-      "community": 83,
-      "community_name": "Non-Functional Requirements",
-      "contributor": null,
-      "file_type": "concept",
-      "norm_label": "direct core erp integration (out of scope)",
-      "source_file": "docs/PRD.md",
-      "source_location": null,
-      "source_url": null
-    },
-    {
       "id": "docs_prd_fr12_offline_fallback",
       "label": "FR-12 High-Availability Offline Jev Fallback",
       "_origin": "semantic",
@@ -56506,8 +56461,8 @@
       "source_url": null
     },
     {
-      "id": "docs_prd_operational_constraints",
-      "label": "Operational Constraints",
+      "id": "docs_prd_ocr_deferred",
+      "label": "Document OCR And Computer Vision (Deferred)",
       "_origin": "semantic",
       "author": null,
       "captured_at": null,
@@ -56515,7 +56470,7 @@
       "community_name": "Non-Functional Requirements",
       "contributor": null,
       "file_type": "concept",
-      "norm_label": "operational constraints",
+      "norm_label": "document ocr and computer vision (deferred)",
       "source_file": "docs/PRD.md",
       "source_location": null,
       "source_url": null
@@ -56531,21 +56486,6 @@
       "contributor": null,
       "file_type": "concept",
       "norm_label": "out of scope",
-      "source_file": "docs/PRD.md",
-      "source_location": null,
-      "source_url": null
-    },
-    {
-      "id": "docs_prd_personas_and_jobs",
-      "label": "Personas And Jobs To Be Done",
-      "_origin": "semantic",
-      "author": null,
-      "captured_at": null,
-      "community": 83,
-      "community_name": "Non-Functional Requirements",
-      "contributor": null,
-      "file_type": "concept",
-      "norm_label": "personas and jobs to be done",
       "source_file": "docs/PRD.md",
       "source_location": null,
       "source_url": null
@@ -56626,6 +56566,21 @@
       "source_url": null
     },
     {
+      "id": "docs_prd_typesafe_jev",
+      "label": "TypeSafe Jev",
+      "_origin": "semantic",
+      "author": null,
+      "captured_at": null,
+      "community": 83,
+      "community_name": "Non-Functional Requirements",
+      "contributor": null,
+      "file_type": "concept",
+      "norm_label": "typesafe jev",
+      "source_file": "docs/PRD.md",
+      "source_location": null,
+      "source_url": null
+    },
+    {
       "id": "docs_prd_us27_copilot_assistant",
       "label": "US-27 Ask MortarAI Assistant",
       "_origin": "semantic",
@@ -56681,6 +56636,21 @@
       "contributor": null,
       "file_type": "rationale",
       "norm_label": "human in the loop",
+      "source_file": "docs/PRD.md",
+      "source_location": null,
+      "source_url": null
+    },
+    {
+      "id": "docs_prd_production_signin_out_of_scope",
+      "label": "Production Sign-In Out Of Scope",
+      "_origin": "semantic",
+      "author": null,
+      "captured_at": null,
+      "community": 83,
+      "community_name": "Non-Functional Requirements",
+      "contributor": null,
+      "file_type": "rationale",
+      "norm_label": "production sign-in out of scope",
       "source_file": "docs/PRD.md",
       "source_location": null,
       "source_url": null
@@ -56866,121 +56836,166 @@
       "source_url": null
     },
     {
-      "id": "docs_prd_buyer_signals",
-      "label": "Buyer Signals (responsiveness/hesitation)",
+      "id": "docs_demo_mortar_pitch_deck_booking_bk_9006",
+      "label": "BK-9006 (booking)",
       "_origin": "semantic",
       "author": null,
       "captured_at": null,
       "community": 88,
-      "community_name": "FR-7 Next Action, Playbook Fit And Buyer Signals",
+      "community_name": "Legal Admin (persona)",
       "contributor": null,
       "file_type": "concept",
-      "norm_label": "buyer signals (responsiveness/hesitation)",
+      "norm_label": "bk-9006 (booking)",
+      "source_file": "docs/demo/mortar-pitch-deck.html",
+      "source_location": "07 Live Walkthrough",
+      "source_url": null
+    },
+    {
+      "id": "docs_demo_mortar_pitch_deck_persona_legal_admin",
+      "label": "Legal Admin (persona)",
+      "_origin": "semantic",
+      "author": null,
+      "captured_at": null,
+      "community": 88,
+      "community_name": "Legal Admin (persona)",
+      "contributor": null,
+      "file_type": "concept",
+      "norm_label": "legal admin (persona)",
+      "source_file": "docs/demo/mortar-pitch-deck.html",
+      "source_location": "03 The Workflow Today",
+      "source_url": null
+    },
+    {
+      "id": "docs_demo_mortar_pitch_deck_workflow_stage_spa_drafted",
+      "label": "SPA Drafted (workflow stage \u2014 Legal Admin \u00b7 Law Firm)",
+      "_origin": "semantic",
+      "author": null,
+      "captured_at": null,
+      "community": 88,
+      "community_name": "Legal Admin (persona)",
+      "contributor": null,
+      "file_type": "concept",
+      "norm_label": "spa drafted (workflow stage \u2014 legal admin \u00b7 law firm)",
+      "source_file": "docs/demo/mortar-pitch-deck.html",
+      "source_location": "03 The Workflow Today",
+      "source_url": null
+    },
+    {
+      "id": "docs_prd_fr15_spa_execution_desk",
+      "label": "FR-15 SPA Execution Desk",
+      "_origin": "semantic",
+      "author": null,
+      "captured_at": null,
+      "community": 88,
+      "community_name": "Legal Admin (persona)",
+      "contributor": null,
+      "file_type": "concept",
+      "norm_label": "fr-15 spa execution desk",
       "source_file": "docs/PRD.md",
       "source_location": null,
       "source_url": null
     },
     {
-      "id": "docs_prd_copilot_readonly_tools",
-      "label": "Assistant Read-Only Tool Set",
+      "id": "docs_prd_jtbd_closing_out_appointments",
+      "label": "JTBD: Closing Out Appointments",
       "_origin": "semantic",
       "author": null,
       "captured_at": null,
       "community": 88,
-      "community_name": "FR-7 Next Action, Playbook Fit And Buyer Signals",
+      "community_name": "Legal Admin (persona)",
       "contributor": null,
       "file_type": "concept",
-      "norm_label": "assistant read-only tool set",
+      "norm_label": "jtbd: closing out appointments",
       "source_file": "docs/PRD.md",
       "source_location": null,
       "source_url": null
     },
     {
-      "id": "docs_prd_fr20_message_timing",
-      "label": "FR-20 Message Timing And Buyer Response",
+      "id": "docs_prd_jtbd_seeing_what_stopped",
+      "label": "JTBD: Seeing What Has Stopped",
       "_origin": "semantic",
       "author": null,
       "captured_at": null,
       "community": 88,
-      "community_name": "FR-7 Next Action, Playbook Fit And Buyer Signals",
+      "community_name": "Legal Admin (persona)",
       "contributor": null,
       "file_type": "concept",
-      "norm_label": "fr-20 message timing and buyer response",
+      "norm_label": "jtbd: seeing what has stopped",
       "source_file": "docs/PRD.md",
       "source_location": null,
       "source_url": null
     },
     {
-      "id": "docs_prd_fr7_scoring",
-      "label": "FR-7 Next Action, Playbook Fit And Buyer Signals",
+      "id": "docs_prd_spa_appointment_note_format",
+      "label": "Appointment On YYYY-MM-DD Note Format",
       "_origin": "semantic",
       "author": null,
       "captured_at": null,
       "community": 88,
-      "community_name": "FR-7 Next Action, Playbook Fit And Buyer Signals",
+      "community_name": "Legal Admin (persona)",
       "contributor": null,
       "file_type": "concept",
-      "norm_label": "fr-7 next action, playbook fit and buyer signals",
+      "norm_label": "appointment on yyyy-mm-dd note format",
       "source_file": "docs/PRD.md",
       "source_location": null,
       "source_url": null
     },
     {
-      "id": "docs_prd_jtbd_guidance_retrieval",
-      "label": "JTBD: Guidance Retrieval",
+      "id": "docs_prd_us24_spa_execution_queue",
+      "label": "US-24 Two-Section SPA Execution Queue",
       "_origin": "semantic",
       "author": null,
       "captured_at": null,
       "community": 88,
-      "community_name": "FR-7 Next Action, Playbook Fit And Buyer Signals",
+      "community_name": "Legal Admin (persona)",
       "contributor": null,
       "file_type": "concept",
-      "norm_label": "jtbd: guidance retrieval",
+      "norm_label": "us-24 two-section spa execution queue",
       "source_file": "docs/PRD.md",
       "source_location": null,
       "source_url": null
     },
     {
-      "id": "docs_prd_minisearch",
-      "label": "MiniSearch Playbook Index",
+      "id": "docs_prd_us25_inline_appointment_records",
+      "label": "US-25 Inline Appointment And Signing Records",
       "_origin": "semantic",
       "author": null,
       "captured_at": null,
       "community": 88,
-      "community_name": "FR-7 Next Action, Playbook Fit And Buyer Signals",
+      "community_name": "Legal Admin (persona)",
       "contributor": null,
       "file_type": "concept",
-      "norm_label": "minisearch playbook index",
+      "norm_label": "us-25 inline appointment and signing records",
       "source_file": "docs/PRD.md",
       "source_location": null,
       "source_url": null
     },
     {
-      "id": "docs_prd_sent_at_validation",
-      "label": "sentAt Validation And Clock Skew",
+      "id": "docs_prd_us26_panel_load",
+      "label": "US-26 Panel Load",
       "_origin": "semantic",
       "author": null,
       "captured_at": null,
       "community": 88,
-      "community_name": "FR-7 Next Action, Playbook Fit And Buyer Signals",
+      "community_name": "Legal Admin (persona)",
       "contributor": null,
       "file_type": "concept",
-      "norm_label": "sentat validation and clock skew",
+      "norm_label": "us-26 panel load",
       "source_file": "docs/PRD.md",
       "source_location": null,
       "source_url": null
     },
     {
-      "id": "docs_prd_us12_playbook_retrieval",
-      "label": "US-12 Playbook Knowledge Retrieval",
+      "id": "docs_prd_days_since_derivation",
+      "label": "daysSinceLoanApproved / daysSinceSpaSet",
       "_origin": "semantic",
       "author": null,
       "captured_at": null,
       "community": 88,
-      "community_name": "FR-7 Next Action, Playbook Fit And Buyer Signals",
+      "community_name": "Legal Admin (persona)",
       "contributor": null,
-      "file_type": "concept",
-      "norm_label": "us-12 playbook knowledge retrieval",
+      "file_type": "rationale",
+      "norm_label": "dayssinceloanapproved / dayssincespaset",
       "source_file": "docs/PRD.md",
       "source_location": null,
       "source_url": null
@@ -155621,61 +155636,6 @@
       "weight": 1.0
     },
     {
-      "source": "docs_prd_mortar",
-      "target": "docs_product_mortar_overview",
-      "relation": "references",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "docs/PRD.md",
-      "source_location": "L1124",
-      "weight": 1.0
-    },
-    {
-      "source": "docs_prd_mortar",
-      "target": "docs_research_company_brain_readme",
-      "relation": "references",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "docs/PRD.md",
-      "source_location": "L1130",
-      "weight": 1.0
-    },
-    {
-      "source": "docs_prd_mortar",
-      "target": "docs_research_company_brain_simulation",
-      "relation": "references",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "docs/PRD.md",
-      "source_location": "L1132",
-      "weight": 1.0
-    },
-    {
-      "source": "docs_prd_mortar",
-      "target": "docs_research_practitioner_survey_readme",
-      "relation": "references",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "docs/PRD.md",
-      "source_location": "L1134",
-      "weight": 1.0
-    },
-    {
-      "source": "docs_prd_mortar",
-      "target": "docs_source_problem_statement",
-      "relation": "references",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "docs/PRD.md",
-      "source_location": "L1136",
-      "weight": 1.0
-    },
-    {
       "source": "docs_research_company_brain_readme",
       "target": "docs_research_company_brain_simulation",
       "relation": "references",
@@ -158771,6 +158731,17 @@
       "confidence_score": 1.0,
       "source_file": ".github/workflows/ci.yml",
       "source_location": "lines 42-45",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_prd_us13_risk_in_plain_words",
+      "target": "docs_prd_named_profile_scoping",
+      "relation": "constrained_by",
+      "_origin": "semantic",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/PRD.md",
+      "source_location": null,
       "weight": 1.0
     },
     {
@@ -175396,6 +175367,61 @@
     },
     {
       "source": "docs_prd_mortar",
+      "target": "docs_product_mortar_overview",
+      "relation": "references",
+      "_origin": "semantic",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/PRD.md",
+      "source_location": "L1124",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_prd_mortar",
+      "target": "docs_research_company_brain_readme",
+      "relation": "references",
+      "_origin": "semantic",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/PRD.md",
+      "source_location": "L1130",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_prd_mortar",
+      "target": "docs_research_company_brain_simulation",
+      "relation": "references",
+      "_origin": "semantic",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/PRD.md",
+      "source_location": "L1132",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_prd_mortar",
+      "target": "docs_research_practitioner_survey_readme",
+      "relation": "references",
+      "_origin": "semantic",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/PRD.md",
+      "source_location": "L1134",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_prd_mortar",
+      "target": "docs_source_problem_statement",
+      "relation": "references",
+      "_origin": "semantic",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/PRD.md",
+      "source_location": "L1136",
+      "weight": 1.0
+    },
+    {
+      "source": "docs_prd_mortar",
       "target": "docs_prd_demo_script_acceptance",
       "relation": "references",
       "_origin": "semantic",
@@ -175846,6 +175872,17 @@
       "weight": 1.0
     },
     {
+      "source": "docs_prd_persona_defaults_not_access",
+      "target": "docs_prd_named_profile_scoping",
+      "relation": "references",
+      "_origin": "semantic",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/PRD.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
       "source": "docs_prd_persona_pages",
       "target": "docs_demo_mortar_pitch_deck_persona_manager",
       "relation": "references",
@@ -175914,6 +175951,17 @@
     {
       "source": "docs_prd_personas_and_jobs",
       "target": "docs_demo_mortar_pitch_deck_persona_sales_admin",
+      "relation": "references",
+      "_origin": "semantic",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/PRD.md",
+      "source_location": null,
+      "weight": 1.0
+    },
+    {
+      "source": "docs_prd_personas_and_jobs",
+      "target": "docs_prd_named_profile_scoping",
       "relation": "references",
       "_origin": "semantic",
       "confidence": "EXTRACTED",
@@ -206340,6 +206388,152 @@
   ],
   "hyperedges": [
     {
+      "id": "docs_prd_mortarai_two_engine_architecture",
+      "label": "MortarAI Two-Engine Architecture (Jev + Gemini)",
+      "nodes": [
+        "docs_prd_mortarai_ai_layer",
+        "docs_prd_typesafe_jev",
+        "docs_prd_gemini_assistant",
+        "docs_prd_ask_mortarai_renamed"
+      ],
+      "relation": "form",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/PRD.md",
+      "_origin": "semantic"
+    },
+    {
+      "id": "docs_prd_redesign_supersedes_intake_60_points",
+      "label": "Redesign Supersedes #60 Points (Suggestions Tabs, Forecast Documents Removal)",
+      "nodes": [
+        "docs_prd_intake_60",
+        "docs_prd_manager_suggestions_first",
+        "docs_prd_forecast_documents_removed",
+        "docs_prd_decisions_for_you",
+        "docs_prd_team_page",
+        "docs_prd_forecast_document_stack"
+      ],
+      "relation": "participate_in",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/PRD.md",
+      "_origin": "semantic"
+    },
+    {
+      "id": "live_walkthrough_cross_desk_handoff",
+      "label": "Cross-Desk Booking Handoff In The Live Walkthrough",
+      "nodes": [
+        "docs_demo_mortar_pitch_deck_persona_sales_admin",
+        "docs_demo_mortar_pitch_deck_persona_loan_admin",
+        "docs_demo_mortar_pitch_deck_persona_legal_admin",
+        "docs_demo_mortar_pitch_deck_persona_manager"
+      ],
+      "relation": "participate_in",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/demo/mortar-pitch-deck.html",
+      "_origin": "semantic"
+    },
+    {
+      "id": "live_walkthrough_seven_step_flow",
+      "label": "Seven-Step Live Walkthrough Sequence",
+      "nodes": [
+        "docs_demo_pitch_script_walkthrough_step1_queue_cards",
+        "docs_demo_pitch_script_walkthrough_step2_waiting_on_view",
+        "docs_demo_pitch_script_walkthrough_step3_confirm_jev_suggestion",
+        "docs_demo_pitch_script_walkthrough_step4_paste_message_confirm",
+        "docs_demo_pitch_script_walkthrough_step5_record_appointment",
+        "docs_demo_pitch_script_walkthrough_step6_request_followup",
+        "docs_demo_pitch_script_walkthrough_step7_forecast_numbers"
+      ],
+      "relation": "form",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/demo/pitch-script.md",
+      "_origin": "semantic"
+    },
+    {
+      "id": "mortarai_two_engine_system",
+      "label": "MortarAI's Two-Engine System (Jev Reads, Gemini Answers)",
+      "nodes": [
+        "docs_demo_mortar_pitch_deck_mortarai",
+        "docs_demo_mortar_pitch_deck_jev",
+        "docs_demo_mortar_pitch_deck_gemini_engine",
+        "docs_demo_mortar_pitch_deck_ask_mortarai"
+      ],
+      "relation": "form",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "docs/demo/mortar-pitch-deck.html",
+      "_origin": "semantic"
+    },
+    {
+      "id": "desk_never_waits_on_ai",
+      "label": "The Desk Never Waits On AI: Budgets And Fallbacks",
+      "nodes": [
+        "docs_demo_pitch_script_graceful_degradation",
+        "docs_demo_pitch_script_jev_three_second_budget",
+        "docs_demo_pitch_script_contingency_jev_slow_or_wrong",
+        "docs_demo_pitch_script_contingency_gemini_fallback_counted",
+        "docs_demo_pitch_script_q_ai_wrong_or_down",
+        "docs_demo_pitch_script_10_technology_second_b_1_minute"
+      ],
+      "relation": "participate_in",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "docs/demo/pitch-script.md",
+      "_origin": "semantic"
+    },
+    {
+      "id": "docs_prd_manager_oversight_flow",
+      "label": "Manager Oversight Flow (Decisions For You, Follow-Up, Team View)",
+      "nodes": [
+        "docs_demo_mortar_pitch_deck_persona_manager",
+        "docs_prd_jtbd_decisions_waiting_on_me",
+        "docs_prd_decisions_for_you",
+        "docs_prd_manager_flagging",
+        "docs_prd_jtbd_reading_the_desks",
+        "docs_prd_team_page"
+      ],
+      "relation": "form",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "docs/PRD.md",
+      "_origin": "semantic"
+    },
+    {
+      "id": "jev_checkable_proposal_flow",
+      "label": "Jev Picks, Scores Its Confidence, A Person Confirms",
+      "nodes": [
+        "docs_demo_pitch_script_jev",
+        "docs_demo_pitch_script_jev_fixed_answers_calibrated_confidence",
+        "docs_demo_pitch_script_needs_review_threshold",
+        "docs_demo_pitch_script_jev_picks_never_writes",
+        "docs_demo_pitch_script_ai_proposes_people_confirm",
+        "docs_demo_pitch_script_walkthrough_step3_confirm_jev_suggestion"
+      ],
+      "relation": "form",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "docs/demo/pitch-script.md",
+      "_origin": "semantic"
+    },
+    {
+      "id": "pitch_deck_evidence_base",
+      "label": "Evidence Base Cited Across The Pitch Deck",
+      "nodes": [
+        "docs_demo_mortar_pitch_deck_source_practitioner_survey",
+        "docs_demo_mortar_pitch_deck_source_rehda_industry_survey",
+        "docs_demo_mortar_pitch_deck_source_chgp_2q_2026_results",
+        "docs_demo_mortar_pitch_deck_source_chin_hin_challenge_brief"
+      ],
+      "relation": "form",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "docs/demo/mortar-pitch-deck.html",
+      "_origin": "semantic"
+    },
+    {
       "id": "ai_never_the_decider_guardrails",
       "label": "AI never the decider: proposals, low-confidence flags and outage fallbacks",
       "nodes": [
@@ -206400,36 +206594,6 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "scripts/demo/README.md"
-    },
-    {
-      "id": "docs_prd_mortarai_two_engine_architecture",
-      "label": "MortarAI Two-Engine Architecture (Jev + Gemini)",
-      "nodes": [
-        "docs_prd_mortarai_ai_layer",
-        "docs_prd_typesafe_jev",
-        "docs_prd_gemini_assistant",
-        "docs_prd_ask_mortarai_renamed"
-      ],
-      "relation": "form",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "docs/PRD.md"
-    },
-    {
-      "id": "docs_prd_redesign_supersedes_intake_60_points",
-      "label": "Redesign Supersedes #60 Points (Suggestions Tabs, Forecast Documents Removal)",
-      "nodes": [
-        "docs_prd_intake_60",
-        "docs_prd_manager_suggestions_first",
-        "docs_prd_forecast_documents_removed",
-        "docs_prd_decisions_for_you",
-        "docs_prd_team_page",
-        "docs_prd_forecast_document_stack"
-      ],
-      "relation": "participate_in",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "docs/PRD.md"
     },
     {
       "id": "docs_product_manager_today_and_team",
@@ -206572,37 +206736,6 @@
       "source_file": "docs/research/design/README.md"
     },
     {
-      "id": "live_walkthrough_cross_desk_handoff",
-      "label": "Cross-Desk Booking Handoff In The Live Walkthrough",
-      "nodes": [
-        "docs_demo_mortar_pitch_deck_persona_sales_admin",
-        "docs_demo_mortar_pitch_deck_persona_loan_admin",
-        "docs_demo_mortar_pitch_deck_persona_legal_admin",
-        "docs_demo_mortar_pitch_deck_persona_manager"
-      ],
-      "relation": "participate_in",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "docs/demo/mortar-pitch-deck.html"
-    },
-    {
-      "id": "live_walkthrough_seven_step_flow",
-      "label": "Seven-Step Live Walkthrough Sequence",
-      "nodes": [
-        "docs_demo_pitch_script_walkthrough_step1_queue_cards",
-        "docs_demo_pitch_script_walkthrough_step2_waiting_on_view",
-        "docs_demo_pitch_script_walkthrough_step3_confirm_jev_suggestion",
-        "docs_demo_pitch_script_walkthrough_step4_paste_message_confirm",
-        "docs_demo_pitch_script_walkthrough_step5_record_appointment",
-        "docs_demo_pitch_script_walkthrough_step6_request_followup",
-        "docs_demo_pitch_script_walkthrough_step7_forecast_numbers"
-      ],
-      "relation": "form",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "docs/demo/pitch-script.md"
-    },
-    {
       "id": "mortar_public_page_chrome",
       "label": "Public Page Chrome (Landing, Footer, Sign-In)",
       "nodes": [
@@ -206646,20 +206779,6 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/README.md"
-    },
-    {
-      "id": "mortarai_two_engine_system",
-      "label": "MortarAI's Two-Engine System (Jev Reads, Gemini Answers)",
-      "nodes": [
-        "docs_demo_mortar_pitch_deck_mortarai",
-        "docs_demo_mortar_pitch_deck_jev",
-        "docs_demo_mortar_pitch_deck_gemini_engine",
-        "docs_demo_mortar_pitch_deck_ask_mortarai"
-      ],
-      "relation": "form",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "docs/demo/mortar-pitch-deck.html"
     },
     {
       "id": "production_path_to_pilot",
@@ -206725,22 +206844,6 @@
       "source_file": "scripts/demo/README.md"
     },
     {
-      "id": "desk_never_waits_on_ai",
-      "label": "The Desk Never Waits On AI: Budgets And Fallbacks",
-      "nodes": [
-        "docs_demo_pitch_script_graceful_degradation",
-        "docs_demo_pitch_script_jev_three_second_budget",
-        "docs_demo_pitch_script_contingency_jev_slow_or_wrong",
-        "docs_demo_pitch_script_contingency_gemini_fallback_counted",
-        "docs_demo_pitch_script_q_ai_wrong_or_down",
-        "docs_demo_pitch_script_10_technology_second_b_1_minute"
-      ],
-      "relation": "participate_in",
-      "confidence": "INFERRED",
-      "confidence_score": 0.85,
-      "source_file": "docs/demo/pitch-script.md"
-    },
-    {
       "id": "docs_agents_graphify_churn_safeguards",
       "label": "Safeguards Against Graph Churn And Node Loss",
       "nodes": [
@@ -206789,22 +206892,6 @@
       "confidence": "INFERRED",
       "confidence_score": 0.85,
       "source_file": "docs/agents/notes.md"
-    },
-    {
-      "id": "docs_prd_manager_oversight_flow",
-      "label": "Manager Oversight Flow (Decisions For You, Follow-Up, Team View)",
-      "nodes": [
-        "docs_demo_mortar_pitch_deck_persona_manager",
-        "docs_prd_jtbd_decisions_waiting_on_me",
-        "docs_prd_decisions_for_you",
-        "docs_prd_manager_flagging",
-        "docs_prd_jtbd_reading_the_desks",
-        "docs_prd_team_page"
-      ],
-      "relation": "form",
-      "confidence": "INFERRED",
-      "confidence_score": 0.85,
-      "source_file": "docs/PRD.md"
     },
     {
       "id": "forecast_aggregate_consumers",
@@ -206885,22 +206972,6 @@
       "source_file": ".github/workflows/ci.yml"
     },
     {
-      "id": "jev_checkable_proposal_flow",
-      "label": "Jev Picks, Scores Its Confidence, A Person Confirms",
-      "nodes": [
-        "docs_demo_pitch_script_jev",
-        "docs_demo_pitch_script_jev_fixed_answers_calibrated_confidence",
-        "docs_demo_pitch_script_needs_review_threshold",
-        "docs_demo_pitch_script_jev_picks_never_writes",
-        "docs_demo_pitch_script_ai_proposes_people_confirm",
-        "docs_demo_pitch_script_walkthrough_step3_confirm_jev_suggestion"
-      ],
-      "relation": "form",
-      "confidence": "INFERRED",
-      "confidence_score": 0.85,
-      "source_file": "docs/demo/pitch-script.md"
-    },
-    {
       "id": "mortar_flat_ledger_surface_system",
       "label": "Flat Ledger Surface System",
       "nodes": [
@@ -206915,20 +206986,6 @@
       "confidence": "INFERRED",
       "confidence_score": 0.85,
       "source_file": "docs/DESIGN.md"
-    },
-    {
-      "id": "pitch_deck_evidence_base",
-      "label": "Evidence Base Cited Across The Pitch Deck",
-      "nodes": [
-        "docs_demo_mortar_pitch_deck_source_practitioner_survey",
-        "docs_demo_mortar_pitch_deck_source_rehda_industry_survey",
-        "docs_demo_mortar_pitch_deck_source_chgp_2q_2026_results",
-        "docs_demo_mortar_pitch_deck_source_chin_hin_challenge_brief"
-      ],
-      "relation": "form",
-      "confidence": "INFERRED",
-      "confidence_score": 0.85,
-      "source_file": "docs/demo/mortar-pitch-deck.html"
     },
     {
       "id": "github_workflows_ci_test_database_wiring",
@@ -206948,5 +207005,5 @@
       "source_file": ".github/workflows/ci.yml"
     }
   ],
-  "built_at_commit": "d95e17f826c88891959dffbd0a6c5da3c979ce58"
+  "built_at_commit": "4d25dcf109eba19b274237e0730b256266b912cd"
 }
