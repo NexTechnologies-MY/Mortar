@@ -105,30 +105,27 @@ counts expected signings, not bookings."
 **Say:** "MortarAI is our AI layer, and it has two engines, each with one job.
 Jev, from TypeSafe, reads. Gemini, from Google, answers."
 
-**Then, How Jev Works:** "Most AI you have seen writes paragraphs. Jev does not
-write; it picks. When a banker's message comes in, Mortar hands Jev the message
-and the booking's facts and asks it a few multiple-choice questions: what
-happened, which document, and who acts next. Jev ticks one answer for each and
-says how sure it is. The answers come from our own fixed list, so it cannot
-invent a status. Its 'how sure' is trained to match how often it is right, so we
-can use the number: below 60 percent, the proposal is marked Needs Review. This
-line is exactly what the live app shows for BK-9001."
+**Then, How Jev Works:** "Most AI you have seen writes paragraphs. Jev chooses
+from a fixed list: what happened, which document, and who acts next. It shows
+how sure it is, calibrated against how often it is right. Below 60 percent, the
+proposal goes to Needs Review for a person. Unlike a general chatbot, it cannot
+invent a status. This is the exact proposal the live app shows for BK-9001."
 
-**Then, Why It Helps:** "The slowest part of follow-up is noticing that
-something changed. Jev is quick enough to read every message, Manglish included,
-so nobody retypes WhatsApp into a system, and a person confirms the update with
-one click. The same engine suggests the next move on each Today card, ranks our
-playbooks for a case, and flags a buyer who is going quiet. Few teams build on
-an engine like this; we chose it because a case update has to be checkable, not
-eloquent."
+**Then, Why It Helps:** "Follow-up is slow when staff have to spot every change.
+Jev reads buyer, banker and lawyer messages, Manglish included, inside three
+seconds, with a cached answer if needed. Nobody retypes WhatsApp into Mortar,
+and a person confirms with one click. Jev also suggests the next step on each
+Today card, ranks case playbooks and flags buyers who may be going quiet. Few
+teams use Jev. We chose it because updates should be checkable, not eloquent."
 
-**Then, Gemini:** "Gemini answers. Staff ask Ask MortarAI about their own
-bookings and get an answer with the booking cited. It can read a photo of a bank
-letter, and it never changes a record."
+**Then, Gemini:** "Gemini answers Ask MortarAI questions only from the staff
+member's authorised bookings, using five read-only tools. It cites the booking,
+can read a bank-letter photo and never changes a record. Unlike a general
+chatbot, Gemini stays within the cases staff may see; if it is down, a scripted
+answer steps in."
 
-**Land:** Jev picks and never writes; Gemini answers from your own bookings; a
-person still confirms.
-
+**Land:** Jev picks from a fixed list and cannot invent a status; Gemini stays
+within authorised bookings and cannot change records; a person still confirms.
 The Gemini answer on the slide is worded from BK-9001's case page, not captured
 from Gemini, so do not call it a live answer.
 
