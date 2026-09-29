@@ -68,8 +68,8 @@ unrealized revenue.
 
 Mortar serves four distinct internal operational personas within a Malaysian
 property development firm. Each persona operates from a dedicated home screen
-tailored to their daily responsibilities, while sharing the same underlying case
-records.
+tailored to daily responsibilities, with case access scoped to the signed-in
+staff profile.
 
 | Persona     | Persona Staff | Home Route  | Primary Focus                                                                   |
 | ----------- | ------------- | ----------- | ------------------------------------------------------------------------------- |
@@ -193,9 +193,9 @@ row.
 - **US-12 (Playbook Knowledge Retrieval):** As a staff member, I want playbooks
   to show the top fit ("Applies" or "May Apply") and the rest behind "Show N
   More".
-- **US-13 (Risk In Plain Words):** As a user on any desk, I want the risk chip
-  to explain itself in plain words ("Monthly Repayments Compared With Income:
-  48%") for every persona, with no masking.
+- **US-13 (Risk In Plain Words):** As a user on any desk, I want to see the risk
+  chip in plain words ("Monthly Repayments Compared With Income: 48%") for any
+  case within my profile's access scope.
 
 ### Forecast (`/forecast`)
 
@@ -583,8 +583,11 @@ The system must enforce persona routing and adhere to visual design standards.
   home route with a brief notice. Case detail (`/bookings/:id`), `/app`, `/faq`,
   and public routes (`/`, `/sign-in`) are never guarded.
 - **AC-14.4:** Persona sets workflow defaults (such as landing route and queue
-  filters), not data access. No figures or cases are masked per persona; all
-  personas see identical underlying data.
+  filters), while the signed-in profile determines data access. Sales Admin
+  profiles see only their own bookings. Loan Admin and Legal Admin see only
+  cases currently assigned to them or with an open task assigned to their
+  internal identity. Previous responsibility alone does not retain access after
+  handoff. Manager can open every desk and booking.
 - **AC-14.5:** `/settings` must display Demo Data first and fold unit layouts,
   stating plainly that data is simulated, with seed and reference date.
   `/forecast` displays its accuracy score as a sentence, labels its summary tile
