@@ -36,15 +36,29 @@ text or line numbers.
 
 ## Keep It Current
 
-The graph is committed, so `main` must always carry a current one.
+The graph is committed, so `main` must always carry a current one. Refresh it as
+the last commit of every pull request: rebase on `main`, run the appropriate
+refresh steps below, and commit `graphify-out/`. Refreshing inside the pull
+request keeps `main` current without an extra commit, which would redeploy the
+prototype.
 
-- Refresh it as the last commit of every pull request: rebase on `main`, run
-  `graphify update .`, and commit `graphify-out/`. Refreshing inside the pull
-  request keeps `main` current without an extra commit, which would redeploy the
-  prototype.
-- `graphify update .` re-extracts changed code with no model and no key. When a
-  pull request changes documents, also run the `/graphify . --update` skill,
-  which re-reads changed documents with the model.
+- **Code changes:** run `graphify update .` (free). It re-extracts code with no
+  model and no API key.
+- **A small doc edit (a few lines or a paragraph):** patch existing nodes
+  instead of re-extracting the whole file. Run
+  `$(head -1 "$(command -v graphify)" | cut -c3-) scripts/graph/patch_docs.py prepare <doc> [<doc>...]`.
+  An agy worker edits only the nodes and edges the text change touched (using
+  the agy-fanout skill: `gemini-3.8-flash`, `--effort high`,
+  `--dangerously-skip-permissions`, `--add-dir` the repo) in
+  `graphify-out/.graphify_chunk_NN.json`. Run `patch_docs.py check`,
+  `patch_docs.py merge`, then `graphify update .` twice (the second run must
+  print `No code-graph topology changes detected`), and `patch_docs.py finish`.
+  Commit `graphify-out/` as the last commit. No Claude subagents.
+- **A new document or a large rewrite:** re-extract that document with the
+  model, following the `/graphify . --update` skill but dispatching the
+  extraction to agy workers instead of Claude subagents, reusing the baseline
+  IDs for every concept that is still there. Run the same `check`, `merge`,
+  `graphify update .` twice, and `finish` steps.
 - When two pull requests both change `graphify-out/`, do not merge the graph
   files by hand. Take either side, run `graphify update .` again, and commit the
   result.
