@@ -5,6 +5,15 @@ cache/
 last_query_stamp
 stat-index.json
 .graphify_chunk_*.json
+.graphify_detect.json
+.graphify_incremental.json
+.graphify_uncached.txt
+.graphify_ast.json
+.graphify_extract.json
+.graphify_old.json
+.graphify_semantic*.json
+.graphify_analysis.json
+.graphify_baseline_*.txt
 .needs_update
 # Dated snapshots graphify takes before it overwrites a labelled graph.
 /[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/
