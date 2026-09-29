@@ -121,7 +121,7 @@ export function LegalPage() {
                     No Cases Waiting For An SPA Appointment To Be Scheduled.
                   </p>
                 ) : (
-                  <div className="mt-3">
+                  <div className="mt-3 rounded-md border border-card-border bg-card shadow-card">
                     <LegalQueueTable
                       rows={noAppointmentRows}
                       kind="spa_appointment_set"
@@ -143,7 +143,7 @@ export function LegalPage() {
                     No Cases With Scheduled Appointments Awaiting Signing.
                   </p>
                 ) : (
-                  <div className="mt-3">
+                  <div className="mt-3 rounded-md border border-card-border bg-card shadow-card">
                     <LegalQueueTable
                       rows={appointmentSetRows}
                       kind="spa_signed"

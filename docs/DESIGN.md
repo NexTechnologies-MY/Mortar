@@ -327,11 +327,11 @@ still restricted to 4px and 6px, and `--radius-lg` and `--radius-xl` resolve to
   `0 1px 2px color-mix(in oklab, var(--color-ink-950) 5%, transparent), 0 6px 16px -4px color-mix(in oklab, var(--color-ink-950) 8%, transparent)`,
   over a 1px border in `--card-border`
   (`color-mix(in oklab, var(--color-ink-950) 6%, transparent)`). Carried by
-  every card surface in the application: chase cards, stat tiles, panel cards
-  and the bookings table panel. The page ground stays white, so the shadow is
-  the only thing separating card from page. The hairline softens from `--border`
-  to `--card-border` because a full `#D8D8D8` line underneath a shadow reads as
-  a doubled edge.
+  every card surface in the application: chase cards, stat tiles, panel cards,
+  and the Bookings and Legal table panels. The page ground stays white, so the
+  shadow is the only thing separating card from page. The hairline softens from
+  `--border` to `--card-border` because a full `#D8D8D8` line underneath a
+  shadow reads as a doubled edge.
 - **Card hover elevation (`--shadow-card-hover`):**
   `0 1px 2px color-mix(in oklab, var(--color-ink-950) 6%, transparent), 0 10px 24px -6px color-mix(in oklab, var(--color-ink-950) 12%, transparent)`
   plus a 1px upward translate, on interactive cards only, over 160ms
