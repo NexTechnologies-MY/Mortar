@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { Assumption, Booking, CaseEvent, Dataset, LoanApplication } from './types'
+import type { Assumption, Booking, CaseEvent, Dataset, LoanApplication, Snapshot } from './types'
 import {
   backtest,
   DEFAULT_ASSUMPTIONS,
@@ -18,6 +18,7 @@ import { STORIES } from './fixtures/stories'
 import { wilsonInterval } from './sim/forecast'
 import { monthlyInstalment } from './sim/risk'
 import { addDays, dateOf, diffDays } from './sim/dates'
+import { teamSummary } from './team'
 
 const OPTIONS = { seed: DEFAULT_SEED, referenceDate: REFERENCE_DATE, bookings: 140 }
 const emptyData: Dataset = { bookings: [], applications: [], events: [] }
@@ -90,6 +91,26 @@ describe('generate', () => {
       [...data.bookings, ...STORIES.map((s) => s.booking)].filter((b) => b.salesOwner === owner).length
     expect(owned('Nurul Aina')).toBe(77)
     expect(owned('Farah Izzati')).toBe(71)
+  })
+
+  it('gives each Sales Admin an overdue case in the canonical demo seed', () => {
+    const dataset = withStories(DEFAULT_SEED)
+    const seededSnapshot: Snapshot = {
+      meta: { seed: DEFAULT_SEED, referenceDate: REFERENCE_DATE, resetAt: null },
+      ...dataset,
+      tasks: [],
+      messages: STORIES.flatMap((story) => story.messages),
+      playbooks: [],
+      extractions: [],
+      signals: [],
+      nextActions: []
+    }
+    const summaries = summarizeCases({ ...dataset, tasks: [] }, REFERENCE_DATE)
+    const team = teamSummary(seededSnapshot, summaries)
+
+    for (const name of ['Nurul Aina', 'Farah Izzati']) {
+      expect(team.rows.find((row) => row.name === name)?.overdue ?? 0).toBeGreaterThan(0)
+    }
   })
 
   it('emits nothing after the reference date', () => {
