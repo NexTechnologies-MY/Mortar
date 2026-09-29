@@ -14,6 +14,8 @@ import {
 } from './sim'
 import { deriveCase, STAGE_RANK } from './sim/cases'
 import { ballInCourt } from './ball'
+import { managerSuggestions } from './manager'
+import { currentCaseAssignee } from './profiles'
 import { STORIES } from './fixtures/stories'
 import { wilsonInterval } from './sim/forecast'
 import { monthlyInstalment } from './sim/risk'
@@ -93,7 +95,7 @@ describe('generate', () => {
     expect(owned('Farah Izzati')).toBe(71)
   })
 
-  it('gives each Sales Admin an overdue case in the canonical demo seed', () => {
+  it('seeds three overdue Today cards per Sales Admin and keeps the Manager queue stable', () => {
     const dataset = withStories(DEFAULT_SEED)
     const seededSnapshot: Snapshot = {
       meta: { seed: DEFAULT_SEED, referenceDate: REFERENCE_DATE, resetAt: null },
@@ -106,11 +108,33 @@ describe('generate', () => {
       nextActions: []
     }
     const summaries = summarizeCases({ ...dataset, tasks: [] }, REFERENCE_DATE)
+    const summaryById = new Map(summaries.map((summary) => [summary.bookingId, summary]))
     const team = teamSummary(seededSnapshot, summaries)
 
-    for (const name of ['Nurul Aina', 'Farah Izzati']) {
-      expect(team.rows.find((row) => row.name === name)?.overdue ?? 0).toBeGreaterThan(0)
+    const expected = {
+      'Nurul Aina': { todayCards: 21, overdueToday: 3 },
+      'Farah Izzati': { todayCards: 9, overdueToday: 3 }
     }
+
+    for (const [name, counts] of Object.entries(expected)) {
+      const owned = dataset.bookings.filter((booking) => booking.salesOwner === name)
+      const todayCards = owned.filter((booking) => summaryById.get(booking.id)?.stallReasons.length)
+      const overdueToday = owned.filter((booking) => {
+        const summary = summaryById.get(booking.id)
+        return (
+          summary &&
+          summary.stallReasons.length > 0 &&
+          summary.daysSinceEvidence >= 10 &&
+          currentCaseAssignee(booking, summary)?.name === name
+        )
+      })
+
+      expect(todayCards).toHaveLength(counts.todayCards)
+      expect(overdueToday).toHaveLength(counts.overdueToday)
+      expect(team.rows.find((row) => row.name === name)?.overdue).toBe(1)
+    }
+
+    expect(managerSuggestions(seededSnapshot)).toHaveLength(10)
   })
 
   it('emits nothing after the reference date', () => {

@@ -65,13 +65,57 @@ function addFarahOverdueExample(dataset: Dataset, referenceDate: IsoDate): Datas
   }
 }
 
+/** Keep three sales-held Today cards with an Overdue pill for each admin in the canonical seed. */
+function addSalesTodayOverdueExamples(dataset: Dataset, referenceDate: IsoDate): Dataset {
+  const overdueDate = addDays(referenceDate, -10)
+  const shiftDate = (dateTime: IsoDateTime, days: number) =>
+    `${addDays(dateTime.slice(0, 10), days)}${dateTime.slice(10)}`
+
+  return {
+    ...dataset,
+    bookings: dataset.bookings.map((booking) => {
+      if (booking.id === 'BK-0016') return { ...booking, bookingDate: addDays(booking.bookingDate, -5) }
+      if (booking.id === 'BK-0025') return { ...booking, bookingDate: addDays(booking.bookingDate, -10) }
+      return booking
+    }),
+    events: dataset.events.map((event) => {
+      if (event.bookingId === 'BK-0016' || event.bookingId === 'BK-0025') {
+        const days = event.bookingId === 'BK-0016' ? -5 : -10
+        return {
+          ...event,
+          occurredAt: shiftDate(event.occurredAt, days),
+          recordedAt: shiftDate(event.recordedAt, days)
+        }
+      }
+
+      if (event.bookingId === 'BK-0022' && event.occurredAt.slice(0, 10) > overdueDate) {
+        return {
+          ...event,
+          occurredAt: shiftDate(event.occurredAt, -10),
+          recordedAt: shiftDate(event.recordedAt, -10)
+        }
+      }
+
+      if (event.bookingId === 'BK-0066' && event.kind === 'loan_rejected') {
+        return {
+          ...event,
+          occurredAt: shiftDate(event.occurredAt, -10),
+          recordedAt: shiftDate(event.recordedAt, -10)
+        }
+      }
+
+      return event
+    })
+  }
+}
+
 export type CaseData = Dataset & { tasks: Task[] }
 
 /** Seeded stage-transition Monte Carlo: the same options always give the same dataset. */
 export function generate(options: GeneratorOptions): Dataset {
   const dataset = generateDataset(options)
   if (options.seed !== DEFAULT_SEED || options.bookings !== CANONICAL_DEMO_BOOKINGS) return dataset
-  return addFarahOverdueExample(dataset, options.referenceDate)
+  return addSalesTodayOverdueExamples(addFarahOverdueExample(dataset, options.referenceDate), options.referenceDate)
 }
 
 /**
