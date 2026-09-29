@@ -2,21 +2,21 @@
 
 ## Corpus Check
 
-- 371 files · ~311,384 words
+- 331 files · ~311,432 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 15 file(s) not represented in the graph (top: (none) 9, .css 3,
   .example 1)
 
 ## Summary
 
-- 4547 nodes · 12647 edges · 217 communities (175 shown, 42 thin omitted)
+- 4547 nodes · 12650 edges · 218 communities (176 shown, 42 thin omitted)
 - Extraction: 93% EXTRACTED · 7% INFERRED · 0% AMBIGUOUS · INFERRED: 929 edges
   (avg confidence: 0.83)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
 
-- Built from commit: `d95e17f8`
+- Built from commit: `4d25dcf1`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -110,7 +110,7 @@
 - Step 6: Request Follow-Up From Tan Mei Ling
 - Database
 - proof.test.mjs
-- FR-7 Next Action, Playbook Fit And Buyer Signals
+- Legal Admin (persona)
 - Typeface
 - Acceptance Criteria (14)
 - Markdown Style Guide
@@ -214,6 +214,7 @@
 - better-ui Skill: surfaces, icons, motion values
 - assemble.sh
 - packages_jev_src_index_signalsjob
+- Open Questions
 - schedule.py
 - frontend/package.json
 - Start From Fresh main
@@ -230,9 +231,9 @@
 3. `react` - 88 edges
 4. `lucide-react` - 60 edges
 5. `@testing-library/react` - 58 edges
-6. `usePersona()` - 56 edges
+6. `CaseEvent` - 56 edges
 7. `Booking` - 56 edges
-8. `CaseEvent` - 56 edges
+8. `usePersona()` - 56 edges
 9. `react-router-dom` - 55 edges
 10. `Card` - 52 edges
 
@@ -241,15 +242,16 @@
 - `Run bun run check Then bun run format` --semantically_similar_to-->
   `Run The Checks Locally Before Pushing` [INFERRED] [semantically similar]
   AGENTS.md → .github/CONTRIBUTING.md
+- `teamSummary` --implements--> `Desk Health` [INFERRED]
+  packages/core/src/team.ts → docs/PRODUCT.md
+- `Import API session-profile gate (403 for Loan and Legal Admin)`
+  --references--> `createApp()` [INFERRED] docs/agents/notes.md →
+  server/src/app.ts
+- `One server check for task completion, cancellation and reopening`
+  --references--> `createApp()` [INFERRED] docs/agents/notes.md →
+  server/src/app.ts
 - `App()` --implements--> `Route Map` [INFERRED] frontend/src/App.tsx →
   AGENTS.md
-- `ProfileMenu()` --implements--> `Profile Menu (Header Role Switcher)`
-  [INFERRED] frontend/src/components/layout/ProfileMenu.tsx → docs/PRODUCT.md
-- `mortar.persona localStorage key` --shares_data_with--> `PERSONA_STORAGE_KEY`
-  [INFERRED] AGENTS.md → frontend/src/lib/persona.tsx
-- `/team Route (Manager-Only Team View; /manager Redirects Here)`
-  --references--> `TeamPage()` [INFERRED] AGENTS.md →
-  frontend/src/pages/TeamPage.tsx
 
 ## Import Cycles
 
@@ -275,13 +277,6 @@
   scripts_demo_readme_schedule_py, scripts_demo_readme_subtitles_py,
   scripts_demo_readme_narrate_sh, scripts_demo_readme_lines_json,
   scripts_demo_readme_manifest_py [EXTRACTED 1.00]
-- **MortarAI Two-Engine Architecture (Jev + Gemini)** —
-  docs_prd_mortarai_ai_layer, docs_prd_typesafe_jev, docs_prd_gemini_assistant,
-  docs_prd_ask_mortarai_renamed [EXTRACTED 1.00]
-- **Redesign Supersedes #60 Points (Suggestions Tabs, Forecast Documents
-  Removal)** — docs_prd_intake_60, docs_prd_manager_suggestions_first,
-  docs_prd_forecast_documents_removed, docs_prd_decisions_for_you,
-  docs_prd_team_page, docs_prd_forecast_document_stack [EXTRACTED 1.00]
 - **Manager Works From Today With Team Desk Health** —
   docs_product_project_management, docs_product_robert_khoo,
   docs_product_decisions_for_you, docs_product_desk_health,
@@ -328,19 +323,6 @@
   docs_research_design_jakub_antalik_drawer,
   docs_research_design_canvas_ui_peel,
   docs_research_design_jakubkrehel_skills_better_ui [EXTRACTED 1.00]
-- **Cross-Desk Booking Handoff In The Live Walkthrough** —
-  docs_demo_mortar_pitch_deck_persona_sales_admin,
-  docs_demo_mortar_pitch_deck_persona_loan_admin,
-  docs_demo_mortar_pitch_deck_persona_legal_admin,
-  docs_demo_mortar_pitch_deck_persona_manager [EXTRACTED 1.00]
-- **Seven-Step Live Walkthrough Sequence** —
-  docs_demo_pitch_script_walkthrough_step1_queue_cards,
-  docs_demo_pitch_script_walkthrough_step2_waiting_on_view,
-  docs_demo_pitch_script_walkthrough_step3_confirm_jev_suggestion,
-  docs_demo_pitch_script_walkthrough_step4_paste_message_confirm,
-  docs_demo_pitch_script_walkthrough_step5_record_appointment,
-  docs_demo_pitch_script_walkthrough_step6_request_followup,
-  docs_demo_pitch_script_walkthrough_step7_forecast_numbers [EXTRACTED 1.00]
 - **Public Page Chrome (Landing, Footer, Sign-In)** — docs_design_public_pages,
   docs_design_landing, docs_design_public_footer, docs_design_sign_in,
   docs_design_landing_panel_tokens [EXTRACTED 1.00]
@@ -350,10 +332,6 @@
 - **MortarAI AI layer: Jev and Gemini engines** — docs_readme_mortarai,
   docs_readme_jev_client, docs_readme_typesafe, docs_readme_ask_mortarai,
   docs_readme_google_gemini [EXTRACTED 1.00]
-- **MortarAI's Two-Engine System (Jev Reads, Gemini Answers)** —
-  docs_demo_mortar_pitch_deck_mortarai, docs_demo_mortar_pitch_deck_jev,
-  docs_demo_mortar_pitch_deck_gemini_engine,
-  docs_demo_mortar_pitch_deck_ask_mortarai [EXTRACTED 1.00]
 - **Production path: calibrate, ingest, integrate, earn documents, then the
   12-week pilot** — docs_readme_production_path_calibrate_engine,
   docs_readme_production_path_erp_ocr_ingestion,
@@ -375,13 +353,6 @@
   scripts_demo_readme_env_demo_mute_seg_ms,
   scripts_demo_readme_env_demo_min_duration,
   scripts_demo_readme_env_demo_max_duration [INFERRED 0.85]
-- **The Desk Never Waits On AI: Budgets And Fallbacks** —
-  docs_demo_pitch_script_graceful_degradation,
-  docs_demo_pitch_script_jev_three_second_budget,
-  docs_demo_pitch_script_contingency_jev_slow_or_wrong,
-  docs_demo_pitch_script_contingency_gemini_fallback_counted,
-  docs_demo_pitch_script_q_ai_wrong_or_down,
-  docs_demo_pitch_script_10_technology_second_b_1_minute [INFERRED 0.85]
 - **Safeguards Against Graph Churn And Node Loss** —
   docs_agents_graphify_pinned_version, docs_agents_graphify_install_line,
   docs_agents_graphify_sql_extra, docs_agents_graphify_force_flag,
@@ -399,11 +370,6 @@
   docs_agents_notes_assistant_tools, docs_agents_notes_brain_askbrain,
   docs_agents_notes_forecast, docs_agents_notes_import_role_gate,
   docs_agents_notes_can_manage_task_status [INFERRED 0.85]
-- **Manager Oversight Flow (Decisions For You, Follow-Up, Team View)** —
-  docs_demo_mortar_pitch_deck_persona_manager,
-  docs_prd_jtbd_decisions_waiting_on_me, docs_prd_decisions_for_you,
-  docs_prd_manager_flagging, docs_prd_jtbd_reading_the_desks, docs_prd_team_page
-  [INFERRED 0.85]
 - **Forecast Aggregate And Its Consumers (#79)** —
   docs_agents_notes_forecast_model_aggregate,
   docs_agents_notes_forecast_model_v1,
@@ -431,6 +397,58 @@
 - **Main Branch Deploy Gate Chain** — github_workflows_ci_trigger_push_main,
   github_workflows_ci_check, github_workflows_ci_render_deploy_gate [INFERRED
   0.85]
+- **Flat Ledger Surface System** — docs_design_flat_ledger,
+  docs_design_elevation_card, docs_design_radius_tokens,
+  docs_design_no_row_tinting, docs_design_semantic_colour,
+  docs_design_canvas_dot_grid [INFERRED 0.85]
+- **Test Database Wiring for the Check Step** —
+  github_workflows_ci_service_postgres, github_workflows_ci_test_database_url,
+  github_workflows_ci_env_postgres_user_mortar,
+  github_workflows_ci_env_postgres_password_mortar,
+  github_workflows_ci_env_postgres_db_mortar_test,
+  github_workflows_ci_port_mapping_5432, github_workflows_ci_step_run_check
+  [INFERRED 0.95]
+- **MortarAI Two-Engine Architecture (Jev + Gemini)** —
+  docs_prd_mortarai_ai_layer, docs_prd_typesafe_jev, docs_prd_gemini_assistant,
+  docs_prd_ask_mortarai_renamed [EXTRACTED 1.00]
+- **Redesign Supersedes #60 Points (Suggestions Tabs, Forecast Documents
+  Removal)** — docs_prd_intake_60, docs_prd_manager_suggestions_first,
+  docs_prd_forecast_documents_removed, docs_prd_decisions_for_you,
+  docs_prd_team_page, docs_prd_forecast_document_stack [EXTRACTED 1.00]
+- **Manager Oversight Flow (Decisions For You, Follow-Up, Team View)** —
+  docs_demo_mortar_pitch_deck_persona_manager,
+  docs_prd_jtbd_decisions_waiting_on_me, docs_prd_decisions_for_you,
+  docs_prd_manager_flagging, docs_prd_jtbd_reading_the_desks, docs_prd_team_page
+  [INFERRED 0.85]
+- **Cross-Desk Booking Handoff In The Live Walkthrough** —
+  docs_demo_mortar_pitch_deck_persona_sales_admin,
+  docs_demo_mortar_pitch_deck_persona_loan_admin,
+  docs_demo_mortar_pitch_deck_persona_legal_admin,
+  docs_demo_mortar_pitch_deck_persona_manager [EXTRACTED 1.00]
+- **MortarAI's Two-Engine System (Jev Reads, Gemini Answers)** —
+  docs_demo_mortar_pitch_deck_mortarai, docs_demo_mortar_pitch_deck_jev,
+  docs_demo_mortar_pitch_deck_gemini_engine,
+  docs_demo_mortar_pitch_deck_ask_mortarai [EXTRACTED 1.00]
+- **Evidence Base Cited Across The Pitch Deck** —
+  docs_demo_mortar_pitch_deck_source_practitioner_survey,
+  docs_demo_mortar_pitch_deck_source_rehda_industry_survey,
+  docs_demo_mortar_pitch_deck_source_chgp_2q_2026_results,
+  docs_demo_mortar_pitch_deck_source_chin_hin_challenge_brief [INFERRED 0.85]
+- **Seven-Step Live Walkthrough Sequence** —
+  docs_demo_pitch_script_walkthrough_step1_queue_cards,
+  docs_demo_pitch_script_walkthrough_step2_waiting_on_view,
+  docs_demo_pitch_script_walkthrough_step3_confirm_jev_suggestion,
+  docs_demo_pitch_script_walkthrough_step4_paste_message_confirm,
+  docs_demo_pitch_script_walkthrough_step5_record_appointment,
+  docs_demo_pitch_script_walkthrough_step6_request_followup,
+  docs_demo_pitch_script_walkthrough_step7_forecast_numbers [EXTRACTED 1.00]
+- **The Desk Never Waits On AI: Budgets And Fallbacks** —
+  docs_demo_pitch_script_graceful_degradation,
+  docs_demo_pitch_script_jev_three_second_budget,
+  docs_demo_pitch_script_contingency_jev_slow_or_wrong,
+  docs_demo_pitch_script_contingency_gemini_fallback_counted,
+  docs_demo_pitch_script_q_ai_wrong_or_down,
+  docs_demo_pitch_script_10_technology_second_b_1_minute [INFERRED 0.85]
 - **Jev Picks, Scores Its Confidence, A Person Confirms** —
   docs_demo_pitch_script_jev,
   docs_demo_pitch_script_jev_fixed_answers_calibrated_confidence,
@@ -439,24 +457,8 @@
   docs_demo_pitch_script_ai_proposes_people_confirm,
   docs_demo_pitch_script_walkthrough_step3_confirm_jev_suggestion [INFERRED
   0.85]
-- **Flat Ledger Surface System** — docs_design_flat_ledger,
-  docs_design_elevation_card, docs_design_radius_tokens,
-  docs_design_no_row_tinting, docs_design_semantic_colour,
-  docs_design_canvas_dot_grid [INFERRED 0.85]
-- **Evidence Base Cited Across The Pitch Deck** —
-  docs_demo_mortar_pitch_deck_source_practitioner_survey,
-  docs_demo_mortar_pitch_deck_source_rehda_industry_survey,
-  docs_demo_mortar_pitch_deck_source_chgp_2q_2026_results,
-  docs_demo_mortar_pitch_deck_source_chin_hin_challenge_brief [INFERRED 0.85]
-- **Test Database Wiring for the Check Step** —
-  github_workflows_ci_service_postgres, github_workflows_ci_test_database_url,
-  github_workflows_ci_env_postgres_user_mortar,
-  github_workflows_ci_env_postgres_password_mortar,
-  github_workflows_ci_env_postgres_db_mortar_test,
-  github_workflows_ci_port_mapping_5432, github_workflows_ci_step_run_check
-  [INFERRED 0.95]
 
-## Communities (217 total, 42 thin omitted)
+## Communities (218 total, 42 thin omitted)
 
 ### Community 0 - "WaitingOn.tsx"
 
@@ -786,19 +788,19 @@ caseDetail(), casesFor(), day() (+17 more)
 
 ### Community 51 - "Sources"
 
-Cohesion: 0.09 Nodes (38): Association of Banks in Malaysia (2017) Press
+Cohesion: 0.14 Nodes (27): Association of Banks in Malaysia (2017) Press
 Release, Annuity Monthly Instalment, Bank Negara Malaysia (2010) Property Market
 Measures, Bank Negara Malaysia Monthly Statistical Bulletin, Bank Negara
-Malaysia (2013) 35-Year Tenure Circular, Booking Fee Prohibition (Reg 11(2)
-1989), Debt Service Ratio (DSR), DEFAULT_ASSUMPTIONS Panel (+30 more)
+Malaysia (2013) 35-Year Tenure Circular, Debt Service Ratio (DSR),
+DEFAULT_ASSUMPTIONS Panel, DSR Cap Of 40% Gross Income (+19 more)
 
 ### Community 52 - "Functional Requirements"
 
-Cohesion: 0.11 Nodes (30): ClosedExport Excel Export, Case Event Schema, Event
-Statuses (confirmed/provisional/disputed/superseded), FR-15 SPA Execution Desk,
-FR-16 Leakage Analysis And Recovery Sizing, FR-19 Record An Update, FR-21
-Bookings Active And Closed Views With Export, FR-2 Case Summarization And Stall
-Detection (+22 more)
+Cohesion: 0.12 Nodes (26): Buyer Signals (responsiveness/hesitation),
+ClosedExport Excel Export, Assistant Read-Only Tool Set, Case Event Schema,
+Event Statuses (confirmed/provisional/disputed/superseded), FR-16 Leakage
+Analysis And Recovery Sizing, FR-19 Record An Update, FR-20 Message Timing And
+Buyer Response (+18 more)
 
 ### Community 53 - "Data Retention"
 
@@ -1007,10 +1009,9 @@ Action Colour, Public-Page Radius Steps (2xl/3xl), Radius Tokens (+3 more)
 ### Community 83 - "Non-Functional Requirements"
 
 Cohesion: 0.09 Nodes (39): Cache-First GET Routes, Scripted askBrain Fallback,
-Demo Script As Acceptance, Design Standards Compliance, Direct Core ERP
-Integration (Out Of Scope), FR-12 High-Availability Offline Jev Fallback, FR-18
-Jev Through A Local Model Proxy, FR-23 Ask MortarAI Grounded Assistant (+31
-more)
+Demo Script As Acceptance, Design Standards Compliance, FR-12 High-Availability
+Offline Jev Fallback, FR-18 Jev Through A Local Model Proxy, FR-23 Ask MortarAI
+Grounded Assistant, FR-6 TypeSafe Jev Structured Message Extraction (+31 more)
 
 ### Community 84 - "proof.mjs"
 
@@ -1033,12 +1034,12 @@ Cohesion: 0.07 Nodes (5): CaseData, Message, StaffProfile, Database, DbJevCache
 Cohesion: 0.18 Nodes (6): ref_node_assert, ref_node_fs, ref_node_test,
 cleanEvents, SEEDED_MESSAGES, WALK_BEATS
 
-### Community 88 - "FR-7 Next Action, Playbook Fit And Buyer Signals"
+### Community 88 - "Legal Admin (persona)"
 
-Cohesion: 0.36 Nodes (8): Buyer Signals (responsiveness/hesitation), Assistant
-Read-Only Tool Set, FR-20 Message Timing And Buyer Response, FR-7 Next Action,
-Playbook Fit And Buyer Signals, JTBD: Guidance Retrieval, MiniSearch Playbook
-Index, sentAt Validation And Clock Skew, US-12 Playbook Knowledge Retrieval
+Cohesion: 0.25 Nodes (11): BK-9006 (booking), Legal Admin (persona), SPA Drafted
+(workflow stage — Legal Admin · Law Firm), daysSinceLoanApproved /
+daysSinceSpaSet, FR-15 SPA Execution Desk, JTBD: Closing Out Appointments, JTBD:
+Seeing What Has Stopped, Appointment On YYYY-MM-DD Note Format (+3 more)
 
 ### Community 89 - "Typeface"
 
@@ -1267,7 +1268,7 @@ switched in the header (+13 more)
 
 ### Community 123 - "Import area"
 
-Cohesion: 0.23 Nodes (12): booking-sheet-template.xlsx/.csv, checkBookingDraft,
+Cohesion: 0.24 Nodes (12): booking-sheet-template.xlsx/.csv, checkBookingDraft,
 DropZone / readSheetFile, Import area, parseCsv, readBookingSheet, Client-Only
 Spreadsheet Parsing, FR-13 Add Bookings Intake And Validation (+4 more)
 
@@ -1278,13 +1279,14 @@ task, Backtest, ChoiceAnswer, EventKind (+8 more)
 
 ### Community 125 - "This Week. What We Need."
 
-Cohesion: 0.07 Nodes (52): A1 — Chin Hin's Leaks Follow The Same Order (test:
+Cohesion: 0.07 Nodes (47): A1 — Chin Hin's Leaks Follow The Same Order (test:
 rebuild loss reasons from closed files), A2 — Follow-Up Lifts Stalled Bookings
 From 20% To 40% Signed (test: assisted cohort vs ordinary follow-up), A3 — Staff
 Will Paste Banker Messages In Daily (test: one admin, two weeks), A4 — Bookings
 Can Start From A Spreadsheet Export (test: first upload, week one), BK-9001
-(booking), BK-9006 (booking), Forecast (expected signings with a range — page
-rebuilt since 20 Sep), Live Demo — mortar-d18f.onrender.com (+44 more)
+(booking), Forecast (expected signings with a range — page rebuilt since 20
+Sep), Live Demo — mortar-d18f.onrender.com, Decisions For You (Manager's Today —
+follow-up when a case runs past its expected time) (+39 more)
 
 ### Community 126 - "Keep It Current"
 
@@ -1383,11 +1385,11 @@ Per Screen, Progressive Disclosure (+7 more)
 
 ### Community 142 - "FR-8 Statistical Conversion Forecasting"
 
-Cohesion: 0.17 Nodes (17): Backtest Caption: Proves Method Not Business, Brown,
+Cohesion: 0.10 Nodes (27): Backtest Caption: Proves Method Not Business, Brown,
 Cai & DasGupta (2001) Wilson Interval, Forecast Document Stack (#54), Forecast
 Documents Panel Removed, FR-8 Statistical Conversion Forecasting, FR-9
-Historical Forecast Backtesting, Live And Resolved Booking Definitions,
-Recoverable Share Estimate (+9 more)
+Historical Forecast Backtesting, Honest Accounting, JTBD: Stall Resolution (+19
+more)
 
 ### Community 143 - "Evidence And Assumptions"
 
@@ -1481,9 +1483,9 @@ App Tab As Fallback, Speakers
 
 Cohesion: 0.13 Nodes (29): Apex Bank, Ask MortarAI (feature), By Hand (staff
 record the update), Cached Answer (asked before, reused), Live Answer (typed,
-with a confidence), Stale, Marked (shown with a stale tag), Gemini's Edge —
-Reads Only The Asker's Bookings (can't change a record), Gemini (Google —
-answers staff questions) (+21 more)
+with a confidence), Stale, Marked (shown with a stale tag), Gemini's
+Differentiator: Booking-Scoped, Read-Only Answers, Gemini (Google — answers
+staff questions) (+21 more)
 
 ### Community 158 - "better-accessibility Skill: reduced motion, zoom, autoplay"
 
@@ -1514,10 +1516,10 @@ most MAX_LINES., ts(), wav_ms(), wrap() (+2 more)
 
 ### Community 162 - "Manager (persona)"
 
-Cohesion: 0.19 Nodes (23): Manager (persona), Ask Mortar Renamed To Ask
+Cohesion: 0.25 Nodes (20): Manager (persona), Ask Mortar Renamed To Ask
 MortarAI, Decisions For You (Manager Today Queue), FR-14 Persona Navigation And
-Page Routing, FR-22 Add Bookings Intake, FR-24 Guided Walkthrough, Header
-Profile Menu, Approved Manager And Ask MortarAI Intake (#60) (+15 more)
+Page Routing, FR-24 Guided Walkthrough, Header Profile Menu, Approved Manager
+And Ask MortarAI Intake (#60), JTBD: Decisions Waiting On Me (+12 more)
 
 ### Community 163 - "Agent Rules"
 
@@ -1592,6 +1594,14 @@ inner plus padding, Interruptible Motion: transitions for toggles, keyframes for
 entrances, Staged Entrances: 100ms block stagger, 80ms per word, Scroll-Scrubbed
 Video Recipe: lerp 0.12 and frame cache (+2 more)
 
+### Community 192 - "Open Questions"
+
+Cohesion: 0.24 Nodes (10): Booking Fee Prohibition (Reg 11(2) 1989), Direct Core
+ERP Integration (Out Of Scope), Housing Development (Control and Licensing)
+Regulations, NFR-8 Synthetic Data And PDPA, Open Questions, Operational
+Constraints, Personal Data Protection (Amendment) Act 2024, Schedule H Clause
+5(3) Post-SPA Termination (+2 more)
+
 ### Community 205 - "schedule.py"
 
 Cohesion: 0.47 Nodes (5): deconflict(), duration_ms(), main(), Prevent narration
@@ -1611,23 +1621,23 @@ buildForecastModel(), buildModel(), CALIBRATION_BUCKETS, factsFor(), forecast()
 
 ## Ambiguous Edges - Review These
 
-- `Kabel DXP Weekly Check-In, 29 September 2026` →
-  `Chin Hin Group Property Berhad (CHGP)` [AMBIGUOUS] docs/demo/pitch-script.md
-  · relation: conceptually_related_to
 - `GET /api/settings` → `meta Key-Value Table` [AMBIGUOUS] docs/TRD.md ·
   relation: references
 - `meta Key-Value Table` → `PUT /api/settings (Manager Only)` [AMBIGUOUS]
   docs/TRD.md · relation: references
-- `Do Not Say: IFCA Is Chin Hin's System` →
-  `Claim: 7 Of 8 Name Loan Rejection The Biggest Cause` [AMBIGUOUS]
-  docs/demo/pitch-script.md · relation: conceptually_related_to
+- `Claim: 7 Of 8 Name Loan Rejection The Biggest Cause` →
+  `Do Not Say: IFCA Is Chin Hin's System` [AMBIGUOUS] docs/demo/pitch-script.md
+  · relation: conceptually_related_to
+- `Kabel DXP Weekly Check-In, 29 September 2026` →
+  `Chin Hin Group Property Berhad (CHGP)` [AMBIGUOUS] docs/demo/pitch-script.md
+  · relation: conceptually_related_to
 
 ## Knowledge Gaps
 
-- **887 isolated node(s):** `$schema`, `printWidth`, `singleQuote`, `semi`,
-  `trailingComma` (+882 more) These have ≤1 connection - possible missing edges
-  or undocumented components. (Counts symbols only; 1236 node(s) total have ≤1
-  connection when file, concept and rationale nodes are included.)
+- **887 isolated node(s):** `CaseNextStep`, `CreateTaskPayload`, `Urgency`,
+  `Desk`, `Decision` (+882 more) These have ≤1 connection - possible missing
+  edges or undocumented components. (Counts symbols only; 1236 node(s) total
+  have ≤1 connection when file, concept and rationale nodes are included.)
 - **42 thin communities (<3 nodes) omitted from report** — run `graphify query`
   to explore isolated nodes.
 
@@ -1635,10 +1645,6 @@ buildForecastModel(), buildModel(), CALIBRATION_BUCKETS, factsFor(), forecast()
 
 _Questions this graph is uniquely positioned to answer:_
 
-- **What is the exact relationship between
-  `Kabel DXP Weekly Check-In, 29 September 2026` and
-  `Chin Hin Group Property Berhad (CHGP)`?** _Edge tagged AMBIGUOUS (relation:
-  conceptually_related_to) - confidence is low._
 - **What is the exact relationship between `GET /api/settings` and
   `meta Key-Value Table`?** _Edge tagged AMBIGUOUS (relation: references) -
   confidence is low._
@@ -1646,19 +1652,28 @@ _Questions this graph is uniquely positioned to answer:_
   `PUT /api/settings (Manager Only)`?** _Edge tagged AMBIGUOUS (relation:
   references) - confidence is low._
 - **What is the exact relationship between
-  `Do Not Say: IFCA Is Chin Hin's System` and
-  `Claim: 7 Of 8 Name Loan Rejection The Biggest Cause`?** _Edge tagged
-  AMBIGUOUS (relation: conceptually_related_to) - confidence is low._
+  `Claim: 7 Of 8 Name Loan Rejection The Biggest Cause` and
+  `Do Not Say: IFCA Is Chin Hin's System`?** _Edge tagged AMBIGUOUS (relation:
+  conceptually_related_to) - confidence is low._
+- **What is the exact relationship between
+  `Kabel DXP Weekly Check-In, 29 September 2026` and
+  `Chin Hin Group Property Berhad (CHGP)`?** _Edge tagged AMBIGUOUS (relation:
+  conceptually_related_to) - confidence is low._
 - **Why does `Mortar (Product Requirements)` connect
-  `Mortar (Product Requirements)` to
+  `Mortar (Product Requirements)` to `Open Questions`,
   `Industry Practitioner Survey Findings, n = 8`, `Manager (persona)`,
-  `User Stories Per Screen`, `Sources`, `Non-Functional Requirements`,
-  `Documents Index`, `Functional Requirements`?** _High betweenness centrality
-  (0.059) - this node is a cross-community bridge._
-- **Why does `AGENTS.md` connect `Personas` to `Project Structure tree`,
-  `About The Project section`, `Agent Rules`, `Documents Index`?** _High
-  betweenness centrality (0.051) - this node is a cross-community bridge._
-- **Why does `Manager (persona)` connect `Manager (persona)` to
-  `Non-Functional Requirements`, `Step 6: Request Follow-Up From Tan Mei Ling`,
-  `This Week. What We Need.`?** _High betweenness centrality (0.050) - this node
+  `FR-8 Statistical Conversion Forecasting`, `User Stories Per Screen`,
+  `Sources`, `Non-Functional Requirements`, `Documents Index`,
+  `Functional Requirements`?** _High betweenness centrality (0.057) - this node
   is a cross-community bridge._
+- **Why does `Manager (persona)` connect `Manager (persona)` to
+  `Step 6: Request Follow-Up From Tan Mei Ling`, `This Week. What We Need.`?**
+  _High betweenness centrality (0.049) - this node is a cross-community bridge._
+- **Why does `File Map` connect `File Map` to
+  `Assistant area (server/src/assistant/)`,
+  `Case-free forecast aggregate (built from full resolved history before profile scoping)`,
+  `Gotchas`, `Mortar Notes For Agents`, `useTheme.tsx`,
+  `PersonaRoute.tsx (route guard)`, `Tests area`,
+  `Mortar (Product Requirements)`, `closedExport.ts`, `Import area`,
+  `Gotcha: manager workflows`?** _High betweenness centrality (0.041) - this
+  node is a cross-community bridge._
